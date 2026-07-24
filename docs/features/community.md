@@ -12,7 +12,7 @@ The community activity card surfaces **active learners** on the signed-in **Home
 - **Timeout**: the request uses an **8-second client timeout**; on timeout (or any other error), the card hides / shows no data rather than a retry affordance (matches web parity).
 - **Variants**: `CommunityActivityCardVariant.card` (full stats + up to 8 avatars; tablet/desktop) and `CommunityActivityCardVariant.summary` (compact headline + up to 4 avatars; mobile insight strip).
 - **Today stats**: when the server returns `recordingsCountToday` / `recordingsDurationToday`, the card shows the aggregated practice volume; otherwise the stat row is hidden.
-- **Avatars**: rendered with `CachedNetworkImage` from `avatarUrl` (Dicebear SVG URLs are rewritten to PNG via `rasterAvatarUrl` in `lib/core/utils/avatar_url.dart` because Flutter cannot decode SVG with raster image widgets); missing avatars fall back to **initials** derived from the user's name (`_initials` in `community_activity_card.dart`).
+- **Avatars**: rendered with `CachedNetworkImage` from `avatarUrl` (Dicebear SVG URLs are rewritten to PNG via `rasterAvatarUrl` in `lib/core/utils/avatar_url.dart` because Flutter cannot decode SVG with raster image widgets); missing avatars fall back to **initials** derived from the user's name (`initials` helper in `community_activity_avatars.dart`).
 - **Layout**: on wide viewports (≈720px+) Today's Goal and Community Activity cards share a responsive two-column row above the recent media grid; on narrow screens they stack.
 
 ## Signed-in gating
@@ -27,6 +27,10 @@ The card is only mounted on Home when `authCtrlProvider` reports `AuthSignedIn`.
 | Riverpod provider | [`lib/features/community/application/active_users_provider.dart`](../../lib/features/community/application/active_users_provider.dart) |
 | Client IANA timezone | [`lib/core/utils/client_timezone.dart`](../../lib/core/utils/client_timezone.dart) |
 | Card UI (card + summary variants) | [`lib/features/community/presentation/community_activity_card.dart`](../../lib/features/community/presentation/community_activity_card.dart) |
+| └ avatars (initials, wrap grid, overlapping stack) | [`community_activity_avatars.dart`](../../lib/features/community/presentation/community_activity_avatars.dart) |
+| └ bodies (card + summary content) | [`community_activity_bodies.dart`](../../lib/features/community/presentation/community_activity_bodies.dart) |
+| └ metrics (today's practice stat row) | [`community_activity_metrics.dart`](../../lib/features/community/presentation/community_activity_metrics.dart) |
+| └ stats (headline summary content) | [`community_activity_stats.dart`](../../lib/features/community/presentation/community_activity_stats.dart) |
 
 ## Related
 

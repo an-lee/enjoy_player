@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Craft Voice-Express dual-mode** redesign: a voice-first Express mode (speak → ASR → AI rewrite → TTS) is now the default, alongside the existing Advanced translate/synthesize tools. See [ADR-0060](docs/decisions/0060-craft-voice-express-dual-mode.md) and [docs/features/craft.md](docs/features/craft.md).
+### Changed
+- **Community activity card** split into focused part files (`avatars`, `bodies`, `metrics`, `stats`) sharing one library scope.
+- **Global transport bar** extracts `_LineNavButton` as the shared prev/next/replay control.
 
 ## [0.7.2] - 2026-07-22
 
