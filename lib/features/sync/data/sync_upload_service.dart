@@ -275,45 +275,27 @@ class SyncUploadService {
     return parsed;
   }
 
-  Future<void> deleteAudio(String id) async {
-    try {
-      await _audioApi.deleteAudio(id);
-    } on ApiException catch (e) {
-      if (e.statusCode == 404) return;
-      rethrow;
-    }
-  }
+  Future<void> deleteAudio(String id) =>
+      _deleteWith404Guard(() => _audioApi.deleteAudio(id));
 
-  Future<void> deleteVideo(String id) async {
-    try {
-      await _videoApi.deleteVideo(id);
-    } on ApiException catch (e) {
-      if (e.statusCode == 404) return;
-      rethrow;
-    }
-  }
+  Future<void> deleteVideo(String id) =>
+      _deleteWith404Guard(() => _videoApi.deleteVideo(id));
 
-  Future<void> deleteRecording(String id) async {
-    try {
-      await _recordingApi.deleteRecording(id);
-    } on ApiException catch (e) {
-      if (e.statusCode == 404) return;
-      rethrow;
-    }
-  }
+  Future<void> deleteRecording(String id) =>
+      _deleteWith404Guard(() => _recordingApi.deleteRecording(id));
 
-  Future<void> deleteVocabularyItem(String id) async {
-    try {
-      await _vocabularyApi.deleteVocabularyItem(id);
-    } on ApiException catch (e) {
-      if (e.statusCode == 404) return;
-      rethrow;
-    }
-  }
+  Future<void> deleteVocabularyItem(String id) =>
+      _deleteWith404Guard(() => _vocabularyApi.deleteVocabularyItem(id));
 
-  Future<void> deleteVocabularyContext(String id) async {
+  Future<void> deleteVocabularyContext(String id) =>
+      _deleteWith404Guard(() => _vocabularyApi.deleteVocabularyContext(id));
+
+  /// Runs a server delete, treating a `404` response as success (the entity
+  /// was already gone on the server). Any other [ApiException] is rethrown so
+  /// the sync queue can retry or fail the row.
+  Future<void> _deleteWith404Guard(Future<void> Function() delete) async {
     try {
-      await _vocabularyApi.deleteVocabularyContext(id);
+      await delete();
     } on ApiException catch (e) {
       if (e.statusCode == 404) return;
       rethrow;
