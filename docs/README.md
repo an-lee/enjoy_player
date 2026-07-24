@@ -47,7 +47,7 @@ Maintainers and agents should keep these files **accurate** when behavior or arc
 | [features/echo-mode.md](features/echo-mode.md) | Product + dev | Echo region, shadow-reading, pronunciation assessment, or share practice poster behavior changes |
 | [features/local-database-recovery.md](features/local-database-recovery.md) | Product + dev | Stale/malformed local-DB detection, the recovery surface, or the reset-local-library flow changes |
 | [features/linux-platform.md](features/linux-platform.md) | Product + dev | Linux support matrix, AppImage packaging/release, or per-platform feature availability changes |
-| [features/craft.md](features/craft.md) | Product + dev | Craft from Text import, translate/synthesize modes, voice picker, or failure handling changes |
+| [features/craft.md](features/craft.md) | Product + dev | Craft dual-mode (voice-first Express + Advanced translate/synthesize), from Text import, voice picker, history, or failure handling changes |
 
 ## How to add an ADR
 
