@@ -1,6 +1,7 @@
 /// User profile returned by `GET/PATCH /api/v1/profile` (camelCase JSON).
 library;
 
+import 'package:enjoy_player/core/json/json_cast.dart';
 import 'package:enjoy_player/core/utils/avatar_url.dart';
 
 enum SubscriptionTier { free, pro }
@@ -27,7 +28,7 @@ class UserProfile {
       locale: json['locale'] as String?,
       learningLanguage: json['learningLanguage'] as String?,
       nativeLanguage: json['nativeLanguage'] as String?,
-      goal: _intFromJson(json['goal']),
+      goal: intFromJson(json['goal']),
       createdAt: json['createdAt'] as String?,
     );
   }
@@ -125,11 +126,4 @@ double? _doubleFromJson(Object? value) {
   if (value == null) return null;
   if (value is num) return value.toDouble();
   return double.tryParse(value.toString());
-}
-
-int? _intFromJson(Object? value) {
-  if (value == null) return null;
-  if (value is int) return value;
-  if (value is num) return value.toInt();
-  return int.tryParse(value.toString());
 }

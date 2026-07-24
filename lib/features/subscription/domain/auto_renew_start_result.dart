@@ -1,6 +1,8 @@
 /// Result of `POST /api/v1/subscriptions/auto_renew`.
 library;
 
+import 'package:enjoy_player/core/json/json_cast.dart';
+
 class AutoRenewStartResult {
   const AutoRenewStartResult({
     required this.id,
@@ -33,7 +35,7 @@ class AutoRenewStartResult {
       planId: json['planId']?.toString(),
       tier: json['tier']?.toString() ?? 'pro',
       interval: json['interval']?.toString() ?? '',
-      priceAmount: _numOrNull(priceMap?['amount'] ?? json['amount']),
+      priceAmount: numOrNull(priceMap?['amount'] ?? json['amount']),
       priceInterval: priceMap?['interval']?.toString(),
       currencyNote: priceMap?['currencyNote']?.toString(),
     );
@@ -51,10 +53,4 @@ class AutoRenewStartResult {
   final num? priceAmount;
   final String? priceInterval;
   final String? currencyNote;
-}
-
-num? _numOrNull(Object? value) {
-  if (value is num) return value;
-  if (value is String) return num.tryParse(value);
-  return null;
 }

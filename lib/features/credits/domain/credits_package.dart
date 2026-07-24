@@ -1,13 +1,15 @@
 /// One-time permanent-credit package from Rails `/api/v1/credits/packages`.
 library;
 
+import 'package:enjoy_player/core/json/json_cast.dart';
+
 class CreditsTransferRate {
   const CreditsTransferRate({required this.usd, required this.credits});
 
   factory CreditsTransferRate.fromJson(Map<String, dynamic> json) {
     return CreditsTransferRate(
-      usd: _num(json['usd']),
-      credits: _int(json['credits']),
+      usd: numOrZero(json['usd']),
+      credits: intOrZero(json['credits']),
     );
   }
 
@@ -33,7 +35,7 @@ class CreditsPackage {
       id: json['id']?.toString() ?? '',
       amount: json['amount']?.toString() ?? '',
       currency: json['currency']?.toString() ?? 'USD',
-      credits: _int(json['credits']),
+      credits: intOrZero(json['credits']),
       rate: CreditsTransferRate.fromJson(rateMap),
     );
   }
@@ -81,17 +83,4 @@ class CreditsPackagePurchaseSession {
   final String amount;
   final String? payUrl;
   final CreditsPackage package;
-}
-
-num _num(Object? value) {
-  if (value is num) return value;
-  if (value is String) return num.tryParse(value) ?? 0;
-  return 0;
-}
-
-int _int(Object? value) {
-  if (value is int) return value;
-  if (value is num) return value.toInt();
-  if (value is String) return int.tryParse(value) ?? 0;
-  return 0;
 }

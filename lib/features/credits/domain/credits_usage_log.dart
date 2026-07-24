@@ -1,6 +1,8 @@
 /// One row from Worker `GET /credits/usages` (`logs[]`).
 library;
 
+import 'package:enjoy_player/core/json/json_cast.dart';
+
 class CreditsUsageLog {
   factory CreditsUsageLog.fromJson(Map<String, dynamic> json) {
     final metaRaw = json['meta'];
@@ -13,12 +15,12 @@ class CreditsUsageLog {
       id: json['id']?.toString() ?? '',
       userId: json['userId']?.toString() ?? '',
       date: json['date']?.toString() ?? '',
-      timestampMs: _intFromJson(json['timestamp']) ?? 0,
+      timestampMs: intFromJson(json['timestamp']) ?? 0,
       serviceType: json['serviceType']?.toString() ?? '',
       tier: json['tier']?.toString() ?? '',
-      creditsRequired: _intFromJson(json['required']) ?? 0,
-      usedBefore: _intFromJson(json['usedBefore']) ?? 0,
-      usedAfter: _intFromJson(json['usedAfter']) ?? 0,
+      creditsRequired: intFromJson(json['required']) ?? 0,
+      usedBefore: intFromJson(json['usedBefore']) ?? 0,
+      usedAfter: intFromJson(json['usedAfter']) ?? 0,
       allowed: _boolFromJson(json['allowed']) ?? false,
       meta: meta,
     );
@@ -50,13 +52,6 @@ class CreditsUsageLog {
   final int usedAfter;
   final bool allowed;
   final Map<String, Object?>? meta;
-}
-
-int? _intFromJson(Object? value) {
-  if (value == null) return null;
-  if (value is int) return value;
-  if (value is num) return value.toInt();
-  return int.tryParse(value.toString());
 }
 
 bool? _boolFromJson(Object? value) {

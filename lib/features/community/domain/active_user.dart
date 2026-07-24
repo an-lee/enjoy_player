@@ -4,13 +4,6 @@ library;
 import 'package:enjoy_player/core/json/json_cast.dart';
 import 'package:enjoy_player/core/utils/avatar_url.dart';
 
-int? _intFromJson(Object? value) {
-  if (value == null) return null;
-  if (value is int) return value;
-  if (value is double) return value.round();
-  return int.tryParse(value.toString());
-}
-
 class ActiveUser {
   factory ActiveUser.fromJson(Map<String, dynamic> json) {
     return ActiveUser(
@@ -40,9 +33,9 @@ class ActiveUsersResponse {
     }
     return ActiveUsersResponse(
       users: users,
-      count: _intFromJson(json['count']) ?? users.length,
-      recordingsCountToday: _intFromJson(json['recordingsCountToday']),
-      recordingsDurationToday: _intFromJson(json['recordingsDurationToday']),
+      count: intFromJson(json['count']) ?? users.length,
+      recordingsCountToday: intFromJson(json['recordingsCountToday']),
+      recordingsDurationToday: intFromJson(json['recordingsDurationToday']),
     );
   }
   const ActiveUsersResponse({

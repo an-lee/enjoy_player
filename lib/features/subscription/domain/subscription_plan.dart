@@ -1,6 +1,8 @@
 /// Catalog row from `GET /api/v1/subscriptions/plans`.
 library;
 
+import 'package:enjoy_player/core/json/json_cast.dart';
+
 class SubscriptionPlan {
   const SubscriptionPlan({
     required this.id,
@@ -15,7 +17,7 @@ class SubscriptionPlan {
       id: json['id']?.toString() ?? '',
       tier: json['tier']?.toString() ?? 'pro',
       interval: json['interval']?.toString() ?? '',
-      amount: _num(json['amount']),
+      amount: numOrZero(json['amount']),
       currencyNote: json['currencyNote']?.toString(),
     );
   }
@@ -36,10 +38,4 @@ class SubscriptionPlan {
     'amount': amount,
     if (currencyNote != null) 'currencyNote': currencyNote,
   };
-}
-
-num _num(Object? value) {
-  if (value is num) return value;
-  if (value is String) return num.tryParse(value) ?? 0;
-  return 0;
 }

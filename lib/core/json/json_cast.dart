@@ -30,3 +30,46 @@ Map<String, dynamic> castJsonObject(Object? value) {
   }
   return map;
 }
+
+/// Coerces a JSON value to a nullable `int`.
+///
+/// Accepts an [int] directly, truncates a [num] (e.g. a `double` that slipped
+/// in from a lenient backend) toward zero via [num.toInt], and parses a
+/// [String]. Returns `null` for `null` or an unparseable value.
+///
+/// Truncation (not rounding) is used deliberately: these fields are counts,
+/// timestamps, and durations that are semantically integers, and
+/// `num.toInt()` is the conventional Dart coercion. Use [intOrZero] when a
+/// non-null default is wanted.
+int? intFromJson(Object? value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value.toString());
+}
+
+/// Coerces a JSON value to a non-null `int`, defaulting to `0`.
+///
+/// Like [intFromJson] but never returns `null` — `null`, a non-numeric type,
+/// or an unparseable string all become `0`.
+int intOrZero(Object? value) => intFromJson(value) ?? 0;
+
+/// Coerces a JSON value to a non-null [num], defaulting to `0`.
+///
+/// Accepts a [num] directly and parses a [String]; anything else (including
+/// `null`) becomes `0`.
+num numOrZero(Object? value) {
+  if (value is num) return value;
+  if (value is String) return num.tryParse(value) ?? 0;
+  return 0;
+}
+
+/// Coerces a JSON value to a nullable [num].
+///
+/// Accepts a [num] directly and parses a [String]; `null` or an unparseable
+/// value yields `null`. Use [numOrZero] when a non-null default is wanted.
+num? numOrNull(Object? value) {
+  if (value is num) return value;
+  if (value is String) return num.tryParse(value);
+  return null;
+}

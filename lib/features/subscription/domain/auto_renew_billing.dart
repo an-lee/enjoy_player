@@ -1,6 +1,8 @@
 /// Nested auto-renew snapshot from `GET /api/v1/subscriptions`.
 library;
 
+import 'package:enjoy_player/core/json/json_cast.dart';
+
 class AutoRenewBilling {
   const AutoRenewBilling({
     required this.active,
@@ -28,7 +30,7 @@ class AutoRenewBilling {
       planId: json['planId']?.toString(),
       tier: json['tier']?.toString() ?? 'pro',
       interval: json['interval']?.toString() ?? '',
-      amount: _numOrNull(json['amount']),
+      amount: numOrNull(json['amount']),
     );
   }
 
@@ -77,10 +79,4 @@ class AutoRenewBilling {
     'interval': interval,
     if (amount != null) 'amount': amount,
   };
-}
-
-num? _numOrNull(Object? value) {
-  if (value is num) return value;
-  if (value is String) return num.tryParse(value);
-  return null;
 }

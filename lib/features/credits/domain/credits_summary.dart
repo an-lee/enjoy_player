@@ -1,6 +1,8 @@
 /// Worker `GET /credits/summary` wallet standing.
 library;
 
+import 'package:enjoy_player/core/json/json_cast.dart';
+
 class CreditsSummary {
   const CreditsSummary({
     required this.tier,
@@ -14,11 +16,11 @@ class CreditsSummary {
   factory CreditsSummary.fromJson(Map<String, dynamic> json) {
     return CreditsSummary(
       tier: json['tier']?.toString() ?? '',
-      dailyUsed: _int(json['dailyUsed']),
-      dailyLimit: _int(json['dailyLimit']),
-      dailyRemaining: _int(json['dailyRemaining']),
-      permanentAvailable: _int(json['permanentAvailable']),
-      resetAt: _int(json['resetAt']),
+      dailyUsed: intOrZero(json['dailyUsed']),
+      dailyLimit: intOrZero(json['dailyLimit']),
+      dailyRemaining: intOrZero(json['dailyRemaining']),
+      permanentAvailable: intOrZero(json['permanentAvailable']),
+      resetAt: intOrZero(json['resetAt']),
     );
   }
 
@@ -37,11 +39,4 @@ class CreditsSummary {
     'permanentAvailable': permanentAvailable,
     'resetAt': resetAt,
   };
-}
-
-int _int(Object? value) {
-  if (value is int) return value;
-  if (value is num) return value.toInt();
-  if (value is String) return int.tryParse(value) ?? 0;
-  return 0;
 }
