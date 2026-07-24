@@ -226,6 +226,7 @@ No `isWide` width calculations or ad-hoc max widths live in Craft widgets — al
 ## Related
 
 - [ADR-0061: Craft first-class Home entry, history, edit](../decisions/0061-craft-first-class-history.md)
+- [ADR-0062: Remove Craft history record keeps practice audio](../decisions/0062-craft-history-remove-keeps-audio.md)
 - [ADR-0060: Craft Voice-Express dual-mode redesign](../decisions/0060-craft-voice-express-dual-mode.md)
 - [ADR-0043: Craft from Text Import](../decisions/0043-craft-from-text-import.md)
 - [ADR-0055: Adaptive page layout system](../decisions/0055-adaptive-page-layout-system.md)
