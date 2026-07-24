@@ -143,22 +143,7 @@ BYOK TTS follows the same `AzureSpeech.instance.synthesize` path when BYOK is co
 
 ## Word-segmented transcript
 
-After synthesis, `wordBoundary` events from the Azure Speech SDK (when the
-platform plugin provides them) produce time-aligned `startMs` / `durationMs`
-tokens. `buildCraftPrimaryTimelineJson` in
-`lib/features/craft/domain/word_boundary_segmenter.dart`:
-
-1. Merges standalone punctuation tokens onto the previous word (extends end
-   timing) so lines never start with `.` / `?` / `。` alone.
-2. Prefers sentence-end flushes over blind ~6-word chops.
-3. Returns JSON only when timings are **solid** (≥1 non-empty segment).
-   Otherwise Craft save passes `null` — **no** proportional duration estimates
-   ([ADR-0063](../decisions/0063-craft-blank-transcript-without-solid-timings.md)).
-
-Solid saves write one primary track (`source = 'ai'`). Blank items show the
-player empty state; learners generate via STT (`launchAsrGeneration`). After a
-solid save, a once-per-session snackbar may mention regenerating timings via
-speech-to-text (never auto-starts ASR).
+After synthesis, `wordBoundary` events from the Azure Speech SDK produce time-aligned `startMs` / `durationMs` segments. The word segmenter (`lib/features/craft/domain/word_boundary_segmenter.dart`) groups words into ~6-word segments, using sentence-end punctuation as break points. The resulting `track.lines` list is a standard transcript track, so the transcript viewer and echo mode operate without craft-specific code.
 
 ## Output schema
 
@@ -167,9 +152,8 @@ speech-to-text (never auto-starts ASR).
 | `Audios.provider` | `'craft'` |
 | `Audios.source` | `'craft-express'` (Express mode), `'craft-translate'` (Advanced translate mode), or `'craft-direct'` (Advanced speak directly) |
 | `Audios.sourceText` | Original text (retained for re-generation). In Express mode this is the raw ASR transcript; in Advanced translate mode it is the source text; in speak directly it is empty. |
-| `Audios.description` | Full practice/synth text (for history edit when the timed transcript is blank). |
 | Audio file | WAV in app audio directory |
-| Transcript | Optional primary track (`source = 'ai'`) when solid word timings exist; otherwise blank until STT generate. No secondary source-text track. |
+| Transcript | One track (`source = 'ai'`) with word-boundary-segmented lines; secondary source-text track in translate mode |
 
 ### Deduplication
 
@@ -223,7 +207,7 @@ No `isWide` width calculations or ad-hoc max widths live in Craft widgets — al
 
 | Layer | Key files |
 |-------|----------|
-| **Domain** | `craft_mode.dart`, `craft_screen_mode.dart`, `craft_stage.dart`, `craft_transcriber.dart`, `craft_failure.dart`, `craft_request.dart`, `craft_job_state.dart`, `craft_job_status.dart`, `craft_translator.dart`, `craft_synthesizer.dart`, `azure_voice.dart`, `translation_style.dart`, `word_boundary_segmenter.dart`, `craft_solid_transcript_hint_gate.dart`, `wav_duration.dart` |
+| **Domain** | `craft_mode.dart`, `craft_screen_mode.dart`, `craft_stage.dart`, `craft_transcriber.dart`, `craft_failure.dart`, `craft_request.dart`, `craft_job_state.dart`, `craft_job_status.dart`, `craft_translator.dart`, `craft_synthesizer.dart`, `azure_voice.dart`, `translation_style.dart`, `word_boundary_segmenter.dart`, `transcript_timestamp_estimator.dart`, `wav_duration.dart` |
 | **Application** | `craft_controller.dart`, `craft_history_provider.dart` |
 | **Data** | `craft_translation_service_translator.dart`, `craft_tts_service_synthesizer.dart`, `craft_asr_service_transcriber.dart` |
 | **Presentation** | `craft_screen.dart`, `craft_history_screen.dart`, `express_flow.dart`, `capture_stage.dart`, `rewrite_stage.dart`, `audio_stage.dart`, `advanced_tools.dart`, `translate_tool.dart`, `synthesize_tool.dart`, `voice_picker.dart`, `style_picker.dart` |
@@ -233,7 +217,7 @@ No `isWide` width calculations or ad-hoc max widths live in Craft widgets — al
 
 ## Test pointers
 
-- Unit tests: `test/features/craft/` — covers `CraftFailure` messages, `WordBoundarySegmenter` punctuation merge / sentence preference / solid gate, once-per-session STT hint gate, dedup hashing, Auto-style prompt, Express capture/rewrite/save/reset flow, ASR + empty-transcript failure mapping, blank timeline on save without boundaries, `loadForEdit` mode inference + editing save path (`craft_controller_test.dart`), `craftHistoryProvider` filter/sort (`craft_history_provider_test.dart`).
+- Unit tests: `test/features/craft/` — covers `CraftFailure` messages, `WordBoundarySegmenter` grouping, dedup hashing, `TranscriptTimestampEstimator`, Auto-style prompt, Express capture/rewrite/save/reset flow, ASR + empty-transcript failure mapping, `loadForEdit` mode inference + editing save path (`craft_controller_test.dart`), `craftHistoryProvider` filter/sort (`craft_history_provider_test.dart`).
 - Widget tests: `test/features/craft/` — covers CraftScreen mode toggle, CaptureStage idle state, RewriteStage editable target + actions, AudioStage preview + actions, AdvancedTools responsive layout, TranslateTool / SynthesizeTool.
 - Repository tests: `test/features/library/library_repository_craft_test.dart` — `getCraftEditSource` timeline reconstruction, `updateCraftedFromText` same-id update + stale-file cleanup.
 - Home / hotkey tests: `test/features/library/home_screen_test.dart` (Craft header action navigation), `test/features/hotkeys/global_craft_hotkey_test.dart` (hotkey registration).
