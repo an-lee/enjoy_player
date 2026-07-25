@@ -143,7 +143,13 @@ BYOK TTS follows the same `AzureSpeech.instance.synthesize` path when BYOK is co
 
 ## Word-segmented transcript
 
-After synthesis, `wordBoundary` events from the Azure Speech SDK produce time-aligned `startMs` / `durationMs` segments. The word segmenter (`lib/features/craft/domain/word_boundary_segmenter.dart`) groups words into ~6-word segments, using sentence-end punctuation as break points. The resulting `track.lines` list is a standard transcript track, so the transcript viewer and echo mode operate without craft-specific code.
+After synthesis, `wordBoundary` events from the Azure Speech SDK may produce time-aligned `startMs` / `durationMs` segments. The word segmenter (`lib/features/craft/domain/word_boundary_segmenter.dart`) groups words into ~6-word segments, using sentence-end punctuation as break points.
+
+**Solid timings only (ADR-0063)**: Craft writes a primary AI transcript (`source: 'ai'`) only when word boundaries are non-empty **and** the segmenter produces ≥1 non-empty line after punctuation merge. When word boundaries are missing (common on Apple platforms — iOS, macOS — and OpenAI BYOK TTS), no transcript is saved — `primaryTimelineJson: null` is passed on import/update, which omits or deletes transcript rows. The audio file still saves successfully.
+
+- Items with a blank transcript open in the player with an empty transcript panel and a clear **Generate** affordance, allowing the learner to create cues via the existing player ASR flow (`launchAsrGeneration`) at any time.
+- No auto-STT runs on Craft save — the learner initiates ASR explicitly.
+- The `TranscriptTimestampEstimator` (duration-based proportional estimate) is no longer used on Craft save; the segmenter exclusively consumes live Azure word boundaries.
 
 ## Output schema
 
@@ -153,7 +159,7 @@ After synthesis, `wordBoundary` events from the Azure Speech SDK produce time-al
 | `Audios.source` | `'craft-express'` (Express mode), `'craft-translate'` (Advanced translate mode), or `'craft-direct'` (Advanced speak directly) |
 | `Audios.sourceText` | Original text (retained for re-generation). In Express mode this is the raw ASR transcript; in Advanced translate mode it is the source text; in speak directly it is empty. |
 | Audio file | WAV in app audio directory |
-| Transcript | One track (`source = 'ai'`) with word-boundary-segmented lines; secondary source-text track in translate mode |
+| Transcript | One track (`source = 'ai'`) with word-boundary-segmented lines when solid timings are available; omitted (`null`) otherwise (see ADR-0063). Secondary source-text track in translate mode. Blank-transcript items show an ASR Generate affordance in the player. |
 
 ### Deduplication
 
@@ -164,6 +170,7 @@ After synthesis, `wordBoundary` events from the Azure Speech SDK produce time-al
 - **Craft badge**: Library tiles show a Craft indicator for items where `Audios.provider == 'craft'`.
 - **Sync routing**: `provider = 'craft'` participates in the existing sync queue (metadata + recording uploads).
 - **`deleteMedia` cleanup**: Deleting a Craft media item removes the audio file, transcript rows, and sync queue entry.
+- **Blank transcript**: Items where TTS synthesis did not produce reliable word boundaries open with an empty transcript panel and an ASR **Generate** affordance (ADR-0063). Learners can generate cues later via the player ASR flow.
 
 ## Failure handling
 
@@ -192,6 +199,7 @@ All failures go through the `CraftFailure` sealed hierarchy (`lib/features/craft
 | Output format | Audio-only (no video generation) |
 | Per-call voice | Provider-default voice used; picker is v1 |
 | Offline | Requires network (Enjoy worker or BYOK endpoint) |
+| Transcript (Apple BYOK) | iOS and macOS TTS synthesis (including OpenAI BYOK) does not produce Azure word boundaries — Craft items from those platforms open without a timed transcript. Use the player ASR flow to generate cues. |
 
 ## Responsive layout
 
@@ -217,7 +225,7 @@ No `isWide` width calculations or ad-hoc max widths live in Craft widgets — al
 
 ## Test pointers
 
-- Unit tests: `test/features/craft/` — covers `CraftFailure` messages, `WordBoundarySegmenter` grouping, dedup hashing, `TranscriptTimestampEstimator`, Auto-style prompt, Express capture/rewrite/save/reset flow, ASR + empty-transcript failure mapping, `loadForEdit` mode inference + editing save path (`craft_controller_test.dart`), `craftHistoryProvider` filter/sort (`craft_history_provider_test.dart`).
+- Unit tests: `test/features/craft/` — covers `CraftFailure` messages, `WordBoundarySegmenter` grouping, dedup hashing, `TranscriptTimestampEstimator` (retained for legacy non-Craft uses), Auto-style prompt, Express capture/rewrite/save/reset flow, ASR + empty-transcript failure mapping, `loadForEdit` mode inference + editing save path (`craft_controller_test.dart`), `craftHistoryProvider` filter/sort (`craft_history_provider_test.dart`).
 - Widget tests: `test/features/craft/` — covers CraftScreen mode toggle, CaptureStage idle state, RewriteStage editable target + actions, AudioStage preview + actions, AdvancedTools responsive layout, TranslateTool / SynthesizeTool.
 - Repository tests: `test/features/library/library_repository_craft_test.dart` — `getCraftEditSource` timeline reconstruction, `updateCraftedFromText` same-id update + stale-file cleanup.
 - Home / hotkey tests: `test/features/library/home_screen_test.dart` (Craft header action navigation), `test/features/hotkeys/global_craft_hotkey_test.dart` (hotkey registration).
@@ -229,6 +237,7 @@ No `isWide` width calculations or ad-hoc max widths live in Craft widgets — al
 - [ADR-0062: Remove Craft history record keeps practice audio](../decisions/0062-craft-history-remove-keeps-audio.md)
 - [ADR-0060: Craft Voice-Express dual-mode redesign](../decisions/0060-craft-voice-express-dual-mode.md)
 - [ADR-0043: Craft from Text Import](../decisions/0043-craft-from-text-import.md)
+- [ADR-0063: Craft blank transcript without solid timings](../decisions/0063-craft-blank-transcript-without-solid-timings.md)
 - [ADR-0055: Adaptive page layout system](../decisions/0055-adaptive-page-layout-system.md)
 - [ADR-0014: AI Capabilities Layer](../decisions/0014-ai-capabilities-layer.md)
 - [ADR-0033: BYOK AI Provider Settings](../decisions/0033-byok-ai-provider-settings.md)

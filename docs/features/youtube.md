@@ -123,6 +123,10 @@ adds `Referer: https://m.youtube.com/` plus `Accept-Language` so the
 
 `YoutubePlayerEngine._emitBuffering(false)` only bumps the internal `mountTick` on the **first** buffering → playing transition per open. Mid-roll ad breaks and re-bufferings after the first play do not retrigger the tick, so the player UI does not flash the loading indicator on every ad pause. Tests for the buffering state should cover the "buffering → playing → buffering → playing" sequence and assert the mountTick only changes once.
 
+## Playback stall detection
+
+[`YoutubePlaybackStallWatchdog`](../../lib/features/player/application/engines/youtube/youtube_playback_stall_watchdog.dart) detects YouTube videos that load but never reach their first frame. After the WebView fires `onLoadStop`, a 30-second timer starts; if no `playing` event arrives within that window, `onStall(videoId)` fires and logs a diagnostic record (`youtube playback stalled`) so the issue surfaces in support logs without blocking the user's session. The timer resets on each new `onLoadStop` (navigating to a new video). The stall event does **not** trigger a reload — the user can interact with the page directly.
+
 ## Platform notes
 
 | Platform | WebView | Profile / cookies | Navigation policy (ADR-0025) | Process crash recovery |
