@@ -3,9 +3,7 @@ on:
   permissions:
     pull-requests: read
   reaction: eyes
-  schedule:
-    - cron: "0 5 * * 5"  # weekly on Friday around 05:00 Asia/Shanghai (UTC+8)
-      timezone: Asia/Shanghai
+  schedule: weekly on friday around 5:00 utc+8
   slash_command:
     name: test-assist
     strategy: centralized
@@ -59,6 +57,10 @@ safe-outputs:
     max: 1
     required-title-prefix: "[test-improver] "
     target: "*"
+checkout:
+  fetch:
+  - "*"
+  fetch-depth: 0
 description: |
   A testing-focused repository assistant that runs regularly (daily by default) to improve test quality and coverage.
   Can also be triggered on-demand via '/test-assist <instructions>' to perform specific tasks.

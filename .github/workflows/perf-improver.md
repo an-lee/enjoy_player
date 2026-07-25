@@ -3,9 +3,7 @@ on:
   permissions:
     pull-requests: read
   reaction: eyes
-  schedule:
-    - cron: "0 1 * * 1"  # weekly on Monday around 01:00 Asia/Shanghai (UTC+8)
-      timezone: Asia/Shanghai
+  schedule: weekly on monday around 1:00 utc+8
   slash_command:
     name: perf-assist
     strategy: centralized
@@ -59,6 +57,10 @@ safe-outputs:
     max: 1
     required-title-prefix: "[perf-improver] "
     target: "*"
+checkout:
+  fetch:
+  - "*"
+  fetch-depth: 0
 description: |
   A performance-focused repository assistant that runs regularly (daily by default) to identify and implement performance improvements.
   Can also be triggered on-demand via '/perf-assist <instructions>' to perform specific tasks.
