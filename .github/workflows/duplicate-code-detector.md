@@ -1,6 +1,8 @@
 ---
 on:
-  schedule: daily around 3:00 utc+8
+  schedule:
+    - cron: "0 3 * * 3"  # weekly on Wednesday around 03:00 Asia/Shanghai (UTC+8)
+      timezone: Asia/Shanghai
   workflow_dispatch: null
 permissions:
   contents: read

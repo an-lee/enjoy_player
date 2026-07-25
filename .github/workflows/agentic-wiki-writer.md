@@ -1,6 +1,8 @@
 ---
 on:
-  schedule: daily around 2:00 utc+8
+  schedule:
+    - cron: "0 2 * * 2"  # weekly on Tuesday around 02:00 Asia/Shanghai (UTC+8)
+      timezone: Asia/Shanghai
   workflow_dispatch:
     inputs:
       regenerate-template:

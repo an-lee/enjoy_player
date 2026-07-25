@@ -1,6 +1,8 @@
 ---
 on:
-  schedule: daily around 4:00 utc+8
+  schedule:
+    - cron: "0 4 * * 4"  # weekly on Thursday around 04:00 Asia/Shanghai (UTC+8)
+      timezone: Asia/Shanghai
   skip-if-match: is:issue is:open in:title "[large-file-simplifier]"
   workflow_dispatch: null
 permissions:

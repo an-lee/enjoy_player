@@ -3,7 +3,9 @@ on:
   permissions:
     pull-requests: read
   reaction: eyes
-  schedule: daily around 1:00 utc+8
+  schedule:
+    - cron: "0 1 * * 1"  # weekly on Monday around 01:00 Asia/Shanghai (UTC+8)
+      timezone: Asia/Shanghai
   slash_command:
     name: perf-assist
     strategy: centralized

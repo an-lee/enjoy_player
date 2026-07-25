@@ -3,7 +3,9 @@ on:
   permissions:
     pull-requests: read
   reaction: eyes
-  schedule: daily around 5:00 utc+8
+  schedule:
+    - cron: "0 5 * * 5"  # weekly on Friday around 05:00 Asia/Shanghai (UTC+8)
+      timezone: Asia/Shanghai
   slash_command:
     name: test-assist
     strategy: centralized
