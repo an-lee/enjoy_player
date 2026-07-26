@@ -44,6 +44,12 @@ String _shortSaveError(Object e) {
   return '${s.substring(0, 177)}…';
 }
 
+/// `@visibleForTesting` wrapper around the private [_shortSaveError] so
+/// tests can exercise the helper without spinning up the full widget
+/// tree. See `test/features/shadow_reading/presentation/shadow_reading_panel_helpers_test.dart`.
+@visibleForTesting
+String shortSaveErrorForTest(Object e) => _shortSaveError(e);
+
 RecordingRow? _resolvedSelectedRow(
   List<RecordingRow> list,
   String? selectedId,
@@ -56,6 +62,14 @@ RecordingRow? _resolvedSelectedRow(
   }
   return list.first;
 }
+
+/// `@visibleForTesting` wrapper around the private [_resolvedSelectedRow].
+/// See `test/features/shadow_reading/presentation/shadow_reading_panel_helpers_test.dart`.
+@visibleForTesting
+RecordingRow? resolvedSelectedRowForTest(
+  List<RecordingRow> list,
+  String? selectedId,
+) => _resolvedSelectedRow(list, selectedId);
 
 class ShadowReadingPanel extends ConsumerStatefulWidget {
   const ShadowReadingPanel({

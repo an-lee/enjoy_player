@@ -1,0 +1,131 @@
+import 'package:enjoy_player/core/notices/app_notice.dart';
+import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  Widget host({
+    GlobalKey<ScaffoldMessengerState>? messengerKey,
+    Widget? child,
+  }) {
+    final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF7B61FF));
+    return MaterialApp(
+      theme: ThemeData(
+        colorScheme: scheme,
+        extensions: [EnjoyThemeTokens.build(scheme)],
+      ),
+      scaffoldMessengerKey: messengerKey,
+      home: Scaffold(
+        body: Builder(
+          builder: (context) =>
+              child ?? Center(child: Text('host-${context.mounted}')),
+        ),
+      ),
+    );
+  }
+
+  group('AppNotice', () {
+    testWidgets('success shows a primaryContainer snackbar via global key', (
+      tester,
+    ) async {
+      final messengerKey = GlobalKey<ScaffoldMessengerState>();
+      await tester.pumpWidget(host(messengerKey: messengerKey));
+
+      final ctx = tester.element(find.byType(Scaffold));
+      AppNotice.success(ctx, 'hello success');
+
+      await tester.pump(); // schedules the post-frame callback
+      await tester.pump();
+
+      expect(find.text('hello success'), findsOneWidget);
+      final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
+      final scheme = Theme.of(ctx).colorScheme;
+      expect(snackBar.backgroundColor, scheme.primaryContainer);
+    });
+
+    testWidgets('error uses errorContainer and clears existing snackbars', (
+      tester,
+    ) async {
+      final messengerKey = GlobalKey<ScaffoldMessengerState>();
+      await tester.pumpWidget(host(messengerKey: messengerKey));
+      final ctx = tester.element(find.byType(Scaffold));
+
+      AppNotice.error(ctx, 'oops');
+      await tester.pump();
+      await tester.pump();
+
+      final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
+      final scheme = Theme.of(ctx).colorScheme;
+      expect(snackBar.backgroundColor, scheme.errorContainer);
+      expect(snackBar.showCloseIcon, isTrue);
+    });
+
+    testWidgets('info uses surfaceContainerHigh without close icon', (
+      tester,
+    ) async {
+      final messengerKey = GlobalKey<ScaffoldMessengerState>();
+      await tester.pumpWidget(host(messengerKey: messengerKey));
+      final ctx = tester.element(find.byType(Scaffold));
+
+      AppNotice.info(ctx, 'FYI');
+      await tester.pump();
+      await tester.pump();
+
+      final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
+      final scheme = Theme.of(ctx).colorScheme;
+      expect(snackBar.backgroundColor, scheme.surfaceContainerHigh);
+      expect(snackBar.showCloseIcon, isFalse);
+    });
+
+    testWidgets('warning uses tertiaryContainer with close icon', (
+      tester,
+    ) async {
+      final messengerKey = GlobalKey<ScaffoldMessengerState>();
+      await tester.pumpWidget(host(messengerKey: messengerKey));
+      final ctx = tester.element(find.byType(Scaffold));
+
+      AppNotice.warning(ctx, 'careful');
+      await tester.pump();
+      await tester.pump();
+
+      final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
+      final scheme = Theme.of(ctx).colorScheme;
+      expect(snackBar.backgroundColor, scheme.tertiaryContainer);
+      expect(snackBar.showCloseIcon, isTrue);
+    });
+
+    testWidgets(
+      'falls back to ScaffoldMessenger.maybeOf when global key is empty',
+      (tester) async {
+        await tester.pumpWidget(host());
+        final ctx = tester.element(find.byType(Scaffold));
+
+        AppNotice.success(ctx, 'local only');
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.text('local only'), findsOneWidget);
+      },
+    );
+
+    testWidgets('no-op when no ScaffoldMessenger is available', (tester) async {
+      // No MaterialApp/Scaffold ancestor → both global key and maybeOf are null.
+      late BuildContext bareContext;
+      await tester.pumpWidget(
+        Builder(
+          builder: (context) {
+            bareContext = context;
+            return const SizedBox.shrink();
+          },
+        ),
+      );
+      // Bare BuildContext above any MaterialApp; AppNotice should silently skip.
+      AppNotice.success(bareContext, 'should be skipped');
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('should be skipped'), findsNothing);
+    });
+  });
+}

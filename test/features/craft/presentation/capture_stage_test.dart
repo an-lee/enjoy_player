@@ -10,6 +10,7 @@ import 'package:enjoy_player/features/auth/application/auth_controller.dart';
 import 'package:enjoy_player/features/auth/domain/auth_state.dart';
 import 'package:enjoy_player/features/auth/domain/user_profile.dart';
 import 'package:enjoy_player/features/craft/application/craft_controller.dart';
+import 'package:enjoy_player/features/craft/domain/craft_failure.dart';
 import 'package:enjoy_player/features/craft/domain/craft_synthesizer.dart';
 import 'package:enjoy_player/features/craft/domain/craft_transcriber.dart';
 import 'package:enjoy_player/features/craft/domain/craft_translator.dart';
@@ -166,6 +167,140 @@ void main() {
 
       expect(container.read(craftControllerProvider).isCapturing, isFalse);
       expect(find.byIcon(Icons.mic_rounded), findsOneWidget);
+    },
+  );
+
+  testWidgets('CaptureStage back from text fallback returns to mic idle view', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _harness(overrides: _baseOverrides(), child: const CaptureStage()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Type instead'));
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsOneWidget);
+
+    // Back button (label is craftCaptureTitle) returns to idle.
+    await tester.tap(find.text("Say what's on your mind"));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TextField), findsNothing);
+    expect(find.byIcon(Icons.mic_rounded), findsOneWidget);
+  });
+
+  testWidgets(
+    'CaptureStage text fallback submit calls useTextInput on controller',
+    (tester) async {
+      await tester.pumpWidget(
+        _harness(overrides: _baseOverrides(), child: const CaptureStage()),
+      );
+      await tester.pumpAndSettle();
+
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(CaptureStage)),
+      );
+
+      await tester.tap(find.text('Type instead'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'hello world');
+      await tester.tap(find.text('Generate audio'));
+      await tester.pumpAndSettle();
+
+      expect(
+        container.read(craftControllerProvider).sourceText,
+        equals('hello world'),
+      );
+    },
+  );
+
+  testWidgets('CaptureStage text fallback submit ignores empty text', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _harness(overrides: _baseOverrides(), child: const CaptureStage()),
+    );
+    await tester.pumpAndSettle();
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(CaptureStage)),
+    );
+
+    await tester.tap(find.text('Type instead'));
+    await tester.pumpAndSettle();
+
+    // Tap Generate audio without entering text.
+    await tester.tap(find.text('Generate audio'));
+    await tester.pumpAndSettle();
+
+    expect(container.read(craftControllerProvider).sourceText, isEmpty);
+  });
+
+  testWidgets('CaptureStage shows failure card when state.failure is set', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _harness(overrides: _baseOverrides(), child: const CaptureStage()),
+    );
+    await tester.pumpAndSettle();
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(CaptureStage)),
+    );
+
+    container.read(craftControllerProvider.notifier).state = container
+        .read(craftControllerProvider)
+        .copyWith(failure: const CraftTranslateFailure());
+    await tester.pumpAndSettle();
+
+    // Failure card icon.
+    expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
+    // The retry button label is "Retry" for CraftFailureAction.retry.
+    expect(find.text('Retry'), findsOneWidget);
+  });
+
+  testWidgets('CaptureStage failure card sign-in action shows sign-in button', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _harness(overrides: _baseOverrides(), child: const CaptureStage()),
+    );
+    await tester.pumpAndSettle();
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(CaptureStage)),
+    );
+
+    container.read(craftControllerProvider.notifier).state = container
+        .read(craftControllerProvider)
+        .copyWith(failure: const CraftSignInRequiredFailure());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sign in to use Craft'), findsWidgets);
+  });
+
+  testWidgets(
+    'CaptureStage shows transcribing indicator when state.isTranscribing',
+    (tester) async {
+      await tester.pumpWidget(
+        _harness(overrides: _baseOverrides(), child: const CaptureStage()),
+      );
+      await tester.pumpAndSettle();
+
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(CaptureStage)),
+      );
+
+      container.read(craftControllerProvider.notifier).state = container
+          .read(craftControllerProvider)
+          .copyWith(isTranscribing: true);
+      await tester.pump();
+
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      // Transcribing label.
+      expect(find.text('Transcribing…'), findsOneWidget);
     },
   );
 }

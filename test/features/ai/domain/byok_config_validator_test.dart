@@ -65,6 +65,138 @@ void main() {
     });
   });
 
+  group('LLM missing fields', () {
+    test('apiSpecRequired when llmByok is null', () {
+      final result = validator.validate(
+        modality: ModalityKind.llm,
+        config: const AIServiceConfig(provider: AIProvider.byok),
+        hasExistingApiKey: true,
+      );
+      expect(result.errors, contains(ByokValidationError.apiSpecRequired));
+    });
+
+    test('baseUrlRequired when baseUrl is empty', () {
+      final result = validator.validate(
+        modality: ModalityKind.llm,
+        config: const AIServiceConfig(
+          provider: AIProvider.byok,
+          llmByok: LlmByokConfig(
+            apiSpec: LlmApiSpec.openAiCompatible,
+            baseUrl: '  ',
+            model: 'gpt-4o-mini',
+          ),
+        ),
+        hasExistingApiKey: true,
+      );
+      expect(result.errors, contains(ByokValidationError.baseUrlRequired));
+    });
+
+    test('modelRequired when model is empty', () {
+      final result = validator.validate(
+        modality: ModalityKind.llm,
+        config: const AIServiceConfig(
+          provider: AIProvider.byok,
+          llmByok: LlmByokConfig(
+            apiSpec: LlmApiSpec.openAiCompatible,
+            baseUrl: 'https://api.openai.com/v1',
+            model: '',
+          ),
+        ),
+        hasExistingApiKey: true,
+      );
+      expect(result.errors, contains(ByokValidationError.modelRequired));
+    });
+  });
+
+  group('Speech BYOK (ASR / TTS)', () {
+    test('apiSpecRequired when speechByok is null', () {
+      final result = validator.validate(
+        modality: ModalityKind.asr,
+        config: const AIServiceConfig(provider: AIProvider.byok),
+        hasExistingApiKey: true,
+      );
+      expect(result.errors, contains(ByokValidationError.apiSpecRequired));
+    });
+
+    test('openAiCompatible: baseUrlRequired when empty', () {
+      final result = validator.validate(
+        modality: ModalityKind.tts,
+        config: const AIServiceConfig(
+          provider: AIProvider.byok,
+          speechByok: SpeechByokConfig(
+            kind: SpeechByokKind.openAiCompatible,
+            baseUrl: '',
+            model: 'tts-1',
+          ),
+        ),
+        hasExistingApiKey: true,
+      );
+      expect(result.errors, contains(ByokValidationError.baseUrlRequired));
+    });
+
+    test('openAiCompatible: baseUrlInvalid for private IP', () {
+      final result = validator.validate(
+        modality: ModalityKind.asr,
+        config: const AIServiceConfig(
+          provider: AIProvider.byok,
+          speechByok: SpeechByokConfig(
+            kind: SpeechByokKind.openAiCompatible,
+            baseUrl: 'https://10.0.0.1/v1',
+            model: 'whisper-1',
+          ),
+        ),
+        hasExistingApiKey: true,
+      );
+      expect(result.errors, contains(ByokValidationError.baseUrlInvalid));
+    });
+
+    test('openAiCompatible: modelRequired when model empty', () {
+      final result = validator.validate(
+        modality: ModalityKind.tts,
+        config: const AIServiceConfig(
+          provider: AIProvider.byok,
+          speechByok: SpeechByokConfig(
+            kind: SpeechByokKind.openAiCompatible,
+            baseUrl: 'https://api.openai.com/v1',
+            model: '',
+          ),
+        ),
+        hasExistingApiKey: true,
+      );
+      expect(result.errors, contains(ByokValidationError.modelRequired));
+    });
+
+    test('azureSpeech: regionRequired when region empty', () {
+      final result = validator.validate(
+        modality: ModalityKind.asr,
+        config: const AIServiceConfig(
+          provider: AIProvider.byok,
+          speechByok: SpeechByokConfig(
+            kind: SpeechByokKind.azureSpeech,
+            region: '',
+          ),
+        ),
+        hasExistingApiKey: true,
+      );
+      expect(result.errors, contains(ByokValidationError.regionRequired));
+    });
+
+    test('azureSpeech: valid config passes', () {
+      final result = validator.validate(
+        modality: ModalityKind.tts,
+        config: const AIServiceConfig(
+          provider: AIProvider.byok,
+          speechByok: SpeechByokConfig(
+            kind: SpeechByokKind.azureSpeech,
+            region: 'westus2',
+          ),
+        ),
+        hasExistingApiKey: true,
+      );
+      expect(result.isValid, isTrue);
+    });
+  });
+
   group('Assessment BYOK', () {
     test('requires Azure kind and region', () {
       final result = validator.validate(
@@ -77,6 +209,21 @@ void main() {
       );
 
       expect(result.errors, contains(ByokValidationError.azureKindRequired));
+    });
+
+    test('regionRequired when azure region is empty', () {
+      final result = validator.validate(
+        modality: ModalityKind.assessment,
+        config: const AIServiceConfig(
+          provider: AIProvider.byok,
+          speechByok: SpeechByokConfig(
+            kind: SpeechByokKind.azureSpeech,
+            region: '  ',
+          ),
+        ),
+        hasExistingApiKey: true,
+      );
+      expect(result.errors, contains(ByokValidationError.regionRequired));
     });
 
     test('accepts Azure assessment config', () {
@@ -94,5 +241,14 @@ void main() {
 
       expect(result.isValid, isTrue);
     });
+  });
+
+  test('non-byok provider always valid', () {
+    final result = validator.validate(
+      modality: ModalityKind.llm,
+      config: const AIServiceConfig(provider: AIProvider.enjoy),
+      hasExistingApiKey: false,
+    );
+    expect(result.isValid, isTrue);
   });
 }

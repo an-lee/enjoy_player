@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
+import 'package:enjoy_player/core/theme/widgets/skeleton.dart';
 import 'package:enjoy_player/features/player/application/player_controller.dart';
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
 import 'package:enjoy_player/core/application/app_preferences_provider.dart';
@@ -324,5 +325,39 @@ void main() {
       lessThanOrEqualTo(60),
       reason: 'compact single-line tile should stay under 60px tall',
     );
+  });
+
+  testWidgets('renders the skeleton while tracksAsync is loading', (
+    tester,
+  ) async {
+    final overrides = <Override>[
+      playerControllerProvider.overrideWith(() => _NoSessionPlayerController()),
+      allTranscriptsForMediaProvider(
+        _mediaId,
+      ).overrideWith((ref) => const Stream.empty()),
+      activeTranscriptIdProvider(
+        _mediaId,
+      ).overrideWith((ref) => const Stream.empty()),
+      secondaryTranscriptIdProvider(
+        _mediaId,
+      ).overrideWith((ref) => const Stream.empty()),
+      videoRowForMediaProvider(_mediaId).overrideWith((ref) async => null),
+      transcriptFetchStatusProvider(_mediaId).overrideWithValue(
+        const TranscriptFetchUiState(status: TranscriptFetchStatus.idle),
+      ),
+      autoTranslateCtrlProvider(
+        _mediaId,
+      ).overrideWith(_SpyAutoTranslateCtrl.new),
+      autoTranslateSelectionIdProvider(
+        _mediaId,
+      ).overrideWith((ref) async => 'ai-selection-id'),
+      appPreferencesCtrlProvider.overrideWith(() => _ZhNativePrefsCtrl()),
+      authCtrlProvider.overrideWith(() => _SignedInAuthCtrl()),
+    ];
+    await tester.pumpWidget(_harness(overrides: overrides));
+    await tester.pump();
+
+    // The skeleton should be visible (one of the Skeleton boxes).
+    expect(find.byType(Skeleton), findsWidgets);
   });
 }

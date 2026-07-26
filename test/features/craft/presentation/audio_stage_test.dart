@@ -10,6 +10,7 @@ import 'package:enjoy_player/features/auth/application/auth_controller.dart';
 import 'package:enjoy_player/features/auth/domain/auth_state.dart';
 import 'package:enjoy_player/features/auth/domain/user_profile.dart';
 import 'package:enjoy_player/features/craft/application/craft_controller.dart';
+import 'package:enjoy_player/features/craft/domain/craft_failure.dart';
 import 'package:enjoy_player/features/craft/domain/craft_synthesizer.dart';
 import 'package:enjoy_player/features/craft/domain/craft_transcriber.dart';
 import 'package:enjoy_player/features/craft/domain/craft_translator.dart';
@@ -164,5 +165,99 @@ void main() {
 
     // After audio generation, we should NOT see a loading indicator.
     expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+
+  testWidgets('AudioStage shows failure card when state.failure is set', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _harness(overrides: _baseOverrides(), child: const AudioStage()),
+    );
+    await tester.pumpAndSettle();
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(AudioStage)),
+    );
+    await container.read(authCtrlProvider.future);
+    await container.read(appPreferencesCtrlProvider.future);
+
+    container.read(craftControllerProvider.notifier).state = container
+        .read(craftControllerProvider)
+        .copyWith(failure: const CraftTranslateFailure());
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
+    expect(find.text('Retry'), findsOneWidget);
+  });
+
+  testWidgets('AudioStage shows no-preview fallback when hasPreview is false', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _harness(overrides: _baseOverrides(), child: const AudioStage()),
+    );
+    await tester.pumpAndSettle();
+
+    // hasPreview defaults to false (no audio generated yet).
+    expect(find.text('Generate audio'), findsOneWidget);
+  });
+
+  testWidgets('AudioStage shows CircularProgressIndicator while isSaving', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _harness(overrides: _baseOverrides(), child: const AudioStage()),
+    );
+    await tester.pumpAndSettle();
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(AudioStage)),
+    );
+    await container.read(authCtrlProvider.future);
+    await container.read(appPreferencesCtrlProvider.future);
+    await container
+        .read(craftControllerProvider.notifier)
+        .useTextInput('Some text to synthesize.');
+    await tester.pumpAndSettle();
+    await container.read(craftControllerProvider.notifier).generateAudio();
+    await tester.pumpAndSettle();
+
+    container.read(craftControllerProvider.notifier).state = container
+        .read(craftControllerProvider)
+        .copyWith(isSaving: true);
+    await tester.pump();
+
+    // CircularProgressIndicator shown in the saving slot.
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    // Practice now button is hidden during save.
+    expect(find.text('Practice now'), findsNothing);
+  });
+
+  testWidgets('AudioStage voice chip expands to show picker on tap', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _harness(overrides: _baseOverrides(), child: const AudioStage()),
+    );
+    await tester.pumpAndSettle();
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(AudioStage)),
+    );
+    await container.read(authCtrlProvider.future);
+    await container.read(appPreferencesCtrlProvider.future);
+    await container
+        .read(craftControllerProvider.notifier)
+        .useTextInput('Some text.');
+    await tester.pumpAndSettle();
+    await container.read(craftControllerProvider.notifier).generateAudio();
+    await tester.pumpAndSettle();
+
+    // Tap the voice chip toggle row.
+    await tester.tap(find.text('Voice'));
+    await tester.pumpAndSettle();
+
+    // Voice picker should be visible (dropdown for voices).
+    expect(find.byType(DropdownButton<String>), findsOneWidget);
   });
 }

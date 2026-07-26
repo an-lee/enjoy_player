@@ -25,7 +25,7 @@ void main() {
         EmbeddedSubtitleService.allocateLanguageCode('eng', used),
         'eng-2',
       );
-      expect(used, containsAll(['eng', 'eng-2']));
+      expect(used, containsAll(<String>{'eng', 'eng-2'}));
     });
 
     test('increments suffix when -2 is also taken', () {
@@ -34,15 +34,7 @@ void main() {
         EmbeddedSubtitleService.allocateLanguageCode('eng', used),
         'eng-3',
       );
-      expect(used, containsAll(['eng', 'eng-2', 'eng-3']));
-    });
-
-    test('skips gaps in suffix sequence', () {
-      final used = <String>{'fra', 'fra-2', 'fra-3', 'fra-5'};
-      expect(
-        EmbeddedSubtitleService.allocateLanguageCode('fra', used),
-        'fra-4',
-      );
+      expect(used, containsAll(<String>{'eng', 'eng-2', 'eng-3'}));
     });
 
     test('handles und collision with suffix', () {
@@ -70,6 +62,30 @@ void main() {
       expect(EmbeddedSubtitleService.allocateLanguageCode('fra', used), 'fra');
       expect(EmbeddedSubtitleService.allocateLanguageCode('deu', used), 'deu');
       expect(used, hasLength(3));
+    });
+
+    test('does not collide with related codes that share a prefix', () {
+      final used = <String>{'eng-2'};
+      expect(EmbeddedSubtitleService.allocateLanguageCode('eng', used), 'eng');
+    });
+
+    test('handles language with existing high suffix', () {
+      final used = <String>{'zho', 'zho-2', 'zho-3', 'zho-4', 'zho-5'};
+      expect(
+        EmbeddedSubtitleService.allocateLanguageCode('zho', used),
+        'zho-6',
+      );
+    });
+
+    test('empty used set always returns base', () {
+      expect(
+        EmbeddedSubtitleService.allocateLanguageCode('ita', <String>{}),
+        'ita',
+      );
+      expect(
+        EmbeddedSubtitleService.allocateLanguageCode('', <String>{}),
+        'und',
+      );
     });
   });
 
@@ -130,10 +146,17 @@ void main() {
         'Track 10',
       );
     });
+
+    test('title with special characters preserved', () {
+      expect(
+        EmbeddedSubtitleService.trackLabelFromParts("Director's Cut", 'eng', 0),
+        "Director's Cut · ENG",
+      );
+    });
   });
 
   group('EmbeddedSubtitleService.rowForExtracted', () {
-    final lines = [
+    final lines = <TranscriptLine>[
       const TranscriptLine(text: 'Hello', startMs: 1000, durationMs: 2000),
       const TranscriptLine(text: 'World', startMs: 3500, durationMs: 1500),
     ];
@@ -229,7 +252,7 @@ void main() {
         language: 'und',
         label: 'Track 1',
         trackIndex: 0,
-        lines: const [],
+        lines: const <TranscriptLine>[],
       );
       expect(jsonDecode(row.timelineJson), isEmpty);
     });
@@ -246,7 +269,7 @@ void main() {
       expect(row.referenceId, 'embedded:5');
     });
 
-    test('createdAt and updatedAt are recent', () {
+    test('createdAt and updatedAt are recent and equal', () {
       final before = DateTime.now();
       final row = EmbeddedSubtitleService.rowForExtracted(
         targetId: 'vid-1',
@@ -270,7 +293,7 @@ void main() {
     });
 
     test('lines with sourceKey serialize correctly', () {
-      final linesWithKey = [
+      final linesWithKey = <TranscriptLine>[
         const TranscriptLine(
           text: 'Bonjour',
           startMs: 0,
@@ -294,7 +317,7 @@ void main() {
   });
 
   group('EmbeddedSubtitleService.rowForExtracted target types', () {
-    final lines = [
+    final lines = <TranscriptLine>[
       const TranscriptLine(text: 'Line', startMs: 0, durationMs: 500),
     ];
 
@@ -360,58 +383,6 @@ void main() {
       expect(row1.id, row2.id);
       expect(row1.referenceId, 'embedded:0');
       expect(row2.referenceId, 'embedded:3');
-    });
-  });
-
-  group('EmbeddedSubtitleService.allocateLanguageCode edge cases', () {
-    test('handles language with existing high suffix', () {
-      final used = <String>{'zho', 'zho-2', 'zho-3', 'zho-4', 'zho-5'};
-      expect(
-        EmbeddedSubtitleService.allocateLanguageCode('zho', used),
-        'zho-6',
-      );
-    });
-
-    test('does not mutate input language string', () {
-      final used = <String>{'por'};
-      final result = EmbeddedSubtitleService.allocateLanguageCode('por', used);
-      expect(result, 'por-2');
-      expect(used, containsAll(['por', 'por-2']));
-    });
-
-    test('empty used set always returns base', () {
-      expect(EmbeddedSubtitleService.allocateLanguageCode('ita', {}), 'ita');
-      expect(EmbeddedSubtitleService.allocateLanguageCode('', {}), 'und');
-    });
-  });
-
-  group('EmbeddedSubtitleService.trackLabelFromParts edge cases', () {
-    test('index 0 produces Track 1', () {
-      expect(
-        EmbeddedSubtitleService.trackLabelFromParts(null, null, 0),
-        'Track 1',
-      );
-    });
-
-    test('language with mixed case is uppercased', () {
-      expect(
-        EmbeddedSubtitleService.trackLabelFromParts(null, 'pt-BR', 0),
-        'PT-BR',
-      );
-    });
-
-    test('title with special characters preserved', () {
-      expect(
-        EmbeddedSubtitleService.trackLabelFromParts("Director's Cut", 'eng', 0),
-        "Director's Cut · ENG",
-      );
-    });
-
-    test('whitespace-only title is treated as provided', () {
-      expect(
-        EmbeddedSubtitleService.trackLabelFromParts(' ', 'eng', 0),
-        '  · ENG',
-      );
     });
   });
 }

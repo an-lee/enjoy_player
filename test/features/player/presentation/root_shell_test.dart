@@ -1,0 +1,442 @@
+// Tests for `lib/features/player/presentation/root_shell.dart`.
+//
+// Covers the shell's adaptive nav layout (mobile bottom-nav vs. rail sidebar)
+// and the routing-driven selection logic. Heavy providers (player engine,
+// database, sync) are stubbed so the shell can be exercised in isolation.
+import 'package:drift/native.dart';
+import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
+import 'package:enjoy_player/data/db/app_database.dart';
+import 'package:enjoy_player/data/db/app_database_provider.dart';
+import 'package:enjoy_player/features/player/application/player_controller.dart';
+import 'package:enjoy_player/features/player/domain/playback_session.dart';
+import 'package:enjoy_player/features/player/presentation/root_shell.dart';
+import 'package:enjoy_player/features/auth/domain/user_profile.dart';
+import 'package:enjoy_player/features/discover/application/discover_providers.dart';
+import 'package:enjoy_player/features/subscription/application/subscription_status_provider.dart';
+import 'package:enjoy_player/features/subscription/domain/subscription_status.dart';
+import 'package:enjoy_player/features/sync/application/sync_controller.dart';
+import 'package:enjoy_player/features/update/application/update_controller.dart';
+import 'package:enjoy_player/features/vocabulary/application/vocabulary_review_session.dart';
+import 'package:enjoy_player/features/vocabulary/domain/vocabulary_review_practice.dart';
+import 'package:enjoy_player/l10n/app_localizations.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
+import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+
+class _FakeVocabSession extends VocabularyReviewSession {
+  _FakeVocabSession({ReviewSessionState? initial})
+    : _initial = initial ?? const ReviewSessionState(queue: []);
+
+  final ReviewSessionState _initial;
+
+  @override
+  ReviewSessionState build() => _initial;
+}
+
+class _NullPlayerController extends PlayerController {
+  _NullPlayerController();
+
+  @override
+  PlaybackSession? build() => null;
+}
+
+GoRouter _router({required String initial}) {
+  return GoRouter(
+    initialLocation: initial,
+    routes: [
+      ShellRoute(
+        builder: (context, state, child) => RootShell(child: child),
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, __) => const Scaffold(body: Text('home-page')),
+          ),
+          GoRoute(
+            path: '/discover',
+            builder: (_, __) => const Scaffold(body: Text('discover-page')),
+          ),
+          GoRoute(
+            path: '/library',
+            builder: (_, __) => const Scaffold(body: Text('library-page')),
+          ),
+          GoRoute(
+            path: '/profile',
+            builder: (_, __) => const Scaffold(body: Text('profile-page')),
+          ),
+          GoRoute(
+            path: '/settings',
+            builder: (_, __) => const Scaffold(body: Text('settings-page')),
+          ),
+          GoRoute(
+            path: '/cloud',
+            builder: (_, __) => const Scaffold(body: Text('cloud-page')),
+          ),
+          GoRoute(
+            path: '/player/:mediaId',
+            builder: (_, __) => const Scaffold(body: Text('player-page')),
+          ),
+          GoRoute(
+            path: '/youtube/login',
+            builder: (_, __) =>
+                const Scaffold(body: Text('youtube-login-page')),
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+List<Override> _shellOverrides(
+  AppDatabase db, {
+  ReviewSessionState? vocab,
+  bool updateBadge = false,
+}) {
+  return [
+    appDatabaseProvider.overrideWithValue(db),
+    deviceGlobalAppDatabaseProvider.overrideWithValue(db),
+    syncCtrlProvider.overrideWithValue(0),
+    discoverFeedRefreshSchedulerProvider.overrideWithValue(0),
+    playerControllerProvider.overrideWith(_NullPlayerController.new),
+    updateAvailableBadgeProvider.overrideWithValue(updateBadge),
+    subscriptionStatusProvider.overrideWith(
+      (ref) async => const SubscriptionStatus(
+        subscriptionActive: false,
+        subscriptionTier: SubscriptionTier.free,
+      ),
+    ),
+    vocabularyReviewSessionProvider.overrideWith(
+      () => _FakeVocabSession(initial: vocab),
+    ),
+  ];
+}
+
+Future<void> _pump(
+  WidgetTester tester, {
+  required GoRouter router,
+  required List<Override> overrides,
+  required Size surface,
+}) async {
+  addTearDown(router.dispose);
+  await tester.binding.setSurfaceSize(surface);
+  addTearDown(() => tester.view.resetPhysicalSize());
+
+  final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF7B61FF));
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: overrides,
+      child: MaterialApp.router(
+        theme: ThemeData(
+          colorScheme: scheme,
+          extensions: [EnjoyThemeTokens.build(scheme)],
+        ),
+        locale: const Locale('en', 'US'),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        routerConfig: router,
+      ),
+    ),
+  );
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 100));
+}
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  late AppDatabase db;
+
+  setUp(() {
+    db = AppDatabase(executor: NativeDatabase.memory());
+  });
+
+  tearDown(() async {
+    await db.close();
+  });
+
+  group('RootShell narrow layout (mobile)', () {
+    testWidgets('renders bottom nav with Home selected at /', (tester) async {
+      final router = _router(initial: '/');
+      await _pump(
+        tester,
+        router: router,
+        overrides: _shellOverrides(db),
+        surface: const Size(400, 900),
+      );
+
+      expect(find.text('home-page'), findsOneWidget);
+      // Bottom nav icons for Home, Discover, Library, Profile.
+      expect(find.byIcon(Icons.home_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.explore_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.collections_bookmark_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.person_outlined), findsOneWidget);
+    });
+
+    testWidgets('selects Discover icon at /discover', (tester) async {
+      final router = _router(initial: '/discover');
+      await _pump(
+        tester,
+        router: router,
+        overrides: _shellOverrides(db),
+        surface: const Size(400, 900),
+      );
+
+      expect(find.byIcon(Icons.explore_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.home_outlined), findsOneWidget);
+    });
+
+    testWidgets('selects Library icon at /library', (tester) async {
+      final router = _router(initial: '/library');
+      await _pump(
+        tester,
+        router: router,
+        overrides: _shellOverrides(db),
+        surface: const Size(400, 900),
+      );
+
+      expect(find.byIcon(Icons.collections_bookmark_rounded), findsOneWidget);
+    });
+
+    testWidgets('selects Profile icon at /profile', (tester) async {
+      final router = _router(initial: '/profile');
+      await _pump(
+        tester,
+        router: router,
+        overrides: _shellOverrides(db),
+        surface: const Size(400, 900),
+      );
+
+      expect(find.byIcon(Icons.person_rounded), findsOneWidget);
+    });
+
+    testWidgets('selects Profile icon at /settings', (tester) async {
+      final router = _router(initial: '/settings');
+      await _pump(
+        tester,
+        router: router,
+        overrides: _shellOverrides(db),
+        surface: const Size(400, 900),
+      );
+
+      // /settings also maps to the profile tab (settings > profile).
+      expect(find.byIcon(Icons.person_rounded), findsOneWidget);
+    });
+
+    testWidgets('selects Library icon at /cloud', (tester) async {
+      final router = _router(initial: '/cloud');
+      await _pump(
+        tester,
+        router: router,
+        overrides: _shellOverrides(db),
+        surface: const Size(400, 900),
+      );
+
+      expect(find.byIcon(Icons.collections_bookmark_rounded), findsOneWidget);
+    });
+
+    testWidgets('does not render bottom nav on /player/abc', (tester) async {
+      final router = _router(initial: '/player/abc');
+      await _pump(
+        tester,
+        router: router,
+        overrides: _shellOverrides(db),
+        surface: const Size(400, 900),
+      );
+
+      // Player route hides the bottom nav.
+      expect(find.byIcon(Icons.home_outlined), findsNothing);
+      expect(find.text('player-page'), findsOneWidget);
+    });
+
+    testWidgets('does not render bottom nav on /youtube/login', (tester) async {
+      final router = _router(initial: '/youtube/login');
+      await _pump(
+        tester,
+        router: router,
+        overrides: _shellOverrides(db),
+        surface: const Size(400, 900),
+      );
+
+      expect(find.byIcon(Icons.home_outlined), findsNothing);
+      expect(find.text('youtube-login-page'), findsOneWidget);
+    });
+  });
+
+  group('RootShell wide layout (rail sidebar)', () {
+    testWidgets('uses AppSidebar instead of bottom nav at >= breakpoint', (
+      tester,
+    ) async {
+      final router = _router(initial: '/');
+      await _pump(
+        tester,
+        router: router,
+        overrides: _shellOverrides(db),
+        surface: const Size(1100, 900),
+      );
+
+      // AppSidebar brand row + nav pills are visible.
+      expect(find.byIcon(Icons.search_rounded), findsOneWidget);
+      // Bottom nav icons (home_outlined on the bottom nav) are not rendered.
+      expect(find.byIcon(Icons.home_outlined), findsNothing);
+      // Sidebar uses the rounded icon for the selected home pill.
+      expect(find.byIcon(Icons.home_rounded), findsOneWidget);
+    });
+
+    testWidgets('does not render AppSidebar when on /player/abc', (
+      tester,
+    ) async {
+      final router = _router(initial: '/player/abc');
+      await _pump(
+        tester,
+        router: router,
+        overrides: _shellOverrides(db),
+        surface: const Size(1100, 900),
+      );
+
+      // No sidebar search field is rendered on the player route.
+      expect(find.byIcon(Icons.search_rounded), findsNothing);
+      expect(find.text('player-page'), findsOneWidget);
+    });
+  });
+
+  group('RootShell vocabulary review practice', () {
+    testWidgets('does not show mini transport when practice owns video stage', (
+      tester,
+    ) async {
+      final router = _router(initial: '/library');
+      await _pump(
+        tester,
+        router: router,
+        overrides: _shellOverrides(
+          db,
+          vocab: ReviewSessionState(
+            queue: const [],
+            practicePhase: ReviewPracticePhase.clipReady,
+          ),
+        ),
+        surface: const Size(400, 900),
+      );
+
+      expect(find.byIcon(Icons.play_arrow_rounded), findsNothing);
+    });
+
+    testWidgets('tapping bottom-nav Discover navigates to /discover', (
+      tester,
+    ) async {
+      final router = _router(initial: '/');
+      await _pump(
+        tester,
+        router: router,
+        overrides: _shellOverrides(db),
+        surface: const Size(400, 900),
+      );
+
+      expect(router.state.uri.path, '/');
+      await tester.tap(find.byIcon(Icons.explore_outlined));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(router.state.uri.path, '/discover');
+    });
+
+    testWidgets('tapping bottom-nav Library navigates to /library', (
+      tester,
+    ) async {
+      final router = _router(initial: '/');
+      await _pump(
+        tester,
+        router: router,
+        overrides: _shellOverrides(db),
+        surface: const Size(400, 900),
+      );
+
+      await tester.tap(find.byIcon(Icons.collections_bookmark_outlined));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(router.state.uri.path, '/library');
+    });
+
+    testWidgets('tapping bottom-nav Profile navigates to /profile', (
+      tester,
+    ) async {
+      final router = _router(initial: '/');
+      await _pump(
+        tester,
+        router: router,
+        overrides: _shellOverrides(db),
+        surface: const Size(400, 900),
+      );
+
+      await tester.tap(find.byIcon(Icons.person_outlined));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(router.state.uri.path, '/profile');
+    });
+
+    testWidgets('tapping bottom-nav Home navigates back to /', (tester) async {
+      final router = _router(initial: '/discover');
+      await _pump(
+        tester,
+        router: router,
+        overrides: _shellOverrides(db),
+        surface: const Size(400, 900),
+      );
+
+      await tester.tap(find.byIcon(Icons.home_outlined));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(router.state.uri.path, '/');
+    });
+
+    testWidgets('updateAvailableBadgeProvider=true shows profile semantics', (
+      tester,
+    ) async {
+      final router = _router(initial: '/');
+      await _pump(
+        tester,
+        router: router,
+        overrides: _shellOverrides(db, updateBadge: true),
+        surface: const Size(400, 900),
+      );
+
+      // Profile pill is present with the badge semantics label.
+      expect(find.text('home-page'), findsOneWidget);
+      expect(find.byIcon(Icons.person_outlined), findsWidgets);
+    });
+
+    testWidgets('does not show mini transport bar when no player session', (
+      tester,
+    ) async {
+      final router = _router(initial: '/library');
+      await _pump(
+        tester,
+        router: router,
+        overrides: _shellOverrides(db),
+        surface: const Size(400, 900),
+      );
+
+      // GlobalTransportBar is suppressed when there is no active session.
+      expect(find.byIcon(Icons.play_arrow_rounded), findsNothing);
+      expect(find.byIcon(Icons.mic_none_rounded), findsNothing);
+    });
+
+    testWidgets('renders AppBackground and shell at /profile', (tester) async {
+      final router = _router(initial: '/profile');
+      await _pump(
+        tester,
+        router: router,
+        overrides: _shellOverrides(db),
+        surface: const Size(400, 900),
+      );
+
+      expect(find.text('profile-page'), findsOneWidget);
+      expect(find.byIcon(Icons.person_rounded), findsOneWidget);
+    });
+  });
+}
