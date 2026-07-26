@@ -4,7 +4,6 @@
 // and the credits API provider to drive the screen through its various
 // states: signed-out, loading, signed-in data, error, empty, filter clear,
 // pagination, and responsive wide layout.
-import 'dart:async';
 
 import 'package:enjoy_player/data/api/api_client.dart';
 import 'package:enjoy_player/data/api/services/ai/ai_api_providers.dart';
@@ -13,7 +12,6 @@ import 'package:enjoy_player/features/auth/application/auth_controller.dart';
 import 'package:enjoy_player/features/auth/domain/auth_state.dart';
 import 'package:enjoy_player/features/auth/domain/user_profile.dart';
 import 'package:enjoy_player/features/credits/application/credits_usage_provider.dart';
-import 'package:enjoy_player/features/credits/domain/credits_usage_filters.dart';
 import 'package:enjoy_player/features/credits/domain/credits_usage_log.dart';
 import 'package:enjoy_player/features/credits/domain/credits_usage_page.dart';
 import 'package:enjoy_player/features/credits/domain/credits_summary.dart';
@@ -70,7 +68,7 @@ ApiClient _fakeApiClient() {
   );
 }
 
-UserProfile _stubProfile() => UserProfile(
+UserProfile _stubProfile() => const UserProfile(
   id: 'user-1',
   email: 'user@example.com',
   name: 'Test User',

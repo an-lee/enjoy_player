@@ -44,8 +44,8 @@ void main() {
     const strategy = NoOpUpdateStrategy();
 
     test('yields exactly one UpdateInstallProgress.completed()', () async {
-      final release = AppRelease(
-        manifest: const ReleaseManifest(
+      final release = const AppRelease(
+        manifest: ReleaseManifest(
           version: '1.0.0',
           build: 1,
           minSupportedVersion: '0.0.0',
@@ -68,8 +68,8 @@ void main() {
     test('does not consult the release or severity', () async {
       // Sanity: even for mandatory severity, the no-op strategy completes
       // immediately (the store handles the actual update).
-      final mandatoryRelease = AppRelease(
-        manifest: const ReleaseManifest(
+      final mandatoryRelease = const AppRelease(
+        manifest: ReleaseManifest(
           version: '9.9.9',
           build: 99,
           minSupportedVersion: '9.0.0',

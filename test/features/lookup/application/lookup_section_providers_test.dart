@@ -256,7 +256,7 @@ void main() {
       );
 
       final r1 = await container.read(lookupSheetTranslationProvider(a).future);
-      final r2 = await container.read(lookupSheetTranslationProvider(b).future);
+      await container.read(lookupSheetTranslationProvider(b).future);
       expect(translationCap.calls, 2);
       expect(translationCap.lastText, 'world');
       expect(r1.translatedText, 'hello');

@@ -22,7 +22,7 @@ void main() {
     });
 
     test('hasUpdate is true for updateAvailable', () {
-      final r = UpdateCheckResult(
+      final r = const UpdateCheckResult(
         availability: UpdateAvailability.updateAvailable,
         release: AppRelease(
           manifest: _manifest,
@@ -34,7 +34,7 @@ void main() {
     });
 
     test('hasUpdate is true for mandatoryUpdate', () {
-      final r = UpdateCheckResult(
+      final r = const UpdateCheckResult(
         availability: UpdateAvailability.mandatoryUpdate,
         release: AppRelease(
           manifest: _manifest,
@@ -46,7 +46,7 @@ void main() {
     });
 
     test('hasUpdate is false for upToDate even with a release set', () {
-      final r = UpdateCheckResult(
+      final r = const UpdateCheckResult(
         availability: UpdateAvailability.upToDate,
         release: AppRelease(
           manifest: _manifest,

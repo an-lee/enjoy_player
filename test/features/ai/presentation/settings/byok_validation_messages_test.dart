@@ -2,7 +2,6 @@ import 'package:enjoy_player/features/ai/domain/byok_config_validator.dart';
 import 'package:enjoy_player/features/ai/presentation/settings/byok_validation_messages.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

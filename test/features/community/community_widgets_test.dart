@@ -211,8 +211,8 @@ void main() {
     testWidgets('TodayStatsBody shows count + duration today branches', (
       tester,
     ) async {
-      final data = ActiveUsersResponse(
-        users: const [ActiveUser(id: '1', name: 'Alice')],
+      final data = const ActiveUsersResponse(
+        users: [ActiveUser(id: '1', name: 'Alice')],
         count: 1,
         recordingsCountToday: 2,
         recordingsDurationToday: 1800000,
@@ -233,8 +233,9 @@ void main() {
       const data = ActiveUsersResponse(users: [], count: 0);
       await tester.pumpWidget(
         localized(
-          (ctx) =>
-              Scaffold(body: SimpleCountBody(data: data, denseAvatars: true)),
+          (ctx) => const Scaffold(
+            body: SimpleCountBody(data: data, denseAvatars: true),
+          ),
         ),
       );
       expect(find.text('0'), findsOneWidget);
@@ -243,8 +244,8 @@ void main() {
     testWidgets('SimpleCountBody non-empty shows count + avatar initials', (
       tester,
     ) async {
-      final data = ActiveUsersResponse(
-        users: const [ActiveUser(id: '1', name: 'Alice')],
+      final data = const ActiveUsersResponse(
+        users: [ActiveUser(id: '1', name: 'Alice')],
         count: 7,
       );
       await tester.pumpWidget(
@@ -258,8 +259,8 @@ void main() {
     });
 
     testWidgets('ActiveLearnersRow renders count + avatars', (tester) async {
-      final data = ActiveUsersResponse(
-        users: const [
+      final data = const ActiveUsersResponse(
+        users: [
           ActiveUser(id: '1', name: 'Alice'),
           ActiveUser(id: '2', name: 'Bob'),
         ],

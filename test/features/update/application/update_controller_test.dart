@@ -16,7 +16,6 @@ import 'package:enjoy_player/features/update/application/update_controller.dart'
 import 'package:enjoy_player/features/update/application/update_providers.dart';
 import 'package:enjoy_player/features/update/application/update_strategy.dart';
 import 'package:enjoy_player/features/update/domain/update_types.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 

@@ -52,7 +52,7 @@ void main() {
     });
 
     test('toJson round-trips correctly', () {
-      final original = AutoRenewBilling(
+      final original = const AutoRenewBilling(
         active: true,
         provider: 'stripe',
         status: 'active',
@@ -81,7 +81,7 @@ void main() {
     });
 
     test('toJson omits null optional fields', () {
-      final b = AutoRenewBilling(
+      final b = const AutoRenewBilling(
         active: false,
         provider: 'apple',
         status: 'ended',
@@ -101,7 +101,7 @@ void main() {
       test(
         'true when autoRenew and not cancelAtPeriodEnd and active status',
         () {
-          final b = AutoRenewBilling(
+          final b = const AutoRenewBilling(
             active: true,
             provider: 'stripe',
             status: 'active',
@@ -115,7 +115,7 @@ void main() {
       );
 
       test('false when already cancelAtPeriodEnd', () {
-        final b = AutoRenewBilling(
+        final b = const AutoRenewBilling(
           active: true,
           provider: 'stripe',
           status: 'active',
@@ -128,7 +128,7 @@ void main() {
       });
 
       test('false when status is ended', () {
-        final b = AutoRenewBilling(
+        final b = const AutoRenewBilling(
           active: false,
           provider: 'stripe',
           status: 'ended',
@@ -141,7 +141,7 @@ void main() {
       });
 
       test('false when status is canceled', () {
-        final b = AutoRenewBilling(
+        final b = const AutoRenewBilling(
           active: false,
           provider: 'stripe',
           status: 'canceled',
@@ -154,7 +154,7 @@ void main() {
       });
 
       test('false when autoRenew is false', () {
-        final b = AutoRenewBilling(
+        final b = const AutoRenewBilling(
           active: true,
           provider: 'stripe',
           status: 'active',
@@ -169,7 +169,7 @@ void main() {
 
     group('isActivelyRenewing', () {
       test('true when active + autoRenew + not canceling + active status', () {
-        final b = AutoRenewBilling(
+        final b = const AutoRenewBilling(
           active: true,
           provider: 'stripe',
           status: 'active',
@@ -182,7 +182,7 @@ void main() {
       });
 
       test('false when not active', () {
-        final b = AutoRenewBilling(
+        final b = const AutoRenewBilling(
           active: false,
           provider: 'stripe',
           status: 'active',
@@ -195,7 +195,7 @@ void main() {
       });
 
       test('false when cancelAtPeriodEnd', () {
-        final b = AutoRenewBilling(
+        final b = const AutoRenewBilling(
           active: true,
           provider: 'stripe',
           status: 'active',
@@ -210,7 +210,7 @@ void main() {
 
     group('isIncomplete', () {
       test('true when status is incomplete', () {
-        final b = AutoRenewBilling(
+        final b = const AutoRenewBilling(
           active: false,
           provider: 'stripe',
           status: 'incomplete',
@@ -223,7 +223,7 @@ void main() {
       });
 
       test('false for other statuses', () {
-        final b = AutoRenewBilling(
+        final b = const AutoRenewBilling(
           active: true,
           provider: 'stripe',
           status: 'active',

@@ -37,7 +37,7 @@ void main() {
             await Future<void>.delayed(const Duration(milliseconds: 1));
             return null;
           },
-          error: (_, __) async => null,
+          error: (_, _) async => null,
         );
       }),
       playerEngineTestDoubleProvider.overrideWithValue(engine),

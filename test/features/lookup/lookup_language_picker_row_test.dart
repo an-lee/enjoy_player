@@ -141,14 +141,13 @@ void main() {
         tester.view.resetDevicePixelRatio();
       });
       String? source;
-      String? target;
       await tester.pumpWidget(
         _harness(
           source: 'en-US',
           target: 'ko-KR',
           learningTag: 'en-US',
           onSourceChanged: (v) => source = v,
-          onTargetChanged: (v) => target = v,
+          onTargetChanged: (v) {},
         ),
       );
       await tester.tap(find.byTooltip('Swap languages'));

@@ -49,7 +49,7 @@ void main() {
         Skeleton.line(
           width: 200,
           height: 18,
-          borderRadius: BorderRadius.all(Radius.circular(2)),
+          borderRadius: const BorderRadius.all(Radius.circular(2)),
         ),
       ),
     );
@@ -172,7 +172,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(
+      const MaterialApp(
         home: Scaffold(
           body: SizedBox(height: 320, child: SkeletonMediaList(itemCount: 2)),
         ),
@@ -184,7 +184,7 @@ void main() {
 
   testWidgets('SkeletonMediaList unbounded path uses a Column', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(
+      const MaterialApp(
         home: Scaffold(
           body: SingleChildScrollView(child: SkeletonMediaList(itemCount: 2)),
         ),
@@ -224,7 +224,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(
+      const MaterialApp(
         home: Scaffold(
           body: SizedBox(height: 400, child: SkeletonTranscript(lineCount: 5)),
         ),

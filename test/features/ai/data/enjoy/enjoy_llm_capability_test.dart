@@ -279,7 +279,7 @@ void main() {
   group('ChatApi factory for tests', () {
     test('null client can be instantiated for capability wiring', () {
       final api = ChatApi(_NullApiClient());
-      expect(api.client, isA<ApiClient>());
+      expect(api, isA<ChatApi>());
     });
   });
 }

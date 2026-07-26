@@ -4,7 +4,6 @@ import 'package:enjoy_player/features/auth/application/auth_controller.dart';
 import 'package:enjoy_player/features/auth/domain/auth_state.dart';
 import 'package:enjoy_player/features/auth/domain/user_profile.dart';
 import 'package:enjoy_player/features/auth/presentation/widgets/sidebar_account_chip.dart';
-import 'package:enjoy_player/features/subscription/application/current_tier_provider.dart';
 import 'package:enjoy_player/features/subscription/application/subscription_status_provider.dart';
 import 'package:enjoy_player/features/subscription/domain/subscription_status.dart';
 import 'package:enjoy_player/features/subscription/domain/auto_renew_billing.dart';
@@ -18,7 +17,7 @@ import 'package:go_router/go_router.dart';
 
 class _FakeAuthCtrl extends AuthCtrl {
   _FakeAuthCtrl(this._state);
-  AuthState _state;
+  final AuthState _state;
 
   @override
   Future<AuthState> build() async => _state;

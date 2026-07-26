@@ -4,6 +4,7 @@
 // message, and the full poster preview with export button. Heavy providers
 // (database, library repo, transcript repo, player engine) are stubbed so the
 // sheet can be exercised in isolation.
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/native.dart';
@@ -13,12 +14,10 @@ import 'package:enjoy_player/data/files/file_storage.dart';
 import 'package:enjoy_player/features/library/application/library_repository_provider.dart';
 import 'package:enjoy_player/features/library/data/library_repository.dart';
 import 'package:enjoy_player/features/player/application/echo_mode_provider.dart';
-import 'package:enjoy_player/features/player/application/player_engine_provider.dart';
 import 'package:enjoy_player/features/player/application/player_engine_test_double_provider.dart';
 import 'package:enjoy_player/features/share_poster/presentation/practice_poster_preview_sheet.dart';
 import 'package:enjoy_player/features/share_poster/presentation/practice_poster_widget.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_repository_provider.dart';
-import 'package:enjoy_player/features/transcript/data/transcript_repository.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -182,7 +181,9 @@ class _LauncherBodyState extends ConsumerState<_LauncherBody> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      showPracticePosterPreviewSheet(context, ref, mediaId: widget.mediaId);
+      unawaited(
+        showPracticePosterPreviewSheet(context, ref, mediaId: widget.mediaId),
+      );
     });
   }
 

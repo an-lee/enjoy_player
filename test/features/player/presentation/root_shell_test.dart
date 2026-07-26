@@ -52,36 +52,35 @@ GoRouter _router({required String initial}) {
         routes: [
           GoRoute(
             path: '/',
-            builder: (_, __) => const Scaffold(body: Text('home-page')),
+            builder: (_, _) => const Scaffold(body: Text('home-page')),
           ),
           GoRoute(
             path: '/discover',
-            builder: (_, __) => const Scaffold(body: Text('discover-page')),
+            builder: (_, _) => const Scaffold(body: Text('discover-page')),
           ),
           GoRoute(
             path: '/library',
-            builder: (_, __) => const Scaffold(body: Text('library-page')),
+            builder: (_, _) => const Scaffold(body: Text('library-page')),
           ),
           GoRoute(
             path: '/profile',
-            builder: (_, __) => const Scaffold(body: Text('profile-page')),
+            builder: (_, _) => const Scaffold(body: Text('profile-page')),
           ),
           GoRoute(
             path: '/settings',
-            builder: (_, __) => const Scaffold(body: Text('settings-page')),
+            builder: (_, _) => const Scaffold(body: Text('settings-page')),
           ),
           GoRoute(
             path: '/cloud',
-            builder: (_, __) => const Scaffold(body: Text('cloud-page')),
+            builder: (_, _) => const Scaffold(body: Text('cloud-page')),
           ),
           GoRoute(
             path: '/player/:mediaId',
-            builder: (_, __) => const Scaffold(body: Text('player-page')),
+            builder: (_, _) => const Scaffold(body: Text('player-page')),
           ),
           GoRoute(
             path: '/youtube/login',
-            builder: (_, __) =>
-                const Scaffold(body: Text('youtube-login-page')),
+            builder: (_, _) => const Scaffold(body: Text('youtube-login-page')),
           ),
         ],
       ),
@@ -316,8 +315,8 @@ void main() {
         router: router,
         overrides: _shellOverrides(
           db,
-          vocab: ReviewSessionState(
-            queue: const [],
+          vocab: const ReviewSessionState(
+            queue: [],
             practicePhase: ReviewPracticePhase.clipReady,
           ),
         ),

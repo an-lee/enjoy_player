@@ -55,15 +55,15 @@ void main() {
       routes: [
         GoRoute(
           path: '/',
-          builder: (_, __) => const Scaffold(body: AppSidebar()),
+          builder: (_, _) => const Scaffold(body: AppSidebar()),
         ),
         GoRoute(
           path: '/discover',
-          builder: (_, __) => const Scaffold(body: AppSidebar()),
+          builder: (_, _) => const Scaffold(body: AppSidebar()),
         ),
         GoRoute(
           path: '/library',
-          builder: (_, __) => const Scaffold(body: AppSidebar()),
+          builder: (_, _) => const Scaffold(body: AppSidebar()),
         ),
       ],
     );

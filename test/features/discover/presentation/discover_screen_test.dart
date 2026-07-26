@@ -74,14 +74,14 @@ Widget _wrap({
         () => _FakeRefreshState(refreshing: refreshing),
       ),
     ],
-    child: MaterialApp(
-      localizationsDelegates: const [
+    child: const MaterialApp(
+      localizationsDelegates: [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
-      home: const Scaffold(body: DiscoverScreen()),
+      home: Scaffold(body: DiscoverScreen()),
     ),
   );
 }

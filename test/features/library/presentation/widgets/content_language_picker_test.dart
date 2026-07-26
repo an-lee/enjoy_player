@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:enjoy_player/core/application/app_language_catalog.dart';
 import 'package:enjoy_player/core/application/app_preferences_provider.dart';
 import 'package:enjoy_player/features/library/presentation/widgets/content_language_picker.dart';
@@ -65,11 +67,13 @@ void main() {
             builder: (context, ref, _) {
               return ElevatedButton(
                 onPressed: () {
-                  showContentLanguagePicker(
-                    context: context,
-                    ref: ref,
-                    selectedValue: selectedValue,
-                    title: 'pick me',
+                  unawaited(
+                    showContentLanguagePicker(
+                      context: context,
+                      ref: ref,
+                      selectedValue: selectedValue,
+                      title: 'pick me',
+                    ),
                   );
                 },
                 child: const Text('open'),
@@ -101,7 +105,9 @@ void main() {
           child: Consumer(
             builder: (context, ref, _) => ElevatedButton(
               onPressed: () {
-                showContentLanguagePicker(context: context, ref: ref);
+                unawaited(
+                  showContentLanguagePicker(context: context, ref: ref),
+                );
               },
               child: const Text('open'),
             ),
@@ -132,10 +138,12 @@ void main() {
           builder: (context, ref, _) {
             return ElevatedButton(
               onPressed: () {
-                showFocusLanguagePicker(
-                  context: context,
-                  selectedValue: 'en-US',
-                  title: 'Custom focus picker title',
+                unawaited(
+                  showFocusLanguagePicker(
+                    context: context,
+                    selectedValue: 'en-US',
+                    title: 'Custom focus picker title',
+                  ),
                 );
               },
               child: const Text('open'),
@@ -165,9 +173,11 @@ void main() {
           builder: (context, ref, _) {
             return ElevatedButton(
               onPressed: () {
-                showFocusLanguagePicker(
-                  context: context,
-                  selectedValue: 'es_mx', // mixed separator → canonical
+                unawaited(
+                  showFocusLanguagePicker(
+                    context: context,
+                    selectedValue: 'es_mx', // mixed separator → canonical
+                  ),
                 );
               },
               child: const Text('open'),

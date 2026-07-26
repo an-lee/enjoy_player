@@ -26,8 +26,9 @@ ApiClient _testClient() => ApiClient(
 );
 
 class _FakeStatsApi extends StatsApi {
-  _FakeStatsApi({this.response, this.error, this.delay = Duration.zero})
-    : super(_testClient());
+  _FakeStatsApi({this.response, this.error})
+    : delay = Duration.zero,
+      super(_testClient());
 
   final Map<String, dynamic>? response;
   final Object? error;

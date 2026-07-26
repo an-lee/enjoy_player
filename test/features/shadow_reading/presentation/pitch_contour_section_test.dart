@@ -44,8 +44,8 @@ class _FakePipeline implements EchoPitchPipeline {
     return reference ??
         EchoRegionAnalysisResult(
           points: [
-            EchoRegionSeriesPoint(t: 0, ampRef: 0.5, pitchRefHz: 200),
-            EchoRegionSeriesPoint(t: 1, ampRef: 0.6, pitchRefHz: 210),
+            const EchoRegionSeriesPoint(t: 0, ampRef: 0.5, pitchRefHz: 200),
+            const EchoRegionSeriesPoint(t: 1, ampRef: 0.6, pitchRefHz: 210),
           ],
           durationSeconds: endSec - startSec,
           sampleRate: 16000,
@@ -59,7 +59,7 @@ class _FakePipeline implements EchoPitchPipeline {
   }) async {
     if (throwOnUser) throw StateError('user-fail');
     return user ??
-        EchoRegionAnalysisResult(
+        const EchoRegionAnalysisResult(
           points: [EchoRegionSeriesPoint(t: 0, ampRef: 0.1, pitchRefHz: 180)],
           durationSeconds: 1.0,
           sampleRate: 16000,
@@ -163,7 +163,7 @@ void main() {
 
         // Release the gate and let analysis complete.
         pipeline.referenceGate!.complete(
-          EchoRegionAnalysisResult(
+          const EchoRegionAnalysisResult(
             points: [EchoRegionSeriesPoint(t: 0, ampRef: 0.5, pitchRefHz: 200)],
             durationSeconds: 5,
             sampleRate: 16000,

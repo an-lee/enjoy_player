@@ -26,8 +26,9 @@ ApiClient _testClient() => ApiClient(
 );
 
 class _FakeUserApi extends UserApi {
-  _FakeUserApi({this.response, this.error, this.delay = Duration.zero})
-    : super(_testClient());
+  _FakeUserApi({this.response, this.error})
+    : delay = Duration.zero,
+      super(_testClient());
 
   final Map<String, dynamic>? response;
   final Object? error;

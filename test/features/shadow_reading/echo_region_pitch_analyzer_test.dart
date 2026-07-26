@@ -6,7 +6,6 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:enjoy_player/features/shadow_reading/application/echo_region_pitch_analyzer.dart';
-import 'package:enjoy_player/features/shadow_reading/domain/echo_region_analysis.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Float32List _silent(int n) => Float32List(n);

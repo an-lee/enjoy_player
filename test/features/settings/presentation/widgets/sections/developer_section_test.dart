@@ -16,15 +16,15 @@ import 'package:flutter_test/flutter_test.dart';
 Widget buildHost(ProviderContainer container) {
   return UncontrolledProviderScope(
     container: container,
-    child: MaterialApp(
-      localizationsDelegates: const [
+    child: const MaterialApp(
+      localizationsDelegates: [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
-      home: const Scaffold(body: DeveloperSectionBody()),
+      home: Scaffold(body: DeveloperSectionBody()),
     ),
   );
 }

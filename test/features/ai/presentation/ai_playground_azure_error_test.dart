@@ -11,7 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('isAzureSpeechException', () {
     test('returns true for an AzureSpeechException', () {
-      final ex = AzureSpeechException(
+      final ex = const AzureSpeechException(
         code: 'BadRequest',
         message: 'something went wrong',
       );
@@ -37,7 +37,7 @@ void main() {
     test(
       'formats an AzureSpeechException as "AzureSpeech <code>: <message>"',
       () {
-        final ex = AzureSpeechException(
+        final ex = const AzureSpeechException(
           code: 'Unauthorized',
           message: 'missing key',
         );
@@ -54,14 +54,17 @@ void main() {
     });
 
     test('includes both code and message verbatim', () {
-      final ex = AzureSpeechException(code: '429', message: 'rate limited');
+      final ex = const AzureSpeechException(
+        code: '429',
+        message: 'rate limited',
+      );
       final formatted = formatAzureSpeechError(ex);
       expect(formatted, contains('429'));
       expect(formatted, contains('rate limited'));
     });
 
     test('omits details section (only code: message is formatted)', () {
-      final ex = AzureSpeechException(
+      final ex = const AzureSpeechException(
         code: 'BadRequest',
         message: 'invalid input',
         details: {'field': 'audio'},

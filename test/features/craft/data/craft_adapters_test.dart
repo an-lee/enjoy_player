@@ -14,7 +14,6 @@ import 'package:enjoy_player/features/ai/domain/models/tts_request.dart';
 import 'package:enjoy_player/features/ai/domain/models/tts_result.dart';
 import 'package:enjoy_player/features/craft/data/craft_asr_service_transcriber.dart';
 import 'package:enjoy_player/features/craft/data/craft_tts_service_synthesizer.dart';
-import 'package:enjoy_player/features/craft/domain/craft_synthesizer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 

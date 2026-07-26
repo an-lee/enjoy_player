@@ -61,8 +61,8 @@ void main() {
 
     // Send only KeyUp — the dialog ignores non-Down events.
     HardwareKeyboard.instance.handleKeyEvent(
-      KeyUpEvent(
-        physicalKey: const PhysicalKeyboardKey(0),
+      const KeyUpEvent(
+        physicalKey: PhysicalKeyboardKey(0),
         logicalKey: LogicalKeyboardKey.keyA,
         timeStamp: Duration.zero,
       ),

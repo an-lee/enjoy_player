@@ -7,7 +7,6 @@
 //   * empty-text fallback when translatedText is empty
 //   * error row on failure
 //   * refresh / force-refresh path
-import 'dart:async';
 
 import 'package:drift/native.dart';
 import 'package:enjoy_player/core/cache/lru_store.dart';
@@ -69,7 +68,7 @@ class _FakeContextualCapability implements ContextualTranslationCapability {
       return r;
     }
     if (_resultOrError is Exception) {
-      throw _resultOrError as Exception;
+      throw _resultOrError;
     }
     return _resultOrError as ContextualTranslationResult;
   }

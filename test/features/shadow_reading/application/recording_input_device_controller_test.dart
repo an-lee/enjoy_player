@@ -57,7 +57,7 @@ void main() {
     });
 
     test('selectedDevice returns the matching device', () {
-      final state = RecordingInputDeviceState(
+      final state = const RecordingInputDeviceState(
         devices: [realMic, glideX],
         selectedId: 'glidex',
         persistedId: 'glidex',
@@ -66,7 +66,7 @@ void main() {
     });
 
     test('selectedDevice returns null when id is not in devices list', () {
-      final state = RecordingInputDeviceState(
+      final state = const RecordingInputDeviceState(
         devices: [realMic],
         selectedId: 'missing',
         persistedId: 'missing',
@@ -75,7 +75,7 @@ void main() {
     });
 
     test('selectedDevice returns the only device when id matches', () {
-      final state = RecordingInputDeviceState(
+      final state = const RecordingInputDeviceState(
         devices: [realMic],
         selectedId: 'real-mic',
         persistedId: null,

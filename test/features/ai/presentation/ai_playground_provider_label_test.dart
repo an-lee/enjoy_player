@@ -32,9 +32,9 @@ void main() {
 
   test('BYOK + known preset id → "BYOK · preset label"', () async {
     final l10n = await _loadL10n();
-    final config = AIServiceConfig(
+    final config = const AIServiceConfig(
       provider: AIProvider.byok,
-      llmByok: const LlmByokConfig(
+      llmByok: LlmByokConfig(
         apiSpec: LlmApiSpec.openAiCompatible,
         baseUrl: 'https://example.com/v1',
         model: 'gpt-4',
@@ -47,9 +47,9 @@ void main() {
 
   test('BYOK + llm without preset → "BYOK · model"', () async {
     final l10n = await _loadL10n();
-    final config = AIServiceConfig(
+    final config = const AIServiceConfig(
       provider: AIProvider.byok,
-      llmByok: const LlmByokConfig(
+      llmByok: LlmByokConfig(
         apiSpec: LlmApiSpec.openAiCompatible,
         baseUrl: 'https://example.com/v1',
         model: 'gpt-4-mini',
@@ -62,9 +62,9 @@ void main() {
 
   test('BYOK + speech openAiCompatible → "BYOK · OpenAI Whisper"', () async {
     final l10n = await _loadL10n();
-    final config = AIServiceConfig(
+    final config = const AIServiceConfig(
       provider: AIProvider.byok,
-      speechByok: const SpeechByokConfig(
+      speechByok: SpeechByokConfig(
         kind: SpeechByokKind.openAiCompatible,
         baseUrl: 'https://example.com/v1',
         model: 'whisper-1',
@@ -76,9 +76,9 @@ void main() {
 
   test('BYOK + speech azureSpeech → "BYOK · Azure Speech"', () async {
     final l10n = await _loadL10n();
-    final config = AIServiceConfig(
+    final config = const AIServiceConfig(
       provider: AIProvider.byok,
-      speechByok: const SpeechByokConfig(
+      speechByok: SpeechByokConfig(
         kind: SpeechByokKind.azureSpeech,
         region: 'eastus',
       ),

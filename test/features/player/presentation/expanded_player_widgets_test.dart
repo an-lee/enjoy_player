@@ -1,5 +1,4 @@
 import 'package:drift/native.dart';
-import 'package:enjoy_player/core/riverpod/async_value_x.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
 import 'package:enjoy_player/data/db/app_database_provider.dart';
 import 'package:enjoy_player/features/auth/application/auth_controller.dart';
@@ -157,20 +156,20 @@ void main() {
       durationSeconds: 60.0,
       language: 'en',
     );
-    final _audio = ExpandedPlayerChromeBody(
+    final audio = ExpandedPlayerChromeBody(
       mediaId: 'm1',
       chrome: audioChrome,
       isPlaying: false,
       accent: null,
     );
-    final _video = ExpandedPlayerChromeBody(
+    final video = ExpandedPlayerChromeBody(
       mediaId: 'm2',
       chrome: videoChrome,
       isPlaying: true,
       accent: null,
     );
-    expect(_audio, isNotNull);
-    expect(_video, isNotNull);
+    expect(audio, isNotNull);
+    expect(video, isNotNull);
   });
 
   test('playbackChromeOf returns the stable chrome subset', () {

@@ -7,7 +7,6 @@ import 'package:enjoy_player/data/api/api_client.dart';
 import 'package:enjoy_player/data/api/api_exception.dart';
 import 'package:enjoy_player/data/api/services/credits_packages_api.dart';
 import 'package:enjoy_player/features/credits/data/credits_packages_repository.dart';
-import 'package:enjoy_player/features/credits/domain/credits_package.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 
@@ -31,11 +30,9 @@ class _FakeCreditsPackagesApi extends CreditsPackagesApi {
   _FakeCreditsPackagesApi({
     this.packagesResponse,
     this.purchaseResponse,
-    Object? packagesError,
-    Object? purchaseError,
-  }) : _packagesError = packagesError,
-       _purchaseError = purchaseError,
-       super(_NullApiClient());
+    this._packagesError,
+    this._purchaseError,
+  }) : super(_NullApiClient());
 
   final Object? _packagesError;
   final Object? _purchaseError;
@@ -48,7 +45,7 @@ class _FakeCreditsPackagesApi extends CreditsPackagesApi {
   @override
   Future<Map<String, dynamic>> listPackages() async {
     listPackagesCalls++;
-    if (_packagesError != null) throw _packagesError!;
+    if (_packagesError != null) throw _packagesError;
     return packagesResponse ?? <String, dynamic>{};
   }
 
@@ -58,7 +55,7 @@ class _FakeCreditsPackagesApi extends CreditsPackagesApi {
   }) async {
     startPurchaseCalls++;
     lastPackageId = packageId;
-    if (_purchaseError != null) throw _purchaseError!;
+    if (_purchaseError != null) throw _purchaseError;
     return purchaseResponse ?? <String, dynamic>{};
   }
 }

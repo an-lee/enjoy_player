@@ -24,7 +24,7 @@ void main() {
     await db.close();
   });
 
-  Map<String, List<String>> _tableColumns() {
+  Map<String, List<String>> tableColumns() {
     final out = <String, List<String>>{};
     for (final entity in db.allSchemaEntities.whereType<TableInfo>()) {
       out[entity.actualTableName] = [for (final c in entity.$columns) c.name];
@@ -33,7 +33,7 @@ void main() {
   }
 
   test('AppDatabase registers every Drift table we expect', () {
-    final columns = _tableColumns();
+    final columns = tableColumns();
     final tables = columns.keys.toSet();
     expect(
       tables,
@@ -58,7 +58,7 @@ void main() {
   });
 
   test('Videos table exposes the documented column set', () {
-    final cols = _tableColumns()['videos']!;
+    final cols = tableColumns()['videos']!;
     expect(
       cols,
       containsAll(<String>[
@@ -80,7 +80,7 @@ void main() {
   });
 
   test('Audios table mirrors Videos for media + sync metadata', () {
-    final cols = _tableColumns()['audios']!;
+    final cols = tableColumns()['audios']!;
     expect(
       cols,
       containsAll(<String>[
@@ -102,7 +102,7 @@ void main() {
   });
 
   test('Transcripts exposes target + payload columns', () {
-    final cols = _tableColumns()['transcripts']!;
+    final cols = tableColumns()['transcripts']!;
     expect(
       cols,
       containsAll(<String>[
@@ -119,7 +119,7 @@ void main() {
   });
 
   test('TranscriptFetchStates uses target composite primary key', () {
-    final cols = _tableColumns()['transcript_fetch_states']!;
+    final cols = tableColumns()['transcript_fetch_states']!;
     expect(
       cols,
       containsAll(<String>[
@@ -133,7 +133,7 @@ void main() {
   });
 
   test('EchoSessions wires playback-state + audit columns', () {
-    final cols = _tableColumns()['echo_sessions']!;
+    final cols = tableColumns()['echo_sessions']!;
     expect(
       cols,
       containsAll(<String>[
@@ -157,7 +157,7 @@ void main() {
   });
 
   test('Recordings exposes pronunciation + assessment fields', () {
-    final cols = _tableColumns()['recordings']!;
+    final cols = tableColumns()['recordings']!;
     expect(
       cols,
       containsAll(<String>[
@@ -179,7 +179,7 @@ void main() {
   });
 
   test('Dictations captures scoring metrics', () {
-    final cols = _tableColumns()['dictations']!;
+    final cols = tableColumns()['dictations']!;
     expect(
       cols,
       containsAll(<String>[
@@ -200,7 +200,7 @@ void main() {
   });
 
   test('SyncQueue has the auto-increment id and retry columns', () {
-    final cols = _tableColumns()['sync_queue']!;
+    final cols = tableColumns()['sync_queue']!;
     expect(
       cols,
       containsAll(<String>[
@@ -218,12 +218,12 @@ void main() {
   });
 
   test('Settings has the key/value schema', () {
-    final cols = _tableColumns()['settings']!;
+    final cols = tableColumns()['settings']!;
     expect(cols, <String>['key', 'value']);
   });
 
   test('YoutubeChannelSubscriptions carries the enum source columns', () {
-    final cols = _tableColumns()['youtube_channel_subscriptions']!;
+    final cols = tableColumns()['youtube_channel_subscriptions']!;
     expect(
       cols,
       containsAll(<String>[
@@ -241,7 +241,7 @@ void main() {
   });
 
   test('YoutubeFeedEntries uses composite videoId + channelId', () {
-    final cols = _tableColumns()['youtube_feed_entries']!;
+    final cols = tableColumns()['youtube_feed_entries']!;
     expect(cols, <String>[
       'video_id',
       'channel_id',
@@ -254,12 +254,12 @@ void main() {
   });
 
   test('AiCache uses composite kind + key primary key', () {
-    final cols = _tableColumns()['ai_cache']!;
+    final cols = tableColumns()['ai_cache']!;
     expect(cols, <String>['kind', 'key', 'payload_json', 'updated_at']);
   });
 
   test('VocabularyItems exposes SRS columns and indexes', () {
-    final cols = _tableColumns()['vocabulary_items']!;
+    final cols = tableColumns()['vocabulary_items']!;
     expect(
       cols,
       containsAll(<String>[
@@ -280,7 +280,7 @@ void main() {
   });
 
   test('VocabularyContexts uses renamed text/locator columns', () {
-    final cols = _tableColumns()['vocabulary_contexts']!;
+    final cols = tableColumns()['vocabulary_contexts']!;
     // SQL column `text` (web field name) and `locator` are exposed via
     // `.named('text')` / `.named('locator')` in the source file.
     expect(
@@ -298,7 +298,7 @@ void main() {
   });
 
   test('VocabularyReviews carries before-state snapshot for undo', () {
-    final cols = _tableColumns()['vocabulary_reviews']!;
+    final cols = tableColumns()['vocabulary_reviews']!;
     expect(
       cols,
       containsAll(<String>[

@@ -22,21 +22,21 @@ VocabularyContext _context({
 void main() {
   group('mediaLocatorWindow', () {
     test('converts milliseconds to seconds', () {
-      final locator = MediaLocator(start: 5000, duration: 3000);
+      final locator = const MediaLocator(start: 5000, duration: 3000);
       final window = mediaLocatorWindow(locator);
       expect(window.startSec, closeTo(5.0, 1e-9));
       expect(window.endSec, closeTo(8.0, 1e-9));
     });
 
     test('handles zero start', () {
-      final locator = MediaLocator(start: 0, duration: 1500);
+      final locator = const MediaLocator(start: 0, duration: 1500);
       final window = mediaLocatorWindow(locator);
       expect(window.startSec, 0.0);
       expect(window.endSec, closeTo(1.5, 1e-9));
     });
 
     test('handles large values', () {
-      final locator = MediaLocator(start: 3600000, duration: 60000);
+      final locator = const MediaLocator(start: 3600000, duration: 60000);
       final window = mediaLocatorWindow(locator);
       expect(window.startSec, closeTo(3600.0, 1e-9));
       expect(window.endSec, closeTo(3660.0, 1e-9));
@@ -48,7 +48,7 @@ void main() {
       final ctx = _context(
         sourceType: VocabularySourceType.video,
         sourceId: 'vid-1',
-        locator: MediaLocator(start: 1000, duration: 2000),
+        locator: const MediaLocator(start: 1000, duration: 2000),
       );
       expect(vocabularyContextSupportsMediaActions(ctx), isTrue);
     });
@@ -57,7 +57,7 @@ void main() {
       final ctx = _context(
         sourceType: VocabularySourceType.audio,
         sourceId: 'aud-1',
-        locator: MediaLocator(start: 0, duration: 5000),
+        locator: const MediaLocator(start: 0, duration: 5000),
       );
       expect(vocabularyContextSupportsMediaActions(ctx), isTrue);
     });
@@ -66,7 +66,7 @@ void main() {
       final ctx = _context(
         sourceType: VocabularySourceType.ebook,
         sourceId: 'book-1',
-        locator: MediaLocator(start: 0, duration: 1000),
+        locator: const MediaLocator(start: 0, duration: 1000),
       );
       expect(vocabularyContextSupportsMediaActions(ctx), isFalse);
     });
@@ -84,7 +84,7 @@ void main() {
       final ctx = _context(
         sourceType: VocabularySourceType.video,
         sourceId: 'vid-1',
-        locator: MediaLocator(start: 1000, duration: 0),
+        locator: const MediaLocator(start: 1000, duration: 0),
       );
       expect(vocabularyContextSupportsMediaActions(ctx), isFalse);
     });
@@ -93,7 +93,7 @@ void main() {
       final ctx = _context(
         sourceType: VocabularySourceType.video,
         sourceId: 'vid-1',
-        locator: MediaLocator(start: 1000, duration: -100),
+        locator: const MediaLocator(start: 1000, duration: -100),
       );
       expect(vocabularyContextSupportsMediaActions(ctx), isFalse);
     });
@@ -102,7 +102,7 @@ void main() {
       final ctx = _context(
         sourceType: VocabularySourceType.video,
         sourceId: '',
-        locator: MediaLocator(start: 0, duration: 1000),
+        locator: const MediaLocator(start: 0, duration: 1000),
       );
       expect(vocabularyContextSupportsMediaActions(ctx), isFalse);
     });

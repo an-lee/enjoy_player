@@ -7,7 +7,6 @@
 import 'package:enjoy_player/features/craft/domain/craft_failure.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 import 'package:enjoy_player/l10n/app_localizations_en.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -12,7 +12,7 @@ void main() {
     CraftSolidTranscriptHintGate.resetForTests();
   });
 
-  Widget _wrap(Widget child) {
+  Widget wrap(Widget child) {
     return MaterialApp(
       localizationsDelegates: const [
         AppLocalizations.delegate,
@@ -27,7 +27,7 @@ void main() {
   }
 
   testWidgets('does nothing when savedSolidTimeline is false', (tester) async {
-    await tester.pumpWidget(_wrap(const SizedBox.shrink()));
+    await tester.pumpWidget(wrap(const SizedBox.shrink()));
     maybeShowCraftSolidTranscriptSttHint(
       tester.element(find.byType(Scaffold)),
       savedSolidTimeline: false,
@@ -37,7 +37,7 @@ void main() {
   });
 
   testWidgets('shows snackbar first time gate consumes', (tester) async {
-    await tester.pumpWidget(_wrap(const SizedBox.shrink()));
+    await tester.pumpWidget(wrap(const SizedBox.shrink()));
     final ctx = tester.element(find.byType(Scaffold));
     maybeShowCraftSolidTranscriptSttHint(ctx, savedSolidTimeline: true);
     await tester.pump();
@@ -46,7 +46,7 @@ void main() {
   });
 
   testWidgets('skips snackbar on second call within session', (tester) async {
-    await tester.pumpWidget(_wrap(const SizedBox.shrink()));
+    await tester.pumpWidget(wrap(const SizedBox.shrink()));
     final ctx = tester.element(find.byType(Scaffold));
     maybeShowCraftSolidTranscriptSttHint(ctx, savedSolidTimeline: true);
     await tester.pump();

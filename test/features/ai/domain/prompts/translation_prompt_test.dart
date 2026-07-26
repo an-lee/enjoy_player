@@ -18,7 +18,6 @@
 import 'package:enjoy_player/features/ai/domain/prompts/translation_prompt.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_state_poller.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:flutter_inappwebview_platform_interface/flutter_inappwebview_platform_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Records the most recent callback invocation so tests can assert on the

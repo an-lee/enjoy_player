@@ -169,8 +169,8 @@ void main() {
   group('buildSeriesPoints', () {
     test('zips envelope + pitch lists into echo series points', () {
       final envelope = [
-        WaveformPoint(t: 0.0, amp: 0.1),
-        WaveformPoint(t: 0.5, amp: 0.4),
+        const WaveformPoint(t: 0.0, amp: 0.1),
+        const WaveformPoint(t: 0.5, amp: 0.4),
       ];
       final pitches = <double?>[200, null];
       final points = buildSeriesPoints(
@@ -233,7 +233,7 @@ void main() {
     testWidgets('renders the CustomPaint for non-empty points', (tester) async {
       await tester.pumpWidget(
         chartHost(
-          PitchContourChart(
+          const PitchContourChart(
             points: [
               EchoRegionSeriesPoint(t: 0.0, ampRef: 0.2, pitchRefHz: 200),
               EchoRegionSeriesPoint(t: 0.5, ampRef: 0.4, pitchRefHz: 220),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:go_router/go_router.dart';
 import 'package:enjoy_player/core/theme/widgets/skeleton.dart';
 import 'package:drift/native.dart';
@@ -92,8 +94,8 @@ Widget _wrap({
       discoverChannelFeedProvider.overrideWith((ref, channelId) => channelFeed),
       ...extraOverrides,
     ],
-    child: MaterialApp(
-      localizationsDelegates: const [
+    child: const MaterialApp(
+      localizationsDelegates: [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -264,7 +266,7 @@ void main() {
 
         // Navigate forward onto the channel feed so the stack has 2 entries
         // (context.pop() below needs something above to pop back to).
-        router.push('/discover');
+        unawaited(router.push('/discover'));
         await tester.pumpAndSettle();
 
         final before = _repo.unsubscribeCalls;

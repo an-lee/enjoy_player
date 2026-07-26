@@ -279,8 +279,8 @@ void main() {
       await tester.pumpWidget(
         await _wrap(
           container: container,
-          child: Column(
-            children: const [
+          child: const Column(
+            children: [
               SharePracticePosterButton(mediaId: 'video-8'),
               SharePracticePosterButton(mediaId: 'video-9'),
             ],
