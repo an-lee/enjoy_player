@@ -32,6 +32,7 @@ class _SynthesizeToolState extends ConsumerState<SynthesizeTool> {
   late final TextEditingController _textCtrl;
   AudioPlayer? _audioPlayer;
   bool _isPlaying = false;
+  StreamSubscription? _completeSub;
 
   @override
   void initState() {
@@ -42,6 +43,7 @@ class _SynthesizeToolState extends ConsumerState<SynthesizeTool> {
   @override
   void dispose() {
     _textCtrl.dispose();
+    unawaited(_completeSub?.cancel());
     unawaited(_audioPlayer?.dispose() ?? Future.value());
     super.dispose();
   }
@@ -243,7 +245,8 @@ class _SynthesizeToolState extends ConsumerState<SynthesizeTool> {
     } else {
       await _audioPlayer!.play(BytesSource(bytes));
       setState(() => _isPlaying = true);
-      _audioPlayer!.onPlayerComplete.listen((_) {
+      _completeSub?.cancel();
+      _completeSub = _audioPlayer!.onPlayerComplete.listen((_) {
         if (mounted) setState(() => _isPlaying = false);
       });
     }
