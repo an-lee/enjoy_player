@@ -9,7 +9,7 @@ permissions: read-all
 network: defaults
 imports:
 - shared/runtime.md
-- shared/engine-deepseek.md
+- shared/engine-minimax.md
 safe-outputs:
   add-comment: null
   add-labels:

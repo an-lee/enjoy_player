@@ -13,7 +13,7 @@ permissions:
   pull-requests: read
 imports:
 - shared/runtime.md
-- shared/engine-deepseek.md
+- shared/engine-minimax.md
 safe-outputs:
   create-pull-request:
     allowed-files:
