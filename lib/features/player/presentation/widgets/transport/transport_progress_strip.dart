@@ -56,16 +56,9 @@ class _TransportThumbShape extends RoundSliderThumbShape {
 }
 
 class TransportProgressStrip extends ConsumerStatefulWidget {
-  const TransportProgressStrip({
-    super.key,
-    required this.chrome,
-    required this.hovered,
-    required this.onHoverChanged,
-  });
+  const TransportProgressStrip({super.key, required this.chrome});
 
   final PlaybackChrome chrome;
-  final bool hovered;
-  final ValueChanged<bool> onHoverChanged;
 
   @override
   ConsumerState<TransportProgressStrip> createState() =>
@@ -74,6 +67,16 @@ class TransportProgressStrip extends ConsumerStatefulWidget {
 
 class _TransportProgressStripState
     extends ConsumerState<TransportProgressStrip> {
+  /// Non-null while the user is actively dragging the slider; the thumb
+  /// renders from this value instead of the engine position stream so the
+  /// UI stays responsive without issuing a seek per micro-movement
+  /// (issue #470).
+  double? _dragFraction;
+
+  /// Hover state is managed locally so the parent transport bar does not
+  /// rebuild when the cursor enters/exits the slider thumb area (issue #471).
+  bool _hovered = false;
+
   int? _scrubSecond;
 
   bool get _hapticScrub => isMobilePlatform;
@@ -91,9 +94,12 @@ class _TransportProgressStripState
       AsyncData(:final value) => value,
       _ => Duration.zero,
     };
-    final fraction = durationSec > 0
+    final streamFraction = durationSec > 0
         ? pos.inMilliseconds / 1000 / durationSec
         : 0.0;
+    // While dragging, render the thumb from the local drag value, not the
+    // stream position — the stream won't update until the seek completes.
+    final fraction = _dragFraction ?? streamFraction.clamp(0.0, 1.0);
 
     final timeStyle = tt.labelSmall?.copyWith(
       fontFeatures: const [FontFeature.tabularFigures()],
@@ -101,11 +107,21 @@ class _TransportProgressStripState
     );
 
     return MouseRegion(
-      onEnter: (_) => widget.onHoverChanged(true),
-      onExit: (_) => widget.onHoverChanged(false),
+      onEnter: (_) => _setHovered(true),
+      onExit: (_) => _setHovered(false),
       child: Row(
         children: [
-          Text(formatDurationHms(pos), style: timeStyle),
+          Text(
+            formatDurationHms(
+              _dragFraction != null
+                  ? Duration(
+                      milliseconds: (_dragFraction! * durationSec * 1000)
+                          .round(),
+                    )
+                  : pos,
+            ),
+            style: timeStyle,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: ExcludeSemantics(
@@ -113,7 +129,7 @@ class _TransportProgressStripState
                 data: SliderTheme.of(context).copyWith(
                   trackHeight: 3,
                   thumbShape: _TransportThumbShape(
-                    enabledThumbRadius: widget.hovered ? 6 : 4,
+                    enabledThumbRadius: _hovered ? 6 : 4,
                   ),
                   overlayShape: SliderComponentShape.noOverlay,
                   activeTrackColor: cs.primary,
@@ -133,6 +149,10 @@ class _TransportProgressStripState
                         Haptics.selection(context);
                       }
                     }
+                    setState(() => _dragFraction = v);
+                  },
+                  onChangeEnd: (v) {
+                    _dragFraction = null;
                     unawaited(
                       ref
                           .read(playerInteractionsProvider.notifier)
@@ -148,5 +168,10 @@ class _TransportProgressStripState
         ],
       ),
     );
+  }
+
+  void _setHovered(bool v) {
+    if (_hovered == v) return;
+    setState(() => _hovered = v);
   }
 }

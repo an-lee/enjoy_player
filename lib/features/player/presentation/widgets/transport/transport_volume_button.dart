@@ -136,9 +136,16 @@ class _TransportVolumeButtonState extends ConsumerState<TransportVolumeButton> {
                             .clamp(0.0, 1.0);
                         return Slider(
                           value: vol,
-                          onChanged: (v) => ref
-                              .read(playerPreferencesCtrlProvider.notifier)
-                              .setVolume(v),
+                          onChanged: (v) => unawaited(
+                            ref
+                                .read(playerPreferencesCtrlProvider.notifier)
+                                .setVolumeTransient(v),
+                          ),
+                          onChangeEnd: (v) => unawaited(
+                            ref
+                                .read(playerPreferencesCtrlProvider.notifier)
+                                .setVolume(v),
+                          ),
                         );
                       },
                     ),
