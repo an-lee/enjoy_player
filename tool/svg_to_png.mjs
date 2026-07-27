@@ -6,8 +6,20 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { hostname } from 'node:os';
+import { PostHog } from 'posthog-node';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const phKey = process.env.POSTHOG_API_KEY;
+const phHost = process.env.POSTHOG_HOST;
+let posthog = null;
+if (phKey && phHost) {
+  posthog = new PostHog(phKey, { host: phHost, flushAt: 1, flushInterval: 0, isServer: false, enableExceptionAutocapture: true });
+} else {
+  console.warn('POSTHOG_API_KEY variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once POSTHOG_API_KEY is configured');
+}
+const distinctId = hostname();
 
 async function main() {
   const { Resvg } = await import('@resvg/resvg-js');
@@ -28,9 +40,24 @@ async function main() {
   const pngBuffer = pngData.asPng();
   writeFileSync(outputPng, pngBuffer);
   console.log(`Wrote ${outputPng} (${size}x${size})`);
+  posthog?.capture({
+    distinctId,
+    event: 'svg_converted_to_png',
+    properties: { size, input_path: inputSvg, output_path: outputPng },
+  });
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+main()
+  .catch((e) => {
+    posthog?.capture({
+      distinctId,
+      event: 'svg_conversion_failed',
+      properties: { error: e.message },
+    });
+    posthog?.captureException(e, distinctId);
+    console.error(e);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await posthog?.shutdown();
+  });
