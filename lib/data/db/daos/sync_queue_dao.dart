@@ -33,7 +33,10 @@ class SyncQueueDao extends DatabaseAccessor<AppDatabase>
       await customUpdate(
         'UPDATE sync_queue SET retry_count = retry_count + 1, '
         'last_attempt = ?, error = NULL WHERE id = ?',
-        variables: [Variable.withDateTime(DateTime.now()), Variable.withInt(id)],
+        variables: [
+          Variable.withDateTime(DateTime.now()),
+          Variable.withInt(id),
+        ],
         updates: {syncQueue},
       );
     } else {
