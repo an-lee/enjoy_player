@@ -27,7 +27,11 @@ Future<List<TranscriptLine>> _computeLines(
   // a frequent no-op tick when an in-active transcript row changes or
   // when echo session aggregates (recordingsCount, lastActiveAt, …) bump.
   final row = await db.transcriptDao.getById(id);
-  return row == null ? <TranscriptLine>[] : repo.linesForRow(row);
+  if (row == null) return <TranscriptLine>[];
+  if (row.timelineJson.length > 16 * 1024) {
+    await repo.preloadLinesForRow(row);
+  }
+  return repo.linesForRow(row);
 }
 
 Stream<List<TranscriptLine>> _linesForMedia(
