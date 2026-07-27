@@ -75,6 +75,7 @@ class HeroArtwork extends StatelessWidget {
         width: size,
         height: size,
         fit: BoxFit.cover,
+        cacheWidth: (size * 2).round(),
         errorBuilder: (_, _, _) => _placeholder(cs),
       );
     }
