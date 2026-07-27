@@ -139,5 +139,52 @@ void main() {
       final all = await db.aiCacheDao.readAllForKind('dictionary').first;
       expect(all.map((r) => r.key).toSet(), {'a', 'b'});
     });
+
+    test(
+      'deleteByPayloadLike bulk-deletes matching rows in one statement',
+      () async {
+        await db.aiCacheDao.upsert(
+          'translation',
+          'k1',
+          '{"sourceLanguage":"en","targetLanguage":"es"}',
+          DateTime.utc(2026),
+        );
+        await db.aiCacheDao.upsert(
+          'translation',
+          'k2',
+          '{"sourceLanguage":"en","targetLanguage":"ja"}',
+          DateTime.utc(2026),
+        );
+        await db.aiCacheDao.upsert(
+          'translation',
+          'k3',
+          '{"sourceLanguage":"fr","targetLanguage":"de"}',
+          DateTime.utc(2026),
+        );
+
+        final deleted = await db.aiCacheDao.deleteByPayloadLike(
+          '%"sourceLanguage":"en"%',
+          '%"targetLanguage":"es"%',
+        );
+        expect(deleted, 1);
+        expect(await db.aiCacheDao.read('translation', 'k1'), isNull);
+        expect(await db.aiCacheDao.read('translation', 'k2'), isNotNull);
+        expect(await db.aiCacheDao.read('translation', 'k3'), isNotNull);
+      },
+    );
+
+    test('deleteByPayloadLike returns 0 when no rows match', () async {
+      await db.aiCacheDao.upsert(
+        'translation',
+        'k1',
+        '{"sourceLanguage":"en"}',
+        DateTime.utc(2026),
+      );
+      final deleted = await db.aiCacheDao.deleteByPayloadLike(
+        '%"sourceLanguage":"xx"%',
+        '%"targetLanguage":"yy"%',
+      );
+      expect(deleted, 0);
+    });
   });
 }

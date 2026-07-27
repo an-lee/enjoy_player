@@ -5,6 +5,8 @@ import 'package:drift/drift.dart';
 
 import 'sync_metadata.dart';
 
+@TableIndex(name: 'idx_audios_local_uri', columns: {#localUri})
+@TableIndex(name: 'idx_audios_md5', columns: {#md5})
 @DataClassName('AudioRow')
 class Audios extends Table with SyncMetadataColumns {
   @override

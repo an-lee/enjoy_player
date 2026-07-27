@@ -59,18 +59,14 @@ class AiCacheDao extends DatabaseAccessor<AppDatabase> with _$AiCacheDaoMixin {
               .getSingle();
       if (total <= keep) return 0;
       final toDelete = total - keep;
-      final beforeKeys = await customSelect(
-        'SELECT key FROM ai_cache WHERE kind = ? '
-        'ORDER BY updated_at ASC LIMIT ?',
-        variables: [Variable.withString(kind), Variable.withInt(toDelete)],
-        readsFrom: {aiCache},
-      ).map((row) => row.read<String>('key')).get();
-      for (final k in beforeKeys) {
-        await (delete(
-          aiCache,
-        )..where((t) => t.kind.equals(kind) & t.key.equals(k))).go();
-      }
-      return beforeKeys.length;
+      // Single-statement bulk DELETE (issue #478): avoids N round-trips
+      // and N fsyncs when evicting many keys.
+      await customStatement(
+        'DELETE FROM ai_cache WHERE kind = ? AND key IN '
+        '(SELECT key FROM ai_cache WHERE kind = ? ORDER BY updated_at ASC LIMIT ?)',
+        [kind, kind, toDelete],
+      );
+      return toDelete;
     } on Object catch (e, st) {
       _log.warning('ai_cache evictOldestExcept failed kind=$kind', e, st);
       return -1;
@@ -108,6 +104,31 @@ class AiCacheDao extends DatabaseAccessor<AppDatabase> with _$AiCacheDaoMixin {
       await (delete(aiCache)..where((t) => t.kind.equals(kind))).go();
     } on Object catch (e, st) {
       _log.warning('ai_cache deleteForKind failed kind=$kind', e, st);
+    }
+  }
+
+  /// Bulk-deletes every row whose `payload_json` matches both LIKE patterns
+  /// in a single SQL statement (issue #478). Returns the number of deleted
+  /// rows.
+  Future<int> deleteByPayloadLike(String pattern1, String pattern2) async {
+    try {
+      final count =
+          await (selectOnly(aiCache)
+                ..addColumns([aiCache.key.count()])
+                ..where(
+                  aiCache.payloadJson.like(pattern1) &
+                      aiCache.payloadJson.like(pattern2),
+                ))
+              .map((row) => row.read<int>(aiCache.key.count()) ?? 0)
+              .getSingle();
+      await customStatement(
+        'DELETE FROM ai_cache WHERE payload_json LIKE ? AND payload_json LIKE ?',
+        [pattern1, pattern2],
+      );
+      return count;
+    } on Object catch (e, st) {
+      _log.warning('ai_cache deleteByPayloadLike failed', e, st);
+      return -1;
     }
   }
 

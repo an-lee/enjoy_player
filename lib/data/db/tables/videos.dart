@@ -5,6 +5,8 @@ import 'package:drift/drift.dart';
 
 import 'sync_metadata.dart';
 
+@TableIndex(name: 'idx_videos_provider_vid', columns: {#provider, #vid})
+@TableIndex(name: 'idx_videos_local_uri', columns: {#localUri})
 @DataClassName('VideoRow')
 class Videos extends Table with SyncMetadataColumns {
   @override

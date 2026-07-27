@@ -112,13 +112,13 @@ void main() {
       expect(await db.audioDao.getById('keep'), isNotNull);
     });
 
-    test('countByLocalUri counts matching rows', () async {
+    test('existsByLocalUri returns true for matching rows', () async {
       await db.audioDao.insertRow(_audioRow(id: '1', localUri: 'file://1'));
       await db.audioDao.insertRow(_audioRow(id: '2', localUri: 'file://1'));
       await db.audioDao.insertRow(_audioRow(id: '3', localUri: 'file://2'));
-      expect(await db.audioDao.countByLocalUri('file://1'), 2);
-      expect(await db.audioDao.countByLocalUri('file://2'), 1);
-      expect(await db.audioDao.countByLocalUri('file://3'), 0);
+      expect(await db.audioDao.existsByLocalUri('file://1'), isTrue);
+      expect(await db.audioDao.existsByLocalUri('file://2'), isTrue);
+      expect(await db.audioDao.existsByLocalUri('file://3'), isFalse);
     });
 
     test('watchAll emits rows ordered by createdAt descending', () async {

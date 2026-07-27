@@ -104,7 +104,7 @@ class AppDatabase extends _$AppDatabase {
   bool get isDeviceGlobalDatabase => _dbName == deviceGlobalDatabaseName;
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -217,6 +217,52 @@ class AppDatabase extends _$AppDatabase {
         await m.database.customStatement(
           'CREATE INDEX IF NOT EXISTS idx_vocabulary_reviews_item_at '
           'ON vocabulary_reviews (vocabulary_item_id, at)',
+        );
+      } else if (next == 16) {
+        // Hot-read-path covering indexes (issue #467).
+        await m.database.customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_transcripts_target '
+          'ON transcripts (target_type, target_id)',
+        );
+        await m.database.customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_recordings_target '
+          'ON recordings (target_type, target_id)',
+        );
+        await m.database.customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_echo_sessions_target_active '
+          'ON echo_sessions (target_type, target_id, last_active_at)',
+        );
+        await m.database.customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_videos_provider_vid '
+          'ON videos (provider, vid)',
+        );
+        await m.database.customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_videos_local_uri '
+          'ON videos (local_uri)',
+        );
+        await m.database.customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_audios_local_uri '
+          'ON audios (local_uri)',
+        );
+        await m.database.customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_audios_md5 '
+          'ON audios (md5)',
+        );
+        await m.database.customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_dictations_target '
+          'ON dictations (target_type, target_id)',
+        );
+        await m.database.customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_youtube_feed_entries_channel_published '
+          'ON youtube_feed_entries (channel_id, published_at)',
+        );
+        await m.database.customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_youtube_feed_entries_published '
+          'ON youtube_feed_entries (published_at DESC)',
+        );
+        await m.database.customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_sync_queue_retry_created '
+          'ON sync_queue (retry_count, created_at)',
         );
       }
       current = next;

@@ -39,11 +39,19 @@ class AudioDao extends DatabaseAccessor<AppDatabase> with _$AudioDaoMixin {
   Future<void> deleteId(String id) =>
       (delete(audios)..where((t) => t.id.equals(id))).go();
 
-  /// Rows whose [Audios.localUri] equals [localUri] (exact string match).
-  Future<int> countByLocalUri(String localUri) async {
-    final rows = await (select(
-      audios,
-    )..where((t) => t.localUri.equals(localUri))).get();
-    return rows.length;
+  /// Whether any row's [Audios.localUri] equals [localUri] (exact match).
+  ///
+  /// Uses `SELECT 1 … LIMIT 1` (EXISTS) instead of materialising full rows
+  /// just to count them — paired with the `idx_audios_local_uri` index added
+  /// in migration 16 (issue #469).
+  Future<bool> existsByLocalUri(String localUri) async {
+    final row =
+        await (selectOnly(audios)
+              ..addColumns([audios.id])
+              ..where(audios.localUri.equals(localUri))
+              ..limit(1))
+            .map((r) => r.read(audios.id))
+            .getSingleOrNull();
+    return row != null;
   }
 }

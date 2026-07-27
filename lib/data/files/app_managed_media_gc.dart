@@ -25,9 +25,9 @@ Future<bool> isAppManagedMediaStillReferenced({
   if (!await isAppManagedMediaPath(fileUri)) return false;
 
   final inCurrent =
-      await db.audioDao.countByLocalUri(fileUri) +
-      await db.videoDao.countByLocalUri(fileUri);
-  if (inCurrent > 0) return true;
+      await db.audioDao.existsByLocalUri(fileUri) ||
+      await db.videoDao.existsByLocalUri(fileUri);
+  if (inCurrent) return true;
 
   return _otherPerUserDbReferencesLocalUri(
     currentDbBaseName: db.databaseFileBaseName,
