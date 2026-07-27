@@ -351,6 +351,9 @@ class VocabularyRepository {
   }
 
   /// Items + contexts for Anki export (caller applies filters).
+  ///
+  /// Contexts are fetched in a single `WHERE vocabulary_item_id IN (…)`
+  /// query instead of one query per item (issue #468).
   Future<
     ({
       List<VocabularyItem> items,
@@ -359,9 +362,13 @@ class VocabularyRepository {
   >
   loadExportBundle() async {
     final items = await listAll();
+    final allContexts = await _db.vocabularyContextDao.getByItemIds(
+      items.map((e) => e.id),
+    );
     final contextsByItemId = <String, List<VocabularyContext>>{};
-    for (final item in items) {
-      contextsByItemId[item.id] = await getContextsForItem(item.id);
+    for (final row in allContexts) {
+      final ctx = _contextFromRow(row);
+      (contextsByItemId[row.vocabularyItemId] ??= []).add(ctx);
     }
     return (items: items, contextsByItemId: contextsByItemId);
   }

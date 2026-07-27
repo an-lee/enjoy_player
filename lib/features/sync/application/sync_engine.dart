@@ -68,16 +68,25 @@ class SyncEngine {
     // library (ADR-0013). Vocabulary is an intentional exception — a
     // cross-device word book, not local-path media — so it pulls on every
     // signed-in sync alongside the outbound queue drain (ADR-0054).
-    final queueResult = await processQueue(options);
-    final vocabResult = await pullVocabulary();
-    return queueResult.merge(vocabResult);
+    //
+    // processQueue and pullVocabulary don't share state — run them
+    // concurrently (issue #481).
+    final results = await Future.wait([
+      processQueue(options),
+      pullVocabulary(),
+    ]);
+    return results[0].merge(results[1]);
   }
 
   /// Pulls vocabulary items + contexts (ADR-0054 auto-pull exception).
+  ///
+  /// Items + contexts are independent — fetched concurrently (issue #481).
   Future<SyncResult> pullVocabulary() async {
-    final items = await _download.downloadVocabularyItems();
-    final contexts = await _download.downloadVocabularyContexts();
-    return items.merge(contexts);
+    final results = await Future.wait([
+      _download.downloadVocabularyItems(),
+      _download.downloadVocabularyContexts(),
+    ]);
+    return results[0].merge(results[1]);
   }
 
   /// Drains the outbound sync queue.

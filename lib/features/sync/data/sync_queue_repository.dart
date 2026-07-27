@@ -116,22 +116,25 @@ class SyncQueueRepository {
       _db.syncQueueDao.markPermanentlyFailed(id, error: error);
 
   /// Clears error state for permanently failed items so they retry again.
+  ///
+  /// Single bulk UPDATE instead of SELECT+loop-UPDATE (issue #468).
   Future<int> resetFailed() async {
-    final failed = await (_db.select(
+    final failed =
+        await (_db.selectOnly(_db.syncQueue)
+              ..addColumns([_db.syncQueue.id.count()])
+              ..where(_db.syncQueue.retryCount.isBiggerOrEqualValue(5)))
+            .map((row) => row.read<int>(_db.syncQueue.id.count()) ?? 0)
+            .getSingle();
+    if (failed == 0) return 0;
+    await (_db.update(
       _db.syncQueue,
-    )..where((t) => t.retryCount.isBiggerOrEqualValue(5))).get();
-
-    for (final item in failed) {
-      await (_db.update(
-        _db.syncQueue,
-      )..where((t) => t.id.equals(item.id))).write(
-        const SyncQueueCompanion(
-          retryCount: Value(0),
-          error: Value(null),
-          lastAttempt: Value(null),
-        ),
-      );
-    }
-    return failed.length;
+    )..where((t) => t.retryCount.isBiggerOrEqualValue(5))).write(
+      const SyncQueueCompanion(
+        retryCount: Value(0),
+        error: Value(null),
+        lastAttempt: Value(null),
+      ),
+    );
+    return failed;
   }
 }

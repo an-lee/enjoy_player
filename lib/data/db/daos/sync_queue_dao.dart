@@ -26,26 +26,36 @@ class SyncQueueDao extends DatabaseAccessor<AppDatabase>
             ..limit(limit))
           .get();
 
+  /// Increments `retry_count` and stamps `last_attempt` + `error` in a
+  /// single set-based UPDATE — no SELECT round-trip (issue #468).
   Future<void> markAttempted(int id, {String? error}) async {
-    final existing = await (select(
-      syncQueue,
-    )..where((t) => t.id.equals(id))).getSingleOrNull();
-    if (existing == null) return;
-    await (update(syncQueue)..where((t) => t.id.equals(id))).write(
-      SyncQueueCompanion(
-        retryCount: Value(existing.retryCount + 1),
-        lastAttempt: Value(DateTime.now()),
-        error: Value(error),
-      ),
-    );
+    if (error == null) {
+      await customUpdate(
+        'UPDATE sync_queue SET retry_count = retry_count + 1, '
+        'last_attempt = ?, error = NULL WHERE id = ?',
+        variables: [
+          Variable.withDateTime(DateTime.now()),
+          Variable.withInt(id),
+        ],
+        updates: {syncQueue},
+      );
+    } else {
+      await customUpdate(
+        'UPDATE sync_queue SET retry_count = retry_count + 1, '
+        'last_attempt = ?, error = ? WHERE id = ?',
+        variables: [
+          Variable.withDateTime(DateTime.now()),
+          Variable.withString(error),
+          Variable.withInt(id),
+        ],
+        updates: {syncQueue},
+      );
+    }
   }
 
   /// Sets [retryCount] to 5 so the row is no longer eligible for retry.
+  /// Direct UPDATE — no SELECT round-trip (issue #468).
   Future<void> markPermanentlyFailed(int id, {String? error}) async {
-    final existing = await (select(
-      syncQueue,
-    )..where((t) => t.id.equals(id))).getSingleOrNull();
-    if (existing == null) return;
     await (update(syncQueue)..where((t) => t.id.equals(id))).write(
       SyncQueueCompanion(
         retryCount: const Value(5),
