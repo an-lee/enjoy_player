@@ -34,12 +34,13 @@ Future<void> _bootstrap() async {
   // Device-global settings DB + per-user signed-in DB use separate files and
   // executors; Drift's runtime "multiple databases" check is a false positive.
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
-  await DiagnosticLogConfig.loadFromDeviceGlobalSettings();
-  await setupAppLogging();
+  await Future.wait([
+    DiagnosticLogConfig.loadFromDeviceGlobalSettings(),
+    setupAppLogging(),
+    if (defaultTargetPlatform == TargetPlatform.windows)
+      ensureWindowsWebViewEnvironment(),
+  ]);
   _installFrameworkErrorHandlers();
-  if (defaultTargetPlatform == TargetPlatform.windows) {
-    await ensureWindowsWebViewEnvironment();
-  }
   try {
     await writeDiagnosticSessionHeader();
   } on Object catch (e, st) {

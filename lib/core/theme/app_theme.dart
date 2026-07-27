@@ -8,7 +8,13 @@ import 'colors.dart';
 import 'enjoy_tokens.dart';
 import 'typography.dart';
 
+ThemeData? _cachedTheme;
+
 ThemeData buildAppTheme() {
+  return _cachedTheme ??= _buildAppThemeImpl();
+}
+
+ThemeData _buildAppThemeImpl() {
   // ── Color scheme ────────────────────────────────────────────────────────
   final base = ColorScheme.fromSeed(
     seedColor: AppColors.seedBrand,

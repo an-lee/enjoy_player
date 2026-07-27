@@ -14,6 +14,7 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:cross_file/cross_file.dart';
+import 'package:flutter/foundation.dart' hide listEquals;
 import 'package:logging/logging.dart';
 import 'package:media_kit/media_kit.dart' as mk;
 import 'package:path/path.dart' as p;
@@ -151,6 +152,17 @@ class TranscriptRepository {
     final decoded = _decodeTimeline(row.timelineJson);
     _linesCache[row.id] = _LinesCacheEntry(hash, decoded);
     return decoded;
+  }
+
+  /// Pre-decodes [row.timelineJson] in a background isolate and caches the
+  /// result. Call before [linesForRow] to offload the initial parse of large
+  /// transcripts (often 100+ KB) off the UI isolate.
+  Future<void> preloadLinesForRow(TranscriptRow row) async {
+    final hash = _timelineJsonHash(row.timelineJson);
+    final hit = _linesCache[row.id];
+    if (hit != null && hit.hash == hash) return;
+    final decoded = await compute(_decodeTimeline, row.timelineJson);
+    _linesCache[row.id] = _LinesCacheEntry(hash, decoded);
   }
 
   Future<TranscriptRow?> primaryTranscriptRowForMedia(String mediaId) async {
