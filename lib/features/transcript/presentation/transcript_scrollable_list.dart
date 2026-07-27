@@ -424,6 +424,10 @@ class _TranscriptScrollableListState
       transcriptLineRecordingCountsProvider(widget.mediaId),
     );
 
+    final autoTranslateCtrl = ref.read(
+      autoTranslateCtrlProvider(widget.mediaId),
+    );
+
     ref.listen(transcriptPlaybackHighlightProvider(widget.mediaId), (
       prev,
       next,
@@ -506,12 +510,8 @@ class _TranscriptScrollableListState
                   targetLanguage: autoTranslateMode.targetLanguage,
                   matcher: secondaryMatcher,
                   line: line,
-                  isLineFailed: (i) => ref
-                      .read(autoTranslateCtrlProvider(widget.mediaId))
-                      .isLineFailed(i),
-                  isLineInFlight: (i) => ref
-                      .read(autoTranslateCtrlProvider(widget.mediaId))
-                      .isLineInFlight(i),
+                  isLineFailed: autoTranslateCtrl.isLineFailed,
+                  isLineInFlight: autoTranslateCtrl.isLineInFlight,
                   l10nLineFailed: l10n?.subtitlesAutoTranslateLineFailed,
                   l10nLinePending: l10n?.subtitlesAutoTranslatePendingLine,
                 );

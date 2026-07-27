@@ -65,10 +65,11 @@ class TranscriptLineTile extends ConsumerStatefulWidget {
 }
 
 class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
-  bool _hover = false;
+  final _hover = ValueNotifier<bool>(false);
 
   @override
   void dispose() {
+    _hover.dispose();
     super.dispose();
   }
 
@@ -114,28 +115,7 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
     final defaultFg = scheme.onSurface;
 
     final echoCurrent = widget.isActive && widget.inEcho;
-
-    Color? bg;
-    Color? railColor;
-    if (widget.groupedInEcho) {
-      if (echoCurrent) {
-        bg = tok.echoActive.withValues(alpha: 0.06);
-        railColor = null;
-      } else if (widget.inEcho) {
-        bg = Colors.transparent;
-      }
-    } else if (echoCurrent) {
-      bg = tok.echoActive.withValues(alpha: 0.06);
-      railColor = tok.echoActive;
-    } else if (widget.isActive) {
-      bg = scheme.primary.withValues(alpha: 0.08);
-      railColor = scheme.primary;
-    } else if (widget.inEcho) {
-      bg = tok.echoActive.withValues(alpha: 0.04);
-    } else if (_hover) {
-      bg = scheme.onSurface.withValues(alpha: 0.04);
-    }
-
+    final timestampText = formatTranscriptTimestampMs(widget.line.startMs);
     final timestampStyle = typography.timestampStyle;
 
     final primaryPlain = transcriptPlainForSelection(widget.line.text);
@@ -145,9 +125,6 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
     final providerRevealed = ref.watch(
       transcriptCueRevealProvider(widget.mediaId, cueId),
     );
-    // The active playback cue has no privileged state — `providerRevealed`
-    // may be `true` only because the user explicitly hovered or tapped.
-    final isRevealed = !blurEnabled || _hover || providerRevealed;
 
     String statePrefix = '';
     if (l10n != null) {
@@ -160,11 +137,8 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
       }
     }
     final cueLabel = l10n != null
-        ? l10n.transcriptAccessibilityCue(
-            formatTranscriptTimestampMs(widget.line.startMs),
-            _snippet(primaryPlain),
-          )
-        : '${formatTranscriptTimestampMs(widget.line.startMs)}. ${_snippet(primaryPlain)}';
+        ? l10n.transcriptAccessibilityCue(timestampText, _snippet(primaryPlain))
+        : '$timestampText. ${_snippet(primaryPlain)}';
     var semanticsLabel = statePrefix.isEmpty
         ? cueLabel
         : '$statePrefix $cueLabel';
@@ -217,144 +191,169 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
             );
     }
 
-    final blurredPrimary = TranscriptBlurText(
-      revealed: isRevealed,
-      child: primaryWidget,
-    );
-    final blurredSecondary = secondaryWidget == null
-        ? null
-        : TranscriptBlurText(revealed: isRevealed, child: secondaryWidget);
+    return ValueListenableBuilder<bool>(
+      valueListenable: _hover,
+      builder: (context, hover, _) {
+        Color? bg;
+        Color? railColor;
+        if (widget.groupedInEcho) {
+          if (echoCurrent) {
+            bg = tok.echoActive.withValues(alpha: 0.06);
+            railColor = null;
+          } else if (widget.inEcho) {
+            bg = Colors.transparent;
+          }
+        } else if (echoCurrent) {
+          bg = tok.echoActive.withValues(alpha: 0.06);
+          railColor = tok.echoActive;
+        } else if (widget.isActive) {
+          bg = scheme.primary.withValues(alpha: 0.08);
+          railColor = scheme.primary;
+        } else if (widget.inEcho) {
+          bg = tok.echoActive.withValues(alpha: 0.04);
+        } else if (hover) {
+          bg = scheme.onSurface.withValues(alpha: 0.04);
+        }
 
-    final textBody = Padding(
-      padding: tok.transcriptLinePadding,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+        final isRevealed = !blurEnabled || hover || providerRevealed;
+
+        final blurredPrimary = TranscriptBlurText(
+          revealed: isRevealed,
+          child: primaryWidget,
+        );
+        final blurredSecondary = secondaryWidget == null
+            ? null
+            : TranscriptBlurText(revealed: isRevealed, child: secondaryWidget);
+
+        final textBody = Padding(
+          padding: tok.transcriptLinePadding,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                formatTranscriptTimestampMs(widget.line.startMs),
-                style: timestampStyle,
+              Row(
+                children: [
+                  Text(timestampText, style: timestampStyle),
+                  const Spacer(),
+                  TranscriptLineRecordingBadge(count: widget.recordingCount),
+                ],
               ),
-              const Spacer(),
-              TranscriptLineRecordingBadge(count: widget.recordingCount),
+              SizedBox(height: tok.space4),
+              blurredPrimary,
+              if (blurredSecondary != null) ...[
+                SizedBox(height: tok.space8),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border(
+                      left: BorderSide(
+                        color: scheme.onSurfaceVariant.withValues(alpha: 0.22),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.only(left: tok.space12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: blurredSecondary),
+                        if (widget.onRetranslateSecondary != null) ...[
+                          SizedBox(width: tok.space4),
+                          EnjoyTappableIcon(
+                            icon: Icons.refresh_rounded,
+                            tooltip:
+                                AppLocalizations.of(
+                                  context,
+                                )?.subtitlesAutoTranslateRetranslateLine ??
+                                'Re-translate this line',
+                            iconSize: 18,
+                            color: scheme.onSurfaceVariant,
+                            visualDensity: VisualDensity.compact,
+                            onPressed: widget.onRetranslateSecondary,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
-          SizedBox(height: tok.space4),
-          blurredPrimary,
-          if (blurredSecondary != null) ...[
-            SizedBox(height: tok.space8),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                border: Border(
-                  left: BorderSide(
-                    color: scheme.onSurfaceVariant.withValues(alpha: 0.22),
-                    width: 2,
-                  ),
-                ),
-              ),
-              child: Padding(
-                padding: EdgeInsets.only(left: tok.space12),
+        );
+
+        final content = railColor != null
+            ? IntrinsicHeight(
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(child: blurredSecondary),
-                    if (widget.onRetranslateSecondary != null) ...[
-                      SizedBox(width: tok.space4),
-                      EnjoyTappableIcon(
-                        icon: Icons.refresh_rounded,
-                        tooltip:
-                            AppLocalizations.of(
-                              context,
-                            )?.subtitlesAutoTranslateRetranslateLine ??
-                            'Re-translate this line',
-                        iconSize: 18,
-                        color: scheme.onSurfaceVariant,
-                        visualDensity: VisualDensity.compact,
-                        onPressed: widget.onRetranslateSecondary,
+                    AnimatedContainer(
+                      duration: tok.motionFast,
+                      width: 3,
+                      decoration: BoxDecoration(
+                        color: railColor,
+                        borderRadius: BorderRadius.circular(3),
                       ),
-                    ],
+                    ),
+                    Expanded(child: textBody),
                   ],
                 ),
+              )
+            : textBody;
+
+        if (widget.selectable) {
+          return Semantics(
+            container: true,
+            label: semanticsLabel,
+            focusable: true,
+            child: MouseRegion(
+              onEnter: (_) => _hover.value = true,
+              onExit: (_) => _hover.value = false,
+              child: Material(color: bg ?? Colors.transparent, child: content),
+            ),
+          );
+        }
+
+        if (widget.groupedInEcho) {
+          return Semantics(
+            container: true,
+            label: semanticsLabel,
+            button: true,
+            child: Material(
+              color: bg ?? Colors.transparent,
+              child: InkWell(
+                onTap: () => _handleTap(context),
+                highlightColor: scheme.onSurface.withValues(alpha: 0.04),
+                splashColor: scheme.primary.withValues(alpha: 0.06),
+                child: content,
               ),
             ),
-          ],
-        ],
-      ),
-    );
+          );
+        }
 
-    final content = railColor != null
-        ? IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                AnimatedContainer(
-                  duration: tok.motionFast,
-                  width: 3,
-                  decoration: BoxDecoration(
-                    color: railColor,
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
-                Expanded(child: textBody),
-              ],
+        return Semantics(
+          container: true,
+          label: semanticsLabel,
+          button: true,
+          child: MouseRegion(
+            onEnter: (_) => _hover.value = true,
+            onExit: (_) => _hover.value = false,
+            child: Material(
+              color: bg ?? Colors.transparent,
+              clipBehavior: Clip.antiAlias,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(tok.radiusSm),
+              ),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(tok.radiusSm),
+                onTap: () => _handleTap(context),
+                hoverColor: Colors.transparent,
+                highlightColor: scheme.primary.withValues(alpha: 0.06),
+                splashColor: scheme.primary.withValues(alpha: 0.10),
+                child: content,
+              ),
             ),
-          )
-        : textBody;
-
-    if (widget.selectable) {
-      return Semantics(
-        container: true,
-        label: semanticsLabel,
-        focusable: true,
-        child: MouseRegion(
-          onEnter: (_) => setState(() => _hover = true),
-          onExit: (_) => setState(() => _hover = false),
-          child: Material(color: bg ?? Colors.transparent, child: content),
-        ),
-      );
-    }
-
-    if (widget.groupedInEcho) {
-      return Semantics(
-        container: true,
-        label: semanticsLabel,
-        button: true,
-        child: Material(
-          color: bg ?? Colors.transparent,
-          child: InkWell(
-            onTap: () => _handleTap(context),
-            highlightColor: scheme.onSurface.withValues(alpha: 0.04),
-            splashColor: scheme.primary.withValues(alpha: 0.06),
-            child: content,
           ),
-        ),
-      );
-    }
-
-    return Semantics(
-      container: true,
-      label: semanticsLabel,
-      button: true,
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hover = true),
-        onExit: (_) => setState(() => _hover = false),
-        child: Material(
-          color: bg ?? Colors.transparent,
-          clipBehavior: Clip.antiAlias,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(tok.radiusSm),
-          ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(tok.radiusSm),
-            onTap: () => _handleTap(context),
-            hoverColor: Colors.transparent,
-            highlightColor: scheme.primary.withValues(alpha: 0.06),
-            splashColor: scheme.primary.withValues(alpha: 0.10),
-            child: content,
-          ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

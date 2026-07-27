@@ -37,10 +37,17 @@ class TranscriptBlurText extends StatelessWidget {
   /// Blur radius (constant in v1 — see spec assumption).
   final double sigma;
 
+  static final _defaultBlurFilter = ui.ImageFilter.blur(
+    sigmaX: 6.0,
+    sigmaY: 6.0,
+  );
+
   @override
   Widget build(BuildContext context) {
     if (revealed) return child;
-    final filter = ui.ImageFilter.blur(sigmaX: sigma, sigmaY: sigma);
+    final filter = sigma == 6.0
+        ? _defaultBlurFilter
+        : ui.ImageFilter.blur(sigmaX: sigma, sigmaY: sigma);
     return ImageFiltered(imageFilter: filter, child: child);
   }
 }

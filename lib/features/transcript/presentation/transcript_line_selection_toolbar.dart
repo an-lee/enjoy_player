@@ -33,12 +33,16 @@ class TranscriptSelectableRichText extends StatefulWidget {
 class _TranscriptSelectableRichTextState
     extends State<TranscriptSelectableRichText> {
   Timer? _selectionToolbarTimer;
+  EditableTextState? _cachedEditable;
+  BuildContext? _cachedEditableContext;
 
   static const _toolbarDebounce = Duration(milliseconds: 200);
 
   @override
   void dispose() {
     _selectionToolbarTimer?.cancel();
+    _cachedEditable = null;
+    _cachedEditableContext = null;
     super.dispose();
   }
 
@@ -59,6 +63,17 @@ class _TranscriptSelectableRichTextState
     return found;
   }
 
+  EditableTextState? _getEditableTextState(BuildContext context) {
+    if (_cachedEditable != null &&
+        _cachedEditableContext == context &&
+        _cachedEditable!.mounted) {
+      return _cachedEditable;
+    }
+    _cachedEditableContext = context;
+    _cachedEditable = _findEditableTextState(context);
+    return _cachedEditable;
+  }
+
   void _onSelectionChanged(
     BuildContext selectableSubtreeContext,
     TextSelection selection,
@@ -74,7 +89,7 @@ class _TranscriptSelectableRichTextState
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         if (!selectableSubtreeContext.mounted) return;
-        final editable = _findEditableTextState(selectableSubtreeContext);
+        final editable = _getEditableTextState(selectableSubtreeContext);
         if (editable == null || !editable.mounted) return;
         editable.hideToolbar();
       });
@@ -84,7 +99,7 @@ class _TranscriptSelectableRichTextState
       _selectionToolbarTimer = null;
       if (!mounted) return;
       if (!selectableSubtreeContext.mounted) return;
-      final editable = _findEditableTextState(selectableSubtreeContext);
+      final editable = _getEditableTextState(selectableSubtreeContext);
       if (editable == null || !editable.mounted) return;
       final sel = editable.textEditingValue.selection;
       if (!sel.isValid || sel.isCollapsed) return;
