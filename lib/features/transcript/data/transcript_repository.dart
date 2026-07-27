@@ -14,6 +14,7 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:cross_file/cross_file.dart';
+import 'package:drift/drift.dart' show InsertMode;
 import 'package:logging/logging.dart';
 import 'package:media_kit/media_kit.dart' as mk;
 import 'package:path/path.dart' as p;
@@ -199,13 +200,13 @@ class TranscriptRepository {
       return const TranscriptResolveResult(hasTracks: false);
     }
 
-    await ensurePrimaryTranscript(mediaId);
+    await ensurePrimaryTranscript(mediaId, targetType: tt);
     try {
       await importSidecarSubtitles(mediaId);
     } on Object catch (e, st) {
       _log.warning('importSidecarSubtitles failed for $mediaId', e, st);
     }
-    await ensurePrimaryTranscript(mediaId);
+    await ensurePrimaryTranscript(mediaId, targetType: tt);
 
     TranscriptCloudFetchResult cloud = const TranscriptCloudFetchResult(
       status: TranscriptCloudFetchStatus.skipped,
@@ -217,7 +218,7 @@ class TranscriptRepository {
         nativeLanguage: nativeLanguage,
         learningLanguage: learningLanguage,
       );
-      await ensurePrimaryTranscript(mediaId);
+      await ensurePrimaryTranscript(mediaId, targetType: tt);
     }
 
     final hasTracks = (await _db.transcriptDao.listForTarget(
@@ -240,8 +241,15 @@ class TranscriptRepository {
   }
 
   /// Assigns primary transcript when tracks exist but session has none.
-  Future<bool> ensurePrimaryTranscript(String mediaId) async {
-    final tt = await dexieTargetTypeForId(_db, mediaId);
+  ///
+  /// When [targetType] is provided, skips the `dexieTargetTypeForId`
+  /// lookup (issue #481 — avoids redundant queries when the caller
+  /// already resolved the type).
+  Future<bool> ensurePrimaryTranscript(
+    String mediaId, {
+    String? targetType,
+  }) async {
+    final tt = targetType ?? await dexieTargetTypeForId(_db, mediaId);
     if (tt == null) return false;
 
     final session = await _db.echoSessionDao.getLatestForTarget(tt, mediaId);
@@ -352,13 +360,21 @@ class TranscriptRepository {
     try {
       final list = await api.transcripts(targetId: mediaId, targetType: tt);
       final now = DateTime.now();
-      var storedCount = 0;
+      final rowsToUpsert = <TranscriptRow>[];
       for (final item in list) {
         final row = _transcriptRowFromServerMap(item, fallbackNow: now);
-        if (row == null) continue;
-        await _db.transcriptDao.upsert(row);
-        storedCount++;
+        if (row != null) rowsToUpsert.add(row);
       }
+      if (rowsToUpsert.isNotEmpty) {
+        await _db.batch(
+          (b) => b.insertAll(
+            _db.transcripts,
+            rowsToUpsert,
+            mode: InsertMode.insertOrReplace,
+          ),
+        );
+      }
+      final storedCount = rowsToUpsert.length;
 
       if (list.isNotEmpty && storedCount == 0) {
         return const TranscriptCloudFetchResult(
@@ -368,7 +384,7 @@ class TranscriptRepository {
       }
 
       if (storedCount > 0) {
-        await ensurePrimaryTranscript(mediaId);
+        await ensurePrimaryTranscript(mediaId, targetType: tt);
         return TranscriptCloudFetchResult(
           status: TranscriptCloudFetchStatus.success,
           storedCount: storedCount,

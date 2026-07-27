@@ -580,13 +580,11 @@ class MediaLibraryRepository {
 
       // Drop all prior transcripts for this media — solid rewrite replaces
       // the primary track; blank clears estimated/stale cues entirely.
-      final oldTranscripts = await _db.transcriptDao.listForTarget(
-        'Audio',
-        mediaId,
+      // Single bulk DELETE instead of per-row loop (issue #468).
+      await _db.customStatement(
+        'DELETE FROM transcripts WHERE target_type = ? AND target_id = ?',
+        ['Audio', mediaId],
       );
-      for (final t in oldTranscripts) {
-        await _db.transcriptDao.deleteId(t.id);
-      }
 
       if (primaryTimelineJson != null) {
         await _db.transcriptDao.upsert(

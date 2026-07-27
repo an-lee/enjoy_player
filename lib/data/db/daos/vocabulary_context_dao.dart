@@ -10,6 +10,16 @@ class VocabularyContextDao extends DatabaseAccessor<AppDatabase>
         vocabularyContexts,
       )..where((t) => t.vocabularyItemId.equals(vocabularyItemId))).get();
 
+  /// Bulk-fetch all contexts for the given item ids in a single query
+  /// (issue #468 — eliminates N+1 in vocabulary export).
+  Future<List<VocabularyContextRow>> getByItemIds(Iterable<String> itemIds) {
+    final ids = itemIds.toList();
+    if (ids.isEmpty) return Future.value([]);
+    return (select(
+      vocabularyContexts,
+    )..where((t) => t.vocabularyItemId.isIn(ids))).get();
+  }
+
   Future<List<VocabularyContextRow>> getByItemAndSource({
     required String vocabularyItemId,
     required String sourceType,
