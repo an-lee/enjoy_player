@@ -49,11 +49,17 @@ class _StyleFrame {
   }
 }
 
+final _tagStripRegExp = RegExp(r'<[^>]*>');
+final _whitespaceSplitRegExp = RegExp(r'\s+');
+
+final _parseCache = <String, List<SubtitleTextSegment>>{};
+const _maxParseCacheSize = 256;
+
 /// Plain text with markup tags removed (preserves inner text and `<br>` breaks).
 String plainTextFromSubtitleMarkup(String input) {
   final segments = parseSubtitleMarkup(input);
   if (segments.isEmpty) {
-    final plain = input.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+    final plain = input.replaceAll(_tagStripRegExp, '').trim();
     return plain.isEmpty ? input.trim() : plain;
   }
   return segments.map((s) => s.text).join().trim();
@@ -62,6 +68,9 @@ String plainTextFromSubtitleMarkup(String input) {
 /// Parses [input] into styled segments for rich text rendering.
 List<SubtitleTextSegment> parseSubtitleMarkup(String input) {
   if (input.isEmpty) return const [];
+
+  final cached = _parseCache[input];
+  if (cached != null) return cached;
 
   final out = <SubtitleTextSegment>[];
   final stack = <_StyleFrame>[
@@ -127,7 +136,7 @@ List<SubtitleTextSegment> parseSubtitleMarkup(String input) {
     final isClosing = tagRaw.startsWith('/');
     final tagInner = isClosing ? tagRaw.substring(1).trim() : tagRaw;
     final tagLower = tagInner.toLowerCase();
-    final firstToken = tagLower.split(RegExp(r'\s+')).first;
+    final firstToken = tagLower.split(_whitespaceSplitRegExp).first;
 
     if (!isClosing) {
       if (firstToken == 'br') {
@@ -177,7 +186,12 @@ List<SubtitleTextSegment> parseSubtitleMarkup(String input) {
 
   flush();
 
-  return _mergeAdjacentSameStyle(out);
+  final result = _mergeAdjacentSameStyle(out);
+  if (_parseCache.length >= _maxParseCacheSize) {
+    _parseCache.remove(_parseCache.keys.first);
+  }
+  _parseCache[input] = result;
+  return result;
 }
 
 /// Decodes `&...;` between [start] and [semi] (inclusive of semicolon at [semi]).
@@ -208,11 +222,13 @@ String _decodeEntityAt(String input, int start, int semi) {
   }
 }
 
+final _colorAttrRegExp = RegExp(
+  r'''color\s*=\s*["']([^"']+)["']''',
+  caseSensitive: false,
+);
+
 int? _extractColorAttribute(String tagInner) {
-  final m = RegExp(
-    r'''color\s*=\s*["']([^"']+)["']''',
-    caseSensitive: false,
-  ).firstMatch(tagInner);
+  final m = _colorAttrRegExp.firstMatch(tagInner);
   if (m == null) return null;
   return parseSubtitleColorToArgb(m.group(1)!);
 }

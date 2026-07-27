@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 
 import 'package:enjoy_player/data/subtitle/subtitle_markup_parser.dart';
 
+final _tagStripRegExp = RegExp(r'<[^>]*>');
+
 /// Plain text as rendered by [transcriptMarkupToTextSpan] (for selection indices).
 String transcriptPlainForSelection(String raw) {
   final segments = parseSubtitleMarkup(raw);
   if (segments.isEmpty) {
-    final plain = raw.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+    final plain = raw.replaceAll(_tagStripRegExp, '').trim();
     return plain.isEmpty ? raw : plain;
   }
   return segments.map((s) => s.text).join();
@@ -36,7 +38,7 @@ TextSpan transcriptMarkupToTextSpan(
 }) {
   final segments = parseSubtitleMarkup(raw);
   if (segments.isEmpty) {
-    final plain = raw.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+    final plain = raw.replaceAll(_tagStripRegExp, '').trim();
     final text = plain.isEmpty ? raw : plain;
     return TextSpan(
       text: text,
