@@ -245,7 +245,7 @@ class _SynthesizeToolState extends ConsumerState<SynthesizeTool> {
     } else {
       await _audioPlayer!.play(BytesSource(bytes));
       setState(() => _isPlaying = true);
-      _completeSub?.cancel();
+      unawaited(_completeSub?.cancel());
       _completeSub = _audioPlayer!.onPlayerComplete.listen((_) {
         if (mounted) setState(() => _isPlaying = false);
       });
