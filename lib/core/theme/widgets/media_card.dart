@@ -8,6 +8,7 @@ library;
 import 'dart:async';
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import 'package:enjoy_player/core/interaction/haptics.dart';
@@ -227,8 +228,14 @@ class MediaCardTile extends StatefulWidget {
 }
 
 class _MediaCardTileState extends State<MediaCardTile> {
-  bool _hover = false;
+  final _hover = ValueNotifier<bool>(false);
   bool _deleteFocused = false;
+
+  @override
+  void dispose() {
+    _hover.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -239,8 +246,8 @@ class _MediaCardTileState extends State<MediaCardTile> {
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = false),
+      onEnter: (_) => _hover.value = true,
+      onExit: (_) => _hover.value = false,
       child: Material(
         color: Colors.transparent,
         clipBehavior: Clip.antiAlias,
@@ -263,31 +270,37 @@ class _MediaCardTileState extends State<MediaCardTile> {
           hoverColor: cs.onSurface.withValues(alpha: 0.04),
           splashColor: accent.withValues(alpha: 0.12),
           highlightColor: accent.withValues(alpha: 0.06),
-          child: AnimatedContainer(
-            duration: t.motionFast,
-            curve: Curves.easeOutCubic,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(t.radiusXl),
-              color: _hover
-                  ? accent.withValues(alpha: 0.08)
-                  : cs.surfaceContainerLow,
-              border: Border.all(
-                color: _hover
-                    ? accent.withValues(alpha: 0.6)
-                    : cs.outlineVariant.withValues(alpha: 0.25),
-                width: _hover ? 1.5 : 1,
-              ),
-              boxShadow: _hover
-                  ? [
-                      BoxShadow(
-                        color: accent.withValues(alpha: 0.12),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
-                      ),
-                    ]
-                  : null,
-            ),
+          child: ValueListenableBuilder<bool>(
+            valueListenable: _hover,
+            builder: (context, hover, child) {
+              return AnimatedContainer(
+                duration: t.motionFast,
+                curve: Curves.easeOutCubic,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(t.radiusXl),
+                  color: hover
+                      ? accent.withValues(alpha: 0.08)
+                      : cs.surfaceContainerLow,
+                  border: Border.all(
+                    color: hover
+                        ? accent.withValues(alpha: 0.6)
+                        : cs.outlineVariant.withValues(alpha: 0.25),
+                    width: hover ? 1.5 : 1,
+                  ),
+                  boxShadow: hover
+                      ? [
+                          BoxShadow(
+                            color: accent.withValues(alpha: 0.12),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: child,
+              );
+            },
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
@@ -373,42 +386,43 @@ class _MediaCardTileState extends State<MediaCardTile> {
                             child: Focus(
                               onFocusChange: (f) =>
                                   setState(() => _deleteFocused = f),
-                              child: Builder(
-                                builder: (context) {
-                                  final strong = _hover || _deleteFocused;
+                              child: ValueListenableBuilder<bool>(
+                                valueListenable: _hover,
+                                builder: (context, hover, child) {
+                                  final strong = hover || _deleteFocused;
                                   return AnimatedOpacity(
                                     opacity: strong ? 1 : 0.45,
                                     duration: t.motionFast,
                                     curve: Curves.easeOut,
-                                    child: IconButton(
-                                      visualDensity: VisualDensity.compact,
-                                      iconSize: 20,
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(
-                                        minWidth: 40,
-                                        minHeight: 40,
-                                      ),
-                                      tooltip:
-                                          (widget.deleteTooltip != null &&
-                                              widget.deleteTooltip!.isNotEmpty)
-                                          ? widget.deleteTooltip!
-                                          : MaterialLocalizations.of(
-                                              context,
-                                            ).deleteButtonTooltip,
-                                      style: IconButton.styleFrom(
-                                        backgroundColor: cs
-                                            .surfaceContainerHighest
-                                            .withValues(alpha: 0.92),
-                                        foregroundColor: cs.onSurfaceVariant,
-                                        shape: const CircleBorder(),
-                                      ),
-                                      icon: const Icon(
-                                        Icons.delete_outline_rounded,
-                                      ),
-                                      onPressed: widget.onDelete,
-                                    ),
+                                    child: child,
                                   );
                                 },
+                                child: IconButton(
+                                  visualDensity: VisualDensity.compact,
+                                  iconSize: 20,
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 40,
+                                    minHeight: 40,
+                                  ),
+                                  tooltip:
+                                      (widget.deleteTooltip != null &&
+                                          widget.deleteTooltip!.isNotEmpty)
+                                      ? widget.deleteTooltip!
+                                      : MaterialLocalizations.of(
+                                          context,
+                                        ).deleteButtonTooltip,
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: cs.surfaceContainerHighest
+                                        .withValues(alpha: 0.92),
+                                    foregroundColor: cs.onSurfaceVariant,
+                                    shape: const CircleBorder(),
+                                  ),
+                                  icon: const Icon(
+                                    Icons.delete_outline_rounded,
+                                  ),
+                                  onPressed: widget.onDelete,
+                                ),
                               ),
                             ),
                           ),
@@ -514,8 +528,14 @@ class MediaCardRow extends StatefulWidget {
 }
 
 class _MediaCardRowState extends State<MediaCardRow> {
-  bool _hover = false;
+  final _hover = ValueNotifier<bool>(false);
   bool _deleteFocused = false;
+
+  @override
+  void dispose() {
+    _hover.dispose();
+    super.dispose();
+  }
 
   Widget _buildTrailing(ColorScheme cs, EnjoyThemeTokens t) {
     if (widget.trailing != null) return widget.trailing!;
@@ -525,33 +545,32 @@ class _MediaCardRowState extends State<MediaCardRow> {
         children: [
           Focus(
             onFocusChange: (f) => setState(() => _deleteFocused = f),
-            child: Builder(
-              builder: (context) {
-                final strong = _hover || _deleteFocused;
+            child: ValueListenableBuilder<bool>(
+              valueListenable: _hover,
+              builder: (context, hover, child) {
+                final strong = hover || _deleteFocused;
                 return AnimatedOpacity(
                   opacity: strong ? 1 : 0.45,
                   duration: t.motionFast,
                   curve: Curves.easeOut,
-                  child: IconButton(
-                    visualDensity: VisualDensity.compact,
-                    iconSize: 22,
-                    constraints: const BoxConstraints(
-                      minWidth: 40,
-                      minHeight: 40,
-                    ),
-                    tooltip:
-                        (widget.deleteTooltip != null &&
-                            widget.deleteTooltip!.isNotEmpty)
-                        ? widget.deleteTooltip!
-                        : MaterialLocalizations.of(context).deleteButtonTooltip,
-                    onPressed: widget.onDelete,
-                    icon: Icon(
-                      Icons.delete_outline_rounded,
-                      color: cs.onSurfaceVariant,
-                    ),
-                  ),
+                  child: child,
                 );
               },
+              child: IconButton(
+                visualDensity: VisualDensity.compact,
+                iconSize: 22,
+                constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                tooltip:
+                    (widget.deleteTooltip != null &&
+                        widget.deleteTooltip!.isNotEmpty)
+                    ? widget.deleteTooltip!
+                    : MaterialLocalizations.of(context).deleteButtonTooltip,
+                onPressed: widget.onDelete,
+                icon: Icon(
+                  Icons.delete_outline_rounded,
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
             ),
           ),
           Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
@@ -570,8 +589,8 @@ class _MediaCardRowState extends State<MediaCardRow> {
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = false),
+      onEnter: (_) => _hover.value = true,
+      onExit: (_) => _hover.value = false,
       child: Material(
         color: Colors.transparent,
         clipBehavior: Clip.antiAlias,
@@ -597,22 +616,28 @@ class _MediaCardRowState extends State<MediaCardRow> {
           hoverColor: cs.onSurface.withValues(alpha: 0.04),
           splashColor: accent.withValues(alpha: 0.10),
           highlightColor: accent.withValues(alpha: 0.05),
-          child: AnimatedContainer(
-            duration: t.motionFast,
-            curve: Curves.easeOutCubic,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(t.radiusLg),
-              color: _hover
-                  ? accent.withValues(alpha: 0.06)
-                  : cs.surfaceContainerLow,
-              border: Border.all(
-                color: _hover
-                    ? accent.withValues(alpha: 0.45)
-                    : cs.outlineVariant.withValues(alpha: 0.2),
-                width: _hover ? 1.5 : 1,
-              ),
-            ),
+          child: ValueListenableBuilder<bool>(
+            valueListenable: _hover,
+            builder: (context, hover, child) {
+              return AnimatedContainer(
+                duration: t.motionFast,
+                curve: Curves.easeOutCubic,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(t.radiusLg),
+                  color: hover
+                      ? accent.withValues(alpha: 0.06)
+                      : cs.surfaceContainerLow,
+                  border: Border.all(
+                    color: hover
+                        ? accent.withValues(alpha: 0.45)
+                        : cs.outlineVariant.withValues(alpha: 0.2),
+                    width: hover ? 1.5 : 1,
+                  ),
+                ),
+                child: child,
+              );
+            },
             child: Padding(
               padding: EdgeInsets.symmetric(
                 horizontal: t.space16,
@@ -729,19 +754,16 @@ class _Thumbnail extends StatelessWidget {
   static const _coverFit = BoxFit.cover;
 
   Widget _networkImage(String url) {
-    return Image.network(
-      url,
+    return CachedNetworkImage(
+      imageUrl: url,
       fit: _coverFit,
       width: double.infinity,
       height: double.infinity,
-      gaplessPlayback: true,
-      loadingBuilder: (context, child, progress) {
-        if (progress == null) return child;
-        return _loading();
-      },
-      errorBuilder: (_, _, _) {
-        final mqFallback = youtubeMqFallbackForCardUrl(url);
-        if (mqFallback != null && mqFallback != url) {
+      memCacheWidth: 600,
+      placeholder: (context, _) => _loading(),
+      errorWidget: (context, attemptedUrl, _) {
+        final mqFallback = youtubeMqFallbackForCardUrl(attemptedUrl);
+        if (mqFallback != null && mqFallback != attemptedUrl) {
           return _networkImage(mqFallback);
         }
         return _fallback();
@@ -776,6 +798,7 @@ class _Thumbnail extends StatelessWidget {
         fit: _coverFit,
         width: double.infinity,
         height: double.infinity,
+        cacheWidth: 600,
         gaplessPlayback: true,
         frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
           if (wasSynchronouslyLoaded || frame != null) return child;
