@@ -270,7 +270,13 @@ void _paintDiagonal(
   }
 }
 
+final Map<String, _CoverSpec> _specCache = {};
+const int _specCacheLimit = 64;
+
 _CoverSpec _computeSpec(String seed) {
+  final cached = _specCache[seed];
+  if (cached != null) return cached;
+
   final palette = _getPalette(seed);
   final patternType = _getPatternType(seed);
   final rng = _Rng(hashToNumber(seed, 8));
@@ -308,13 +314,19 @@ _CoverSpec _computeSpec(String seed) {
     }
   }
 
-  return _CoverSpec(
+  final result = _CoverSpec(
     angleDeg: angle,
     gradientStart: gradientStart,
     gradientEnd: gradientEnd,
     onPaintForeground: paintForeground,
     accent: accent,
   );
+
+  if (_specCache.length >= _specCacheLimit) {
+    _specCache.remove(_specCache.keys.first);
+  }
+  _specCache[seed] = result;
+  return result;
 }
 
 class _GenerativeCoverPainter extends CustomPainter {
@@ -347,23 +359,24 @@ class _GenerativeCoverPainter extends CustomPainter {
 }
 
 class _NoisePainter extends CustomPainter {
-  _NoisePainter({required this.seed, required this.opacity});
+  _NoisePainter({required this.seed, required this.opacity})
+    : _rnd = math.Random(hashToNumber(seed, 16));
 
   final String seed;
   final double opacity;
+  final math.Random _rnd;
 
   @override
   void paint(Canvas canvas, Size size) {
     if (opacity <= 0) return;
-    final rnd = math.Random(hashToNumber(seed, 16));
     final paint = Paint()
       ..strokeWidth = 1
       ..style = PaintingStyle.fill;
     // Sparse grain — cheap stand-in for SVG fractal noise.
     for (var i = 0; i < 180; i++) {
-      final x = rnd.nextDouble() * size.width;
-      final y = rnd.nextDouble() * size.height;
-      paint.color = Colors.black.withValues(alpha: opacity * rnd.nextDouble());
+      final x = _rnd.nextDouble() * size.width;
+      final y = _rnd.nextDouble() * size.height;
+      paint.color = Colors.black.withValues(alpha: opacity * _rnd.nextDouble());
       canvas.drawCircle(Offset(x, y), 0.8, paint);
     }
   }
