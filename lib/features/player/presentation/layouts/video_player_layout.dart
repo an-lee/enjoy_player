@@ -52,23 +52,6 @@ class _VideoPlayerLayoutState extends State<VideoPlayerLayout> {
   /// Minimum transcript column width when layout allows it.
   static const double _kMinTranscriptWidth = 360;
 
-  @override
-  void initState() {
-    super.initState();
-    _transcriptWidthPx = widget.initialTranscriptSplitWidthPx;
-  }
-
-  @override
-  void didUpdateWidget(covariant VideoPlayerLayout oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.initialTranscriptSplitWidthPx !=
-            oldWidget.initialTranscriptSplitWidthPx &&
-        widget.initialTranscriptSplitWidthPx != null &&
-        _transcriptWidthPx == null) {
-      _transcriptWidthPx = widget.initialTranscriptSplitWidthPx;
-    }
-  }
-
   /// Transcript may use at most this fraction of total width (video keeps >=50%).
   static const double _kMaxTranscriptFraction = 0.5;
 
@@ -83,35 +66,51 @@ class _VideoPlayerLayoutState extends State<VideoPlayerLayout> {
   static const double _kMobileVideoAspectHeight = 9;
 
   /// User-chosen transcript width in pixels; `null` = use default fraction.
-  double? _transcriptWidthPx;
+  late final ValueNotifier<double?> _transcriptWidthNotifier = ValueNotifier(
+    widget.initialTranscriptSplitWidthPx,
+  );
 
   /// Hover on splitter (desktop) for a faint affordance — no hard divider line.
-  bool _splitterHovered = false;
+  final ValueNotifier<bool> _splitterHovered = ValueNotifier(false);
 
   /// Whether the mouse hovers the video column (desktop side-by-side only).
-  bool _videoColumnHovered = false;
+  final ValueNotifier<bool> _videoColumnHovered = ValueNotifier(false);
 
-  void _setVideoColumnHovered(bool hovered) {
-    if (!mounted || hovered == _videoColumnHovered) return;
-    setState(() => _videoColumnHovered = hovered);
+  @override
+  void didUpdateWidget(covariant VideoPlayerLayout oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialTranscriptSplitWidthPx !=
+            oldWidget.initialTranscriptSplitWidthPx &&
+        widget.initialTranscriptSplitWidthPx != null &&
+        _transcriptWidthNotifier.value == null) {
+      _transcriptWidthNotifier.value = widget.initialTranscriptSplitWidthPx;
+    }
   }
 
-  double _transcriptWidthForTotal(double totalWidth) {
+  @override
+  void dispose() {
+    _transcriptWidthNotifier.dispose();
+    _splitterHovered.dispose();
+    _videoColumnHovered.dispose();
+    super.dispose();
+  }
+
+  double _transcriptWidthForTotal(double totalWidth, double? widthPx) {
     final maxW = totalWidth * _kMaxTranscriptFraction;
     final minW = math.min(_kMinTranscriptWidth, maxW);
     final defaultW = totalWidth * _kDefaultTranscriptFraction;
-    final raw = _transcriptWidthPx ?? defaultW;
+    final raw = widthPx ?? defaultW;
     return raw.clamp(minW, maxW);
   }
 
   void _applyDragDelta(double totalWidth, double deltaDx) {
     final maxW = totalWidth * _kMaxTranscriptFraction;
     final minW = math.min(_kMinTranscriptWidth, maxW);
-    final current = _transcriptWidthForTotal(totalWidth);
-    setState(() {
-      // Drag left widens transcript, drag right narrows it.
-      _transcriptWidthPx = (current - deltaDx).clamp(minW, maxW);
-    });
+    final current = _transcriptWidthForTotal(
+      totalWidth,
+      _transcriptWidthNotifier.value,
+    );
+    _transcriptWidthNotifier.value = (current - deltaDx).clamp(minW, maxW);
   }
 
   @override
@@ -129,56 +128,77 @@ class _VideoPlayerLayoutState extends State<VideoPlayerLayout> {
 
         if (useSideBySide) {
           final total = constraints.maxWidth;
-          final tw = _transcriptWidthForTotal(total);
-          final vw = math.max(0.0, total - tw - _kSplitterHitWidth);
+          return ValueListenableBuilder<double?>(
+            valueListenable: _transcriptWidthNotifier,
+            builder: (context, widthPx, child) {
+              final tw = _transcriptWidthForTotal(total, widthPx);
+              final vw = math.max(0.0, total - tw - _kSplitterHitWidth);
 
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SizedBox(
-                width: vw,
-                child: SafeArea(
-                  top: true,
-                  bottom: false,
-                  left: false,
-                  right: false,
-                  child: _VideoColumn(
-                    engine: widget.engine,
-                    isHovered: _videoColumnHovered,
-                    onHoverChanged: _setVideoColumnHovered,
-                    showButtonsInTitleBar: true,
-                    surfaceOverlay: widget.surfaceOverlay,
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ValueListenableBuilder<bool>(
+                    valueListenable: _videoColumnHovered,
+                    builder: (context, hovered, _) {
+                      return SizedBox(
+                        width: vw,
+                        child: SafeArea(
+                          top: true,
+                          bottom: false,
+                          left: false,
+                          right: false,
+                          child: _VideoColumn(
+                            engine: widget.engine,
+                            isHovered: hovered,
+                            onHoverChanged: (v) =>
+                                _videoColumnHovered.value = v,
+                            showButtonsInTitleBar: true,
+                            surfaceOverlay: widget.surfaceOverlay,
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                ),
-              ),
-              _ResizeSplitter(
-                hitWidth: _kSplitterHitWidth,
-                hovered: _splitterHovered,
-                onHover: (v) => setState(() => _splitterHovered = v),
-                semanticLabel: AppLocalizations.of(
-                  context,
-                )!.playerTranscriptResizeHint,
-                onDragDelta: (dx) => _applyDragDelta(total, dx),
-                onDragEnd: () => widget.onTranscriptSplitWidthCommitted?.call(
-                  _transcriptWidthForTotal(total),
-                ),
-              ),
-              SizedBox(
-                width: tw,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: cs.surface,
-                    border: Border(
-                      left: BorderSide(
-                        color: cs.outlineVariant.withValues(alpha: 0.4),
-                        width: 1,
+                  ValueListenableBuilder<bool>(
+                    valueListenable: _splitterHovered,
+                    builder: (context, splitterHovered, _) {
+                      return _ResizeSplitter(
+                        hitWidth: _kSplitterHitWidth,
+                        hovered: splitterHovered,
+                        onHover: (v) => _splitterHovered.value = v,
+                        semanticLabel: AppLocalizations.of(
+                          context,
+                        )!.playerTranscriptResizeHint,
+                        onDragDelta: (dx) => _applyDragDelta(total, dx),
+                        onDragEnd: () =>
+                            widget.onTranscriptSplitWidthCommitted?.call(
+                              _transcriptWidthForTotal(
+                                total,
+                                _transcriptWidthNotifier.value,
+                              ),
+                            ),
+                      );
+                    },
+                  ),
+                  SizedBox(
+                    width: tw,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: cs.surface,
+                        border: Border(
+                          left: BorderSide(
+                            color: cs.outlineVariant.withValues(alpha: 0.4),
+                            width: 1,
+                          ),
+                        ),
                       ),
+                      child: child,
                     ),
                   ),
-                  child: widget.transcript,
-                ),
-              ),
-            ],
+                ],
+              );
+            },
+            child: widget.transcript,
           );
         }
 
