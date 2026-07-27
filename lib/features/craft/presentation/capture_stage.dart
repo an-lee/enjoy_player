@@ -576,15 +576,21 @@ class _RecordingViewState extends State<_RecordingView>
             ),
           ),
           const SizedBox(height: 28),
-          SizedBox(
-            height: 56,
-            child: CustomPaint(
-              size: const Size(double.infinity, 56),
-              painter: _AmplitudeBarsPainter(
-                buffer: widget.amplitudeBuffer,
-                count: count,
-                writeIndex: widget.amplitudeWriteIndex,
-                color: scheme.primary,
+          // Fixed-width track so bars stay centered with the timer / stop
+          // control (CustomPaint alone expands to max width and left-aligns).
+          Center(
+            child: SizedBox(
+              width: _AmplitudeBarsPainter.trackWidthFor(
+                widget.amplitudeBuffer.length,
+              ),
+              height: 56,
+              child: CustomPaint(
+                painter: _AmplitudeBarsPainter(
+                  buffer: widget.amplitudeBuffer,
+                  count: count,
+                  writeIndex: widget.amplitudeWriteIndex,
+                  color: scheme.primary,
+                ),
               ),
             ),
           ),
@@ -659,6 +665,13 @@ class _AmplitudeBarsPainter extends CustomPainter {
     required this.color,
   });
 
+  static const double _barWidth = 3.5;
+  static const double _spacing = 3.0;
+
+  /// Width of a fixed [barCount]-slot amplitude track.
+  static double trackWidthFor(int barCount) =>
+      barCount * _barWidth + (barCount - 1) * _spacing;
+
   final Float32List buffer;
   final int count;
   final int writeIndex;
@@ -667,21 +680,26 @@ class _AmplitudeBarsPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..style = PaintingStyle.fill;
-    const barWidth = 3.5;
-    const spacing = 3.0;
     const minHeight = 6.0;
     final maxHeight = size.height;
     final radius = const Radius.circular(2);
+    // Keep the full buffer-length track centered; samples fill L→R inside it
+    // so the waveform never drifts as amplitude arrives.
+    final trackWidth = trackWidthFor(buffer.length);
+    final startX = (size.width - trackWidth) / 2;
 
     if (count == 0) {
-      // Placeholder bars (matching the original idle pattern).
-      for (var i = 0; i < 12; i++) {
+      // Placeholder bars centered in the track.
+      const placeholderCount = 12;
+      final placeholderWidth = trackWidthFor(placeholderCount);
+      final placeholderStart = startX + (trackWidth - placeholderWidth) / 2;
+      for (var i = 0; i < placeholderCount; i++) {
         final h = 10 + (i % 3) * 6.0;
-        final x = i * (barWidth + spacing);
+        final x = placeholderStart + i * (_barWidth + _spacing);
         paint.color = color.withValues(alpha: 0.25);
         canvas.drawRRect(
           RRect.fromRectAndRadius(
-            Rect.fromLTWH(x, (maxHeight - h) / 2, barWidth, h),
+            Rect.fromLTWH(x, (maxHeight - h) / 2, _barWidth, h),
             radius,
           ),
           paint,
@@ -696,11 +714,11 @@ class _AmplitudeBarsPainter extends CustomPainter {
           (writeIndex - count + i + buffer.length) % buffer.length;
       final level = buffer[readIndex];
       final h = (level * maxHeight).clamp(minHeight, maxHeight);
-      final x = i * (barWidth + spacing);
+      final x = startX + i * (_barWidth + _spacing);
       paint.color = Color.lerp(color.withValues(alpha: 0.45), color, level)!;
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromLTWH(x, (maxHeight - h) / 2, barWidth, h),
+          Rect.fromLTWH(x, (maxHeight - h) / 2, _barWidth, h),
           radius,
         ),
         paint,

@@ -1235,6 +1235,72 @@ void main() {
       expect(translator.callCount, 2);
       expect(stateOf(c).generation, 1);
     });
+
+    test('uses edited raw transcript and clears dirty', () async {
+      final c = container();
+      addTearDown(c.dispose);
+      await c.read(authCtrlProvider.future);
+      final n = notifierOf(c);
+
+      n.setSourceLanguage('en');
+      n.setTargetLanguage('es');
+      await n.useTextInput('This is a test of text input mode.');
+      await Future<void>.delayed(Duration.zero);
+      expect(stateOf(c).isRawTranscriptDirty, isFalse);
+      expect(translator.callCount, 1);
+
+      n.setRawTranscript('Corrected transcript for regenerate path.');
+      expect(stateOf(c).isRawTranscriptDirty, isTrue);
+      expect(
+        stateOf(c).sourceText,
+        'Corrected transcript for regenerate path.',
+      );
+
+      await n.regenerate();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(translator.callCount, 2);
+      expect(translator.lastText, 'Corrected transcript for regenerate path.');
+      expect(stateOf(c).isRawTranscriptDirty, isFalse);
+      expect(
+        stateOf(c).rewrittenFromTranscript,
+        'Corrected transcript for regenerate path.',
+      );
+    });
+
+    test('no-ops when normalized transcript is below min length', () async {
+      final c = container();
+      addTearDown(c.dispose);
+      await c.read(authCtrlProvider.future);
+      final n = notifierOf(c);
+
+      n.setSourceLanguage('en');
+      n.setTargetLanguage('es');
+      await n.useTextInput('This is a test of text input mode.');
+      await Future<void>.delayed(Duration.zero);
+      expect(translator.callCount, 1);
+
+      n.setRawTranscript('short');
+      await n.regenerate();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(translator.callCount, 1);
+      expect(stateOf(c).generation, 0);
+      expect(stateOf(c).isRawTranscriptDirty, isTrue);
+    });
+  });
+
+  group('setRawTranscript', () {
+    test('updates raw transcript and sourceText', () {
+      final c = container();
+      addTearDown(c.dispose);
+      final n = notifierOf(c);
+
+      n.setRawTranscript('hello from stt correction');
+      expect(stateOf(c).rawTranscript, 'hello from stt correction');
+      expect(stateOf(c).sourceText, 'hello from stt correction');
+      expect(stateOf(c).isRawTranscriptDirty, isTrue);
+    });
   });
 
   group('useTextInput', () {

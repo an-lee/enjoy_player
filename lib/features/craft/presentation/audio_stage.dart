@@ -1,9 +1,9 @@
 /// Audio stage: preview player + save/loop/practice actions.
 ///
-/// Shows a collapsed summary of the previous stages (language pair, style,
-/// truncated target text), an inline audio preview player, a collapsible
-/// voice chip, and two primary actions: "Say something else" (loop) and
-/// "Practice now" (navigate to player).
+/// Shows the full learning-language script (scrollable when long) so the
+/// learner can follow along while previewing, an inline audio preview player,
+/// a collapsible voice chip, and two primary actions: "Say something else"
+/// (loop) and "Practice now" (navigate to player).
 library;
 
 import 'dart:async';
@@ -212,11 +212,7 @@ class _AudioStageState extends ConsumerState<AudioStage> {
 
     final sourceLang = state.sourceLanguage?.toUpperCase() ?? '—';
     final targetLang = state.targetLanguage.toUpperCase();
-    final previewText = (state.translatedText ?? state.synthText);
-    final truncatedText = previewText.length > 100
-        ? '${previewText.substring(0, 100)}…'
-        : previewText;
-
+    final previewText = state.translatedText ?? state.synthText;
     final voiceLabel = _voiceDisplayLabel(state.selectedVoice);
 
     return SingleChildScrollView(
@@ -227,11 +223,10 @@ class _AudioStageState extends ConsumerState<AudioStage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _SummaryBlock(
+              _ScriptBlock(
                 sourceLang: sourceLang,
                 targetLang: targetLang,
-                text: truncatedText,
-                voice: voiceLabel,
+                text: previewText,
                 theme: theme,
               ),
               const SizedBox(height: 20),
@@ -325,30 +320,51 @@ class _LoadingView extends StatelessWidget {
   }
 }
 
-class _SummaryBlock extends StatelessWidget {
-  const _SummaryBlock({
+/// Full script for follow-along listening. Short text sizes naturally; long
+/// text scrolls inside a capped viewport so the preview player stays nearby.
+class _ScriptBlock extends StatefulWidget {
+  const _ScriptBlock({
     required this.sourceLang,
     required this.targetLang,
     required this.text,
-    required this.voice,
     required this.theme,
   });
+
+  /// Soft cap so very long scripts don't push actions off-screen.
+  static const double maxScriptHeight = 240;
 
   final String sourceLang;
   final String targetLang;
   final String text;
-  final String? voice;
   final ThemeData theme;
 
   @override
+  State<_ScriptBlock> createState() => _ScriptBlockState();
+}
+
+class _ScriptBlockState extends State<_ScriptBlock> {
+  final _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final theme = widget.theme;
+    final scheme = theme.colorScheme;
+    final scriptStyle = theme.textTheme.bodyLarge?.copyWith(
+      color: scheme.onSurface,
+      height: 1.55,
+    );
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
-        border: Border(
-          left: BorderSide(color: theme.colorScheme.primary, width: 3),
-        ),
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        border: Border(left: BorderSide(color: scheme.primary, width: 3)),
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: const BorderRadius.only(
           topRight: Radius.circular(12),
           bottomRight: Radius.circular(12),
@@ -357,46 +373,27 @@ class _SummaryBlock extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Language pair.
           Text(
-            '$sourceLang  →  $targetLang',
+            '${widget.sourceLang}  →  ${widget.targetLang}',
             style: theme.textTheme.labelMedium?.copyWith(
-              color: theme.colorScheme.primary,
+              color: scheme.primary,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 8),
-          // Truncated target text.
-          Text(
-            text,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface,
+          const SizedBox(height: 10),
+          ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxHeight: _ScriptBlock.maxScriptHeight,
             ),
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
+            child: Scrollbar(
+              controller: _scrollController,
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                primary: false,
+                child: SelectableText(widget.text, style: scriptStyle),
+              ),
+            ),
           ),
-          if (voice != null) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(
-                  Icons.record_voice_over_rounded,
-                  size: 14,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    voice!,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ],
         ],
       ),
     );
@@ -516,14 +513,30 @@ class _PreviewPlayer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = theme.colorScheme;
+    final timeStyle = theme.textTheme.labelSmall?.copyWith(
+      color: scheme.onSurfaceVariant,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
+    final clampedPosition = position > duration && duration > Duration.zero
+        ? duration
+        : position;
+    // Position can briefly overshoot duration from the player stream;
+    // Slider asserts if value > max.
+    final maxMs = duration.inMilliseconds.toDouble().clamp(
+      1.0,
+      double.infinity,
+    );
+    final valueMs = clampedPosition.inMilliseconds.toDouble().clamp(0.0, maxMs);
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Material(
             color: Colors.transparent,
@@ -551,54 +564,25 @@ class _PreviewPlayer extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
+          Text(fmt(clampedPosition), style: timeStyle),
           Expanded(
-            child: Column(
-              children: [
-                // Position can briefly overshoot duration from the player
-                // stream; Slider asserts if value > max.
-                Slider(
-                  value: position.inMilliseconds.toDouble().clamp(
-                    0.0,
-                    duration.inMilliseconds.toDouble().clamp(
-                      1.0,
-                      double.infinity,
-                    ),
-                  ),
-                  max: duration.inMilliseconds.toDouble().clamp(
-                    1.0,
-                    double.infinity,
-                  ),
-                  onChanged: duration > Duration.zero
-                      ? (v) => onSeek(Duration(milliseconds: v.round()))
-                      : null,
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      fmt(
-                        position > duration && duration > Duration.zero
-                            ? duration
-                            : position,
-                      ),
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
-                    ),
-                    Text(
-                      fmt(duration),
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            child: SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: 3,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+              ),
+              child: Slider(
+                value: valueMs,
+                max: maxMs,
+                onChanged: duration > Duration.zero
+                    ? (v) => onSeek(Duration(milliseconds: v.round()))
+                    : null,
+              ),
             ),
           ),
+          Text(fmt(duration), style: timeStyle),
         ],
       ),
     );

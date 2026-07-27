@@ -114,14 +114,10 @@ void main() {
           .useTextInput('I had a wonderful day today.');
       await tester.pumpAndSettle();
 
-      // Raw transcript card label.
+      // Native + target cards.
       expect(find.text('Your words'), findsOneWidget);
-
-      // Raw transcript text.
       expect(find.text('I had a wonderful day today.'), findsOneWidget);
-
-      // Target text field should be present and editable.
-      expect(find.byType(TextField), findsOneWidget);
+      expect(find.byType(TextField), findsNWidgets(2));
 
       // The rewritten text should appear.
       expect(find.text('Rewritten text in target language.'), findsOneWidget);
@@ -194,4 +190,80 @@ void main() {
     expect(find.byType(DropdownButton<TranslationStyle>), findsOneWidget);
     expect(find.byType(VoicePicker), findsOneWidget);
   });
+
+  testWidgets(
+    'RewriteStage shows Re-translate after native edit and updates target',
+    (tester) async {
+      final translator = _CountingTranslator();
+      await tester.pumpWidget(
+        _harness(
+          overrides: [
+            authCtrlProvider.overrideWith(_AuthSignedInCtrl.new),
+            appPreferencesCtrlProvider.overrideWith(_FakePrefsCtrl.new),
+            craftTranslatorProvider.overrideWithValue(translator),
+            craftSynthesizerProvider.overrideWithValue(_FakeSynthesizer()),
+            craftTranscriberProvider.overrideWithValue(_FakeTranscriber()),
+            mediaLibraryRepositoryProvider.overrideWithValue(
+              _FakeLibraryRepository(),
+            ),
+          ],
+          child: const RewriteStage(),
+        ),
+      );
+
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(RewriteStage)),
+      );
+      await container
+          .read(craftControllerProvider.notifier)
+          .useTextInput('I had a wonderful day today.');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Re-translate'), findsNothing);
+      expect(translator.callCount, 1);
+
+      // Edit the native STT field (first TextField).
+      await tester.enterText(
+        find.byType(TextField).first,
+        'I had a wonderful day yesterday instead.',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Re-translate'), findsOneWidget);
+      expect(
+        container.read(craftControllerProvider).isRawTranscriptDirty,
+        isTrue,
+      );
+
+      await tester.tap(find.text('Re-translate'));
+      await tester.pumpAndSettle();
+
+      expect(translator.callCount, 2);
+      expect(translator.lastText, 'I had a wonderful day yesterday instead.');
+      expect(
+        container.read(craftControllerProvider).isRawTranscriptDirty,
+        isFalse,
+      );
+      expect(find.text('Re-translate'), findsNothing);
+      expect(find.textContaining('rewrite #2'), findsOneWidget);
+    },
+  );
+}
+
+class _CountingTranslator implements CraftTranslator {
+  int callCount = 0;
+  String? lastText;
+
+  @override
+  Future<String> translate({
+    required String text,
+    required String sourceLanguage,
+    required String targetLanguage,
+    TranslationStyle style = TranslationStyle.auto,
+    String? customPrompt,
+  }) async {
+    callCount++;
+    lastText = text;
+    return 'Rewritten text in target language rewrite #$callCount.';
+  }
 }

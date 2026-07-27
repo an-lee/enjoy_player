@@ -82,6 +82,18 @@ class CraftController extends Notifier<CraftJobState> {
     state = state.copyWith(translatedText: text);
   }
 
+  /// Inline edit of the Express native / STT transcript.
+  ///
+  /// Keeps [CraftJobState.sourceText] in sync so library save continues to
+  /// persist the corrected native text.
+  void setRawTranscript(String text) {
+    state = state.copyWith(
+      rawTranscript: text,
+      sourceText: text,
+      clearFailure: true,
+    );
+  }
+
   void swapLanguages() {
     final src = state.sourceLanguage;
     state = state.copyWith(
@@ -336,6 +348,8 @@ class CraftController extends Notifier<CraftJobState> {
         stage: CraftStage.rewrite,
         style: TranslationStyle.auto,
         rawTranscript: source.sourceText,
+        rewrittenFromTranscript: source.sourceText,
+        sourceText: source.sourceText ?? '',
         translatedText: source.practiceText,
         synthText: source.practiceText,
         targetLanguage: source.language,
@@ -383,6 +397,7 @@ class CraftController extends Notifier<CraftJobState> {
       isTranscribing: false,
       clearCapturedAudio: true,
       clearRawTranscript: true,
+      clearRewrittenFromTranscript: true,
       clearTranslatedText: true,
       clearPreview: true,
       clearResultMediaId: true,
@@ -404,6 +419,7 @@ class CraftController extends Notifier<CraftJobState> {
       clearFailure: true,
       clearCapturedAudio: true,
       clearRawTranscript: true,
+      clearRewrittenFromTranscript: true,
     );
   }
 
@@ -503,6 +519,7 @@ class CraftController extends Notifier<CraftJobState> {
       );
       state = state.copyWith(
         translatedText: result,
+        rewrittenFromTranscript: transcript,
         isTranslating: false,
         isTranscribing: false,
         stage: CraftStage.rewrite,
@@ -522,9 +539,11 @@ class CraftController extends Notifier<CraftJobState> {
   /// Re-run the LLM rewrite on existing transcript with current style.
   Future<void> regenerate() async {
     final transcript = state.rawTranscript;
-    if (transcript == null || transcript.isEmpty) return;
+    if (transcript == null) return;
+    final normalized = normalizeCraftText(transcript);
+    if (normalized.length < craftMinTextLength) return;
     state = state.copyWith(generation: state.generation + 1);
-    await _rewriteTranscript(transcript);
+    await _rewriteTranscript(normalized);
   }
 
   /// Copy [translatedText] → [synthText] and synthesize.
@@ -571,6 +590,7 @@ class CraftController extends Notifier<CraftJobState> {
       isTranscribing: false,
       clearCapturedAudio: true,
       clearRawTranscript: true,
+      clearRewrittenFromTranscript: true,
       clearTranslatedText: true,
       clearPreview: true,
       clearResultMediaId: true,

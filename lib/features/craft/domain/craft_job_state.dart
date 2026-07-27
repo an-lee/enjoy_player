@@ -4,6 +4,7 @@ library;
 import 'package:flutter/foundation.dart';
 
 import 'craft_failure.dart';
+import 'craft_request.dart';
 import 'craft_screen_mode.dart';
 import 'craft_stage.dart';
 import 'craft_synthesizer.dart';
@@ -28,6 +29,7 @@ class CraftJobState {
     // Express capture
     this.capturedAudioBytes,
     this.rawTranscript,
+    this.rewrittenFromTranscript,
     this.isCapturing = false,
     this.isTranscribing = false,
     this.captureCancelTick = 0,
@@ -65,6 +67,11 @@ class CraftJobState {
   // --- Express capture ---
   final Uint8List? capturedAudioBytes;
   final String? rawTranscript;
+
+  /// Native transcript that produced the current [translatedText], set after
+  /// a successful Express rewrite. Used to detect STT corrections that still
+  /// need re-translation.
+  final String? rewrittenFromTranscript;
   final bool isCapturing;
   final bool isTranscribing;
 
@@ -105,6 +112,12 @@ class CraftJobState {
       translatedText != null && translatedText!.isNotEmpty;
   bool get hasCapturedAudio => capturedAudioBytes != null;
 
+  /// True when the editable native transcript differs from the last successful
+  /// rewrite input (whitespace-normalized).
+  bool get isRawTranscriptDirty =>
+      normalizeCraftText(rawTranscript ?? '') !=
+      normalizeCraftText(rewrittenFromTranscript ?? '');
+
   CraftJobState copyWith({
     CraftScreenMode? screenMode,
     CraftStage? stage,
@@ -117,6 +130,7 @@ class CraftJobState {
     bool? isTranslating,
     Uint8List? capturedAudioBytes,
     String? rawTranscript,
+    String? rewrittenFromTranscript,
     bool? isCapturing,
     bool? isTranscribing,
     int? captureCancelTick,
@@ -137,6 +151,7 @@ class CraftJobState {
     bool clearFailure = false,
     bool clearCapturedAudio = false,
     bool clearRawTranscript = false,
+    bool clearRewrittenFromTranscript = false,
     bool clearTranslatedText = false,
     bool clearResultMediaId = false,
     bool clearDedupedExistingId = false,
@@ -160,6 +175,9 @@ class CraftJobState {
       rawTranscript: clearRawTranscript
           ? null
           : (rawTranscript ?? this.rawTranscript),
+      rewrittenFromTranscript: clearRewrittenFromTranscript
+          ? null
+          : (rewrittenFromTranscript ?? this.rewrittenFromTranscript),
       isCapturing: isCapturing ?? this.isCapturing,
       isTranscribing: isTranscribing ?? this.isTranscribing,
       captureCancelTick: captureCancelTick ?? this.captureCancelTick,

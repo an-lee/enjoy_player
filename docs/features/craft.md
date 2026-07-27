@@ -54,11 +54,12 @@ A linear three-stage pipeline (`CraftStage` enum: `capture` → `rewrite` → `a
 
 ### Rewrite stage (`RewriteStage`)
 
-- **Raw transcript card** (muted, italic, labelled "Your words") — long transcripts collapse to 3 lines and expand on tap
+- **Editable native transcript card** (labelled "Your words") — STT / typed source is a `TextField` so learners can correct recognition errors; edits write to `rawTranscript` (+ synced `sourceText`). When the native text differs from the last successful rewrite input (`isRawTranscriptDirty`), a **Re-translate** action appears on the card (`craftReTranslateButton`)
 - **Editable target text card** (labelled "In [target]…") — `TextEditingController` synced to `state.translatedText` only when the field is not focused, so user edits are preserved across regenerations; field is height-capped (`maxLines: 10`) to avoid layout overflow
 - **Options panel** — always-visible `StylePicker` + Azure Neural `VoicePicker` before Generate; style defaults to **Auto**; voice defaults via `defaultVoiceForLanguage` when unset
+- Re-translate / Regenerate keep the form visible with inline progress when a target already exists (full-screen "Crafting…" spinner only for the first rewrite)
 - Three action buttons:
-  - **Regenerate** → `controller.regenerate()` — re-runs the LLM rewrite on the existing raw transcript with the current style
+  - **Regenerate** → `controller.regenerate()` — re-runs the LLM rewrite on the current native transcript with the current style (same path as Re-translate; no-op if below `craftMinTextLength`)
   - **Re-record** → `controller.resetForNextCapture()` — back to the capture stage
   - **Generate audio** → `controller.generateAudio()` — synthesizes with `selectedVoice` and advances to the audio stage
 
@@ -70,8 +71,8 @@ A new `TranslationStyle.auto` is the **default** for Express mode. Instead of a 
 
 ### Audio stage (`AudioStage`)
 
-- **Collapsed summary block** (language pair + style + truncated target text with a left-border accent)
-- **Inline preview player** — play/pause circle + progress slider + time labels, driven by `audiopackets` `AudioPlayer` reading `state.previewAudioBytes` from memory via `BytesSource`
+- **Script block** — language pair + full learning-language text (selectable) with a left-border accent, so the learner can follow along while previewing. Long scripts scroll inside a capped viewport (~240px) so the player and actions stay reachable; text is never ellipsis-truncated.
+- **Inline preview player** — play/pause circle with a single-row progress control (time · slider · duration), driven by `audioplayers` `AudioPlayer` reading `state.previewAudioBytes` from memory via `BytesSource`
 - **Voice** control (shows current voice label; expandable to full `VoicePicker` — changing voice re-synthesizes)
 - Two action buttons:
   - **Practice now** (`saveAndPractice`) — primary CTA; saves and navigates to the player route with the new media ID

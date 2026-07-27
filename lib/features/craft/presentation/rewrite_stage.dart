@@ -1,7 +1,8 @@
-/// Rewrite stage: raw transcript + editable target text + style/voice + actions.
+/// Rewrite stage: editable native transcript + editable target text +
+/// style/voice + actions.
 ///
-/// Shows what the user said (compact, collapsible) and an editable AI-rewritten
-/// version in the target language, then style/voice controls and generate.
+/// Learners can correct STT mistakes in "Your words", then re-translate
+/// before generating audio. Target text remains editable for final polish.
 library;
 
 import 'dart:async';
@@ -15,6 +16,7 @@ import 'package:enjoy_player/features/craft/application/craft_controller.dart';
 import 'package:enjoy_player/features/craft/domain/azure_voice.dart';
 import 'package:enjoy_player/features/craft/domain/craft_failure.dart';
 import 'package:enjoy_player/features/craft/domain/craft_job_state.dart';
+import 'package:enjoy_player/features/craft/domain/craft_request.dart';
 import 'package:enjoy_player/features/craft/presentation/style_picker.dart';
 import 'package:enjoy_player/features/craft/presentation/voice_picker.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
@@ -30,26 +32,32 @@ class RewriteStage extends ConsumerStatefulWidget {
 class _RewriteStageState extends ConsumerState<RewriteStage> {
   late final TextEditingController _targetCtrl;
   late final FocusNode _targetFocus;
-  bool _targetInitialized = false;
-  bool _rawExpanded = false;
-  String? _lastSyncedText;
+  late final TextEditingController _nativeCtrl;
+  late final FocusNode _nativeFocus;
+  bool _controllersInitialized = false;
+  String? _lastSyncedTarget;
+  String? _lastSyncedNative;
 
   @override
   void dispose() {
-    if (_targetInitialized) {
+    if (_controllersInitialized) {
       _targetCtrl.dispose();
       _targetFocus.dispose();
+      _nativeCtrl.dispose();
+      _nativeFocus.dispose();
     }
     super.dispose();
   }
 
-  void _ensureTargetController(CraftJobState state) {
-    if (!_targetInitialized) {
-      _targetCtrl = TextEditingController(text: state.translatedText ?? '');
-      _targetFocus = FocusNode();
-      _lastSyncedText = state.translatedText;
-      _targetInitialized = true;
-    }
+  void _ensureControllers(CraftJobState state) {
+    if (_controllersInitialized) return;
+    _targetCtrl = TextEditingController(text: state.translatedText ?? '');
+    _targetFocus = FocusNode();
+    _nativeCtrl = TextEditingController(text: state.rawTranscript ?? '');
+    _nativeFocus = FocusNode();
+    _lastSyncedTarget = state.translatedText;
+    _lastSyncedNative = state.rawTranscript;
+    _controllersInitialized = true;
   }
 
   void _seedVoiceIfNeeded(CraftJobState state) {
@@ -69,6 +77,18 @@ class _RewriteStageState extends ConsumerState<RewriteStage> {
     });
   }
 
+  void _flushNativeToController() {
+    if (!_controllersInitialized) return;
+    ref
+        .read(craftControllerProvider.notifier)
+        .setRawTranscript(_nativeCtrl.text);
+  }
+
+  Future<void> _regenerate() async {
+    _flushNativeToController();
+    await ref.read(craftControllerProvider.notifier).regenerate();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -76,15 +96,23 @@ class _RewriteStageState extends ConsumerState<RewriteStage> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    _ensureTargetController(state);
+    _ensureControllers(state);
 
     final currentTranslated = state.translatedText ?? '';
-    if (_lastSyncedText != currentTranslated && !_targetFocus.hasFocus) {
+    if (_lastSyncedTarget != currentTranslated && !_targetFocus.hasFocus) {
       _targetCtrl.text = currentTranslated;
-      _lastSyncedText = currentTranslated;
+      _lastSyncedTarget = currentTranslated;
     }
 
-    if (state.isTranslating) {
+    final currentNative = state.rawTranscript ?? '';
+    if (_lastSyncedNative != currentNative && !_nativeFocus.hasFocus) {
+      _nativeCtrl.text = currentNative;
+      _lastSyncedNative = currentNative;
+    }
+
+    // First rewrite (no target yet): keep the full-screen loading hint.
+    // Re-translate / regenerate: keep the form visible with inline progress.
+    if (state.isTranslating && !state.hasTranslation) {
       return _LoadingView(l10n: l10n);
     }
 
@@ -92,7 +120,7 @@ class _RewriteStageState extends ConsumerState<RewriteStage> {
       return _FailureCard(
         failure: state.failure!,
         l10n: l10n,
-        onRetry: () => ref.read(craftControllerProvider.notifier).regenerate(),
+        onRetry: () => unawaited(_regenerate()),
       );
     }
 
@@ -101,17 +129,33 @@ class _RewriteStageState extends ConsumerState<RewriteStage> {
     final targetBase = state.targetLanguage.split('-').first.toUpperCase();
     final raw = state.rawTranscript;
     final hasRaw = raw != null && raw.isNotEmpty;
+    final isRetranslating = state.isTranslating && state.hasTranslation;
+    final canRegenerate =
+        hasRaw &&
+        normalizeCraftText(raw).length >= craftMinTextLength &&
+        !state.isBusy;
+    final showReTranslate =
+        hasRaw && state.isRawTranscriptDirty && !isRetranslating;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(4, 4, 4, 28),
       children: [
         if (hasRaw) ...[
-          _RawTranscriptCard(
-            text: raw,
+          _NativeTextCard(
+            controller: _nativeCtrl,
+            focusNode: _nativeFocus,
             l10n: l10n,
             theme: theme,
-            expanded: _rawExpanded,
-            onToggle: () => setState(() => _rawExpanded = !_rawExpanded),
+            enabled: !state.isBusy,
+            showReTranslate: showReTranslate,
+            isRetranslating: isRetranslating,
+            onChanged: (v) {
+              _lastSyncedNative = v;
+              ref.read(craftControllerProvider.notifier).setRawTranscript(v);
+            },
+            onReTranslate: canRegenerate
+                ? () => unawaited(_regenerate())
+                : null,
           ),
           const SizedBox(height: 14),
         ],
@@ -121,8 +165,9 @@ class _RewriteStageState extends ConsumerState<RewriteStage> {
           targetLabel: l10n.craftRewriteTargetLabel,
           targetBase: targetBase,
           theme: theme,
+          enabled: !state.isBusy,
           onChanged: (v) {
-            _lastSyncedText = v;
+            _lastSyncedTarget = v;
             ref.read(craftControllerProvider.notifier).setTranslatedText(v);
           },
         ),
@@ -142,8 +187,10 @@ class _RewriteStageState extends ConsumerState<RewriteStage> {
               children: [
                 StylePicker(
                   value: state.style,
-                  onChanged: (s) =>
-                      ref.read(craftControllerProvider.notifier).setStyle(s),
+                  onChanged: (s) {
+                    if (state.isBusy) return;
+                    ref.read(craftControllerProvider.notifier).setStyle(s);
+                  },
                 ),
                 Divider(
                   height: 20,
@@ -152,9 +199,12 @@ class _RewriteStageState extends ConsumerState<RewriteStage> {
                 VoicePicker(
                   language: state.targetLanguage,
                   selectedVoice: state.selectedVoice,
-                  onChanged: (voice) => ref
-                      .read(craftControllerProvider.notifier)
-                      .setSelectedVoice(voice),
+                  onChanged: (voice) {
+                    if (state.isBusy) return;
+                    ref
+                        .read(craftControllerProvider.notifier)
+                        .setSelectedVoice(voice);
+                  },
                 ),
               ],
             ),
@@ -164,13 +214,16 @@ class _RewriteStageState extends ConsumerState<RewriteStage> {
         _ActionButtons(
           state: state,
           l10n: l10n,
-          onReRecord: () =>
-              ref.read(craftControllerProvider.notifier).resetForNextCapture(),
-          onRegenerate: hasRaw
-              ? () => ref.read(craftControllerProvider.notifier).regenerate()
-              : null,
+          isRetranslating: isRetranslating,
+          onReRecord: state.isBusy
+              ? null
+              : () => ref
+                    .read(craftControllerProvider.notifier)
+                    .resetForNextCapture(),
+          onRegenerate: canRegenerate ? () => unawaited(_regenerate()) : null,
           onGenerateAudio:
-              state.translatedText != null &&
+              !state.isBusy &&
+                  state.translatedText != null &&
                   state.translatedText!.trim().isNotEmpty
               ? () => ref.read(craftControllerProvider.notifier).generateAudio()
               : null,
@@ -207,84 +260,131 @@ class _LoadingView extends StatelessWidget {
   }
 }
 
-class _RawTranscriptCard extends StatelessWidget {
-  const _RawTranscriptCard({
-    required this.text,
+class _NativeTextCard extends StatelessWidget {
+  const _NativeTextCard({
+    required this.controller,
+    required this.focusNode,
     required this.l10n,
     required this.theme,
-    required this.expanded,
-    required this.onToggle,
+    required this.enabled,
+    required this.showReTranslate,
+    required this.isRetranslating,
+    required this.onChanged,
+    required this.onReTranslate,
   });
 
-  final String text;
+  final TextEditingController controller;
+  final FocusNode focusNode;
   final AppLocalizations l10n;
   final ThemeData theme;
-  final bool expanded;
-  final VoidCallback onToggle;
-
-  static const _collapseAt = 140;
+  final bool enabled;
+  final bool showReTranslate;
+  final bool isRetranslating;
+  final ValueChanged<String> onChanged;
+  final VoidCallback? onReTranslate;
 
   @override
   Widget build(BuildContext context) {
+    final t = EnjoyThemeTokens.of(context);
     final scheme = theme.colorScheme;
-    final canCollapse = text.length > _collapseAt;
-    final showExpanded = expanded || !canCollapse;
+    final fieldRadius = BorderRadius.circular(t.radiusMd);
 
-    return Material(
-      color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: canCollapse ? onToggle : null,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.format_quote_rounded,
-                    size: 16,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      l10n.craftRewriteYourWords,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ),
-                  if (canCollapse)
-                    Icon(
-                      showExpanded
-                          ? Icons.expand_less_rounded
-                          : Icons.expand_more_rounded,
-                      size: 20,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                text,
-                maxLines: showExpanded ? null : 3,
-                overflow: showExpanded
-                    ? TextOverflow.visible
-                    : TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontStyle: FontStyle.italic,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(t.radiusLg),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.45),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              t.space16,
+              t.space16,
+              t.space12,
+              t.space12,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.format_quote_rounded,
+                  size: 16,
                   color: scheme.onSurfaceVariant,
-                  height: 1.4,
+                ),
+                SizedBox(width: t.space8),
+                Expanded(
+                  child: Text(
+                    l10n.craftRewriteYourWords,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ),
+                if (isRetranslating)
+                  const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else if (showReTranslate)
+                  TextButton(
+                    onPressed: onReTranslate,
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.symmetric(horizontal: t.space8),
+                    ),
+                    child: Text(l10n.craftReTranslateButton),
+                  ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(t.space12, 0, t.space12, t.space12),
+            child: TextField(
+              controller: controller,
+              focusNode: focusNode,
+              enabled: enabled,
+              minLines: 3,
+              maxLines: 10,
+              textInputAction: TextInputAction.newline,
+              style: theme.textTheme.bodyLarge?.copyWith(height: 1.55),
+              onChanged: onChanged,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: scheme.surface.withValues(alpha: 0.55),
+                isDense: false,
+                contentPadding: EdgeInsets.all(t.space16),
+                border: OutlineInputBorder(
+                  borderRadius: fieldRadius,
+                  borderSide: BorderSide(
+                    color: scheme.outlineVariant.withValues(alpha: 0.65),
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: fieldRadius,
+                  borderSide: BorderSide(
+                    color: scheme.outlineVariant.withValues(alpha: 0.65),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: fieldRadius,
+                  borderSide: BorderSide(color: scheme.primary, width: 1.5),
+                ),
+                disabledBorder: OutlineInputBorder(
+                  borderRadius: fieldRadius,
+                  borderSide: BorderSide(
+                    color: scheme.outlineVariant.withValues(alpha: 0.4),
+                  ),
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -298,6 +398,7 @@ class _TargetTextCard extends StatelessWidget {
     required this.targetBase,
     required this.theme,
     required this.onChanged,
+    required this.enabled,
   });
 
   final TextEditingController controller;
@@ -306,6 +407,7 @@ class _TargetTextCard extends StatelessWidget {
   final String targetBase;
   final ThemeData theme;
   final ValueChanged<String> onChanged;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -368,6 +470,7 @@ class _TargetTextCard extends StatelessWidget {
             child: TextField(
               controller: controller,
               focusNode: focusNode,
+              enabled: enabled,
               minLines: 4,
               maxLines: 10,
               textInputAction: TextInputAction.newline,
@@ -394,6 +497,12 @@ class _TargetTextCard extends StatelessWidget {
                   borderRadius: fieldRadius,
                   borderSide: BorderSide(color: scheme.primary, width: 1.5),
                 ),
+                disabledBorder: OutlineInputBorder(
+                  borderRadius: fieldRadius,
+                  borderSide: BorderSide(
+                    color: scheme.outlineVariant.withValues(alpha: 0.4),
+                  ),
+                ),
               ),
             ),
           ),
@@ -407,6 +516,7 @@ class _ActionButtons extends StatelessWidget {
   const _ActionButtons({
     required this.state,
     required this.l10n,
+    required this.isRetranslating,
     required this.onReRecord,
     required this.onRegenerate,
     required this.onGenerateAudio,
@@ -414,7 +524,8 @@ class _ActionButtons extends StatelessWidget {
 
   final CraftJobState state;
   final AppLocalizations l10n;
-  final VoidCallback onReRecord;
+  final bool isRetranslating;
+  final VoidCallback? onReRecord;
   final VoidCallback? onRegenerate;
   final VoidCallback? onGenerateAudio;
 
@@ -460,7 +571,13 @@ class _ActionButtons extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                icon: const Icon(Icons.refresh_rounded, size: 18),
+                icon: isRetranslating
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh_rounded, size: 18),
                 label: Text(l10n.craftRewriteRegenerate),
               ),
             ),

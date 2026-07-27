@@ -49,6 +49,21 @@ class _FakeTranslator implements CraftTranslator {
   }) async => 'Rewritten text in target language.';
 }
 
+class _FixedTranslator implements CraftTranslator {
+  _FixedTranslator(this.result);
+
+  final String result;
+
+  @override
+  Future<String> translate({
+    required String text,
+    required String sourceLanguage,
+    required String targetLanguage,
+    TranslationStyle style = TranslationStyle.auto,
+    String? customPrompt,
+  }) async => result;
+}
+
 class _FakeSynthesizer implements CraftSynthesizer {
   @override
   Future<CraftSynthesisResult> synthesize({
@@ -121,8 +136,9 @@ void main() {
       await container.read(craftControllerProvider.notifier).generateAudio();
       await tester.pumpAndSettle();
 
-      // Collapsed summary should show the rewritten text.
+      // Script block should show the rewritten text (not truncated).
       expect(find.textContaining('Rewritten text'), findsOneWidget);
+      expect(find.byType(SelectableText), findsOneWidget);
 
       // Preview player: play/pause button.
       expect(find.byIcon(Icons.play_arrow_rounded), findsWidgets);
@@ -137,6 +153,53 @@ void main() {
       expect(find.text('Practice now'), findsOneWidget);
     },
   );
+
+  testWidgets('AudioStage shows the full script without character truncation', (
+    tester,
+  ) async {
+    const longScript =
+        'So my plan was to read one video a day, but I did not do it '
+        'yesterday, the day before, or the day before that either. '
+        'I still want to keep going tomorrow morning after coffee.';
+
+      await tester.pumpWidget(
+        _harness(
+          overrides: [
+            authCtrlProvider.overrideWith(_AuthSignedInCtrl.new),
+            appPreferencesCtrlProvider.overrideWith(_FakePrefsCtrl.new),
+            craftTranslatorProvider.overrideWithValue(
+              _FixedTranslator(longScript),
+            ),
+            craftSynthesizerProvider.overrideWithValue(_FakeSynthesizer()),
+            craftTranscriberProvider.overrideWithValue(_FakeTranscriber()),
+            mediaLibraryRepositoryProvider.overrideWithValue(
+              _FakeLibraryRepository(),
+            ),
+          ],
+          child: const AudioStage(),
+        ),
+      );
+    await tester.pumpAndSettle();
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(AudioStage)),
+    );
+    await container.read(authCtrlProvider.future);
+    await container.read(appPreferencesCtrlProvider.future);
+    await container
+        .read(craftControllerProvider.notifier)
+        .useTextInput('source text for a longer rewrite');
+    await tester.pumpAndSettle();
+    await container.read(craftControllerProvider.notifier).generateAudio();
+    await tester.pumpAndSettle();
+
+    // Full script is present — not the former 100-char truncated preview.
+    expect(find.text(longScript), findsOneWidget);
+    final selectable = tester.widget<SelectableText>(
+      find.byType(SelectableText),
+    );
+    expect(selectable.data, longScript);
+  });
 
   testWidgets('AudioStage shows loading indicator while synthesizing', (
     tester,
