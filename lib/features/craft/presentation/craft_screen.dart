@@ -14,6 +14,7 @@ import 'package:enjoy_player/core/theme/widgets/enjoy_segmented_control.dart';
 import 'package:enjoy_player/features/craft/application/craft_controller.dart';
 import 'package:enjoy_player/features/craft/domain/craft_screen_mode.dart';
 import 'package:enjoy_player/features/craft/presentation/advanced_tools.dart';
+import 'package:enjoy_player/features/craft/presentation/confirm_discard_unsaved_craft_preview.dart';
 import 'package:enjoy_player/features/craft/presentation/express_flow.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
@@ -21,23 +22,52 @@ import 'package:enjoy_player/l10n/app_localizations.dart';
 class CraftScreen extends ConsumerWidget {
   const CraftScreen({super.key});
 
+  Future<void> _leave(BuildContext context, WidgetRef ref) async {
+    final state = ref.read(craftControllerProvider);
+    if (state.isCapturing) {
+      ref.read(craftControllerProvider.notifier).cancelCapture();
+    } else if (state.hasUnsavedPreview) {
+      final discard = await confirmDiscardUnsavedCraftPreview(context);
+      if (discard != true || !context.mounted) return;
+      // Drop in-memory TTS so reopening Craft cannot revive a "discarded" preview.
+      ref.read(craftControllerProvider.notifier).resetForNextCapture();
+    }
+
+    if (!context.mounted) return;
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      unawaited(Navigator.of(context).pushNamed('/'));
+    }
+  }
+
+  Future<void> _changeMode(
+    BuildContext context,
+    WidgetRef ref,
+    CraftScreenMode next,
+  ) async {
+    final state = ref.read(craftControllerProvider);
+    if (next == state.screenMode) return;
+    if (state.hasUnsavedPreview) {
+      final discard = await confirmDiscardUnsavedCraftPreview(context);
+      if (discard != true || !context.mounted) return;
+    }
+    ref.read(craftControllerProvider.notifier).setScreenMode(next);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final t = EnjoyThemeTokens.of(context);
     final state = ref.watch(craftControllerProvider);
     final isAdvanced = state.screenMode == CraftScreenMode.advanced;
+    final blockPop = state.isCapturing || state.hasUnsavedPreview;
 
     return PopScope(
-      canPop: !state.isCapturing,
+      canPop: !blockPop,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        if (ref.read(craftControllerProvider).isCapturing) {
-          ref.read(craftControllerProvider.notifier).cancelCapture();
-        }
-        if (context.mounted && Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
-        }
+        unawaited(_leave(context, ref));
       },
       child: EnjoyPage(
         // Express = form column; Advanced = hub width (matches AI settings).
@@ -51,16 +81,7 @@ class CraftScreen extends ConsumerWidget {
             onPressed: () => context.push('/craft/history'),
           ),
         ],
-        onBack: () {
-          if (ref.read(craftControllerProvider).isCapturing) {
-            ref.read(craftControllerProvider.notifier).cancelCapture();
-          }
-          if (Navigator.of(context).canPop()) {
-            Navigator.of(context).pop();
-          } else {
-            unawaited(Navigator.of(context).pushNamed('/'));
-          }
-        },
+        onBack: () => unawaited(_leave(context, ref)),
         body: (context, metrics) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -84,9 +105,7 @@ class CraftScreen extends ConsumerWidget {
                     ],
                     selected: {state.screenMode},
                     onSelectionChanged: (selection) {
-                      ref
-                          .read(craftControllerProvider.notifier)
-                          .setScreenMode(selection.first);
+                      unawaited(_changeMode(context, ref, selection.first));
                     },
                   ),
                 ),

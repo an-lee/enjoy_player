@@ -1605,8 +1605,30 @@
   "craftRewriteReRecord": "Re-record",
   "craftRewriteGenerateAudio": "Generate audio",
   "craftAudioPreview": "Preview",
-  "craftAudioSaySomethingElse": "Say something else",
-  "craftAudioPracticeNow": "Practice now",
+  "craftAudioSaySomethingElse": "Save & say another",
+  "@craftAudioSaySomethingElse": {
+    "description": "Express audio-stage secondary CTA: save the preview to the library, then return to capture."
+  },
+  "craftAudioPracticeNow": "Save & practice",
+  "@craftAudioPracticeNow": {
+    "description": "Express audio-stage primary CTA: save the preview to the library and open the player."
+  },
+  "craftAudioUnsavedHint": "Not saved yet. Leave now and this audio is discarded — it won’t appear in history.",
+  "@craftAudioUnsavedHint": {
+    "description": "Inline reminder on the Express audio stage that TTS preview is in-memory until a save CTA is used."
+  },
+  "craftAudioDiscardTitle": "Discard this audio?",
+  "@craftAudioDiscardTitle": {
+    "description": "Title for the leave/mode-switch confirm when Craft has an unsaved TTS preview."
+  },
+  "craftAudioDiscardMessage": "Generated audio is only kept after you save. Leaving now discards it, and credits already used for this preview are not refunded.",
+  "@craftAudioDiscardMessage": {
+    "description": "Body for the leave/mode-switch confirm when Craft has an unsaved TTS preview."
+  },
+  "craftAudioDiscardConfirm": "Discard",
+  "@craftAudioDiscardConfirm": {
+    "description": "Confirm action that drops the unsaved Craft TTS preview and continues navigation."
+  },
   "craftSavedToLibrary": "Saved to library",
   "craftSolidTranscriptSttHint": "If line timings look off, regenerate them with speech-to-text from the transcript panel.",
   "@craftSolidTranscriptSttHint": {

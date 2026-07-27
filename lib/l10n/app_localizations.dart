@@ -6375,17 +6375,41 @@ abstract class AppLocalizations {
   /// **'Preview'**
   String get craftAudioPreview;
 
-  /// No description provided for @craftAudioSaySomethingElse.
+  /// Express audio-stage secondary CTA: save the preview to the library, then return to capture.
   ///
   /// In en, this message translates to:
-  /// **'Say something else'**
+  /// **'Save & say another'**
   String get craftAudioSaySomethingElse;
 
-  /// No description provided for @craftAudioPracticeNow.
+  /// Express audio-stage primary CTA: save the preview to the library and open the player.
   ///
   /// In en, this message translates to:
-  /// **'Practice now'**
+  /// **'Save & practice'**
   String get craftAudioPracticeNow;
+
+  /// Inline reminder on the Express audio stage that TTS preview is in-memory until a save CTA is used.
+  ///
+  /// In en, this message translates to:
+  /// **'Not saved yet. Leave now and this audio is discarded — it won’t appear in history.'**
+  String get craftAudioUnsavedHint;
+
+  /// Title for the leave/mode-switch confirm when Craft has an unsaved TTS preview.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard this audio?'**
+  String get craftAudioDiscardTitle;
+
+  /// Body for the leave/mode-switch confirm when Craft has an unsaved TTS preview.
+  ///
+  /// In en, this message translates to:
+  /// **'Generated audio is only kept after you save. Leaving now discards it, and credits already used for this preview are not refunded.'**
+  String get craftAudioDiscardMessage;
+
+  /// Confirm action that drops the unsaved Craft TTS preview and continues navigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get craftAudioDiscardConfirm;
 
   /// No description provided for @craftSavedToLibrary.
   ///

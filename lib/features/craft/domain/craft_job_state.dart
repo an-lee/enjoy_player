@@ -108,6 +108,13 @@ class CraftJobState {
       isSynthesizing ||
       isSaving;
   bool get hasPreview => previewAudioBytes != null;
+
+  /// True when TTS bytes exist in memory but have not been written to the
+  /// library yet (no successful save / dedupe result). Leaving Craft or
+  /// switching mode with this set discards a paid preview.
+  bool get hasUnsavedPreview =>
+      hasPreview && resultMediaId == null && dedupedExistingId == null;
+
   bool get hasTranslation =>
       translatedText != null && translatedText!.isNotEmpty;
   bool get hasCapturedAudio => capturedAudioBytes != null;

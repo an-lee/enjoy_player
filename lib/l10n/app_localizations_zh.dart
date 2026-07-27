@@ -3289,10 +3289,23 @@ class AppLocalizationsZh extends AppLocalizations {
   String get craftAudioPreview => '预览';
 
   @override
-  String get craftAudioSaySomethingElse => '再说一条';
+  String get craftAudioSaySomethingElse => '保存再说一条';
 
   @override
-  String get craftAudioPracticeNow => '立即练习';
+  String get craftAudioPracticeNow => '保存并练习';
+
+  @override
+  String get craftAudioUnsavedHint => '尚未保存。现在离开会丢弃这段音频，历史记录里也找不到。';
+
+  @override
+  String get craftAudioDiscardTitle => '丢弃这段音频？';
+
+  @override
+  String get craftAudioDiscardMessage =>
+      '生成的音频只有保存后才会保留。现在离开会丢弃它，本次预览已消耗的额度不会退回。';
+
+  @override
+  String get craftAudioDiscardConfirm => '丢弃';
 
   @override
   String get craftSavedToLibrary => '已保存到资料库';

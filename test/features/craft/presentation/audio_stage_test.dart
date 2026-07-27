@@ -146,11 +146,10 @@ void main() {
       // Progress slider.
       expect(find.byType(Slider), findsOneWidget);
 
-      // "Say something else" button.
-      expect(find.text('Say something else'), findsOneWidget);
-
-      // "Practice now" button.
-      expect(find.text('Practice now'), findsOneWidget);
+      // Unsaved hint + save CTAs (preview is in-memory until save).
+      expect(find.textContaining('Not saved yet'), findsOneWidget);
+      expect(find.text('Save & say another'), findsOneWidget);
+      expect(find.text('Save & practice'), findsOneWidget);
     },
   );
 
@@ -162,23 +161,23 @@ void main() {
         'yesterday, the day before, or the day before that either. '
         'I still want to keep going tomorrow morning after coffee.';
 
-      await tester.pumpWidget(
-        _harness(
-          overrides: [
-            authCtrlProvider.overrideWith(_AuthSignedInCtrl.new),
-            appPreferencesCtrlProvider.overrideWith(_FakePrefsCtrl.new),
-            craftTranslatorProvider.overrideWithValue(
-              _FixedTranslator(longScript),
-            ),
-            craftSynthesizerProvider.overrideWithValue(_FakeSynthesizer()),
-            craftTranscriberProvider.overrideWithValue(_FakeTranscriber()),
-            mediaLibraryRepositoryProvider.overrideWithValue(
-              _FakeLibraryRepository(),
-            ),
-          ],
-          child: const AudioStage(),
-        ),
-      );
+    await tester.pumpWidget(
+      _harness(
+        overrides: [
+          authCtrlProvider.overrideWith(_AuthSignedInCtrl.new),
+          appPreferencesCtrlProvider.overrideWith(_FakePrefsCtrl.new),
+          craftTranslatorProvider.overrideWithValue(
+            _FixedTranslator(longScript),
+          ),
+          craftSynthesizerProvider.overrideWithValue(_FakeSynthesizer()),
+          craftTranscriberProvider.overrideWithValue(_FakeTranscriber()),
+          mediaLibraryRepositoryProvider.overrideWithValue(
+            _FakeLibraryRepository(),
+          ),
+        ],
+        child: const AudioStage(),
+      ),
+    );
     await tester.pumpAndSettle();
 
     final container = ProviderScope.containerOf(

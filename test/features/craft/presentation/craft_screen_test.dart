@@ -139,4 +139,38 @@ void main() {
     expect(find.byIcon(Icons.mic_rounded), findsWidgets);
     expect(find.byIcon(Icons.edit_note_rounded), findsWidgets);
   });
+
+  testWidgets(
+    'CraftScreen asks before switching mode with an unsaved audio preview',
+    (tester) async {
+      await tester.pumpWidget(_harness(overrides: _baseOverrides()));
+      await tester.pumpAndSettle();
+
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(CraftScreen)),
+      );
+      await container.read(authCtrlProvider.future);
+      await container.read(appPreferencesCtrlProvider.future);
+      await container
+          .read(craftControllerProvider.notifier)
+          .useTextInput('I had a wonderful day today.');
+      await tester.pumpAndSettle();
+      await container.read(craftControllerProvider.notifier).generateAudio();
+      await tester.pumpAndSettle();
+
+      expect(container.read(craftControllerProvider).hasUnsavedPreview, isTrue);
+
+      await tester.tap(find.text('Advanced'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Discard this audio?'), findsOneWidget);
+
+      // Cancel keeps Express + the unsaved preview.
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ExpressFlow), findsOneWidget);
+      expect(container.read(craftControllerProvider).hasUnsavedPreview, isTrue);
+    },
+  );
 }

@@ -3431,10 +3431,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get craftAudioPreview => 'Preview';
 
   @override
-  String get craftAudioSaySomethingElse => 'Say something else';
+  String get craftAudioSaySomethingElse => 'Save & say another';
 
   @override
-  String get craftAudioPracticeNow => 'Practice now';
+  String get craftAudioPracticeNow => 'Save & practice';
+
+  @override
+  String get craftAudioUnsavedHint =>
+      'Not saved yet. Leave now and this audio is discarded — it won’t appear in history.';
+
+  @override
+  String get craftAudioDiscardTitle => 'Discard this audio?';
+
+  @override
+  String get craftAudioDiscardMessage =>
+      'Generated audio is only kept after you save. Leaving now discards it, and credits already used for this preview are not refunded.';
+
+  @override
+  String get craftAudioDiscardConfirm => 'Discard';
 
   @override
   String get craftSavedToLibrary => 'Saved to library';

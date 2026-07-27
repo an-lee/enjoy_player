@@ -74,9 +74,11 @@ A new `TranslationStyle.auto` is the **default** for Express mode. Instead of a 
 - **Script block** — language pair + full learning-language text (selectable) with a left-border accent, so the learner can follow along while previewing. Long scripts scroll inside a capped viewport (~240px) so the player and actions stay reachable; text is never ellipsis-truncated.
 - **Inline preview player** — play/pause circle with a single-row progress control (time · slider · duration), driven by `audioplayers` `AudioPlayer` reading `state.previewAudioBytes` from memory via `BytesSource`
 - **Voice** control (shows current voice label; expandable to full `VoicePicker` — changing voice re-synthesizes)
-- Two action buttons:
-  - **Practice now** (`saveAndPractice`) — primary CTA; saves and navigates to the player route with the new media ID
-  - **Say something else** (`saveAndCaptureNext`) — saves to library, shows a snackbar confirmation ("Saved to library"), then resets to the capture stage while preserving session preferences (language pair, style, voice). This is the **rapid-capture loop** for building a personal library in quick succession.
+- **Unsaved hint** — when `hasUnsavedPreview` is true, an inline callout (`craftAudioUnsavedHint`) reminds the learner that TTS bytes are in memory only until a save CTA runs
+- Two save CTAs (labels make persistence explicit):
+  - **Save & practice** (`saveAndPractice`) — primary `EnjoyButton`; saves and navigates to the player route with the new media ID
+  - **Save & say another** (`saveAndCaptureNext`) — outlined secondary; saves to library, shows a snackbar confirmation ("Saved to library"), then resets to the capture stage while preserving session preferences (language pair, style, voice). This is the **rapid-capture loop** for building a personal library in quick succession.
+- **Leave / mode-switch guard** — `CraftScreen` blocks system back and the mode segmented control while `hasUnsavedPreview` (or while capturing). Confirming discard (`confirmDiscardUnsavedCraftPreview`) drops the in-memory preview; cancel keeps the learner on the audio stage. Preview is never written to SQLite until `saveToLibrary` succeeds.
 
 ### Failure handling in Express stages
 

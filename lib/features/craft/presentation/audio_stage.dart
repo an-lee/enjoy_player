@@ -2,8 +2,8 @@
 ///
 /// Shows the full learning-language script (scrollable when long) so the
 /// learner can follow along while previewing, an inline audio preview player,
-/// a collapsible voice chip, and two primary actions: "Say something else"
-/// (loop) and "Practice now" (navigate to player).
+/// a collapsible voice chip, an unsaved-preview hint, and two save CTAs:
+/// "Save & practice" (navigate to player) and "Save & say another" (loop).
 library;
 
 import 'dart:async';
@@ -15,6 +15,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:enjoy_player/core/routing/player_navigation.dart';
+import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
+import 'package:enjoy_player/core/theme/widgets/enjoy_button.dart';
 import 'package:enjoy_player/features/craft/application/craft_controller.dart';
 import 'package:enjoy_player/features/craft/domain/azure_voice.dart';
 import 'package:enjoy_player/features/craft/domain/craft_failure.dart';
@@ -157,6 +159,7 @@ class _AudioStageState extends ConsumerState<AudioStage> {
     final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(craftControllerProvider);
     final theme = Theme.of(context);
+    final t = EnjoyThemeTokens.of(context);
 
     // Re-synth (voice change) replaces preview bytes — reset the local player.
     ref.listen<Uint8List?>(
@@ -193,13 +196,13 @@ class _AudioStageState extends ConsumerState<AudioStage> {
       // No audio — shouldn't normally happen, but show a fallback.
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(t.space24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(l10n.craftAudioPreview, style: theme.textTheme.bodyLarge),
-              const SizedBox(height: 16),
-              FilledButton(
+              SizedBox(height: t.space16),
+              EnjoyButton.primary(
                 onPressed: () =>
                     ref.read(craftControllerProvider.notifier).generateAudio(),
                 child: Text(l10n.craftRewriteGenerateAudio),
@@ -216,7 +219,7 @@ class _AudioStageState extends ConsumerState<AudioStage> {
     final voiceLabel = _voiceDisplayLabel(state.selectedVoice);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: t.space8, vertical: t.space8),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 560),
@@ -229,7 +232,7 @@ class _AudioStageState extends ConsumerState<AudioStage> {
                 text: previewText,
                 theme: theme,
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: t.space20),
               _PreviewPlayer(
                 isPlaying: _isPlaying,
                 position: _position,
@@ -242,7 +245,7 @@ class _AudioStageState extends ConsumerState<AudioStage> {
                 fmt: _fmt,
                 theme: theme,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: t.space16),
               _VoiceChip(
                 expanded: _voiceExpanded,
                 synthLanguage: state.synthLanguage,
@@ -261,22 +264,20 @@ class _AudioStageState extends ConsumerState<AudioStage> {
                   );
                 },
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: t.space20),
+              if (state.hasUnsavedPreview) ...[
+                _UnsavedPreviewHint(message: l10n.craftAudioUnsavedHint),
+                SizedBox(height: t.space16),
+              ],
               if (state.isSaving)
                 const Center(child: CircularProgressIndicator())
-              else ...[
-                FilledButton.icon(
-                  onPressed: _saveAndPractice,
-                  icon: const Icon(Icons.play_arrow_rounded),
-                  label: Text(l10n.craftAudioPracticeNow),
+              else
+                _AudioActions(
+                  practiceLabel: l10n.craftAudioPracticeNow,
+                  sayAnotherLabel: l10n.craftAudioSaySomethingElse,
+                  onPractice: _saveAndPractice,
+                  onSayAnother: _saveAndCaptureNext,
                 ),
-                const SizedBox(height: 12),
-                FilledButton.tonalIcon(
-                  onPressed: _saveAndCaptureNext,
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: Text(l10n.craftAudioSaySomethingElse),
-                ),
-              ],
             ],
           ),
         ),
@@ -294,6 +295,91 @@ String? _voiceDisplayLabel(String? voiceId) {
 }
 
 // === Sub-widgets ===
+
+class _UnsavedPreviewHint extends StatelessWidget {
+  const _UnsavedPreviewHint({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = EnjoyThemeTokens.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.tertiaryContainer.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(t.radiusMd),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.55),
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: t.space12,
+          vertical: t.space8,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.info_outline_rounded,
+              size: 18,
+              color: scheme.onTertiaryContainer,
+            ),
+            SizedBox(width: t.space8),
+            Expanded(
+              child: Text(
+                message,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: scheme.onTertiaryContainer,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AudioActions extends StatelessWidget {
+  const _AudioActions({
+    required this.practiceLabel,
+    required this.sayAnotherLabel,
+    required this.onPractice,
+    required this.onSayAnother,
+  });
+
+  final String practiceLabel;
+  final String sayAnotherLabel;
+  final VoidCallback onPractice;
+  final VoidCallback onSayAnother;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = EnjoyThemeTokens.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        EnjoyButton.primary(
+          onPressed: onPractice,
+          icon: Icons.library_add_check_rounded,
+          child: Text(practiceLabel),
+        ),
+        SizedBox(height: t.space8),
+        OutlinedButton.icon(
+          onPressed: onSayAnother,
+          icon: const Icon(Icons.mic_none_rounded, size: 18),
+          label: Text(sayAnotherLabel),
+        ),
+      ],
+    );
+  }
+}
 
 class _LoadingView extends StatelessWidget {
   const _LoadingView({required this.l10n});
