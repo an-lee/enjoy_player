@@ -93,7 +93,7 @@ abstract class _$TranscriptFetchCtrl extends $Notifier<TranscriptFetchUiState> {
   TranscriptFetchUiState build(String mediaId);
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref as $Ref<TranscriptFetchUiState, TranscriptFetchUiState>;
     final element =
@@ -104,7 +104,7 @@ abstract class _$TranscriptFetchCtrl extends $Notifier<TranscriptFetchUiState> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args));
+    return element.handleCreate(ref, () => build(_$args));
   }
 }
 

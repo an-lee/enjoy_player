@@ -50,7 +50,7 @@ abstract class _$ShadowReadingHotkeyBus
   ShadowReadingHotkeyTicks build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref as $Ref<ShadowReadingHotkeyTicks, ShadowReadingHotkeyTicks>;
     final element =
@@ -61,6 +61,6 @@ abstract class _$ShadowReadingHotkeyBus
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

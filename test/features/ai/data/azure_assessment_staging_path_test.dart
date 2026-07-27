@@ -104,16 +104,20 @@ void main() {
 
   group('stageWavForAzureAssessment', () {
     test('returns the original path on non-Windows', () async {
+      // On Windows, a leading-/ path is resolved against the current drive
+      // root by File.absolute — this case only asserts the POSIX short-circuit.
+      if (Platform.isWindows) return;
       final result = await stageWavForAzureAssessment('/tmp/audio.wav');
       expect(result.$1, '/tmp/audio.wav');
       expect(result.$2, isFalse);
     });
 
     test('returns the original path when it is ASCII', () async {
-      final result = await stageWavForAzureAssessment(
-        '/var/tmp/ascii_path.wav',
-      );
-      expect(result.$1, '/var/tmp/ascii_path.wav');
+      final asciiPath = Platform.isWindows
+          ? r'C:\Users\Alice\AppData\Local\Temp\ascii_path.wav'
+          : '/var/tmp/ascii_path.wav';
+      final result = await stageWavForAzureAssessment(asciiPath);
+      expect(result.$1, File(asciiPath).absolute.path);
       expect(result.$2, isFalse);
     });
   });

@@ -91,7 +91,7 @@ abstract class _$CreditsPackagePurchaseCtrl
   AsyncValue<void> build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<AsyncValue<void>, AsyncValue<void>>;
     final element =
         ref.element
@@ -101,6 +101,6 @@ abstract class _$CreditsPackagePurchaseCtrl
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

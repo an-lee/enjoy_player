@@ -47,7 +47,7 @@ abstract class _$UpdateCtrl extends $Notifier<UpdateCheckResult?> {
   UpdateCheckResult? build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<UpdateCheckResult?, UpdateCheckResult?>;
     final element =
         ref.element
@@ -57,7 +57,7 @@ abstract class _$UpdateCtrl extends $Notifier<UpdateCheckResult?> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }
 

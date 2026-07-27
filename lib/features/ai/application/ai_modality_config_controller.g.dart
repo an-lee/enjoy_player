@@ -97,7 +97,7 @@ abstract class _$AiModalityConfigCtrl extends $Notifier<AiModalityConfigs> {
   AiModalityConfigs build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<AiModalityConfigs, AiModalityConfigs>;
     final element =
         ref.element
@@ -107,6 +107,6 @@ abstract class _$AiModalityConfigCtrl extends $Notifier<AiModalityConfigs> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

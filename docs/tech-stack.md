@@ -14,7 +14,7 @@
 | Networking | `http` | Enjoy API client under `lib/data/api/` |
 | Secure storage | `flutter_secure_storage` | Access token only |
 | Browser / deep links | `url_launcher` | OAuth `start_auth` browser step |
-| Markdown (AI explanations) | `flutter_markdown` | Contextual translation in transcript lookup sheet |
+| Markdown (AI explanations) | `flutter_markdown_plus` | Contextual translation in transcript lookup sheet |
 | i18n | `flutter_localizations` + ARB | `lib/l10n/app_en.arb`, `app_zh.arb`, `app_zh_CN.arb`; default display locale `zh-CN` ([`kAppDefaultDisplayLocale`](../lib/core/application/app_language_catalog.dart)) |
 | Codegen | `build_runner`, `drift_dev`, `riverpod_generator` | Run after schema/provider edits |
 | Lint | `flutter_lints` ^6.0.0 | Expanded baseline in `analysis_options.yaml` (quotes, trailing commas, async hygiene, package deps). `custom_lint` deferred — see [ADR-0030](decisions/0030-flutter-lints-baseline-no-custom-lint.md). |

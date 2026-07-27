@@ -76,7 +76,7 @@ abstract class _$PlayerController extends $Notifier<PlaybackSession?> {
   PlaybackSession? build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<PlaybackSession?, PlaybackSession?>;
     final element =
         ref.element
@@ -86,6 +86,6 @@ abstract class _$PlayerController extends $Notifier<PlaybackSession?> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

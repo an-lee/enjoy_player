@@ -49,6 +49,15 @@ void main() {
       await localUriTrusted(localUri: uri, storedSize: 4, storedMtimeMs: null),
       isTrue,
     );
+    // Production may store a bare filesystem path (not a file: URI).
+    expect(
+      await localUriTrusted(
+        localUri: file.path,
+        storedSize: 4,
+        storedMtimeMs: null,
+      ),
+      isTrue,
+    );
   });
 
   test('localUriTrusted rejects size or mtime mismatch', () async {

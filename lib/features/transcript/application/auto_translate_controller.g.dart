@@ -92,7 +92,7 @@ abstract class _$AutoTranslateCtrl extends $Notifier<AutoTranslateUiState> {
   AutoTranslateUiState build(String mediaId);
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<AutoTranslateUiState, AutoTranslateUiState>;
     final element =
         ref.element
@@ -102,7 +102,7 @@ abstract class _$AutoTranslateCtrl extends $Notifier<AutoTranslateUiState> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args));
+    return element.handleCreate(ref, () => build(_$args));
   }
 }
 

@@ -49,7 +49,7 @@ abstract class _$CreditsUsageFiltersCtrl
   CreditsUsageFilters build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<CreditsUsageFilters, CreditsUsageFilters>;
     final element =
         ref.element
@@ -59,7 +59,7 @@ abstract class _$CreditsUsageFiltersCtrl
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }
 

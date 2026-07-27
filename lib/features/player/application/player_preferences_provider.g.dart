@@ -42,13 +42,13 @@ final class PlayerPreferencesCtrlProvider
 }
 
 String _$playerPreferencesCtrlHash() =>
-    r'fed42b02007b914af5720802ac99a48d090dba33';
+    r'cd0ae1fe005341a834dfcabcb092e552f6242f5a';
 
 abstract class _$PlayerPreferencesCtrl extends $Notifier<PlayerPreferences> {
   PlayerPreferences build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<PlayerPreferences, PlayerPreferences>;
     final element =
         ref.element
@@ -58,6 +58,6 @@ abstract class _$PlayerPreferencesCtrl extends $Notifier<PlayerPreferences> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

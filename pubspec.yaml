@@ -26,13 +26,13 @@ dependencies:
   # fresh `pub get` cannot upgrade without an explicit PR. See ADR-0029.
   file_picker: ^12.0.0-beta.7
   freezed_annotation: ^3.0.0
-  flutter_riverpod: ^3.3.1
+  flutter_riverpod: ^3.3.2
   flutter_secure_storage: ^10.2.0
   go_router: ^17.2.3
   http: ^1.4.0
   google_fonts: ^8.1.0
   intl: ^0.20.2
-  json_annotation: ^4.11.0
+  json_annotation: ^4.12.0
   logging: ^1.3.0
   meta: ^1.16.0
   media_kit: ^1.2.2
@@ -51,7 +51,7 @@ dependencies:
   auto_updater: ^1.0.0
   ota_update: 7.1.0
   record: ^7.0.0
-  riverpod_annotation: ^4.0.2
+  riverpod_annotation: ^4.0.3
   sqlite3_flutter_libs: ^0.6.0+eol
   url_launcher: ^6.3.1
   google_sign_in: ^7.2.0
@@ -60,10 +60,10 @@ dependencies:
   uuid: ^4.5.1
   palette_generator: ^0.3.3+7
   flutter_inappwebview: ^6.1.5
-  flutter_markdown: ^0.7.7+1
+  flutter_markdown_plus: ^1.0.12
   flutter_svg: ^2.2.3
   qr_flutter: ^4.1.0
-  share_plus: ^13.1.0
+  share_plus: ^13.3.0
   skeletonizer: ^2.1.3
   window_manager: ^0.5.1
   ai_sdk_dart: ^1.2.0
@@ -79,11 +79,17 @@ dev_dependencies:
   path_provider_platform_interface: ^2.1.2
   url_launcher_platform_interface: ^2.3.2
   flutter_lints: ^6.0.0
-  build_runner: ^2.5.4
-  drift_dev: ^2.31.0
-  freezed: ^3.2.5
-  json_serializable: ^6.11.2
-  riverpod_generator: ^4.0.0+1
+  # Cap at 2.15.1: 2.15.2+ needs analyzer >=13.3, which is blocked by
+  # riverpod_generator 4.0.4 / riverpod_analyzer_utils (analyzer ^12).
+  # riverpod_generator 4.0.6 is currently unsolvable (analyzer ^13 + rau ^12).
+  build_runner: ^2.15.1
+  # Cap at 2.34.0: 2.34.1+ needs analyzer ^13 (same riverpod ceiling).
+  drift_dev: ^2.34.0
+  # Pre-release — pinned exactly so `pub get` cannot upgrade without a PR.
+  # freezed 4.0.0-dev.3 needs analyzer ^13; blocked until riverpod ships rau for 13.
+  freezed: 3.2.6-dev.1
+  json_serializable: ^6.14.0
+  riverpod_generator: ^4.0.4
   flutter_launcher_icons: ^0.14.4
 
 flutter:
