@@ -77,6 +77,19 @@ class PlayerPreferencesCtrl extends _$PlayerPreferencesCtrl {
     await applyCurrentToEngine();
   }
 
+  /// Updates volume state + engine **without** persisting to Drift — for
+  /// use during slider drag so each tick is cheap. Call [setVolume] on
+  /// `onChangeEnd` to persist the final value (issue #470).
+  Future<void> setVolumeTransient(double v) async {
+    final clamped = v.clamp(0.0, 1.0).toDouble();
+    state = state.copyWith(volume: clamped);
+    if (clamped > 0.01) {
+      _lastNonZeroVolume = clamped;
+    }
+    final engine = ref.read(playerEngineProvider);
+    await engine.setVolumeNormalized(clamped);
+  }
+
   Future<void> toggleMute() async {
     if (state.volume <= 0.01) {
       await setVolume(_lastNonZeroVolume.clamp(0.05, 1.0).toDouble());

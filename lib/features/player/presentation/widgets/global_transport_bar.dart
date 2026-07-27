@@ -160,8 +160,6 @@ class GlobalTransportBar extends ConsumerStatefulWidget {
 }
 
 class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
-  bool _sliderHovered = false;
-
   void _openPlaybackRateSheet() {
     final t = EnjoyThemeTokens.of(context);
     unawaited(
@@ -434,11 +432,7 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
           Padding(
             padding: EdgeInsets.fromLTRB(t.space12, t.space8, t.space12, 0),
             child: RepaintBoundary(
-              child: TransportProgressStrip(
-                chrome: chrome,
-                hovered: _sliderHovered,
-                onHoverChanged: (v) => setState(() => _sliderHovered = v),
-              ),
+              child: TransportProgressStrip(chrome: chrome),
             ),
           ),
           Padding(
