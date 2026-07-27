@@ -11432,9 +11432,53 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $VocabularyContextsTable(this);
   late final $VocabularyReviewsTable vocabularyReviews =
       $VocabularyReviewsTable(this);
+  late final Index idxVideosProviderVid = Index(
+    'idx_videos_provider_vid',
+    'CREATE INDEX idx_videos_provider_vid ON videos (provider, vid)',
+  );
+  late final Index idxVideosLocalUri = Index(
+    'idx_videos_local_uri',
+    'CREATE INDEX idx_videos_local_uri ON videos (local_uri)',
+  );
+  late final Index idxAudiosLocalUri = Index(
+    'idx_audios_local_uri',
+    'CREATE INDEX idx_audios_local_uri ON audios (local_uri)',
+  );
+  late final Index idxAudiosMd5 = Index(
+    'idx_audios_md5',
+    'CREATE INDEX idx_audios_md5 ON audios (md5)',
+  );
+  late final Index idxTranscriptsTarget = Index(
+    'idx_transcripts_target',
+    'CREATE INDEX idx_transcripts_target ON transcripts (target_type, target_id)',
+  );
   late final Index idxTranscriptFetchStatesTarget = Index(
     'idx_transcript_fetch_states_target',
     'CREATE INDEX idx_transcript_fetch_states_target ON transcript_fetch_states (target_type, target_id)',
+  );
+  late final Index idxEchoSessionsTargetActive = Index(
+    'idx_echo_sessions_target_active',
+    'CREATE INDEX idx_echo_sessions_target_active ON echo_sessions (target_type, target_id, last_active_at)',
+  );
+  late final Index idxRecordingsTarget = Index(
+    'idx_recordings_target',
+    'CREATE INDEX idx_recordings_target ON recordings (target_type, target_id)',
+  );
+  late final Index idxDictationsTarget = Index(
+    'idx_dictations_target',
+    'CREATE INDEX idx_dictations_target ON dictations (target_type, target_id)',
+  );
+  late final Index idxSyncQueueRetryCreated = Index(
+    'idx_sync_queue_retry_created',
+    'CREATE INDEX idx_sync_queue_retry_created ON sync_queue (retry_count, created_at)',
+  );
+  late final Index idxYoutubeFeedEntriesChannelPublished = Index(
+    'idx_youtube_feed_entries_channel_published',
+    'CREATE INDEX idx_youtube_feed_entries_channel_published ON youtube_feed_entries (channel_id, published_at)',
+  );
+  late final Index idxYoutubeFeedEntriesPublished = Index(
+    'idx_youtube_feed_entries_published',
+    'CREATE INDEX idx_youtube_feed_entries_published ON youtube_feed_entries (published_at)',
   );
   late final Index idxVocabularyItemsWordLanguage = Index(
     'idx_vocabulary_items_word_language',
@@ -11507,7 +11551,18 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     vocabularyItems,
     vocabularyContexts,
     vocabularyReviews,
+    idxVideosProviderVid,
+    idxVideosLocalUri,
+    idxAudiosLocalUri,
+    idxAudiosMd5,
+    idxTranscriptsTarget,
     idxTranscriptFetchStatesTarget,
+    idxEchoSessionsTargetActive,
+    idxRecordingsTarget,
+    idxDictationsTarget,
+    idxSyncQueueRetryCreated,
+    idxYoutubeFeedEntriesChannelPublished,
+    idxYoutubeFeedEntriesPublished,
     idxVocabularyItemsWordLanguage,
     idxVocabularyItemsNextReviewAt,
     idxVocabularyItemsStatus,

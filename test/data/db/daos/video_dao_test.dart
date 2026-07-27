@@ -169,13 +169,18 @@ void main() {
       expect(await db.videoDao.getById('v-1'), isNull);
     });
 
-    test('countByLocalUri returns matching rows count', () async {
+    test('existsByLocalUri returns true for matching rows', () async {
       await db.videoDao.insertRow(_video(id: 'a', localUri: '/tmp/a.mp4'));
       await db.videoDao.insertRow(_video(id: 'b', localUri: '/tmp/a.mp4'));
       await db.videoDao.insertRow(_video(id: 'c', localUri: '/tmp/b.mp4'));
-      final n = await db.videoDao.countByLocalUri('/tmp/a.mp4');
-      expect(n, 2);
-      expect(await db.videoDao.countByLocalUri('/tmp/missing'), 0);
+      expect(await db.videoDao.existsByLocalUri('/tmp/a.mp4'), isTrue);
+      expect(await db.videoDao.existsByLocalUri('/tmp/b.mp4'), isTrue);
+      expect(await db.videoDao.existsByLocalUri('/tmp/missing'), isFalse);
+    });
+
+    test('existsByLocalUri returns false for null localUri rows', () async {
+      await db.videoDao.insertRow(_video(id: 'a'));
+      expect(await db.videoDao.existsByLocalUri('/tmp/a.mp4'), isFalse);
     });
   });
 }

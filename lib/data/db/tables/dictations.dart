@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 
 import 'sync_metadata.dart';
 
+@TableIndex(name: 'idx_dictations_target', columns: {#targetType, #targetId})
 @DataClassName('DictationRow')
 class Dictations extends Table with SyncMetadataColumns {
   @override

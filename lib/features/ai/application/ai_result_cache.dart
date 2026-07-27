@@ -18,8 +18,6 @@ import 'dart:convert';
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import 'package:drift/drift.dart' show Variable;
-
 import 'package:enjoy_player/core/cache/lru_store.dart';
 import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/core/riverpod/async_value_x.dart';
@@ -169,28 +167,14 @@ abstract class AiResultCache<V extends Object> {
     required String sourceLanguage,
     required String targetLanguage,
   }) async {
-    // L2: LIKE scan, then DELETE per row.
+    // L2: single-statement bulk DELETE (issue #478) — replaces the previous
+    // SELECT-then-per-row-DELETE loop.
     final srcPattern = '%"sourceLanguage":"$sourceLanguage"%';
     final tgtPattern = '%"targetLanguage":"$targetLanguage"%';
-    final rows = await _dao
-        .customSelect(
-          'SELECT kind, key FROM ai_cache '
-          'WHERE payload_json LIKE ? AND payload_json LIKE ?',
-          variables: [
-            Variable.withString(srcPattern),
-            Variable.withString(tgtPattern),
-          ],
-          readsFrom: {_dao.aiCache},
-        )
-        .get();
-    for (final row in rows) {
-      final kind = row.read<String>('kind');
-      final key = row.read<String>('key');
-      await _dao.deleteRow(kind, key);
-    }
+    final deleted = await _dao.deleteByPayloadLike(srcPattern, tgtPattern);
     _log.info(
       'ai_cache evict_for_pair src=$sourceLanguage tgt=$targetLanguage '
-      'l2=${rows.length}',
+      'l2=$deleted',
     );
   }
 
@@ -323,6 +307,33 @@ class AiContextualTranslationCache
 // Riverpod providers
 // ---------------------------------------------------------------------------
 
+/// Coalesces the startup prune pass for all AI cache kinds (issue #478).
+///
+/// Previously each of the four cache providers called `unawaited(cache.prune())`
+/// at construction — 4 × len(policies) × 2 SQL ops against the same `ai_cache`
+/// table racing on the same Drift executor. This provider runs the prune once
+/// per database instance; each cache provider watches it to ensure it has
+/// fired before the cache is used.
+@Riverpod(keepAlive: true)
+void aiCacheStartupPrune(Ref ref) {
+  final db = ref.watch(appDatabaseProvider);
+  final policies = defaultAiKindPolicies;
+  unawaited(() async {
+    final now = DateTime.now();
+    for (final entry in policies.entries) {
+      final kind = entry.key;
+      final policy = entry.value;
+      if (policy.l2RowCap > 0) {
+        await db.aiCacheDao.evictOldestExcept(kind.wire, policy.l2RowCap);
+      }
+      if (policy.l2AgeCutoff > Duration.zero) {
+        final cutoff = now.subtract(policy.l2AgeCutoff);
+        await db.aiCacheDao.pruneOlderThan(kind.wire, cutoff);
+      }
+    }
+  }());
+}
+
 /// Per-user `AiMapCache` (JSON-typed payload). Cleared on sign-out /
 /// user-id change.
 ///
@@ -359,9 +370,7 @@ AiMapCache aiResultCache(Ref ref) {
     }
   });
 
-  // Best-effort maintenance at startup.
-  unawaited(cache.prune());
-
+  ref.watch(aiCacheStartupPruneProvider);
   return cache;
 }
 
@@ -391,7 +400,7 @@ AiTranslationCache aiTranslationCache(Ref ref) {
       unawaited(cache.clear());
     }
   });
-  unawaited(cache.prune());
+  ref.watch(aiCacheStartupPruneProvider);
   return cache;
 }
 
@@ -420,7 +429,7 @@ AiDictionaryCache aiDictionaryCache(Ref ref) {
       unawaited(cache.clear());
     }
   });
-  unawaited(cache.prune());
+  ref.watch(aiCacheStartupPruneProvider);
   return cache;
 }
 
@@ -449,6 +458,6 @@ AiContextualTranslationCache aiContextualTranslationCache(Ref ref) {
       unawaited(cache.clear());
     }
   });
-  unawaited(cache.prune());
+  ref.watch(aiCacheStartupPruneProvider);
   return cache;
 }

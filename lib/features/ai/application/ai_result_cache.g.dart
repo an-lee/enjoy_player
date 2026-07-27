@@ -8,6 +8,71 @@ part of 'ai_result_cache.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
+/// Coalesces the startup prune pass for all AI cache kinds (issue #478).
+///
+/// Previously each of the four cache providers called `unawaited(cache.prune())`
+/// at construction — 4 × len(policies) × 2 SQL ops against the same `ai_cache`
+/// table racing on the same Drift executor. This provider runs the prune once
+/// per database instance; each cache provider watches it to ensure it has
+/// fired before the cache is used.
+
+@ProviderFor(aiCacheStartupPrune)
+final aiCacheStartupPruneProvider = AiCacheStartupPruneProvider._();
+
+/// Coalesces the startup prune pass for all AI cache kinds (issue #478).
+///
+/// Previously each of the four cache providers called `unawaited(cache.prune())`
+/// at construction — 4 × len(policies) × 2 SQL ops against the same `ai_cache`
+/// table racing on the same Drift executor. This provider runs the prune once
+/// per database instance; each cache provider watches it to ensure it has
+/// fired before the cache is used.
+
+final class AiCacheStartupPruneProvider
+    extends $FunctionalProvider<void, void, void>
+    with $Provider<void> {
+  /// Coalesces the startup prune pass for all AI cache kinds (issue #478).
+  ///
+  /// Previously each of the four cache providers called `unawaited(cache.prune())`
+  /// at construction — 4 × len(policies) × 2 SQL ops against the same `ai_cache`
+  /// table racing on the same Drift executor. This provider runs the prune once
+  /// per database instance; each cache provider watches it to ensure it has
+  /// fired before the cache is used.
+  AiCacheStartupPruneProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'aiCacheStartupPruneProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$aiCacheStartupPruneHash();
+
+  @$internal
+  @override
+  $ProviderElement<void> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  void create(Ref ref) {
+    return aiCacheStartupPrune(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(void value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<void>(value),
+    );
+  }
+}
+
+String _$aiCacheStartupPruneHash() =>
+    r'5811f5235124494ebaf5495fc005e3c96f40199a';
+
 /// Per-user `AiMapCache` (JSON-typed payload). Cleared on sign-out /
 /// user-id change.
 ///
@@ -67,7 +132,7 @@ final class AiResultCacheProvider
   }
 }
 
-String _$aiResultCacheHash() => r'1174c0e7699ae9017884ae7d4a602658ccc30ac1';
+String _$aiResultCacheHash() => r'a091f85bdab587328537b1aa67a201f36011c981';
 
 /// Per-user `AiTranslationCache` (typed `TranslationResult`). Shares the
 /// L2 Drift table with `aiResultCache` (different `AiKind.wire`).
@@ -123,7 +188,7 @@ final class AiTranslationCacheProvider
 }
 
 String _$aiTranslationCacheHash() =>
-    r'2d0c04ebd0e3399a66fecf1b0ca485f84fd39ffe';
+    r'255329c8a3653ebc1da72377c4104f25e794e5c0';
 
 /// Per-user `AiDictionaryCache`.
 
@@ -175,7 +240,7 @@ final class AiDictionaryCacheProvider
   }
 }
 
-String _$aiDictionaryCacheHash() => r'217497e734742cd533a39726ebbe94371710e782';
+String _$aiDictionaryCacheHash() => r'3faf13ed889a1d005279546fa66e64256ca91d75';
 
 /// Per-user `AiContextualTranslationCache`.
 
@@ -229,4 +294,4 @@ final class AiContextualTranslationCacheProvider
 }
 
 String _$aiContextualTranslationCacheHash() =>
-    r'4718d09d436cc5c94da273658fbcec3f1ae9d5dc';
+    r'5429bf6ef754e46ceee108a9cb27d0c8004da09c';

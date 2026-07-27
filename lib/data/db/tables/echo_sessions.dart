@@ -5,6 +5,10 @@ import 'package:drift/drift.dart';
 
 import 'sync_metadata.dart';
 
+@TableIndex(
+  name: 'idx_echo_sessions_target_active',
+  columns: {#targetType, #targetId, #lastActiveAt},
+)
 @DataClassName('EchoSessionRow')
 class EchoSessions extends Table with SyncMetadataColumns {
   @override

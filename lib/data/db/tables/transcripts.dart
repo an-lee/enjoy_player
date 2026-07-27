@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 
 import 'sync_metadata.dart';
 
+@TableIndex(name: 'idx_transcripts_target', columns: {#targetType, #targetId})
 @DataClassName('TranscriptRow')
 class Transcripts extends Table with SyncMetadataColumns {
   @override

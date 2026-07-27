@@ -3,6 +3,11 @@ library;
 
 import 'package:drift/drift.dart';
 
+@TableIndex(
+  name: 'idx_youtube_feed_entries_channel_published',
+  columns: {#channelId, #publishedAt},
+)
+@TableIndex(name: 'idx_youtube_feed_entries_published', columns: {#publishedAt})
 @DataClassName('YoutubeFeedEntryRow')
 class YoutubeFeedEntries extends Table {
   @override
