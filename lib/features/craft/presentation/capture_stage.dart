@@ -10,7 +10,6 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
@@ -32,9 +31,10 @@ class CaptureStage extends ConsumerStatefulWidget {
   ConsumerState<CaptureStage> createState() => _CaptureStageState();
 }
 
-class _CaptureStageState extends ConsumerState<CaptureStage>
-    with TickerProviderStateMixin {
+class _CaptureStageState extends ConsumerState<CaptureStage> {
   static final _log = logNamed('craft.capture');
+
+  static const _maxAmplitudeBars = 40;
 
   /// Recreated after every `stop()` — `record` on Windows can keep stale
   /// Media Foundation state on the same instance.
@@ -50,8 +50,12 @@ class _CaptureStageState extends ConsumerState<CaptureStage>
 
   DateTime? _recordingStartedAt;
   Duration _elapsed = Duration.zero;
-  Ticker? _ticker;
-  List<double> _amplitudeLevels = const [];
+  Timer? _elapsedTimer;
+
+  /// Ring-buffer for amplitude samples — avoids per-tick list allocation.
+  late final Float32List _amplitudeBuffer = Float32List(_maxAmplitudeBars);
+  int _amplitudeWriteIndex = 0;
+  int _amplitudeCount = 0;
   StreamSubscription? _amplitudeSub;
 
   final _textController = TextEditingController();
@@ -65,7 +69,7 @@ class _CaptureStageState extends ConsumerState<CaptureStage>
 
   @override
   void dispose() {
-    _stopTicker();
+    _stopElapsedTimer();
     _cancelAmplitudeStream();
     _textController.dispose();
     _focusNode.dispose();
@@ -162,8 +166,9 @@ class _CaptureStageState extends ConsumerState<CaptureStage>
     _recordingPending = false;
     _recordingStartedAt = DateTime.now();
     _elapsed = Duration.zero;
-    _amplitudeLevels = [];
-    _startTicker();
+    _amplitudeWriteIndex = 0;
+    _amplitudeCount = 0;
+    _startElapsedTimer();
     _startAmplitudeStream();
 
     ref.read(craftControllerProvider.notifier).startCapture();
@@ -178,10 +183,11 @@ class _CaptureStageState extends ConsumerState<CaptureStage>
     } catch (e, st) {
       _log.warning('recorder.stop failed', e, st);
     }
-    _stopTicker();
+    _stopElapsedTimer();
     _cancelAmplitudeStream();
     _recordingStartedAt = null;
-    _amplitudeLevels = [];
+    _amplitudeWriteIndex = 0;
+    _amplitudeCount = 0;
     _recordingPending = false;
 
     await _resetRecorderInstance();
@@ -220,10 +226,11 @@ class _CaptureStageState extends ConsumerState<CaptureStage>
   Future<void> _discardMicOnly() async {
     if (_recordingStartedAt == null && !_recordingPending) return;
 
-    _stopTicker();
+    _stopElapsedTimer();
     _cancelAmplitudeStream();
     _recordingStartedAt = null;
-    _amplitudeLevels = [];
+    _amplitudeWriteIndex = 0;
+    _amplitudeCount = 0;
     _recordingPending = false;
 
     String? path;
@@ -259,19 +266,19 @@ class _CaptureStageState extends ConsumerState<CaptureStage>
     }
   }
 
-  void _startTicker() {
-    _stopTicker();
-    _ticker = createTicker((_) {
+  /// 1 Hz timer for the `m:ss` label — avoids 60 fps ticker rebuilds.
+  void _startElapsedTimer() {
+    _stopElapsedTimer();
+    _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (_recordingStartedAt == null) return;
       final elapsed = DateTime.now().difference(_recordingStartedAt!);
       if (mounted) setState(() => _elapsed = elapsed);
     });
-    unawaited(_ticker!.start());
   }
 
-  void _stopTicker() {
-    _ticker?.stop();
-    _ticker = null;
+  void _stopElapsedTimer() {
+    _elapsedTimer?.cancel();
+    _elapsedTimer = null;
   }
 
   void _startAmplitudeStream() {
@@ -284,13 +291,10 @@ class _CaptureStageState extends ConsumerState<CaptureStage>
           final level = ((amp.current + 40) / 40).clamp(0.05, 1.0);
           if (mounted) {
             setState(() {
-              _amplitudeLevels = [..._amplitudeLevels, level];
-              // Keep last 40 bars.
-              if (_amplitudeLevels.length > 40) {
-                _amplitudeLevels = _amplitudeLevels.sublist(
-                  _amplitudeLevels.length - 40,
-                );
-              }
+              _amplitudeBuffer[_amplitudeWriteIndex] = level;
+              _amplitudeWriteIndex =
+                  (_amplitudeWriteIndex + 1) % _maxAmplitudeBars;
+              if (_amplitudeCount < _maxAmplitudeBars) _amplitudeCount++;
             });
           }
         });
@@ -350,7 +354,9 @@ class _CaptureStageState extends ConsumerState<CaptureStage>
     if (state.isCapturing) {
       return _RecordingView(
         elapsed: _elapsed,
-        levels: _amplitudeLevels,
+        amplitudeBuffer: _amplitudeBuffer,
+        amplitudeCount: _amplitudeCount,
+        amplitudeWriteIndex: _amplitudeWriteIndex,
         l10n: l10n,
         theme: theme,
         onStop: _stopRecording,
@@ -503,7 +509,9 @@ class _IdleView extends StatelessWidget {
 class _RecordingView extends StatefulWidget {
   const _RecordingView({
     required this.elapsed,
-    required this.levels,
+    required this.amplitudeBuffer,
+    required this.amplitudeCount,
+    required this.amplitudeWriteIndex,
     required this.l10n,
     required this.theme,
     required this.onStop,
@@ -511,7 +519,9 @@ class _RecordingView extends StatefulWidget {
   });
 
   final Duration elapsed;
-  final List<double> levels;
+  final Float32List amplitudeBuffer;
+  final int amplitudeCount;
+  final int amplitudeWriteIndex;
   final AppLocalizations l10n;
   final ThemeData theme;
   final VoidCallback onStop;
@@ -551,7 +561,7 @@ class _RecordingViewState extends State<_RecordingView>
   Widget build(BuildContext context) {
     final theme = widget.theme;
     final scheme = theme.colorScheme;
-    final levels = widget.levels;
+    final count = widget.amplitudeCount;
 
     return Center(
       child: Column(
@@ -568,41 +578,15 @@ class _RecordingViewState extends State<_RecordingView>
           const SizedBox(height: 28),
           SizedBox(
             height: 56,
-            child: levels.isEmpty
-                ? Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(12, (i) {
-                      return Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 2),
-                        width: 3.5,
-                        height: 10 + (i % 3) * 6.0,
-                        decoration: BoxDecoration(
-                          color: scheme.primary.withValues(alpha: 0.25),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      );
-                    }),
-                  )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: levels.map((level) {
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 90),
-                        margin: const EdgeInsets.symmetric(horizontal: 1.5),
-                        width: 3.5,
-                        height: (level * 56).clamp(6.0, 56.0),
-                        decoration: BoxDecoration(
-                          color: Color.lerp(
-                            scheme.primary.withValues(alpha: 0.45),
-                            scheme.primary,
-                            level,
-                          ),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      );
-                    }).toList(),
-                  ),
+            child: CustomPaint(
+              size: const Size(double.infinity, 56),
+              painter: _AmplitudeBarsPainter(
+                buffer: widget.amplitudeBuffer,
+                count: count,
+                writeIndex: widget.amplitudeWriteIndex,
+                color: scheme.primary,
+              ),
+            ),
           ),
           const SizedBox(height: 36),
           AnimatedBuilder(
@@ -664,6 +648,71 @@ class _RecordingViewState extends State<_RecordingView>
         ],
       ),
     );
+  }
+}
+
+class _AmplitudeBarsPainter extends CustomPainter {
+  const _AmplitudeBarsPainter({
+    required this.buffer,
+    required this.count,
+    required this.writeIndex,
+    required this.color,
+  });
+
+  final Float32List buffer;
+  final int count;
+  final int writeIndex;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..style = PaintingStyle.fill;
+    const barWidth = 3.5;
+    const spacing = 3.0;
+    const minHeight = 6.0;
+    final maxHeight = size.height;
+    final radius = const Radius.circular(2);
+
+    if (count == 0) {
+      // Placeholder bars (matching the original idle pattern).
+      for (var i = 0; i < 12; i++) {
+        final h = 10 + (i % 3) * 6.0;
+        final x = i * (barWidth + spacing);
+        paint.color = color.withValues(alpha: 0.25);
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(x, (maxHeight - h) / 2, barWidth, h),
+            radius,
+          ),
+          paint,
+        );
+      }
+      return;
+    }
+
+    // Render oldest-to-newest from the ring buffer.
+    for (var i = 0; i < count; i++) {
+      final readIndex =
+          (writeIndex - count + i + buffer.length) % buffer.length;
+      final level = buffer[readIndex];
+      final h = (level * maxHeight).clamp(minHeight, maxHeight);
+      final x = i * (barWidth + spacing);
+      paint.color = Color.lerp(color.withValues(alpha: 0.45), color, level)!;
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(x, (maxHeight - h) / 2, barWidth, h),
+          radius,
+        ),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _AmplitudeBarsPainter old) {
+    return old.count != count ||
+        old.writeIndex != writeIndex ||
+        old.color != color;
   }
 }
 
