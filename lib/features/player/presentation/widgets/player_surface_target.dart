@@ -88,6 +88,9 @@ class _PlayerSurfaceTargetState extends ConsumerState<PlayerSurfaceTarget> {
     super.dispose();
   }
 
+  Offset? _lastOffset;
+  Size? _lastSize;
+
   void _sync() {
     if (!mounted || !widget.enabled) return;
     final box = context.findRenderObject() as RenderBox?;
@@ -95,6 +98,12 @@ class _PlayerSurfaceTargetState extends ConsumerState<PlayerSurfaceTarget> {
     final size = box.size;
     if (size.width <= 0 || size.height <= 0) return;
     final offset = box.localToGlobal(Offset.zero);
+
+    // Delta gate: skip registry write when geometry hasn't changed.
+    if (_lastOffset == offset && _lastSize == size) return;
+    _lastOffset = offset;
+    _lastSize = size;
+
     final cur = ref.read(playerSurfaceRegistryProvider);
     if (cur?.id != widget.id) {
       _registry.attach(
@@ -123,14 +132,7 @@ class _PlayerSurfaceTargetState extends ConsumerState<PlayerSurfaceTarget> {
         WidgetsBinding.instance.addPostFrameCallback((_) => _sync());
         return false;
       },
-      child: SizeChangedLayoutNotifier(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            WidgetsBinding.instance.addPostFrameCallback((_) => _sync());
-            return widget.child;
-          },
-        ),
-      ),
+      child: SizeChangedLayoutNotifier(child: widget.child),
     );
   }
 }
