@@ -245,7 +245,9 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
     final l10n = AppLocalizations.of(context)!;
     final t = EnjoyThemeTokens.of(context);
     final cs = Theme.of(context).colorScheme;
-    final playbackRate = ref.watch(playerPreferencesCtrlProvider).playbackRate;
+    final playbackRate = ref.watch(
+      playerPreferencesCtrlProvider.select((p) => p.playbackRate),
+    );
     final playAccent = dynamicAccent ?? cs.primary;
     final path = GoRouterState.of(context).uri.path;
     final onPlayer = path.startsWith('/player/');

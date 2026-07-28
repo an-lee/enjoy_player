@@ -31,7 +31,6 @@ class PlayerSurfaceHost extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(playerEngineRevProvider);
-    ref.watch(playerControllerProvider);
     final attachment = forcePark
         ? null
         : ref.watch(playerSurfaceRegistryProvider);
