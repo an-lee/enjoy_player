@@ -121,6 +121,35 @@ if [[ "${share_plus_patched:-0}" == "1" ]]; then
   fi
 fi
 
+# jni 1.0.1 added an unconditional `kotlin { compilerOptions { jvmTarget = ... } }`
+# block to android/build.gradle. On AGP 9 the Kotlin Gradle plugin is built in,
+# but this app keeps android.builtInKotlin=false so KGP is not auto-applied,
+# and the `kotlin {}` DSL throws "Could not find method kotlin()". jni has no
+# Kotlin sources on Android, so the block is dead config — strip it. jni 1.0.1
+# was also retracted on pub shortly after release, so this becomes a no-op when
+# a fixed version ships.
+for dir in "${PUB_CACHE}"/jni-*; do
+  [[ -d "${dir}" ]] || continue
+  file="${dir}/android/build.gradle"
+  [[ -f "${file}" ]] || continue
+  if ! grep -qE '^kotlin[[:space:]]*\{' "${file}"; then
+    continue
+  fi
+  tmp="$(mktemp)"
+  awk '
+    BEGIN { skip = 0 }
+    /^kotlin[[:space:]]*\{/ { skip = 1; next }
+    skip && /^\}/ { skip = 0; next }
+    !skip { print }
+  ' "${file}" >"${tmp}"
+  if ! cmp -s "${file}" "${tmp}"; then
+    mv "${tmp}" "${file}"
+    echo "Patched jni AGP9 kotlin block: ${file}"
+  else
+    rm -f "${tmp}"
+  fi
+done
+
 # file_picker 12's Kotlin source layout changed during the AGP 9 migration.
 # Gradle's incremental cache can retain a source snapshot that compiles
 # FilePickerDelegate.kt without FileUtils.kt after an upgrade.
