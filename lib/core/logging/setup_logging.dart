@@ -53,37 +53,14 @@ Future<void> setupAppLogging() async {
       unawaited(LogFileSink.instance?.writeRecord(record));
     }
 
-    if (mirrorToStdout) {
-      final line =
-          '[${record.level.name}] ${record.loggerName}: ${record.message}';
-      debugPrint(line);
+    if (mirrorToStdout || kDebugMode) {
+      final header = '[${record.level.name}] ${record.loggerName}:';
+      debugPrint('$header ${record.message}');
       if (record.error != null) {
-        debugPrint(
-          '[${record.level.name}] ${record.loggerName} error: '
-          '${record.error}',
-        );
+        debugPrint('$header error: ${record.error}');
       }
       if (record.stackTrace != null) {
-        debugPrint(
-          '[${record.level.name}] ${record.loggerName} stack:\n'
-          '${record.stackTrace}',
-        );
-      }
-    } else if (kDebugMode) {
-      final line =
-          '[${record.level.name}] ${record.loggerName}: ${record.message}';
-      debugPrint(line);
-      if (record.error != null) {
-        debugPrint(
-          '[${record.level.name}] ${record.loggerName} error: '
-          '${record.error}',
-        );
-      }
-      if (record.stackTrace != null) {
-        debugPrint(
-          '[${record.level.name}] ${record.loggerName} stack:\n'
-          '${record.stackTrace}',
-        );
+        debugPrint('$header stack:\n${record.stackTrace}');
       }
     }
     developer.log(
