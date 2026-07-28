@@ -44,8 +44,11 @@ void main() {
         expect(request.endSec, 18.25);
         expect(request.autoplay, isTrue);
         expect(request.activateClipWindow, isTrue);
-        expect(request.restoreSession, isFalse,
-            reason: 'Vocabulary launches are explicit and must not restore.');
+        expect(
+          request.restoreSession,
+          isFalse,
+          reason: 'Vocabulary launches are explicit and must not restore.',
+        );
         expect(request.shouldRestoreSession, isFalse);
         expect(request.isExplicitLaunch, isTrue);
       });
@@ -192,14 +195,16 @@ void main() {
     });
 
     group('shouldRestoreSession', () {
-      test('defaults to true when restoreSession is null and no clip/start',
-          () {
-        const request = PlayerLaunchRequest(mediaId: 'm1');
+      test(
+        'defaults to true when restoreSession is null and no clip/start',
+        () {
+          const request = PlayerLaunchRequest(mediaId: 'm1');
 
-        expect(request.restoreSession, isNull);
-        expect(request.shouldRestoreSession, isTrue);
-        expect(request.isExplicitLaunch, isFalse);
-      });
+          expect(request.restoreSession, isNull);
+          expect(request.shouldRestoreSession, isTrue);
+          expect(request.isExplicitLaunch, isFalse);
+        },
+      );
 
       test('defaults to false when startSec is set', () {
         const request = PlayerLaunchRequest(mediaId: 'm1', startSec: 5);
@@ -260,14 +265,8 @@ void main() {
       });
 
       test('emits autoplay=1 only when autoplay is true', () {
-        const onRequest = PlayerLaunchRequest(
-          mediaId: 'm1',
-          autoplay: true,
-        );
-        const offRequest = PlayerLaunchRequest(
-          mediaId: 'm1',
-          autoplay: false,
-        );
+        const onRequest = PlayerLaunchRequest(mediaId: 'm1', autoplay: true);
+        const offRequest = PlayerLaunchRequest(mediaId: 'm1', autoplay: false);
 
         expect(onRequest.location, '/player/m1?autoplay=1');
         expect(offRequest.location, '/player/m1');
@@ -287,18 +286,19 @@ void main() {
         expect(offRequest.location, '/player/m1');
       });
 
-      test('emits norestore=1 only when restoreSession is explicitly false',
-          () {
-        const request = PlayerLaunchRequest(
-          mediaId: 'm1',
-          restoreSession: false,
-        );
+      test(
+        'emits norestore=1 only when restoreSession is explicitly false',
+        () {
+          const request = PlayerLaunchRequest(
+            mediaId: 'm1',
+            restoreSession: false,
+          );
 
-        expect(request.location, '/player/m1?norestore=1');
-      });
+          expect(request.location, '/player/m1?norestore=1');
+        },
+      );
 
-      test('emits restore=1 only when restoreSession is explicitly true',
-          () {
+      test('emits restore=1 only when restoreSession is explicitly true', () {
         const request = PlayerLaunchRequest(
           mediaId: 'm1',
           restoreSession: true,
@@ -337,8 +337,13 @@ void main() {
         // Every key present exactly once — guards against accidental
         // double-emission of norestore + restore, or repeated start.
         expect(uri.queryParametersAll.values.expand((v) => v).length, 5);
-        expect(uri.queryParametersAll.keys.toSet(),
-            {'start', 'end', 'autoplay', 'clip', 'norestore'});
+        expect(uri.queryParametersAll.keys.toSet(), {
+          'start',
+          'end',
+          'autoplay',
+          'clip',
+          'norestore',
+        });
       });
 
       test('emits integer-form doubles without a trailing .0', () {
@@ -395,28 +400,30 @@ void main() {
     });
 
     group('equality', () {
-      test('two requests with the same fields are equal and share hashCode',
-          () {
-        const a = PlayerLaunchRequest(
-          mediaId: 'm1',
-          startSec: 3.5,
-          endSec: 18.25,
-          autoplay: true,
-          activateClipWindow: true,
-          restoreSession: false,
-        );
-        const b = PlayerLaunchRequest(
-          mediaId: 'm1',
-          startSec: 3.5,
-          endSec: 18.25,
-          autoplay: true,
-          activateClipWindow: true,
-          restoreSession: false,
-        );
+      test(
+        'two requests with the same fields are equal and share hashCode',
+        () {
+          const a = PlayerLaunchRequest(
+            mediaId: 'm1',
+            startSec: 3.5,
+            endSec: 18.25,
+            autoplay: true,
+            activateClipWindow: true,
+            restoreSession: false,
+          );
+          const b = PlayerLaunchRequest(
+            mediaId: 'm1',
+            startSec: 3.5,
+            endSec: 18.25,
+            autoplay: true,
+            activateClipWindow: true,
+            restoreSession: false,
+          );
 
-        expect(a, equals(b));
-        expect(a.hashCode, b.hashCode);
-      });
+          expect(a, equals(b));
+          expect(a.hashCode, b.hashCode);
+        },
+      );
 
       test('different mediaId breaks equality', () {
         const a = PlayerLaunchRequest(mediaId: 'm1');
