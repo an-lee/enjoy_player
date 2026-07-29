@@ -21,10 +21,7 @@ void main() {
         'youtube_subscription',
       );
       expect(SyncEntityType.vocabularyItem.wireName, 'vocabulary_item');
-      expect(
-        SyncEntityType.vocabularyContext.wireName,
-        'vocabulary_context',
-      );
+      expect(SyncEntityType.vocabularyContext.wireName, 'vocabulary_context');
     });
 
     test('tryParse round-trips every wire name', () {
@@ -160,7 +157,12 @@ void main() {
         failed: 1,
         errors: ['a'],
       );
-      final b = const SyncResult(success: true, synced: 1, failed: 0, errors: []);
+      final b = const SyncResult(
+        success: true,
+        synced: 1,
+        failed: 0,
+        errors: [],
+      );
 
       expect(a.merge(b).errors, ['a']);
     });

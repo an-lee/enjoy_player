@@ -100,6 +100,12 @@ runs:
 
         echo "$flutter_root/bin" >> "$GITHUB_PATH"
         echo "FLUTTER_ROOT=$flutter_root" >> "$GITHUB_ENV"
+
+        # Keep this executable probe: it warms Flutter's lazy bootstrap cache
+        # while RUNNER_TOOL_CACHE is writable. gh-aw later mounts that cache
+        # read-only; a cold SDK would hit EROFS before `dart analyze` or
+        # `flutter test` starts. Do not replace this with a metadata-only check.
+        # See #501 for the runner/tool-cache failure chain.
         "$flutter_bin" --version
 
     - name: Install Flutter (Windows)
@@ -148,4 +154,10 @@ runs:
 
         (Join-Path $flutterRoot 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         "FLUTTER_ROOT=$flutterRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+        # Keep this executable probe: it warms Flutter's lazy bootstrap cache
+        # while RUNNER_TOOL_CACHE is writable. gh-aw later mounts that cache
+        # read-only; a cold SDK would hit EROFS before `dart analyze` or
+        # `flutter test` starts. Do not replace this with a metadata-only check.
+        # See #501 for the runner/tool-cache failure chain.
         & $flutterBat --version
