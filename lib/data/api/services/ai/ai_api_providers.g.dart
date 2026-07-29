@@ -219,6 +219,47 @@ final class DictionaryApiProvider
 
 String _$dictionaryApiHash() => r'056b887a54ea630e793c66a8d23f52cdbcbe91c7';
 
+@ProviderFor(pronounceApi)
+final pronounceApiProvider = PronounceApiProvider._();
+
+final class PronounceApiProvider
+    extends $FunctionalProvider<PronounceApi, PronounceApi, PronounceApi>
+    with $Provider<PronounceApi> {
+  PronounceApiProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'pronounceApiProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$pronounceApiHash();
+
+  @$internal
+  @override
+  $ProviderElement<PronounceApi> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  PronounceApi create(Ref ref) {
+    return pronounceApi(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(PronounceApi value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<PronounceApi>(value),
+    );
+  }
+}
+
+String _$pronounceApiHash() => r'2b5feb5b0fd0b3b34b6b4c60b8b4b20a61b1ca10';
+
 @ProviderFor(creditsApi)
 final creditsApiProvider = CreditsApiProvider._();
 

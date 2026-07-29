@@ -22,6 +22,9 @@ import 'package:enjoy_player/features/lookup/presentation/sections/contextual_tr
 import 'package:enjoy_player/features/lookup/presentation/sections/dictionary_lookup_section.dart';
 import 'package:enjoy_player/features/lookup/presentation/sections/translation_lookup_section.dart';
 import 'package:enjoy_player/features/lookup/presentation/widgets/lookup_language_picker_row.dart';
+import 'package:enjoy_player/features/pronounce/application/pronounce_playback_controller.dart';
+import 'package:enjoy_player/features/pronounce/domain/pronounce_target.dart';
+import 'package:enjoy_player/features/pronounce/presentation/pronounce_icon_button.dart';
 import 'package:enjoy_player/features/vocabulary/presentation/add_to_vocabulary_control.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
@@ -47,6 +50,7 @@ class _DictionaryLookupSheetState extends ConsumerState<DictionaryLookupSheet> {
   late String _sourceLanguage;
   late String _targetLanguage;
   ScrollController? _dialogScroll;
+  PronouncePlaybackController? _pronounce;
 
   static const double _hPad = 20;
   static final _log = logNamed('Lookup');
@@ -66,6 +70,14 @@ class _DictionaryLookupSheetState extends ConsumerState<DictionaryLookupSheet> {
     }
   }
 
+  @override
+  void dispose() {
+    // Cached notifier — ref is unsafe after unmount.
+    unawaited(_pronounce?.stop() ?? Future<void>.value());
+    _dialogScroll?.dispose();
+    super.dispose();
+  }
+
   void _changeSource(String next) {
     final l10n = AppLocalizations.of(context);
     final prev = _sourceLanguage;
@@ -73,6 +85,7 @@ class _DictionaryLookupSheetState extends ConsumerState<DictionaryLookupSheet> {
     if (override != null) {
       if (tagsEqual(prev, override)) return;
       _evictPriorPair(prev, _targetLanguage);
+      _stopPronounce();
       setState(() => _sourceLanguage = override);
       _log.info('lookup source $prev → $override');
       return;
@@ -110,10 +123,10 @@ class _DictionaryLookupSheetState extends ConsumerState<DictionaryLookupSheet> {
     );
   }
 
-  @override
-  void dispose() {
-    _dialogScroll?.dispose();
-    super.dispose();
+  void _stopPronounce() {
+    final ctrl = ref.read(pronouncePlaybackControllerProvider.notifier);
+    _pronounce = ctrl;
+    unawaited(ctrl.stop());
   }
 
   LookupRequest get _effectiveRequest => LookupRequest(
@@ -172,6 +185,11 @@ class _DictionaryLookupSheetState extends ConsumerState<DictionaryLookupSheet> {
                       ),
                     ),
                     AddToVocabularyControl(request: _effectiveRequest),
+                    PronounceIconButton(
+                      text: widget.request.selectedText,
+                      localeTag: _sourceLanguage,
+                      surfaceId: PronounceSurfaceId.lookup,
+                    ),
                     IconButton(
                       style: IconButton.styleFrom(
                         minimumSize: const Size(44, 44),
@@ -264,6 +282,7 @@ class _DictionaryLookupSheetState extends ConsumerState<DictionaryLookupSheet> {
 
   @override
   Widget build(BuildContext context) {
+    _pronounce ??= ref.read(pronouncePlaybackControllerProvider.notifier);
     if (widget.presentation == DictionaryLookupPresentation.dialog) {
       return _mainColumn(_dialogScroll!);
     }

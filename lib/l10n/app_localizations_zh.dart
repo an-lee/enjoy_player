@@ -3471,6 +3471,30 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get subscriptionViewPlansAndPackages => '查看方案与积分包';
+
+  @override
+  String get pronouncePlay => '播放发音';
+
+  @override
+  String get pronounceStop => '停止发音';
+
+  @override
+  String get pronounceLoading => '正在加载发音…';
+
+  @override
+  String get pronounceUnavailableLanguage => '暂不支持此语言的发音';
+
+  @override
+  String get pronounceTextTooLong => '文本过长，无法发音';
+
+  @override
+  String get pronounceFailed => '无法播放发音';
+
+  @override
+  String get pronounceCreditsExhausted => '积分不足，无法生成发音';
+
+  @override
+  String get pronounceSignInRequired => '登录后即可收听发音';
 }
 
 /// The translations for Chinese, as used in China (`zh_CN`).
@@ -6358,4 +6382,28 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get subscriptionViewPlansAndPackages => '查看方案与积分包';
+
+  @override
+  String get pronouncePlay => '播放发音';
+
+  @override
+  String get pronounceStop => '停止发音';
+
+  @override
+  String get pronounceLoading => '正在加载发音…';
+
+  @override
+  String get pronounceUnavailableLanguage => '暂不支持此语言的发音';
+
+  @override
+  String get pronounceTextTooLong => '文本过长，无法发音';
+
+  @override
+  String get pronounceFailed => '无法播放发音';
+
+  @override
+  String get pronounceCreditsExhausted => '积分不足，无法生成发音';
+
+  @override
+  String get pronounceSignInRequired => '登录后即可收听发音';
 }

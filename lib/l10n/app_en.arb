@@ -1734,5 +1734,13 @@
     }
   },
   "subscriptionCreditsLimitMessageWithPackages": "AI credits limit reached. Upgrade to Pro or buy a credits package to continue.",
-  "subscriptionViewPlansAndPackages": "View plans & packages"
+  "subscriptionViewPlansAndPackages": "View plans & packages",
+  "pronouncePlay": "Play pronunciation",
+  "pronounceStop": "Stop pronunciation",
+  "pronounceLoading": "Loading pronunciation…",
+  "pronounceUnavailableLanguage": "Pronunciation unavailable for this language",
+  "pronounceTextTooLong": "Text is too long to pronounce",
+  "pronounceFailed": "Couldn't play pronunciation",
+  "pronounceCreditsExhausted": "Not enough credits to generate pronunciation",
+  "pronounceSignInRequired": "Sign in to hear pronunciation"
 }

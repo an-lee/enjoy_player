@@ -1178,5 +1178,13 @@
   "creditsPackagePurchaseFailed": "积分包购买失败",
   "creditsPermanentAvailable": "可用永久积分 {count}",
   "subscriptionCreditsLimitMessageWithPackages": "AI 积分已用完。可升级 Pro 或购买积分包继续使用。",
-  "subscriptionViewPlansAndPackages": "查看方案与积分包"
+  "subscriptionViewPlansAndPackages": "查看方案与积分包",
+  "pronouncePlay": "播放发音",
+  "pronounceStop": "停止发音",
+  "pronounceLoading": "正在加载发音…",
+  "pronounceUnavailableLanguage": "暂不支持此语言的发音",
+  "pronounceTextTooLong": "文本过长，无法发音",
+  "pronounceFailed": "无法播放发音",
+  "pronounceCreditsExhausted": "积分不足，无法生成发音",
+  "pronounceSignInRequired": "登录后即可收听发音"
 }

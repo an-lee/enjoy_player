@@ -12,6 +12,7 @@ import 'package:enjoy_player/features/shadow_reading/presentation/assessment_res
 import 'package:enjoy_player/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _kBaseJson = '''
@@ -108,25 +109,30 @@ AzurePronunciationAssessmentResult _parse(String json) {
 
 Widget _wrap(Widget child, {double width = 800}) {
   final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF003366));
-  return MaterialApp(
-    theme: ThemeData(
-      colorScheme: scheme,
-      extensions: [EnjoyThemeTokens.build(scheme)],
-    ),
-    localizationsDelegates: const [
-      AppLocalizations.delegate,
-      GlobalMaterialLocalizations.delegate,
-      GlobalWidgetsLocalizations.delegate,
-      GlobalCupertinoLocalizations.delegate,
-    ],
-    supportedLocales: AppLocalizations.supportedLocales,
-    home: Scaffold(
-      body: Center(
-        child: SizedBox(width: width, height: 600, child: child),
+  return ProviderScope(
+    child: MaterialApp(
+      theme: ThemeData(
+        colorScheme: scheme,
+        extensions: [EnjoyThemeTokens.build(scheme)],
+      ),
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: Center(
+          child: SizedBox(width: width, height: 600, child: child),
+        ),
       ),
     ),
   );
 }
+
+AssessmentResultDialog _dialog(String json) =>
+    AssessmentResultDialog(assessment: _parse(json), localeTag: 'en-US');
 
 late final AppLocalizations l10n;
 
@@ -138,9 +144,7 @@ void main() {
   testWidgets('AssessmentResultDialog renders title and overall score', (
     tester,
   ) async {
-    await tester.pumpWidget(
-      _wrap(AssessmentResultDialog(assessment: _parse(_kBaseJson))),
-    );
+    await tester.pumpWidget(_wrap(_dialog(_kBaseJson)));
     await tester.pumpAndSettle();
 
     expect(find.byType(AssessmentResultDialog), findsOneWidget);
@@ -159,9 +163,7 @@ void main() {
   testWidgets(
     'AssessmentResultDialog tap on a word tile toggles selection state',
     (tester) async {
-      await tester.pumpWidget(
-        _wrap(AssessmentResultDialog(assessment: _parse(_kBaseJson))),
-      );
+      await tester.pumpWidget(_wrap(_dialog(_kBaseJson)));
       await tester.pumpAndSettle();
 
       // Initially, no selected-word panel is shown. Only the chip "hi" is
@@ -201,9 +203,7 @@ void main() {
   testWidgets(
     'AssessmentResultDialog shows the no-result fallback when nBest is empty',
     (tester) async {
-      await tester.pumpWidget(
-        _wrap(AssessmentResultDialog(assessment: _parse(_kEmptyJson))),
-      );
+      await tester.pumpWidget(_wrap(_dialog(_kEmptyJson)));
       await tester.pumpAndSettle();
 
       expect(find.text(l10n.assessmentNoResultSummary), findsOneWidget);
@@ -216,24 +216,23 @@ void main() {
       final navKey = GlobalKey<NavigatorState>();
       final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF003366));
       await tester.pumpWidget(
-        MaterialApp(
-          navigatorKey: navKey,
-          theme: ThemeData(
-            colorScheme: scheme,
-            extensions: [EnjoyThemeTokens.build(scheme)],
-          ),
-          localizationsDelegates: const [
-            AppLocalizations.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Builder(
-            builder: (ctx) => Scaffold(
-              body: Center(
-                child: AssessmentResultDialog(assessment: _parse(_kBaseJson)),
-              ),
+        ProviderScope(
+          child: MaterialApp(
+            navigatorKey: navKey,
+            theme: ThemeData(
+              colorScheme: scheme,
+              extensions: [EnjoyThemeTokens.build(scheme)],
+            ),
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Builder(
+              builder: (ctx) =>
+                  Scaffold(body: Center(child: _dialog(_kBaseJson))),
             ),
           ),
         ),
@@ -252,9 +251,7 @@ void main() {
   testWidgets('AssessmentResultDialog handles a result with empty word list', (
     tester,
   ) async {
-    await tester.pumpWidget(
-      _wrap(AssessmentResultDialog(assessment: _parse(_kNoWordsJson))),
-    );
+    await tester.pumpWidget(_wrap(_dialog(_kNoWordsJson)));
     await tester.pumpAndSettle();
 
     // Should still render the score bars and title.

@@ -1,13 +1,21 @@
 /// Flashcard front/back with Context / Dictionary tabs.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:enjoy_player/core/application/app_language_catalog.dart';
+import 'package:enjoy_player/core/application/app_preferences_provider.dart';
 import 'package:enjoy_player/core/interaction/enjoy_tappable.dart';
 import 'package:enjoy_player/core/interaction/haptics.dart';
+import 'package:enjoy_player/core/riverpod/async_value_x.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_card.dart';
+import 'package:enjoy_player/features/pronounce/application/pronounce_playback_controller.dart';
+import 'package:enjoy_player/features/pronounce/domain/pronounce_target.dart';
+import 'package:enjoy_player/features/pronounce/presentation/pronounce_icon_button.dart';
 import 'package:enjoy_player/features/vocabulary/domain/vocabulary_models.dart';
 import 'package:enjoy_player/features/vocabulary/presentation/vocabulary_text_style.dart';
 import 'package:enjoy_player/features/vocabulary/presentation/widgets/vocabulary_flashcard_context_tab.dart';
@@ -71,6 +79,16 @@ class VocabularyFlashcard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = EnjoyThemeTokens.of(context);
+    final localeTag =
+        ref
+            .watch(appPreferencesCtrlProvider)
+            .valueOrNull
+            ?.effectiveLearningLanguage ??
+        kDefaultLearningLanguageTag;
+
+    void stopPronounce() {
+      unawaited(ref.read(pronouncePlaybackControllerProvider.notifier).stop());
+    }
 
     return AnimatedSwitcher(
       duration: t.motionStandard,
@@ -92,6 +110,7 @@ class VocabularyFlashcard extends ConsumerWidget {
               child: _FlashcardBack(
                 item: item,
                 primaryContext: primaryContext,
+                localeTag: localeTag,
                 ratingInFlight: ratingInFlight,
                 dictionaryFetchInFlight: dictionaryFetchInFlight,
                 contextualFetchInFlight: contextualFetchInFlight,
@@ -99,8 +118,14 @@ class VocabularyFlashcard extends ConsumerWidget {
                 dictionaryError: dictionaryError,
                 contextualError: contextualError,
                 mediaError: mediaError,
-                onUnflip: onUnflip,
-                onRate: onRate,
+                onUnflip: () {
+                  stopPronounce();
+                  onUnflip();
+                },
+                onRate: (r) {
+                  stopPronounce();
+                  onRate(r);
+                },
                 onFetchDictionary: onFetchDictionary,
                 onFetchContextual: onFetchContextual,
                 onPlayClip: onPlayClip,
@@ -117,8 +142,14 @@ class VocabularyFlashcard extends ConsumerWidget {
               key: const ValueKey('front'),
               child: _FlashcardFront(
                 word: item.word,
+                localeTag: localeTag,
                 contextText: primaryContext?.text,
-                onFlip: actionsEnabled ? onFlip : () {},
+                onFlip: actionsEnabled
+                    ? () {
+                        stopPronounce();
+                        onFlip();
+                      }
+                    : () {},
               ),
             ),
     );
@@ -128,11 +159,13 @@ class VocabularyFlashcard extends ConsumerWidget {
 class _FlashcardFront extends StatelessWidget {
   const _FlashcardFront({
     required this.word,
+    required this.localeTag,
     required this.contextText,
     required this.onFlip,
   });
 
   final String word;
+  final String localeTag;
   final String? contextText;
   final VoidCallback onFlip;
 
@@ -168,15 +201,28 @@ class _FlashcardFront extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        word,
-                        textAlign: TextAlign.center,
-                        style: tt.headlineLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -1.0,
-                          height: 1.1,
-                          color: cs.onSurface,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              word,
+                              textAlign: TextAlign.center,
+                              style: tt.headlineLarge?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -1.0,
+                                height: 1.1,
+                                color: cs.onSurface,
+                              ),
+                            ),
+                          ),
+                          PronounceIconButton(
+                            text: word,
+                            localeTag: localeTag,
+                            surfaceId: PronounceSurfaceId.flashcard,
+                            compact: true,
+                          ),
+                        ],
                       ),
                       SizedBox(height: t.space20),
                       if (contextText != null && contextText!.isNotEmpty)
@@ -238,6 +284,7 @@ class _FlashcardBack extends StatelessWidget {
   const _FlashcardBack({
     required this.item,
     required this.primaryContext,
+    required this.localeTag,
     required this.ratingInFlight,
     required this.dictionaryFetchInFlight,
     required this.contextualFetchInFlight,
@@ -261,6 +308,7 @@ class _FlashcardBack extends StatelessWidget {
 
   final VocabularyItem item;
   final VocabularyContext? primaryContext;
+  final String localeTag;
   final bool ratingInFlight;
   final bool dictionaryFetchInFlight;
   final bool contextualFetchInFlight;
@@ -302,12 +350,24 @@ class _FlashcardBack extends StatelessWidget {
                   t.space24,
                   0,
                 ),
-                child: Text(
-                  item.word,
-                  style: tt.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.4,
-                  ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.word,
+                        style: tt.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.4,
+                        ),
+                      ),
+                    ),
+                    PronounceIconButton(
+                      text: item.word,
+                      localeTag: localeTag,
+                      surfaceId: PronounceSurfaceId.flashcard,
+                      compact: true,
+                    ),
+                  ],
                 ),
               ),
               SizedBox(height: t.space12),

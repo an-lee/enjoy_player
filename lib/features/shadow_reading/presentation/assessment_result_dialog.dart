@@ -1,14 +1,20 @@
 /// Detailed pronunciation assessment (ported from web `AssessmentResultDialog`).
 library;
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:azure_speech/azure_speech.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:enjoy_player/core/application/app_language_catalog.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_modal.dart';
 import 'package:enjoy_player/core/theme/widgets/sheet_drag_handle.dart';
+import 'package:enjoy_player/features/pronounce/application/pronounce_playback_controller.dart';
+import 'package:enjoy_player/features/pronounce/domain/pronounce_target.dart';
+import 'package:enjoy_player/features/pronounce/presentation/pronounce_icon_button.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
 import 'score_level.dart';
@@ -17,6 +23,7 @@ import 'score_level.dart';
 Future<void> showAssessmentResultDialog({
   required BuildContext context,
   required AzurePronunciationAssessmentResult assessment,
+  String? localeTag,
 }) {
   final l10n = AppLocalizations.of(context)!;
   final nBest = assessment.nBest.isEmpty ? null : assessment.nBest.first;
@@ -34,36 +41,64 @@ Future<void> showAssessmentResultDialog({
     );
   }
 
+  final resolvedLocale = localeTag ?? kDefaultLearningLanguageTag;
   final tokens = EnjoyThemeTokens.of(context);
   final wide = MediaQuery.sizeOf(context).width >= tokens.breakpointRail;
   if (wide) {
     return showEnjoyDialog<void>(
       context: context,
-      builder: (ctx) => AssessmentResultDialog(assessment: assessment),
+      builder: (ctx) => AssessmentResultDialog(
+        assessment: assessment,
+        localeTag: resolvedLocale,
+      ),
     );
   }
   return showEnjoySheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    builder: (ctx) => AssessmentResultSheet(assessment: assessment),
+    builder: (ctx) => AssessmentResultSheet(
+      assessment: assessment,
+      localeTag: resolvedLocale,
+    ),
   );
 }
 
-class AssessmentResultDialog extends StatefulWidget {
-  const AssessmentResultDialog({required this.assessment, super.key});
+class AssessmentResultDialog extends ConsumerStatefulWidget {
+  const AssessmentResultDialog({
+    required this.assessment,
+    required this.localeTag,
+    super.key,
+  });
 
   final AzurePronunciationAssessmentResult assessment;
+  final String localeTag;
 
   @override
-  State<AssessmentResultDialog> createState() => _AssessmentResultDialogState();
+  ConsumerState<AssessmentResultDialog> createState() =>
+      _AssessmentResultDialogState();
 }
 
-class _AssessmentResultDialogState extends State<AssessmentResultDialog> {
+class _AssessmentResultDialogState
+    extends ConsumerState<AssessmentResultDialog> {
   AzureWordAssessment? _selected;
+  PronouncePlaybackController? _pronounce;
+
+  @override
+  void dispose() {
+    unawaited(_pronounce?.stop() ?? Future<void>.value());
+    super.dispose();
+  }
+
+  void _stopPronounce() {
+    final ctrl = ref.read(pronouncePlaybackControllerProvider.notifier);
+    _pronounce = ctrl;
+    unawaited(ctrl.stop());
+  }
 
   @override
   Widget build(BuildContext context) {
+    _pronounce ??= ref.read(pronouncePlaybackControllerProvider.notifier);
     final l10n = AppLocalizations.of(context)!;
     final scheme = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
@@ -125,9 +160,11 @@ class _AssessmentResultDialogState extends State<AssessmentResultDialog> {
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
                 child: _AssessmentResultInner(
                   nBest: nBest,
+                  localeTag: widget.localeTag,
                   layoutCompact: false,
                   selected: _selected,
                   onToggleWord: (w) {
+                    _stopPronounce();
                     setState(() {
                       _selected = identical(_selected, w) ? null : w;
                     });
@@ -142,20 +179,40 @@ class _AssessmentResultDialogState extends State<AssessmentResultDialog> {
   }
 }
 
-class AssessmentResultSheet extends StatefulWidget {
-  const AssessmentResultSheet({required this.assessment, super.key});
+class AssessmentResultSheet extends ConsumerStatefulWidget {
+  const AssessmentResultSheet({
+    required this.assessment,
+    required this.localeTag,
+    super.key,
+  });
 
   final AzurePronunciationAssessmentResult assessment;
+  final String localeTag;
 
   @override
-  State<AssessmentResultSheet> createState() => _AssessmentResultSheetState();
+  ConsumerState<AssessmentResultSheet> createState() =>
+      _AssessmentResultSheetState();
 }
 
-class _AssessmentResultSheetState extends State<AssessmentResultSheet> {
+class _AssessmentResultSheetState extends ConsumerState<AssessmentResultSheet> {
   AzureWordAssessment? _selected;
+  PronouncePlaybackController? _pronounce;
+
+  @override
+  void dispose() {
+    unawaited(_pronounce?.stop() ?? Future<void>.value());
+    super.dispose();
+  }
+
+  void _stopPronounce() {
+    final ctrl = ref.read(pronouncePlaybackControllerProvider.notifier);
+    _pronounce = ctrl;
+    unawaited(ctrl.stop());
+  }
 
   @override
   Widget build(BuildContext context) {
+    _pronounce ??= ref.read(pronouncePlaybackControllerProvider.notifier);
     final l10n = AppLocalizations.of(context)!;
     final scheme = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
@@ -224,9 +281,11 @@ class _AssessmentResultSheetState extends State<AssessmentResultSheet> {
                 children: [
                   _AssessmentResultInner(
                     nBest: nBest,
+                    localeTag: widget.localeTag,
                     layoutCompact: true,
                     selected: _selected,
                     onToggleWord: (w) {
+                      _stopPronounce();
                       setState(() {
                         _selected = identical(_selected, w) ? null : w;
                       });
@@ -245,12 +304,14 @@ class _AssessmentResultSheetState extends State<AssessmentResultSheet> {
 class _AssessmentResultInner extends StatelessWidget {
   const _AssessmentResultInner({
     required this.nBest,
+    required this.localeTag,
     required this.layoutCompact,
     required this.selected,
     required this.onToggleWord,
   });
 
   final AzureNBestResult nBest;
+  final String localeTag;
   final bool layoutCompact;
   final AzureWordAssessment? selected;
   final ValueChanged<AzureWordAssessment> onToggleWord;
@@ -350,6 +411,7 @@ class _AssessmentResultInner extends StatelessWidget {
           const SizedBox(height: 16),
           _SelectedWordPanel(
             word: selected!,
+            localeTag: localeTag,
             l10n: l10n,
             scheme: scheme,
             tt: tt,
@@ -561,12 +623,14 @@ class _WordChip extends StatelessWidget {
 class _SelectedWordPanel extends StatelessWidget {
   const _SelectedWordPanel({
     required this.word,
+    required this.localeTag,
     required this.l10n,
     required this.scheme,
     required this.tt,
   });
 
   final AzureWordAssessment word;
+  final String localeTag;
   final AppLocalizations l10n;
   final ColorScheme scheme;
   final TextTheme tt;
@@ -597,6 +661,12 @@ class _SelectedWordPanel extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                ),
+                PronounceIconButton(
+                  text: word.word,
+                  localeTag: localeTag,
+                  surfaceId: PronounceSurfaceId.assessment,
+                  compact: true,
                 ),
                 if (err != 'None')
                   Text(

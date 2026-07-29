@@ -3626,4 +3626,30 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get subscriptionViewPlansAndPackages => 'View plans & packages';
+
+  @override
+  String get pronouncePlay => 'Play pronunciation';
+
+  @override
+  String get pronounceStop => 'Stop pronunciation';
+
+  @override
+  String get pronounceLoading => 'Loading pronunciation…';
+
+  @override
+  String get pronounceUnavailableLanguage =>
+      'Pronunciation unavailable for this language';
+
+  @override
+  String get pronounceTextTooLong => 'Text is too long to pronounce';
+
+  @override
+  String get pronounceFailed => 'Couldn\'t play pronunciation';
+
+  @override
+  String get pronounceCreditsExhausted =>
+      'Not enough credits to generate pronunciation';
+
+  @override
+  String get pronounceSignInRequired => 'Sign in to hear pronunciation';
 }

@@ -6698,6 +6698,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'View plans & packages'**
   String get subscriptionViewPlansAndPackages;
+
+  /// No description provided for @pronouncePlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Play pronunciation'**
+  String get pronouncePlay;
+
+  /// No description provided for @pronounceStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop pronunciation'**
+  String get pronounceStop;
+
+  /// No description provided for @pronounceLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading pronunciation…'**
+  String get pronounceLoading;
+
+  /// No description provided for @pronounceUnavailableLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Pronunciation unavailable for this language'**
+  String get pronounceUnavailableLanguage;
+
+  /// No description provided for @pronounceTextTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Text is too long to pronounce'**
+  String get pronounceTextTooLong;
+
+  /// No description provided for @pronounceFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t play pronunciation'**
+  String get pronounceFailed;
+
+  /// No description provided for @pronounceCreditsExhausted.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough credits to generate pronunciation'**
+  String get pronounceCreditsExhausted;
+
+  /// No description provided for @pronounceSignInRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to hear pronunciation'**
+  String get pronounceSignInRequired;
 }
 
 class _AppLocalizationsDelegate

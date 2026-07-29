@@ -30,7 +30,7 @@ Sections appear in the sheet in that order: translation, then definition/diction
 - **Selection toolbar** is suppressed on transcript selections; the sheet is the primary affordance.
 - **Signed out** — Translation, dictionary, and contextual sections **do not** call the Worker while the user is not `AuthSignedIn`. Each section shows a compact **Account required** callout with a **Sign in** button (`AuthRequiredCallout`) that navigates to `/sign-in?from=…`. After **AuthFailure** (e.g. expired session), the same callout is shown instead of a retry-only error row.
 - **Translation** section is expanded on first open and fetches immediately when signed in. **Definition (dictionary)** and **contextual translation** start **collapsed** — expand once to fetch when signed in (saves credits vs eager triple fetch).
-- **Sheet chrome** — Header, selected term, and language row are grouped at the top; scrollable sections use elevated cards (`LookupExpansionCard`) with a nested content well. Header actions: **Add/remove vocabulary** (bookmark icon) + **Copy** + **Close** — matching tonal `IconButton` chrome. Copy shows a short **success notice** (`AppNotice` / `lookupCopySuccess`). Contextual translation body sits in a subtle inset panel so it reads apart from other section content.
+- **Sheet chrome** — Header, selected term, and language row are grouped at the top; scrollable sections use elevated cards (`LookupExpansionCard`) with a nested content well. Header actions: **Pronounce** (model audio via Worker `POST /pronounce`) + **Add/remove vocabulary** (bookmark icon) + **Copy** + **Close** — matching tonal `IconButton` chrome. Pronounce uses the shared [`PronounceIconButton`](../../lib/features/pronounce/presentation/pronounce_icon_button.dart) with the selection text and **source** language; unsupported locales (outside the Worker allowlist) disable the control with a tooltip — no cross-language voice fallback. Playback stops when the sheet dismisses or the source language changes. Copy shows a short **success notice** (`AppNotice` / `lookupCopySuccess`). Auth / credits failures on pronounce use the same notice patterns as other AI calls. Contextual translation body sits in a subtle inset panel so it reads apart from other section content.
 - **Language row** — Single segmented control with chevrons on source/target and a centered swap control.
 
 ## Code map
@@ -42,6 +42,7 @@ Sections appear in the sheet in that order: translation, then definition/diction
 | Language catalog + worker base | [`lib/core/application/app_language_catalog.dart`](../../lib/core/application/app_language_catalog.dart) |
 | Context builder | [`lib/features/lookup/application/vocabulary_context_builder.dart`](../../lib/features/lookup/application/vocabulary_context_builder.dart) |
 | Sheet UI | [`lib/features/lookup/presentation/dictionary_lookup_sheet.dart`](../../lib/features/lookup/presentation/dictionary_lookup_sheet.dart) |
+| Model pronounce (header) | [`lib/features/pronounce/`](../../lib/features/pronounce/) + Worker `POST /pronounce` |
 | Language picker row | [`lib/features/lookup/presentation/widgets/lookup_language_picker_row.dart`](../../lib/features/lookup/presentation/widgets/lookup_language_picker_row.dart) |
 | Section async providers | [`lib/features/lookup/application/lookup_section_providers.dart`](../../lib/features/lookup/application/lookup_section_providers.dart) |
 | Auth-required callout (sign-in CTA) | [`lib/features/auth/presentation/widgets/auth_required_callout.dart`](../../lib/features/auth/presentation/widgets/auth_required_callout.dart) |
@@ -50,5 +51,6 @@ Sections appear in the sheet in that order: translation, then definition/diction
 ## Related
 
 - ADR: [`docs/decisions/0019-transcript-dictionary-lookup.md`](../decisions/0019-transcript-dictionary-lookup.md)
+- Pronounce client: [`docs/decisions/0064-word-pronounce-client.md`](../decisions/0064-word-pronounce-client.md)
 - AI routes: [`docs/features/ai.md`](ai.md)
 - Transcript panel: [`docs/features/transcript.md`](transcript.md)

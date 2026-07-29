@@ -12,6 +12,7 @@ import 'package:enjoy_player/data/api/services/ai/azure_token_cache.dart';
 import 'package:enjoy_player/data/api/services/ai/chat_api.dart';
 import 'package:enjoy_player/data/api/services/ai/credits_api.dart';
 import 'package:enjoy_player/data/api/services/ai/dictionary_api.dart';
+import 'package:enjoy_player/data/api/services/ai/pronounce_api.dart';
 import 'package:enjoy_player/data/api/services/ai/translation_api.dart';
 import 'package:enjoy_player/data/api/services/ai/youtube_feed_api.dart';
 import 'package:enjoy_player/data/api/services/ai/youtube_transcripts_api.dart';
@@ -35,6 +36,10 @@ TranslationApi translationApi(Ref ref) =>
 @Riverpod(keepAlive: true)
 DictionaryApi dictionaryApi(Ref ref) =>
     DictionaryApi(ref.watch(aiApiClientProvider));
+
+@Riverpod(keepAlive: true)
+PronounceApi pronounceApi(Ref ref) =>
+    PronounceApi(ref.watch(aiApiClientProvider));
 
 @Riverpod(keepAlive: true)
 CreditsApi creditsApi(Ref ref) => CreditsApi(ref.watch(aiApiClientProvider));

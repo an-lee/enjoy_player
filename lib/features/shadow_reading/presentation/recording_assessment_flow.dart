@@ -59,7 +59,11 @@ Future<void> triggerRecordingAssessment({
           jsonDecode(stored) as Map<String, dynamic>,
         );
         if (!context.mounted) return;
-        await showAssessmentResultDialog(context: context, assessment: parsed);
+        await showAssessmentResultDialog(
+          context: context,
+          assessment: parsed,
+          localeTag: row.language,
+        );
       } on Object {
         if (!context.mounted) return;
         AppNotice.error(context, l10n.assessmentInvalidStored);
@@ -76,7 +80,11 @@ Future<void> triggerRecordingAssessment({
 
   switch (outcome) {
     case RecordingAssessmentSuccess(:final detail):
-      await showAssessmentResultDialog(context: context, assessment: detail);
+      await showAssessmentResultDialog(
+        context: context,
+        assessment: detail,
+        localeTag: row.language,
+      );
     case RecordingAssessmentFailure(:final kind, :final debugMessage):
       AppNotice.error(
         context,
