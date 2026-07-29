@@ -1,6 +1,7 @@
 /// Aligns primary transcript cues with a secondary track for bilingual UI.
 library;
 
+import 'package:enjoy_player/data/subtitle/subtitle_markup_parser.dart';
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
 import 'package:enjoy_player/features/player/application/echo_mode_provider.dart';
 
@@ -73,7 +74,7 @@ String echoReferencePlainText(List<TranscriptLine> lines, EchoState echo) {
   if (start < 0 || end < 0 || start > end) return '';
   final parts = <String>[];
   for (var i = start; i <= end && i < lines.length; i++) {
-    final plain = lines[i].text.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+    final plain = lines[i].text.replaceAll(tagStripRegExp, '').trim();
     if (plain.isNotEmpty) parts.add(plain);
   }
   return parts.join(' ');

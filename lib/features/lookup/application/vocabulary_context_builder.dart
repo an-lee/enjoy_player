@@ -3,6 +3,7 @@ library;
 
 import 'dart:math' as math;
 
+import 'package:enjoy_player/data/subtitle/subtitle_markup_parser.dart';
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
 import 'package:enjoy_player/features/lookup/application/sentence_boundaries.dart';
 import 'package:enjoy_player/features/player/application/echo_mode_provider.dart';
@@ -22,8 +23,8 @@ const int kVocabularyContextLineRadius = 3;
 
 String plainCueText(String raw) {
   return raw
-      .replaceAll(RegExp(r'<[^>]*>'), '')
-      .replaceAll(RegExp(r'\s+'), ' ')
+      .replaceAll(tagStripRegExp, '')
+      .replaceAll(whitespaceSplitRegExp, ' ')
       .trim();
 }
 

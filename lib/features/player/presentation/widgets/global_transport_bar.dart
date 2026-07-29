@@ -36,9 +36,13 @@ import 'transport/transport_playback_rate.dart';
 import 'transport/transport_progress_strip.dart';
 import 'transport/transport_volume_button.dart';
 
+/// Strips trailing zeros (and the optional decimal point) from a fixed-format
+/// rate string. Hoisted to a top-level final to avoid recompiling per call.
+final _kTrailingZerosRegExp = RegExp(r'\.?0+$');
+
 String _formatRateCore(double rate) {
   final x = (rate * 100).round() / 100;
-  return x.toStringAsFixed(2).replaceFirst(RegExp(r'\.?0+$'), '');
+  return x.toStringAsFixed(2).replaceFirst(_kTrailingZerosRegExp, '');
 }
 
 /// Narrow transport layout constants ([mobile-transport-line-nav]).
@@ -448,7 +452,7 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
               height: 56,
               width: double.infinity,
               child: AnimatedSwitcher(
-                duration: MediaQuery.of(context).disableAnimations
+                duration: MediaQuery.disableAnimationsOf(context)
                     ? Duration.zero
                     : t.motionMedium,
                 switchInCurve: Curves.easeOutCubic,
