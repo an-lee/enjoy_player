@@ -18,6 +18,7 @@ import 'package:enjoy_player/features/craft/domain/craft_request.dart';
 import 'package:enjoy_player/features/craft/presentation/style_picker.dart';
 import 'package:enjoy_player/features/craft/presentation/voice_picker.dart';
 import 'package:enjoy_player/features/craft/presentation/widgets/craft_failure_card.dart';
+import 'package:enjoy_player/features/craft/presentation/widgets/craft_loading_view.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
 /// Rewrite stage for the Express flow.
@@ -112,7 +113,7 @@ class _RewriteStageState extends ConsumerState<RewriteStage> {
     // First rewrite (no target yet): keep the full-screen loading hint.
     // Re-translate / regenerate: keep the form visible with inline progress.
     if (state.isTranslating && !state.hasTranslation) {
-      return _LoadingView(l10n: l10n);
+      return CraftLoadingView(message: l10n.craftLoadingRewriting);
     }
 
     if (state.failure != null) {
@@ -233,31 +234,6 @@ class _RewriteStageState extends ConsumerState<RewriteStage> {
 }
 
 // === Sub-widgets ===
-
-class _LoadingView extends StatelessWidget {
-  const _LoadingView({required this.l10n});
-
-  final AppLocalizations l10n;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const CircularProgressIndicator(),
-          const SizedBox(height: 16),
-          Text(
-            l10n.craftLoadingRewriting,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _NativeTextCard extends StatelessWidget {
   const _NativeTextCard({
