@@ -111,6 +111,10 @@ class YoutubeSession {
 
   void requestMount() {
     if (disposed) return;
+    // Idempotent: re-entrant calls (e.g. loading stage + open coordinator)
+    // must not notify [mountTick] again — that can hit ValueListenableBuilder
+    // listeners during an ancestor build (setState-during-build).
+    if (mountRequested) return;
     mountRequested = true;
     mountTick.value++;
   }

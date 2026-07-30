@@ -50,12 +50,29 @@ class PronouncePlaybackController extends _$PronouncePlaybackController {
     return created;
   }
 
-  Future<void> _tearDown() async {
-    _generation++;
+  /// Plays [url], recreating the engine once if the existing instance is stale
+  /// (common after hot reload of the keepAlive controller).
+  Future<void> _playUrl(String url) async {
+    final engine = _ensureEngine();
+    try {
+      await engine.playUrl(url);
+    } on Object {
+      await _resetEngine();
+      if (!ref.mounted) return;
+      await _ensureEngine().playUrl(url);
+    }
+  }
+
+  Future<void> _resetEngine() async {
     await _completeSub?.cancel();
     _completeSub = null;
     await _engine?.dispose();
     _engine = null;
+  }
+
+  Future<void> _tearDown() async {
+    _generation++;
+    await _resetEngine();
     _urlCache.clear();
   }
 
@@ -98,10 +115,9 @@ class PronouncePlaybackController extends _$PronouncePlaybackController {
 
       if (gen != _generation || !ref.mounted) return;
 
-      final engine = _ensureEngine();
-      await engine.playUrl(url);
+      await _playUrl(url);
       if (gen != _generation || !ref.mounted) {
-        await engine.stop();
+        await _engine?.stop();
         return;
       }
       state = PronouncePlaybackState(

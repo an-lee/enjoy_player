@@ -11,7 +11,7 @@ import 'package:enjoy_player/features/player/application/youtube_open_preview_pr
 import 'package:enjoy_player/features/player/presentation/widgets/player_surface_target.dart';
 import 'package:enjoy_player/features/player/presentation/widgets/youtube_video_poster.dart';
 
-class YoutubeLoadingVideoStage extends ConsumerWidget {
+class YoutubeLoadingVideoStage extends ConsumerStatefulWidget {
   const YoutubeLoadingVideoStage({
     required this.mediaId,
     this.overlayBuilder,
@@ -25,8 +25,38 @@ class YoutubeLoadingVideoStage extends ConsumerWidget {
   static const double aspectHeight = 9;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final preview = ref.watch(youtubeOpenPreviewProvider(mediaId));
+  ConsumerState<YoutubeLoadingVideoStage> createState() =>
+      _YoutubeLoadingVideoStageState();
+}
+
+class _YoutubeLoadingVideoStageState
+    extends ConsumerState<YoutubeLoadingVideoStage> {
+  String? _lastPosterUrl;
+  bool _attachScheduled = false;
+
+  void _scheduleAttach(YoutubePlayerEngine yt, String? thumb) {
+    if (_lastPosterUrl != thumb) {
+      // Poster is a plain field — safe to update outside the build callback
+      // body as soon as we know the value, but keep it in the post-frame
+      // path so build stays side-effect free.
+      _lastPosterUrl = thumb;
+    }
+    if (_attachScheduled) return;
+    _attachScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _attachScheduled = false;
+      if (!mounted) return;
+      final engine = ref.read(playerEngineProvider);
+      if (engine is! YoutubePlayerEngine) return;
+      engine.setPosterUrl(_lastPosterUrl);
+      // requestMount is idempotent + build-safe; still never call from build.
+      engine.ensureWebViewAttached();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final preview = ref.watch(youtubeOpenPreviewProvider(widget.mediaId));
     final engine = ref.watch(playerEngineProvider);
     final yt = engine is YoutubePlayerEngine ? engine : null;
 
@@ -36,11 +66,13 @@ class YoutubeLoadingVideoStage extends ConsumerWidget {
     );
 
     if (yt != null) {
-      yt.setPosterUrl(thumb);
-      yt.ensureWebViewAttached();
+      _scheduleAttach(yt, thumb);
     }
 
-    final showSurface = yt != null && yt.shouldMountWebView;
+    // Claim the loading portal whenever a YouTube engine is active — same
+    // pattern as [_LocalLoadingVideoStage]. WebView visibility is gated by
+    // [YoutubePlayerEngine.shouldMountWebView] inside the surface host.
+    final showSurface = yt != null;
 
     return SafeArea(
       top: true,
@@ -48,11 +80,13 @@ class YoutubeLoadingVideoStage extends ConsumerWidget {
       left: false,
       right: false,
       child: AspectRatio(
-        aspectRatio: aspectWidth / aspectHeight,
+        aspectRatio:
+            YoutubeLoadingVideoStage.aspectWidth /
+            YoutubeLoadingVideoStage.aspectHeight,
         child: PlayerSurfaceTarget(
           id: PlayerSurfaceIds.expandedPlayerLoading,
           enabled: showSurface,
-          overlayBuilder: overlayBuilder,
+          overlayBuilder: widget.overlayBuilder,
           child: Stack(
             fit: StackFit.expand,
             children: [

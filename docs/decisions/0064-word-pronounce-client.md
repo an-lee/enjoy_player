@@ -30,7 +30,11 @@ Constraints:
 2. **Shared feature module**: `lib/features/pronounce/` owns locale resolve,
    `PronounceService` (`guardAiCall`), keepAlive `PronouncePlaybackController`
    (single `package:audioplayers` player + URL LRU + generation guard), and
-   `PronounceIconButton`.
+   `PronounceIconButton`. Playback prefers `UrlSource(audio_url)` except on
+   **Windows**, where Media Foundation often returns `ACCESS_DENIED`
+   (`0x80070005`) for remote HTTPS URLs — there the engine downloads bytes and
+   plays via `BytesSource` (same pattern as Craft TTS preview). Other platforms
+   fall back to bytes if streaming fails.
 3. **Surfaces**: Wire the shared button into lookup header, flashcard headword
    (front + back; not Context “Play segment”), and assessment **selected-word
    panel only**. Stop on dismiss, language change, flip/rate, and chip change.

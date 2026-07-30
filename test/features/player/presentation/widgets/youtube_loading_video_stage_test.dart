@@ -185,8 +185,7 @@ void main() {
         final target = tester.widget<PlayerSurfaceTarget>(
           find.byType(PlayerSurfaceTarget),
         );
-        // showSurface = (yt != null && yt.shouldMountWebView) is false for the
-        // non-YouTube fake engine, so the target reports `enabled=false`.
+        // showSurface = (yt != null) is false for the non-YouTube fake engine.
         expect(target.enabled, isFalse);
       },
     );

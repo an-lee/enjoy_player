@@ -23,6 +23,16 @@ void main() {
       },
     );
 
+    test('ensureWebViewAttached is idempotent for mountTick', () {
+      final engine = YoutubePlayerEngine();
+      engine.ensureWebViewAttached();
+      final tickAfterFirst = engine.mountTick.value;
+      engine.ensureWebViewAttached();
+      engine.ensureWebViewAttached();
+      expect(engine.mountTick.value, tickAfterFirst);
+      expect(engine.shouldMountWebView, isTrue);
+    });
+
     test('open requests mount and sets video id', () async {
       final engine = YoutubePlayerEngine();
       await engine.open(const YoutubePlayableSource('abc12345678'));
