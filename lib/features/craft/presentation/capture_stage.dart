@@ -20,6 +20,7 @@ import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/features/craft/application/craft_controller.dart';
 import 'package:enjoy_player/features/craft/domain/craft_job_state.dart';
 import 'package:enjoy_player/features/craft/presentation/widgets/craft_failure_card.dart';
+import 'package:enjoy_player/features/craft/presentation/widgets/craft_loading_view.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
 /// Voice capture stage for the Express flow.
@@ -326,7 +327,7 @@ class _CaptureStageState extends ConsumerState<CaptureStage> {
 
     // Show transcribing indicator.
     if (state.isTranscribing) {
-      return _TranscribingIndicator(l10n: l10n);
+      return CraftLoadingView(message: l10n.craftLoadingTranscribing);
     }
 
     // Show failure card if any.
@@ -730,31 +731,6 @@ class _AmplitudeBarsPainter extends CustomPainter {
     return old.count != count ||
         old.writeIndex != writeIndex ||
         old.color != color;
-  }
-}
-
-class _TranscribingIndicator extends StatelessWidget {
-  const _TranscribingIndicator({required this.l10n});
-
-  final AppLocalizations l10n;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const CircularProgressIndicator(),
-          const SizedBox(height: 16),
-          Text(
-            l10n.craftLoadingTranscribing,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 

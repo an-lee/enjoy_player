@@ -21,6 +21,7 @@ import 'package:enjoy_player/features/craft/domain/azure_voice.dart';
 import 'package:enjoy_player/features/craft/presentation/craft_solid_transcript_stt_hint.dart';
 import 'package:enjoy_player/features/craft/presentation/voice_picker.dart';
 import 'package:enjoy_player/features/craft/presentation/widgets/craft_failure_card.dart';
+import 'package:enjoy_player/features/craft/presentation/widgets/craft_loading_view.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
 /// Audio stage for the Express flow.
@@ -179,7 +180,7 @@ class _AudioStageState extends ConsumerState<AudioStage> {
     );
 
     if (state.isSynthesizing) {
-      return _LoadingView(l10n: l10n);
+      return CraftLoadingView(message: l10n.craftLoadingSynthesizing);
     }
 
     if (state.failure != null) {
@@ -376,31 +377,6 @@ class _AudioActions extends StatelessWidget {
           label: Text(sayAnotherLabel),
         ),
       ],
-    );
-  }
-}
-
-class _LoadingView extends StatelessWidget {
-  const _LoadingView({required this.l10n});
-
-  final AppLocalizations l10n;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const CircularProgressIndicator(),
-          const SizedBox(height: 16),
-          Text(
-            l10n.craftLoadingSynthesizing,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
