@@ -197,7 +197,7 @@ List<TranscriptLine> buildAutoTranslateSkeleton(
 String normalizeAutoTranslateSourceText(String raw) {
   final plain = plainTextFromSubtitleMarkup(raw).trim();
   if (plain.isEmpty) return '';
-  return plain.replaceAll(RegExp(r'\s+'), ' ');
+  return plain.replaceAll(whitespaceSplitRegExp, ' ');
 }
 
 /// Content key for a primary cue + language pair (truncated SHA-256 hex).

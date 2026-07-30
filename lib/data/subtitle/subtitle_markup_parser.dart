@@ -49,8 +49,17 @@ class _StyleFrame {
   }
 }
 
-final _tagStripRegExp = RegExp(r'<[^>]*>');
-final _whitespaceSplitRegExp = RegExp(r'\s+');
+/// Regex matching `<...>` subtitle markup tags (SSA/HTML-like inline tags).
+///
+/// Exposed for reuse across transcript / lookup consumers so the same pattern
+/// is not recompiled per call site.
+final tagStripRegExp = RegExp(r'<[^>]*>');
+
+/// Regex matching runs of whitespace (used to normalize spacing in cue text).
+///
+/// Exposed for reuse across transcript / lookup consumers so the same pattern
+/// is not recompiled per call site.
+final whitespaceSplitRegExp = RegExp(r'\s+');
 
 final _parseCache = <String, List<SubtitleTextSegment>>{};
 const _maxParseCacheSize = 256;
@@ -59,7 +68,7 @@ const _maxParseCacheSize = 256;
 String plainTextFromSubtitleMarkup(String input) {
   final segments = parseSubtitleMarkup(input);
   if (segments.isEmpty) {
-    final plain = input.replaceAll(_tagStripRegExp, '').trim();
+    final plain = input.replaceAll(tagStripRegExp, '').trim();
     return plain.isEmpty ? input.trim() : plain;
   }
   return segments.map((s) => s.text).join().trim();
@@ -136,7 +145,7 @@ List<SubtitleTextSegment> parseSubtitleMarkup(String input) {
     final isClosing = tagRaw.startsWith('/');
     final tagInner = isClosing ? tagRaw.substring(1).trim() : tagRaw;
     final tagLower = tagInner.toLowerCase();
-    final firstToken = tagLower.split(_whitespaceSplitRegExp).first;
+    final firstToken = tagLower.split(whitespaceSplitRegExp).first;
 
     if (!isClosing) {
       if (firstToken == 'br') {

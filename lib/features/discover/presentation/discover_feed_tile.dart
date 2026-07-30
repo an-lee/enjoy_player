@@ -25,6 +25,32 @@ import 'package:enjoy_player/l10n/app_localizations.dart';
 /// Width / height for [SliverGrid] cells (16:9 thumb + compact metadata).
 const double discoverFeedTileGridAspectRatio = 1.28;
 
+/// Per-locale bundle of `DateFormat` instances used by [_formatPublishedLabel].
+///
+/// Each `DateFormat` constructor compiles ICU `DateSymbols` (~1 KB per call),
+/// so the per-locale bundle is allocated lazily on first use and reused for
+/// every subsequent tile in the feed.
+class _DiscoverFeedTileDateFormats {
+  _DiscoverFeedTileDateFormats(this.jm, this.mmmd, this.yMMMd);
+
+  final DateFormat jm;
+  final DateFormat mmmd;
+  final DateFormat yMMMd;
+}
+
+final Map<String, _DiscoverFeedTileDateFormats> _dateFormatCache = {};
+
+_DiscoverFeedTileDateFormats _discoverFeedTileDateFormats(String locale) {
+  return _dateFormatCache.putIfAbsent(
+    locale,
+    () => _DiscoverFeedTileDateFormats(
+      DateFormat.jm(locale),
+      DateFormat.MMMd(locale),
+      DateFormat.yMMMd(locale),
+    ),
+  );
+}
+
 class DiscoverFeedTile extends ConsumerStatefulWidget {
   const DiscoverFeedTile({required this.entry, super.key});
 
@@ -199,21 +225,23 @@ class _DiscoverFeedTileState extends ConsumerState<DiscoverFeedTile> {
   }
 
   static String _formatPublishedLabel(BuildContext context, DateTime dt) {
-    final locale = Localizations.localeOf(context).toString();
+    final formats = _discoverFeedTileDateFormats(
+      Localizations.localeOf(context).toString(),
+    );
     final local = dt.toLocal();
     final now = DateTime.now();
     final diff = now.difference(local);
 
     if (diff.inDays == 0) {
-      return DateFormat.jm(locale).format(local);
+      return formats.jm.format(local);
     }
     if (diff.inDays < 7) {
-      return DateFormat.MMMd(locale).format(local);
+      return formats.mmmd.format(local);
     }
     if (local.year == now.year) {
-      return DateFormat.MMMd(locale).format(local);
+      return formats.mmmd.format(local);
     }
-    return DateFormat.yMMMd(locale).format(local);
+    return formats.yMMMd.format(local);
   }
 }
 
