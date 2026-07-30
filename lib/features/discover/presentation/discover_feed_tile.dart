@@ -225,8 +225,9 @@ class _DiscoverFeedTileState extends ConsumerState<DiscoverFeedTile> {
   }
 
   static String _formatPublishedLabel(BuildContext context, DateTime dt) {
-    final formats =
-        _discoverFeedTileDateFormats(Localizations.localeOf(context).toString());
+    final formats = _discoverFeedTileDateFormats(
+      Localizations.localeOf(context).toString(),
+    );
     final local = dt.toLocal();
     final now = DateTime.now();
     final diff = now.difference(local);
