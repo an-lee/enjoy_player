@@ -72,7 +72,11 @@ enum BreakPriority {
 }
 
 final _sentenceEnd = RegExp(r'[.。！？!?]\s*$');
-final _punctuationOnly = RegExp(r'^[.。！？!?]+$');
+// Any token made solely of sentence-ending OR clause punctuation. Azure emits
+// both kinds as standalone tokens (contract: azure-speech-word-boundaries.md);
+// merging them onto the prior word keeps joined text clean ("word," not "word ,")
+// and satisfies FR-007 (no line begins with punctuation-only text).
+final _punctuationOnly = RegExp(r'^[.。！？!?,;:—、，；：]+$');
 final _clauseEnd = RegExp(r'[,;:—、，；：]\s*$');
 
 /// Whether [text] is sentence-ending / clause punctuation with no letters.

@@ -41,6 +41,33 @@ void main() {
       expect(merged[0].text, 'Hello');
       expect(merged[1].text, 'world');
     });
+
+    test('attaches standalone clause punctuation to previous word', () {
+      // Azure emits clause punctuation as standalone tokens (see contract
+      // azure-speech-word-boundaries.md). They must merge so joined text reads
+      // "three," not "three ," (FR-007).
+      final merged = mergePunctuationTokens([
+        wb(0, 300, 'Hello'),
+        wb(300, 40, ','),
+        wb(400, 300, 'world'),
+      ]);
+      expect(merged, hasLength(2));
+      expect(merged[0].text, 'Hello,');
+      expect(merged[0].audioOffsetMs, 0);
+      expect(merged[0].durationMs, 340); // extends to comma's release
+      expect(merged[1].text, 'world');
+    });
+
+    test('attaches standalone CJK clause punctuation to previous word', () {
+      final merged = mergePunctuationTokens([
+        wb(0, 300, '早上好'),
+        wb(300, 40, '，'),
+        wb(400, 300, '朋友'),
+      ]);
+      expect(merged, hasLength(2));
+      expect(merged[0].text, '早上好，');
+      expect(merged[1].text, '朋友');
+    });
   });
 
   group('segmentWordBoundaries — locked contracts', () {
@@ -233,6 +260,24 @@ void main() {
       }
       // The comma-bearing word ends a line (clause break honored).
       expect(segments.any((s) => s.text.contains(',')), isTrue);
+    });
+
+    test('standalone Azure clause tokens merge cleanly (no " ," spacing)', () {
+      // Real Azure shape: clause punctuation arrives as its own token
+      // (contract azure-speech-word-boundaries.md). The segmenter must
+      // attach it so joined text reads "three," not "three ,".
+      final segments = segmentWordBoundaries([
+        wb(0, 1000, 'one'),
+        wb(1100, 1000, 'two'),
+        wb(2200, 1000, 'three'),
+        wb(3200, 40, ','),
+        wb(3300, 1000, 'four'),
+        wb(4400, 1000, 'five'),
+        wb(5500, 1000, 'six.'),
+      ]);
+      final joined = segments.map((s) => s.text).join(' ');
+      expect(joined.contains(' ,'), isFalse);
+      expect(joined.contains('three,'), isTrue);
     });
 
     test('CJK full-width clause punctuation (、，；：) guides breaks', () {
