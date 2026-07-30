@@ -106,6 +106,7 @@ class _DictionaryLookupSheetState extends ConsumerState<DictionaryLookupSheet> {
     final prevTarget = _targetLanguage;
     if (tagsEqual(prevSource, prevTarget)) return;
     _evictPriorPair(prevSource, prevTarget);
+    _stopPronounce();
     setState(() {
       _sourceLanguage = prevTarget;
       _targetLanguage = prevSource;

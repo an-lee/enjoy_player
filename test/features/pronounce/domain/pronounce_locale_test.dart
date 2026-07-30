@@ -30,6 +30,24 @@ void main() {
       expect(resolvePronounceLocale('ru-RU'), 'ru-RU');
     });
 
+    test('maps bare primaries to regional defaults', () {
+      expect(resolvePronounceLocale('ja'), 'ja-JP');
+      expect(resolvePronounceLocale('zh'), 'zh-CN');
+      expect(resolvePronounceLocale('ko'), 'ko-KR');
+      expect(resolvePronounceLocale('es'), 'es-ES');
+      expect(resolvePronounceLocale('fr'), 'fr-FR');
+      expect(resolvePronounceLocale('de'), 'de-DE');
+      expect(resolvePronounceLocale('it'), 'it-IT');
+      expect(resolvePronounceLocale('pt'), 'pt-BR');
+      expect(resolvePronounceLocale('ru'), 'ru-RU');
+    });
+
+    test('maps unknown regions of known primaries to defaults', () {
+      expect(resolvePronounceLocale('ja-JP'), 'ja-JP');
+      expect(resolvePronounceLocale('es-AR'), 'es-ES');
+      expect(resolvePronounceLocale('pt-AO'), 'pt-BR');
+    });
+
     test('returns null for unsupported or empty', () {
       expect(resolvePronounceLocale(null), isNull);
       expect(resolvePronounceLocale(''), isNull);

@@ -45,8 +45,9 @@
 | `en-US`, bare/`en*` (non-GB) | `en-US` |
 | `en-GB`, `en-UK` | `en-GB` |
 | `zh-CN`, `ja-JP`, `ko-KR`, `es-ES`, `es-MX`, `fr-FR`, `fr-CA`, `de-DE`, `it-IT`, `pt-BR`, `pt-PT`, `ru-RU` | same tag |
+| bare primaries / unknown regions (`ja`, `zh`, `es-AR`, …) | primary default (`ja-JP`, `zh-CN`, `es-ES`, …) when allowlisted |
 
-- Lookup uses the sheet **source** language; flashcards/assessment use card/learning/assessment language.
+- Lookup uses the sheet **source** language; flashcards use **`item.language`**; assessment uses the same practice-resolved locale as Azure assessment.
 - If a tag somehow falls outside the allowlist, **disable** the control with tooltip (“Pronunciation unavailable for this language”) — never fall back to another language’s voice.
 - Omit `voice` on POST; Worker picks the locale default.
 

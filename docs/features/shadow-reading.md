@@ -36,7 +36,7 @@ The optional **pronunciation assessment** path runs after a take lands:
 2. The plugin returns a JSON `pronunciationScore` / `accuracyScore` / `fluencyScore` / `completenessScore` plus per-word detail. The result is persisted to the recording row (`pronunciation_score`, `assessment_json`).
 3. `AssessmentResultDialog` / sheet reopens the score when the user taps the score badge. The wide layout uses the **rail breakpoint** (900px), not the transcript breakpoint (720px).
 4. Take menu shows per-take scores and a **Re-assess** entry when the current take already has `assessment_json`.
-5. **Model pronounce on results** — The selected-word panel offers a shared **Pronounce** control ([ADR-0064](../decisions/0064-word-pronounce-client.md)) for the chosen chip word. It plays Worker model audio only (never the user’s take / `recordingPreviewPlayerProvider`). Controls are **not** on every chip; changing chips or dismissing the dialog stops playback. Locale comes from the recording/media language passed into `showAssessmentResultDialog`.
+5. **Model pronounce on results** — The selected-word panel offers a shared **Pronounce** control ([ADR-0064](../decisions/0064-word-pronounce-client.md)) for the chosen chip word. It plays Worker model audio only (never the user’s take / `recordingPreviewPlayerProvider`). Controls are **not** on every chip; changing chips or dismissing the dialog stops playback. Locale uses the same `resolveAzureAssessmentLocaleForPractice` path as the assessment run (`und`/empty media → learning language), not the raw recording tag.
 
 Silent FFmpeg WAV normalize is auto-detected and the resample chain is retried (see commit history around Azure assessment). Zero-score runs are persisted and logged.
 

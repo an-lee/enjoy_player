@@ -6,11 +6,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:enjoy_player/core/application/app_language_catalog.dart';
-import 'package:enjoy_player/core/application/app_preferences_provider.dart';
 import 'package:enjoy_player/core/interaction/enjoy_tappable.dart';
 import 'package:enjoy_player/core/interaction/haptics.dart';
-import 'package:enjoy_player/core/riverpod/async_value_x.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_card.dart';
 import 'package:enjoy_player/features/pronounce/application/pronounce_playback_controller.dart';
@@ -79,12 +76,8 @@ class VocabularyFlashcard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = EnjoyThemeTokens.of(context);
-    final localeTag =
-        ref
-            .watch(appPreferencesCtrlProvider)
-            .valueOrNull
-            ?.effectiveLearningLanguage ??
-        kDefaultLearningLanguageTag;
+    // Card source language (may be bare ISO 639-1; resolvePronounceLocale maps).
+    final localeTag = item.language;
 
     void stopPronounce() {
       unawaited(ref.read(pronouncePlaybackControllerProvider.notifier).stop());
