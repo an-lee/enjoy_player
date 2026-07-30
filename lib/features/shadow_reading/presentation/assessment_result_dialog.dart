@@ -20,6 +20,9 @@ import 'package:enjoy_player/l10n/app_localizations.dart';
 import 'score_level.dart';
 
 /// Shows pronunciation assessment: [Dialog] when wide, modal bottom sheet when narrow.
+///
+/// Uses Enjoy modals (root navigator by default) so the result clears the
+/// permanent player surface host on YouTube (ADR-0065).
 Future<void> showAssessmentResultDialog({
   required BuildContext context,
   required AzurePronunciationAssessmentResult assessment,

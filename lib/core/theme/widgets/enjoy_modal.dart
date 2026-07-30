@@ -17,11 +17,15 @@ bool enjoyUseCompactSheet(BuildContext context) {
 }
 
 /// Standard Enjoy modal bottom sheet (drag handle left to sheet content).
+///
+/// Defaults to [useRootNavigator] `true` so the sheet paints above the
+/// permanent player surface host (ADR-0057 / ADR-0065). Pass `false` only
+/// for intentional shell-scoped presentation.
 Future<T?> showEnjoySheet<T>({
   required BuildContext context,
   required Widget Function(BuildContext context) builder,
   bool isScrollControlled = false,
-  bool useRootNavigator = false,
+  bool useRootNavigator = true,
   bool useSafeArea = true,
 }) {
   final t = EnjoyThemeTokens.of(context);
@@ -44,11 +48,12 @@ Future<T?> showEnjoySheet<T>({
 /// Adaptive Enjoy sheet: bottom sheet on compact widths, centered dialog on wide.
 ///
 /// Same barrier color and surface styling as [showEnjoySheet] / [showEnjoyDialog].
+/// Defaults to [useRootNavigator] `true` (ADR-0065).
 Future<T?> showEnjoyAdaptiveSheet<T>({
   required BuildContext context,
   required Widget Function(BuildContext context) builder,
   bool isScrollControlled = true,
-  bool useRootNavigator = false,
+  bool useRootNavigator = true,
   bool useSafeArea = true,
   bool barrierDismissible = true,
 }) {
@@ -92,6 +97,8 @@ Future<T?> showEnjoyAdaptiveSheet<T>({
 }
 
 /// Centered [AlertDialog] with token max width on content and shared scrim.
+///
+/// Defaults to [useRootNavigator] `true` (ADR-0065).
 Future<T?> showEnjoyAlertDialog<T>({
   required BuildContext context,
   Widget? title,
@@ -99,7 +106,7 @@ Future<T?> showEnjoyAlertDialog<T>({
   List<Widget>? actions,
   List<Widget> Function(BuildContext dialogContext)? actionsBuilder,
   bool barrierDismissible = true,
-  bool useRootNavigator = false,
+  bool useRootNavigator = true,
 }) {
   final t = EnjoyThemeTokens.of(context);
   return showDialog<T>(
@@ -124,11 +131,15 @@ Future<T?> showEnjoyAlertDialog<T>({
 }
 
 /// [showDialog] with Enjoy scrim (e.g. custom [Dialog] / loading states).
+///
+/// Defaults to [useRootNavigator] `true` so dialogs clear the permanent
+/// player surface host (ADR-0057 / ADR-0065). Pass `false` only for
+/// intentional shell-scoped presentation.
 Future<T?> showEnjoyDialog<T>({
   required BuildContext context,
   required Widget Function(BuildContext context) builder,
   bool barrierDismissible = true,
-  bool useRootNavigator = false,
+  bool useRootNavigator = true,
 }) {
   return showDialog<T>(
     context: context,
