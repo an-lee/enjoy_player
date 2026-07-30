@@ -12,16 +12,15 @@ import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import 'package:enjoy_player/core/routing/player_navigation.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_button.dart';
 import 'package:enjoy_player/features/craft/application/craft_controller.dart';
 import 'package:enjoy_player/features/craft/domain/azure_voice.dart';
-import 'package:enjoy_player/features/craft/domain/craft_failure.dart';
 import 'package:enjoy_player/features/craft/presentation/craft_solid_transcript_stt_hint.dart';
 import 'package:enjoy_player/features/craft/presentation/voice_picker.dart';
+import 'package:enjoy_player/features/craft/presentation/widgets/craft_failure_card.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
 /// Audio stage for the Express flow.
@@ -184,7 +183,7 @@ class _AudioStageState extends ConsumerState<AudioStage> {
     }
 
     if (state.failure != null) {
-      return _FailureCard(
+      return CraftFailureCard(
         failure: state.failure!,
         l10n: l10n,
         onRetry: () =>
@@ -670,71 +669,6 @@ class _PreviewPlayer extends StatelessWidget {
           ),
           Text(fmt(duration), style: timeStyle),
         ],
-      ),
-    );
-  }
-}
-
-class _FailureCard extends StatelessWidget {
-  const _FailureCard({
-    required this.failure,
-    required this.l10n,
-    required this.onRetry,
-  });
-
-  final CraftFailure failure;
-  final AppLocalizations l10n;
-  final VoidCallback onRetry;
-
-  String _actionLabel() {
-    switch (failure.action) {
-      case CraftFailureAction.openAiSettings:
-        return l10n.craftOpenAiSettings;
-      case CraftFailureAction.signIn:
-        return l10n.craftSignInRequired;
-      default:
-        return l10n.craftRetry;
-    }
-  }
-
-  void _handleAction(BuildContext context) {
-    switch (failure.action) {
-      case CraftFailureAction.openAiSettings:
-        unawaited(context.push('/settings/ai-providers'));
-      case CraftFailureAction.signIn:
-        unawaited(context.push('/sign-in'));
-      default:
-        onRetry();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.error_outline_rounded,
-              size: 48,
-              color: theme.colorScheme.error,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              failure.message(l10n),
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyLarge,
-            ),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: () => _handleAction(context),
-              child: Text(_actionLabel()),
-            ),
-          ],
-        ),
       ),
     );
   }
