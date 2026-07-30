@@ -146,9 +146,11 @@ BYOK TTS follows the same `AzureSpeech.instance.synthesize` path when BYOK is co
 
 ## Word-segmented transcript
 
-After synthesis, `wordBoundary` events from the Azure Speech SDK may produce time-aligned `startMs` / `durationMs` segments. The word segmenter (`lib/features/craft/domain/word_boundary_segmenter.dart`) groups words into ~6-word segments, using sentence-end punctuation as break points.
+After synthesis, `wordBoundary` events from the Azure Speech SDK produce time-aligned `startMs` / `durationMs` segments. The word segmenter (`lib/features/craft/domain/word_boundary_segmenter.dart`) groups words into **shadow-friendly lines** sized for shadow-reading practice (target 1.5–6 s spoken duration, hard cap 7 s). Break points follow a priority order: sentence-ending punctuation → clause punctuation (commas, semicolons, colons, em-dashes, CJK `、，；：`) → largest inter-word silence gap → duration cap. CJK text (zh/ja/ko, detected via the synth language) breaks by punctuation + duration only, never by word count, and joins segment text spacelessly.
 
-**Solid timings only (ADR-0063)**: Craft writes a primary AI transcript (`source: 'ai'`) only when word boundaries are non-empty **and** the segmenter produces ≥1 non-empty line after punctuation merge. When word boundaries are missing (common on Apple platforms — iOS, macOS — and OpenAI BYOK TTS), no transcript is saved — `primaryTimelineJson: null` is passed on import/update, which omits or deletes transcript rows. The audio file still saves successfully.
+**All platforms with word boundaries**: Android, Windows, iOS, and macOS all capture Azure `WordBoundary` events and feed them through the same shadow-friendly segmenter. The iOS/macOS native plugin (`packages/azure_speech/`) registers `addSynthesisWordBoundaryEventHandler` before synthesis; note that the Azure Speech ObjC binding reports `duration` in seconds (converted to ticks at the native layer) and the `boundaryType` enum has a `Word`/`Punctuation` collision, so punctuation tokens are classified by text on the Dart side.
+
+**Solid timings only (ADR-0063)**: Craft writes a primary AI transcript (`source: 'ai'`) only when word boundaries are non-empty **and** the segmenter produces ≥1 non-empty line after punctuation merge. When word boundaries are missing (OpenAI BYOK TTS, or Linux which has no native TTS plugin), no transcript is saved — `primaryTimelineJson: null` is passed on import/update, which omits or deletes transcript rows. The audio file still saves successfully.
 
 - Items with a blank transcript open in the player with an empty transcript panel and a clear **Generate** affordance, allowing the learner to create cues via the existing player ASR flow (`launchAsrGeneration`) at any time.
 - No auto-STT runs on Craft save — the learner initiates ASR explicitly.
@@ -202,7 +204,7 @@ All failures go through the `CraftFailure` sealed hierarchy (`lib/features/craft
 | Output format | Audio-only (no video generation) |
 | Per-call voice | Provider-default voice used; picker is v1 |
 | Offline | Requires network (Enjoy worker or BYOK endpoint) |
-| Transcript (Apple BYOK) | iOS and macOS TTS synthesis (including OpenAI BYOK) does not produce Azure word boundaries — Craft items from those platforms open without a timed transcript. Use the player ASR flow to generate cues. |
+| Transcript (Linux / BYOK OpenAI) | Linux has no Azure Speech native plugin and OpenAI BYOK TTS does not produce Azure word boundaries — Craft items from those paths open without a timed transcript. Use the player ASR flow to generate cues. |
 
 ## Responsive layout
 

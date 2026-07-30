@@ -226,6 +226,7 @@ class CraftController extends Notifier<CraftJobState> {
       // no fabricated duration estimates; learner generates via STT in player.
       final timelineJson = buildCraftPrimaryTimelineJson(
         state.previewWordBoundaries,
+        language: state.synthLanguage,
       );
       final wroteSolid = timelineJson != null;
 
