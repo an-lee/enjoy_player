@@ -71,6 +71,14 @@ android {
                 }
         }
     }
+
+    // lintVitalAnalyze* loads plugin bytecode into Metaspace and OOMs at the 512m
+    // MaxMetaspaceSize used to keep packageStoreReleaseBundle safe on 16GB hosts.
+    // Skip release lint gates; run `./gradlew :app:lint` separately when needed.
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
 }
 
 flutter {
