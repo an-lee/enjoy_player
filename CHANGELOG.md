@@ -7,13 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.3] - 2026-07-31
+
 ### Added
 
 - **Craft history remove**: clearing a Craft history record now keeps the library audio and transcript (it clears Craft provenance instead of deleting). See [ADR-0062](docs/decisions/0062-craft-history-remove-keeps-audio.md) and [docs/features/craft.md](docs/features/craft.md#craft-history-crafthistory).
 - **Craft Voice-Express dual-mode** redesign: a voice-first Express mode (speak → ASR → AI rewrite → TTS) is now the default, alongside the existing Advanced translate/synthesize tools. See [ADR-0060](docs/decisions/0060-craft-voice-express-dual-mode.md) and [docs/features/craft.md](docs/features/craft.md).
+- **Word pronunciation** with shared playback control and locale resolution.
+- **Craft shadow-friendly transcript cues** with Apple word-boundary timing.
+
 ### Changed
+
 - **Community activity card** split into focused part files (`avatars`, `bodies`, `metrics`, `stats`) sharing one library scope.
 - **Global transport bar** extracts `_LineNavButton` as the shared prev/next/replay control.
+- **Media card** split into focused modules.
+- **Craft** extracts shared `CraftLoadingView` and `CraftFailureCard`.
+
+### Fixed
+
+- **Enjoy modals** present above `PlayerSurfaceHost`.
+- **YouTube mount** no longer notifies during build; Windows pronounce `BytesSource` path fixed.
+- **Craft** merges standalone clause punctuation onto the prior word.
 
 ## [0.7.2] - 2026-07-22
 
