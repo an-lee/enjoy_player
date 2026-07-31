@@ -111,8 +111,8 @@ Focus ring: 2px (custom nav / sidebars)
 | `EditorialHeader` | `core/theme/widgets/editorial_header.dart` | Large title + subtitle + trailing; gutter or column width mode; optional `compact` |
 | `EnjoyBottomNav` | `core/theme/widgets/enjoy_bottom_nav.dart` | Mobile shell bottom navigation (replaces stock `NavigationBar`) |
 | `showEnjoySheet` / `showEnjoyAlertDialog` / `showEnjoyDialog` | `core/theme/widgets/enjoy_modal.dart` | Shared modal scrim + sheet shape; alert content max width |
-| `MediaCardTile` | `core/theme/widgets/media_card.dart` | Grid tile (video/home) |
-| `MediaCardRow` | `core/theme/widgets/media_card.dart` | List row (audio) |
+| `MediaCardTile` | `core/theme/widgets/media_card.dart` (barrel → `media_card/`) | Grid tile (video/home) |
+| `MediaCardRow` | `core/theme/widgets/media_card.dart` (barrel → `media_card/`) | List row (audio) |
 | `HeroArtwork` | `core/theme/widgets/hero_artwork.dart` | Artwork + rim light + shadow |
 | `EmptyState` | `core/theme/widgets/empty_state.dart` | Editorial empty state |
 | `GlassSurface` | `core/theme/widgets/glass_surface.dart` | **Transport bar only** |
