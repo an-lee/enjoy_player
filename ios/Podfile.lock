@@ -21,8 +21,6 @@ PODS:
     - Flutter
   - MicrosoftCognitiveServicesSpeech-iOS (1.49.1)
   - OrderedSet (6.0.3)
-  - sign_in_with_apple (0.0.1):
-    - Flutter
 
 DEPENDENCIES:
   - azure_speech (from `.symlinks/plugins/azure_speech/ios`)
@@ -31,7 +29,6 @@ DEPENDENCIES:
   - flutter_inappwebview_ios (from `.symlinks/plugins/flutter_inappwebview_ios/ios`)
   - media_kit_libs_ios_video (from `.symlinks/plugins/media_kit_libs_ios_video/ios`)
   - media_kit_video (from `.symlinks/plugins/media_kit_video/ios`)
-  - sign_in_with_apple (from `.symlinks/plugins/sign_in_with_apple/ios`)
 
 SPEC REPOS:
   trunk:
@@ -51,8 +48,6 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/media_kit_libs_ios_video/ios"
   media_kit_video:
     :path: ".symlinks/plugins/media_kit_video/ios"
-  sign_in_with_apple:
-    :path: ".symlinks/plugins/sign_in_with_apple/ios"
 
 SPEC CHECKSUMS:
   azure_speech: cd59609565095e563a4a17e0bab6c88d6652545d
@@ -63,7 +58,6 @@ SPEC CHECKSUMS:
   media_kit_video: 1746e198cb697d1ffb734b1d05ec429d1fcd1474
   MicrosoftCognitiveServicesSpeech-iOS: 6f35fa829c778d6e2f15b1bcc5110eccd7709831
   OrderedSet: e539b66b644ff081c73a262d24ad552a69be3a94
-  sign_in_with_apple: c5dcc141574c8c54d5ac99dd2163c0c72ad22418
 
 PODFILE CHECKSUM: 32867f9463c08d010d76ebcccfdd7e1669cd2e2a
 

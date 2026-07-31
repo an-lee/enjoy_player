@@ -14,16 +14,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/openid/AppAuth-iOS.git",
       "state" : {
-        "revision" : "2781038865a80e2c425a1da12cc1327bcd56501f",
-        "version" : "1.7.6"
-      }
-    },
-    {
-      "identity" : "csqlite",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/simolus3/CSQLite.git",
-      "state" : {
-        "revision" : "1ee46d19a4f451a7aa64ffc64fc99b4748131e62"
+        "revision" : "a7caeda164dc5108bf4649472b28a5af65dc6f33",
+        "version" : "2.1.0"
       }
     },
     {
@@ -31,8 +23,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/google/GoogleSignIn-iOS.git",
       "state" : {
-        "revision" : "65fb3f1aa6ffbfdc79c4e22178a55cd91561f5e9",
-        "version" : "8.0.0"
+        "revision" : "08d8dcecafb575f98879ffdbb8302c1b9ad65d19",
+        "version" : "9.2.0"
       }
     },
     {
@@ -58,8 +50,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/google/GTMAppAuth.git",
       "state" : {
-        "revision" : "5d7d66f647400952b1758b230e019b07c0b4b22a",
-        "version" : "4.1.1"
+        "revision" : "56e0ccf09a6dd29dc7e68bdf729598240ca8aa16",
+        "version" : "5.0.0"
       }
     },
     {
