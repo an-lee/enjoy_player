@@ -12,10 +12,12 @@ const int kMaxAvatarsSummary = 4;
 const double kSummaryAvatarSize = 28;
 const double kSummaryAvatarOverlap = 8;
 
+final RegExp _kWhitespaceRun = RegExp(r'\s+');
+
 /// Internal building block for `CommunityActivityCard`; not public API.
 String initials(String name) {
   if (name.trim().isEmpty) return 'U';
-  final parts = name.trim().split(RegExp(r'\s+'));
+  final parts = name.trim().split(_kWhitespaceRun);
   final buf = StringBuffer();
   for (final n in parts) {
     if (n.isEmpty) continue;

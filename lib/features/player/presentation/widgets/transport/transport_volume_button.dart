@@ -88,7 +88,10 @@ class _TransportVolumeButtonState extends ConsumerState<TransportVolumeButton> {
 
   @override
   Widget build(BuildContext context) {
-    final prefs = ref.watch(playerPreferencesCtrlProvider);
+    final volume = ref.watch(
+      playerPreferencesCtrlProvider.select((p) => p.volume),
+    );
+    final muted = volume <= 0.01;
     final l10n = AppLocalizations.of(context)!;
     final t = EnjoyThemeTokens.of(context);
     final cs = Theme.of(context).colorScheme;
@@ -131,8 +134,11 @@ class _TransportVolumeButtonState extends ConsumerState<TransportVolumeButton> {
                     child: Consumer(
                       builder: (_, ref, _) {
                         final vol = ref
-                            .watch(playerPreferencesCtrlProvider)
-                            .volume
+                            .watch(
+                              playerPreferencesCtrlProvider.select(
+                                (p) => p.volume,
+                              ),
+                            )
                             .clamp(0.0, 1.0);
                         return Slider(
                           value: vol,
@@ -160,13 +166,9 @@ class _TransportVolumeButtonState extends ConsumerState<TransportVolumeButton> {
         onEnter: (_) => _onPointerInside(true),
         onExit: (_) => _onPointerInside(false),
         child: IconButton(
-          tooltip: prefs.volume <= 0.01
-              ? l10n.transportUnmute
-              : l10n.transportMute,
+          tooltip: muted ? l10n.transportUnmute : l10n.transportMute,
           icon: Icon(
-            prefs.volume <= 0.01
-                ? Icons.volume_off_rounded
-                : Icons.volume_up_rounded,
+            muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
           ),
           onPressed: _toggleMute,
         ),

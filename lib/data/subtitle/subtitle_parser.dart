@@ -2,7 +2,23 @@
 library;
 
 import 'package:enjoy_player/core/utils/duration_parsing.dart';
+import 'package:enjoy_player/data/subtitle/subtitle_markup_parser.dart'
+    show tagStripRegExp;
 import 'transcript_line.dart';
+
+/// Matches an SRT cue index line (digits only).
+final RegExp _kSrtCueIndex = RegExp(r'^\d+$');
+
+/// Matches an SRT timestamp arrow line (HH:MM:SS,mmm --> HH:MM:SS,mmm).
+final RegExp _kSrtArrow = RegExp(
+  r'(\d{1,2}:\d{2}:\d{2}[,.]\d{3})\s*-->\s*(\d{1,2}:\d{2}:\d{2}[,.]\d{3})',
+);
+
+/// Matches a VTT timestamp arrow line (with optional hours, MM:SS.mmm).
+final RegExp _kVttArrow = RegExp(
+  r'(\d{1,2}:)?(\d{2}):(\d{2})\.(\d{3})\s*-->\s*'
+  r'(\d{1,2}:)?(\d{2}):(\d{2})\.(\d{3})',
+);
 
 abstract class SubtitleParser {
   List<TranscriptLine> parse(String content);
@@ -50,15 +66,13 @@ class SrtParser implements SubtitleParser {
       }
       if (i >= lines.length) break;
 
-      if (RegExp(r'^\d+$').hasMatch(lines[i].trim())) {
+      if (_kSrtCueIndex.hasMatch(lines[i].trim())) {
         i++;
       }
       if (i >= lines.length) break;
 
       final timeLine = lines[i];
-      final arrowMatch = RegExp(
-        r'(\d{1,2}:\d{2}:\d{2}[,.]\d{3})\s*-->\s*(\d{1,2}:\d{2}:\d{2}[,.]\d{3})',
-      ).firstMatch(timeLine);
+      final arrowMatch = _kSrtArrow.firstMatch(timeLine);
       if (arrowMatch == null) {
         i++;
         continue;
@@ -132,9 +146,7 @@ class VttParser implements SubtitleParser {
         line = lines[i];
       }
 
-      final arrowMatch = RegExp(
-        r'(\d{1,2}:)?(\d{2}):(\d{2})\.(\d{3})\s*-->\s*(\d{1,2}:)?(\d{2}):(\d{2})\.(\d{3})',
-      ).firstMatch(line);
+      final arrowMatch = _kVttArrow.firstMatch(line);
       if (arrowMatch == null) {
         i++;
         continue;
@@ -176,7 +188,7 @@ class VttParser implements SubtitleParser {
   }
 
   static String _stripTags(String l) =>
-      l.replaceAll(RegExp(r'<[^>]+>'), '').trim();
+      l.replaceAll(tagStripRegExp, '').trim();
 
   static int _parseVttTs(String? hOpt, String mm, String ss, String ms) {
     final h = hOpt != null ? int.tryParse(hOpt.replaceAll(':', '')) ?? 0 : 0;
