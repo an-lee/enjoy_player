@@ -18,12 +18,8 @@ done
 KEY_PATH="${RUNNER_TEMP:-/tmp}/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
 release_write_asc_api_private_key "${KEY_PATH}"
 
-xcrun notarytool store-credentials "${PROFILE}" \
-  --key "${KEY_PATH}" \
-  --key-id "${APP_STORE_CONNECT_API_KEY_ID}" \
-  --issuer "${APP_STORE_CONNECT_ISSUER_ID}"
-
-# Cache non-secret ASC identifiers on self-hosted runners for local recovery tooling.
+# Cache non-secret ASC identifiers before validation so a failed notary login
+# still leaves enough context for local recovery on the self-hosted runner.
 ASC_CACHE_DIR="${HOME}/.config/enjoy-player"
 mkdir -p "${ASC_CACHE_DIR}"
 umask 077
@@ -32,6 +28,11 @@ APP_STORE_CONNECT_API_KEY_ID=${APP_STORE_CONNECT_API_KEY_ID}
 APP_STORE_CONNECT_ISSUER_ID=${APP_STORE_CONNECT_ISSUER_ID}
 EOF
 chmod 600 "${ASC_CACHE_DIR}/asc.env"
+
+xcrun notarytool store-credentials "${PROFILE}" \
+  --key "${KEY_PATH}" \
+  --key-id "${APP_STORE_CONNECT_API_KEY_ID}" \
+  --issuer "${APP_STORE_CONNECT_ISSUER_ID}"
 
 echo "Registered notary profile: ${PROFILE}"
 rm -f "${KEY_PATH}"

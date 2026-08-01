@@ -65,15 +65,8 @@ fi
 if [[ "${RELEASE_SKIP_BUILD}" != true ]]; then
   bash "${root}/.github/scripts/setup_apple_signing.sh" || true
 
-  if [[ "${NOTARIZE}" == true ]]; then
-    # Fail loudly when ASC secrets are present but unusable (e.g. invalidPEMDocument).
-    bash "${root}/.github/scripts/setup_notary_credentials.sh"
-  fi
-
-  echo ">>> Homebrew + CocoaPods"
-  brew bundle install --file="${root}/macos/Brewfile"
-  (cd "${root}/macos" && pod install)
-
+  # Bootstrap Apple Distribution before notary login so a bad notary profile
+  # does not block iOS signing recovery on self-hosted runners.
   if [[ "${MACOS_ONLY}" != true ]]; then
     dist_id="$(
       security find-identity -v -p codesigning 2>/dev/null \
@@ -87,6 +80,18 @@ if [[ "${RELEASE_SKIP_BUILD}" != true ]]; then
         exit 1
       fi
     fi
+  fi
+
+  if [[ "${NOTARIZE}" == true ]]; then
+    # Fail loudly when ASC secrets are present but unusable (e.g. invalidPEMDocument).
+    bash "${root}/.github/scripts/setup_notary_credentials.sh"
+  fi
+
+  echo ">>> Homebrew + CocoaPods"
+  brew bundle install --file="${root}/macos/Brewfile"
+  (cd "${root}/macos" && pod install)
+
+  if [[ "${MACOS_ONLY}" != true ]]; then
     (cd "${root}/ios" && pod install)
 
     echo ">>> Build iOS IPA"

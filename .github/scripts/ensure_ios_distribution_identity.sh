@@ -33,6 +33,16 @@ for var in APP_STORE_CONNECT_API_KEY_ID APP_STORE_CONNECT_ISSUER_ID APP_STORE_CO
   fi
 done
 
+# Persist identifiers early for local debugging if the API call fails later.
+ASC_CACHE_DIR="${HOME}/.config/enjoy-player"
+mkdir -p "${ASC_CACHE_DIR}"
+umask 077
+cat >"${ASC_CACHE_DIR}/asc.env" <<EOF
+APP_STORE_CONNECT_API_KEY_ID=${APP_STORE_CONNECT_API_KEY_ID}
+APP_STORE_CONNECT_ISSUER_ID=${APP_STORE_CONNECT_ISSUER_ID}
+EOF
+chmod 600 "${ASC_CACHE_DIR}/asc.env"
+
 WORKDIR="${RUNNER_TEMP:-/tmp}/enjoy-ios-distribution-$$"
 mkdir -p "${WORKDIR}"
 chmod 700 "${WORKDIR}"
