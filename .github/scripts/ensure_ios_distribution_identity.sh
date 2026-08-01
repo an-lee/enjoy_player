@@ -67,7 +67,8 @@ openssl req -new -newkey rsa:2048 -nodes \
 
 echo "Creating Apple Distribution certificate via App Store Connect API..."
 
-ruby --disable-gems - "${KEY_PATH}" "${APP_STORE_CONNECT_API_KEY_ID}" \
+# Do not use --disable-gems: Ruby 3.4+ ships base64/json as bundled gems.
+ruby - "${KEY_PATH}" "${APP_STORE_CONNECT_API_KEY_ID}" \
   "${APP_STORE_CONNECT_ISSUER_ID}" "${CSR_PATH}" "${CERT_PATH}" <<'RUBY'
 require "base64"
 require "json"
