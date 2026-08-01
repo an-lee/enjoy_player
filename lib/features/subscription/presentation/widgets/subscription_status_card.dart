@@ -118,6 +118,14 @@ class SubscriptionStatusCard extends ConsumerWidget {
       );
     }
 
+    // Lite members get a paid-tier status card with the correct label.
+    final tierName = status.isLite
+        ? l10n.subscriptionTierLiteName
+        : l10n.profileSubscriptionFree;
+    final tierDescription = status.isLite
+        ? l10n.subscriptionTierLiteDescription
+        : l10n.subscriptionTierFreeDescription;
+
     return EnjoyCard(
       padding: EdgeInsets.all(t.space20),
       child: Column(
@@ -129,7 +137,7 @@ class SubscriptionStatusCard extends ConsumerWidget {
               SizedBox(width: t.space8),
               Expanded(
                 child: Text(
-                  l10n.profileSubscriptionFree,
+                  tierName,
                   style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
@@ -143,7 +151,7 @@ class SubscriptionStatusCard extends ConsumerWidget {
           ),
           SizedBox(height: t.space4),
           Text(
-            l10n.subscriptionTierFreeDescription,
+            tierDescription,
             style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
         ],
