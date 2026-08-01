@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:enjoy_player/core/interaction/haptics.dart';
+import 'package:enjoy_player/core/interaction/mouse_tracker_safe.dart';
 import 'package:enjoy_player/core/platform/player_content_layout.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_player_engine.dart';
 import 'package:enjoy_player/features/player/application/player_collapse.dart';
@@ -151,7 +152,10 @@ class _VideoPlayerLayoutState extends State<VideoPlayerLayout> {
                             engine: widget.engine,
                             isHovered: hovered,
                             onHoverChanged: (v) =>
-                                _videoColumnHovered.value = v,
+                                setValueNotifierOutsideMouseTracker(
+                                  _videoColumnHovered,
+                                  v,
+                                ),
                             showButtonsInTitleBar: true,
                             surfaceOverlay: widget.surfaceOverlay,
                           ),
@@ -165,7 +169,10 @@ class _VideoPlayerLayoutState extends State<VideoPlayerLayout> {
                       return _ResizeSplitter(
                         hitWidth: _kSplitterHitWidth,
                         hovered: splitterHovered,
-                        onHover: (v) => _splitterHovered.value = v,
+                        onHover: (v) => setValueNotifierOutsideMouseTracker(
+                          _splitterHovered,
+                          v,
+                        ),
                         semanticLabel: AppLocalizations.of(
                           context,
                         )!.playerTranscriptResizeHint,
@@ -399,6 +406,8 @@ class _VideoStageWithChrome extends ConsumerWidget {
       // below (YouTube needs a real WebView gesture; see docs/features/youtube.md).
       overlayBuilder: (ctx) => MouseRegion(
         opaque: false,
+        // Defer hover rebuilds — parking WebView2 under the cursor fires
+        // onExit inside MouseTracker and must not setState synchronously.
         onEnter: onHoverChanged == null ? null : (_) => onHoverChanged!(true),
         onExit: onHoverChanged == null ? null : (_) => onHoverChanged!(false),
         child: Stack(

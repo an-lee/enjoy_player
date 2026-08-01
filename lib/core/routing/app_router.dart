@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'package:enjoy_player/core/player/player_surface_overlay_coordinator.dart';
+import 'package:enjoy_player/core/player/player_surface_overlay_navigator_observer.dart';
 import 'package:enjoy_player/core/routing/auth_redirect.dart';
 import 'package:enjoy_player/core/routing/auth_router_tick.dart';
 import 'package:enjoy_player/core/routing/not_found_screen.dart';
@@ -75,9 +77,20 @@ CustomTransitionPage<void> _shellPage({
 @Riverpod(keepAlive: true)
 GoRouter appRouter(Ref ref) {
   final authTick = ref.watch(authRouterTickProvider);
+  PlayerSurfaceOverlayCoordinator coordinator() =>
+      ref.read(playerSurfaceOverlayCoordinatorProvider.notifier);
+  // One observer per navigator — Flutter binds each observer to a single
+  // Navigator (root vs shell).
+  final rootOverlayObserver = PlayerSurfaceOverlayNavigatorObserver(
+    coordinator: coordinator,
+  );
+  final shellOverlayObserver = PlayerSurfaceOverlayNavigatorObserver(
+    coordinator: coordinator,
+  );
   return GoRouter(
     initialLocation: '/',
     refreshListenable: authTick,
+    observers: [rootOverlayObserver],
     errorBuilder: (context, state) => NotFoundScreen(uri: state.uri),
     redirect: (context, state) {
       // A stray `/callback` is go_router's view of an auto-forwarded
@@ -118,6 +131,7 @@ GoRouter appRouter(Ref ref) {
       ),
       ShellRoute(
         navigatorKey: enjoyShellNavigatorKey,
+        observers: [shellOverlayObserver],
         builder: (context, state, child) => RootShell(child: child),
         routes: [
           GoRoute(

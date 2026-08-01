@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 
 import 'package:enjoy_player/core/interaction/haptics.dart';
+import 'package:enjoy_player/core/interaction/mouse_tracker_safe.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 
 /// Card / tile tap target with Material ripple and optional hover scale.
@@ -84,8 +85,14 @@ class _EnjoyTappableSurfaceState extends State<EnjoyTappableSurface> {
       cursor: widget.onTap != null
           ? SystemMouseCursors.click
           : MouseCursor.defer,
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = false),
+      onEnter: (_) => runOutsideMouseTrackerIfMounted(() => mounted, () {
+        if (_hover) return;
+        setState(() => _hover = true);
+      }),
+      onExit: (_) => runOutsideMouseTrackerIfMounted(() => mounted, () {
+        if (!_hover) return;
+        setState(() => _hover = false);
+      }),
       child: core,
     );
 

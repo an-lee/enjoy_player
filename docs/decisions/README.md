@@ -89,3 +89,4 @@ Trade-offs, follow-up work, risks.
 | [0063](0063-craft-blank-transcript-without-solid-timings.md) | Craft blank transcript without solid word timings (no duration estimates) |
 | [0064](0064-word-pronounce-client.md) | Word pronounce client — Worker `/pronounce` + shared tap-to-play control (lookup / flashcard / assessment) |
 | [0065](0065-enjoy-modals-root-navigator.md) | Enjoy modals default to root navigator (above PlayerSurfaceHost; supplements 0057) |
+| [0066](0066-park-player-surface-for-overlays.md) | Park PlayerSurfaceHost while dialogs/sheets/snackbars are visible (WebView2 z-order; supplements 0057/0065) |

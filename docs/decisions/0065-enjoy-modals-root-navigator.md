@@ -29,6 +29,10 @@ regressed whenever a new Enjoy modal opened from the player without the flag.
 4. Keep distinct patterns for non-modal chrome:
    - In-stage controls → `PlayerSurfaceTarget.overlayBuilder`
    - Competing WebView route → `PlayerSurfaceHost(forcePark: …)`
+5. On platforms where native surfaces punch through Flutter overlays (notably
+   Windows WebView2), [ADR-0066](0066-park-player-surface-for-overlays.md)
+   additionally parks the host for the lifetime of popup routes and
+   `AppNotice` snackbars.
 
 ## Consequences
 
@@ -36,10 +40,12 @@ regressed whenever a new Enjoy modal opened from the player without the flag.
 - Escape dismissal already checks shell then root
   ([hotkeys.md](../features/hotkeys.md)); root-presented modals remain
   dismissible.
-- Supplements [ADR-0057](0057-permanent-player-surface-host.md).
+- Supplements [ADR-0057](0057-permanent-player-surface-host.md); complemented
+  by [ADR-0066](0066-park-player-surface-for-overlays.md) for native z-order.
 
 ## Related
 
 - [ADR-0057](0057-permanent-player-surface-host.md)
+- [ADR-0066](0066-park-player-surface-for-overlays.md)
 - [player.md](../features/player.md)
 - [architecture.md](../architecture.md)

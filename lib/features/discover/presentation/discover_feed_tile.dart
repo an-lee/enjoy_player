@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import 'package:enjoy_player/core/ids/enjoy_ids.dart';
+import 'package:enjoy_player/core/interaction/mouse_tracker_safe.dart';
 import 'package:enjoy_player/core/notices/app_notice.dart';
 import 'package:enjoy_player/core/routing/player_navigation.dart';
 import 'package:enjoy_player/features/player/application/youtube_warm.dart';
@@ -153,8 +154,14 @@ class _DiscoverFeedTileState extends ConsumerState<DiscoverFeedTile> {
     final durationLabel = _durationLabel(entry);
 
     return MouseRegion(
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = false),
+      onEnter: (_) => runOutsideMouseTrackerIfMounted(() => mounted, () {
+        if (_hover) return;
+        setState(() => _hover = true);
+      }),
+      onExit: (_) => runOutsideMouseTrackerIfMounted(() => mounted, () {
+        if (!_hover) return;
+        setState(() => _hover = false);
+      }),
       child: Material(
         color: Colors.transparent,
         child: InkWell(

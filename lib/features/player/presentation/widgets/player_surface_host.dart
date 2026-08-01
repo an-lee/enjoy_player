@@ -17,8 +17,10 @@ import 'package:enjoy_player/features/player/application/player_surface_registry
 /// underlying [InAppWebView] / media_kit [Video] between routes.
 ///
 /// Set [forcePark] when a shell route that owns its own platform view (e.g.
-/// `/youtube/login`) is on top of a still-mounted player page — otherwise this
-/// host stays above the shell [Stack] and covers that route.
+/// `/youtube/login`) is on top of a still-mounted player page, or when a
+/// transient overlay (dialog / sheet / snackbar) must clear the native
+/// surface (ADR-0066) — otherwise this host stays above the shell [Stack]
+/// and covers that UI.
 class PlayerSurfaceHost extends ConsumerWidget {
   const PlayerSurfaceHost({super.key, this.forcePark = false});
 

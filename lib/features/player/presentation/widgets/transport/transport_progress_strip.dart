@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:enjoy_player/core/interaction/haptics.dart';
+import 'package:enjoy_player/core/interaction/mouse_tracker_safe.dart';
 import 'package:enjoy_player/core/platform/mobile_platform.dart';
 import 'package:enjoy_player/core/utils/time_format.dart';
 import 'package:enjoy_player/features/player/application/player_interactions.dart';
@@ -172,6 +173,9 @@ class _TransportProgressStripState
 
   void _setHovered(bool v) {
     if (_hovered == v) return;
-    setState(() => _hovered = v);
+    runOutsideMouseTrackerIfMounted(() => mounted, () {
+      if (_hovered == v) return;
+      setState(() => _hovered = v);
+    });
   }
 }

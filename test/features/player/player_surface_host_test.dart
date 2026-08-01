@@ -1,3 +1,4 @@
+import 'package:enjoy_player/core/player/player_surface_overlay_coordinator.dart';
 import 'package:enjoy_player/features/player/application/player_engine_test_double_provider.dart';
 import 'package:enjoy_player/features/player/application/player_surface_registry.dart';
 import 'package:enjoy_player/features/player/presentation/widgets/player_surface_host.dart';
@@ -124,6 +125,88 @@ void main() {
       final origin = box.localToGlobal(Offset.zero);
       // Parked at Offset(-parkWidth - 64, 0) — must not sit on the target.
       expect(origin.dx, lessThan(0));
+    },
+  );
+
+  testWidgets(
+    'overlay coordinator token parks stage without reparenting the surface',
+    (tester) async {
+      final engine = _KeyedSurfaceEngine();
+      addTearDown(engine.dispose);
+      final container = ProviderContainer(
+        overrides: [playerEngineTestDoubleProvider.overrideWithValue(engine)],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Scaffold(
+              body: Stack(
+                fit: StackFit.expand,
+                children: [
+                  const Align(
+                    alignment: Alignment.centerRight,
+                    child: SizedBox(
+                      width: 320,
+                      height: 180,
+                      child: PlayerSurfaceTarget(
+                        id: PlayerSurfaceIds.expandedPlayer,
+                        child: ColoredBox(color: Colors.grey),
+                      ),
+                    ),
+                  ),
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final park = ref.watch(
+                        playerSurfaceShouldParkForOverlayProvider,
+                      );
+                      return PlayerSurfaceHost(forcePark: park);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final originalElement = engine.surfaceKey.currentContext;
+      expect(originalElement, isNotNull);
+      final attachedBox =
+          engine.surfaceKey.currentContext!.findRenderObject()! as RenderBox;
+      expect(
+        attachedBox.localToGlobal(Offset.zero).dx,
+        greaterThanOrEqualTo(0),
+      );
+
+      final token = container
+          .read(playerSurfaceOverlayCoordinatorProvider.notifier)
+          .acquire('notice');
+      await tester.pump();
+      await tester.pump();
+
+      expect(engine.surfaceKey.currentContext, same(originalElement));
+      final parkedBox =
+          engine.surfaceKey.currentContext!.findRenderObject()! as RenderBox;
+      expect(parkedBox.localToGlobal(Offset.zero).dx, lessThan(0));
+
+      container
+          .read(playerSurfaceOverlayCoordinatorProvider.notifier)
+          .release(token);
+      await tester.pump();
+      await tester.pump();
+
+      expect(engine.surfaceKey.currentContext, same(originalElement));
+      final restoredBox =
+          engine.surfaceKey.currentContext!.findRenderObject()! as RenderBox;
+      expect(
+        restoredBox.localToGlobal(Offset.zero).dx,
+        greaterThanOrEqualTo(0),
+      );
     },
   );
 }

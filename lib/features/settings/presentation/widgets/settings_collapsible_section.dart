@@ -41,11 +41,10 @@ class SettingsCollapsibleSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = EnjoyThemeTokens.of(context);
 
+    // Horizontal inset comes from the Settings hub page metrics — same as
+    // [SettingsSectionCard] / Profile. Avoid a second mobile gutter.
     return wrapInCard
-        ? Padding(
-            padding: EdgeInsets.symmetric(horizontal: t.space16),
-            child: EnjoyCard(padding: EdgeInsets.all(t.space16), child: child),
-          )
+        ? EnjoyCard(padding: EdgeInsets.all(t.space16), child: child)
         : child;
   }
 }
