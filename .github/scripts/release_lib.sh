@@ -75,6 +75,35 @@ release_repo_root() {
   cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd
 }
 
+# Write App Store Connect API .p8 from APP_STORE_CONNECT_API_PRIVATE_KEY.
+# GitHub secrets / JSON pastes often store literal "\n" instead of real newlines,
+# which makes notarytool fail with invalidPEMDocument.
+release_write_asc_api_private_key() {
+  local dest="$1"
+  local key="${APP_STORE_CONNECT_API_PRIVATE_KEY:-}"
+  if [[ -z "${key}" ]]; then
+    echo "APP_STORE_CONNECT_API_PRIVATE_KEY is empty" >&2
+    return 1
+  fi
+  # Literal escaped newlines first, then normalize CR/LF.
+  key="${key//\\r\\n/$'\n'}"
+  key="${key//\\n/$'\n'}"
+  key="${key//$'\r\n'/$'\n'}"
+  key="${key//$'\r'/$'\n'}"
+  if [[ "${key}" == \"*\" && "${key}" == *\" ]]; then
+    key="${key:1:$((${#key} - 2))}"
+  fi
+  # Trim one leading/trailing newline run, then ensure a trailing newline.
+  while [[ "${key}" == $'\n'* ]]; do key="${key#$'\n'}"; done
+  while [[ "${key}" == *$'\n' ]]; do key="${key%$'\n'}"; done
+  printf '%s\n' "${key}" >"${dest}"
+  chmod 600 "${dest}"
+  if ! grep -q 'BEGIN PRIVATE KEY' "${dest}"; then
+    echo "ASC API private key is not a PEM (missing BEGIN PRIVATE KEY)." >&2
+    return 1
+  fi
+}
+
 # Stop stale Gradle daemons so the next bundle build picks up gradle.properties
 # jvmargs (avoids OOM in packageStoreReleaseBundle after heavy flutter test runs).
 release_stop_gradle_daemons() {

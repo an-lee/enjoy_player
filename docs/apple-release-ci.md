@@ -188,12 +188,13 @@ bash .github/scripts/release.sh --platform apple --publish-only --publish
 | *Error Downloading App Information* on IPA | Create App Store Connect app for `ai.enjoy.player` |
 | *No profiles for 'ai.enjoy.player'* | Open Xcode on runner, build once with automatic signing |
 | *notarytool* auth failed | Re-check API key ID, Issuer ID, and full `.p8` secret content |
+| *invalidPEMDocument* when registering notary credentials | `APP_STORE_CONNECT_API_PRIVATE_KEY` must be the full PEM with real newlines (including `BEGIN/END PRIVATE KEY`). Re-set with `gh secret set APP_STORE_CONNECT_API_PRIVATE_KEY < AuthKey_XXXX.p8`. Release scripts also normalize literal `\n` sequences. |
 | macOS DYLD / `libz` missing | Run `brew bundle install --file=macos/Brewfile` on runner |
 | Upload skipped | API secrets missing — workflow logs *Skipping TestFlight upload* |
 | Build Apple jobs stuck **queued** / never start | Workflow `runs-on` labels must match the runner. Org mac runners have `self-hosted` + `macos` (lowercase) — do **not** require a custom `flutter` label unless you add it in GitHub → Settings → Actions → Runners. Agentic `self-hosted`-only jobs can occupy mac runners; cancel long-running agentic jobs if Apple CI is starved. |
 | `exit code 35` during Flutter SDK download | Transient curl/HTTP2 issue — `setup-macos-runner-env` sets `CURL_HTTP_VERSION=1_1`; `setup-flutter` uses `--http1.1` on macOS/Linux downloads. |
 | Xcode *Could not resolve package dependencies* (SPM) | Transient network to SwiftPM/CDN — `build_ios_ci.sh` retries up to 3 times; re-run the workflow. |
-| *Apple Distribution certificate missing* | Install **Apple Distribution** (team `46X685R747`) in the runner login keychain for TestFlight; **Developer ID Application** alone is not enough for iOS IPA. |
+| *Apple Distribution certificate missing* | Install **Apple Distribution** (team `46X685R747`) in the runner login keychain for TestFlight; **Developer ID Application** alone is not enough for iOS IPA. With ASC API secrets set, `ensure_ios_distribution_identity.sh` will create/import a fresh cert (revoking orphan portal certs that have no local private key). |
 | S3 publish failed / skipped locally | Run with `--publish` and configure `publish_env.local.sh` (see [packaging.md § Publish](packaging.md#publish-to-dlenjoybot-optional)). After build-only, use `--publish-only --publish`. |
 | `RELEASE_EXTRA_ARGS[@]: unbound variable` on macOS | Fixed in release scripts (Bash 3.2 + `set -u`); update to latest `main`. |
 

@@ -66,7 +66,8 @@ if [[ "${RELEASE_SKIP_BUILD}" != true ]]; then
   bash "${root}/.github/scripts/setup_apple_signing.sh" || true
 
   if [[ "${NOTARIZE}" == true ]]; then
-    bash "${root}/.github/scripts/setup_notary_credentials.sh" || true
+    # Fail loudly when ASC secrets are present but unusable (e.g. invalidPEMDocument).
+    bash "${root}/.github/scripts/setup_notary_credentials.sh"
   fi
 
   echo ">>> Homebrew + CocoaPods"
@@ -79,9 +80,12 @@ if [[ "${RELEASE_SKIP_BUILD}" != true ]]; then
         | awk -F'"' '/Apple Distribution/ { print $2; exit }'
     )"
     if [[ -z "${dist_id}" ]]; then
-      echo "Apple Distribution certificate missing in keychain — iOS IPA / TestFlight will fail." >&2
-      echo "Install via Xcode (Signing & Capabilities) or import the .p12, then retry." >&2
-      exit 1
+      echo "Apple Distribution certificate missing — attempting App Store Connect API create/import"
+      if ! bash "${root}/.github/scripts/ensure_ios_distribution_identity.sh"; then
+        echo "Apple Distribution certificate missing in keychain — iOS IPA / TestFlight will fail." >&2
+        echo "Install via Xcode (Signing & Capabilities), import a .p12, or ensure ASC API secrets can create one." >&2
+        exit 1
+      fi
     fi
     (cd "${root}/ios" && pod install)
 
@@ -91,8 +95,9 @@ if [[ "${RELEASE_SKIP_BUILD}" != true ]]; then
     if [[ "${UPLOAD_TESTFLIGHT}" == true ]]; then
       if [[ -n "${APP_STORE_CONNECT_API_KEY_ID:-}" && -n "${APP_STORE_CONNECT_ISSUER_ID:-}" && -n "${APP_STORE_CONNECT_API_PRIVATE_KEY:-}" ]]; then
         KEY_PATH="${RUNNER_TEMP:-/tmp}/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
-        printf '%s' "${APP_STORE_CONNECT_API_PRIVATE_KEY}" >"${KEY_PATH}"
-        chmod 600 "${KEY_PATH}"
+        release_write_asc_api_private_key "${KEY_PATH}"
+        # altool discovers AuthKey_<id>.p8 on its private-keys search path.
+        export API_PRIVATE_KEYS_DIR="$(dirname "${KEY_PATH}")"
         IPA="$(ls -1 "${root}/build/ios/ipa/"*.ipa | head -1)"
         xcrun altool --upload-app --type ios --file "${IPA}" \
           --apiKey "${APP_STORE_CONNECT_API_KEY_ID}" \
@@ -127,7 +132,7 @@ elif [[ "${NOTARIZE}" == true || "${RELEASE_PUBLISH}" == true ]]; then
   fi
 
   if [[ "${NOTARIZE}" == true ]]; then
-    bash "${root}/.github/scripts/setup_notary_credentials.sh" || true
+    bash "${root}/.github/scripts/setup_notary_credentials.sh"
     if release_macos_app_is_notarized "${MACOS_APP_PATH}"; then
       echo ">>> macOS app already notarized and stapled"
     else
