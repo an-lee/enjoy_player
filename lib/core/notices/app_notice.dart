@@ -1,13 +1,16 @@
 /// Material 3 in-app notices (SnackBars) with semantic styling and shell-aware margins.
 library;
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:enjoy_player/core/interaction/haptics.dart';
 import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/core/notices/root_shell_bottom_inset.dart';
+import 'package:enjoy_player/core/player/player_surface_overlay_coordinator.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 
 final _log = logNamed('AppNotice');
@@ -141,7 +144,11 @@ abstract final class AppNotice {
         color: foregroundColor,
       );
 
-      m.showSnackBar(
+      // Park the permanent player surface while the snackbar is visible so
+      // WebView2 / media_kit platform views cannot cover the notice (ADR-0066).
+      final overlayHold = _acquireOverlayHold(context);
+
+      final controller = m.showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
           elevation: elevation,
@@ -164,6 +171,26 @@ abstract final class AppNotice {
           ),
         ),
       );
+
+      if (overlayHold != null) {
+        unawaited(controller.closed.whenComplete(overlayHold.release));
+      }
     });
+  }
+
+  /// Captures the Riverpod container at show-time so release still works after
+  /// the calling [BuildContext] unmounts.
+  static ({VoidCallback release})? _acquireOverlayHold(BuildContext context) {
+    try {
+      final container = ProviderScope.containerOf(context, listen: false);
+      final coordinator = container.read(
+        playerSurfaceOverlayCoordinatorProvider.notifier,
+      );
+      final token = coordinator.acquire('notice');
+      return (release: () => coordinator.release(token));
+    } on Object {
+      // No ProviderScope (e.g. isolated widget tests) — snackbar still shows.
+      return null;
+    }
   }
 }

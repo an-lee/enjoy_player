@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import 'package:enjoy_player/core/interaction/haptics.dart';
+import 'package:enjoy_player/core/interaction/mouse_tracker_safe.dart';
 import 'package:enjoy_player/core/platform/mobile_platform.dart';
 
 import '../../enjoy_tokens.dart';
@@ -123,8 +124,8 @@ class _MediaCardRowState extends State<MediaCardRow> {
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      onEnter: (_) => _hover.value = true,
-      onExit: (_) => _hover.value = false,
+      onEnter: (_) => setValueNotifierOutsideMouseTracker(_hover, true),
+      onExit: (_) => setValueNotifierOutsideMouseTracker(_hover, false),
       child: Material(
         color: Colors.transparent,
         clipBehavior: Clip.antiAlias,

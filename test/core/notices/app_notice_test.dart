@@ -1,6 +1,8 @@
 import 'package:enjoy_player/core/notices/app_notice.dart';
+import 'package:enjoy_player/core/player/player_surface_overlay_coordinator.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -9,9 +11,10 @@ void main() {
   Widget host({
     GlobalKey<ScaffoldMessengerState>? messengerKey,
     Widget? child,
+    ProviderContainer? container,
   }) {
     final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF7B61FF));
-    return MaterialApp(
+    final app = MaterialApp(
       theme: ThemeData(
         colorScheme: scheme,
         extensions: [EnjoyThemeTokens.build(scheme)],
@@ -24,6 +27,8 @@ void main() {
         ),
       ),
     );
+    if (container == null) return app;
+    return UncontrolledProviderScope(container: container, child: app);
   }
 
   group('AppNotice', () {
@@ -127,5 +132,43 @@ void main() {
       await tester.pump();
       expect(find.text('should be skipped'), findsNothing);
     });
+
+    testWidgets(
+      'success acquires overlay park token and releases when snackbar closes',
+      (tester) async {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        final messengerKey = GlobalKey<ScaffoldMessengerState>();
+        await tester.pumpWidget(
+          host(messengerKey: messengerKey, container: container),
+        );
+
+        final ctx = tester.element(find.byType(Scaffold));
+        expect(
+          container.read(playerSurfaceShouldParkForOverlayProvider),
+          isFalse,
+        );
+
+        AppNotice.success(ctx, 'parked notice');
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.text('parked notice'), findsOneWidget);
+        expect(
+          container.read(playerSurfaceShouldParkForOverlayProvider),
+          isTrue,
+        );
+
+        // Dismiss explicitly — more reliable than advancing the timer in tests.
+        messengerKey.currentState!.hideCurrentSnackBar();
+        await tester.pumpAndSettle();
+
+        expect(find.text('parked notice'), findsNothing);
+        expect(
+          container.read(playerSurfaceShouldParkForOverlayProvider),
+          isFalse,
+        );
+      },
+    );
   });
 }

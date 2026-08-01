@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:enjoy_player/core/interaction/enjoy_tappable.dart';
 import 'package:enjoy_player/core/interaction/haptics.dart';
+import 'package:enjoy_player/core/interaction/mouse_tracker_safe.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/typography.dart';
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
@@ -305,8 +306,8 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
             label: semanticsLabel,
             focusable: true,
             child: MouseRegion(
-              onEnter: (_) => _hover.value = true,
-              onExit: (_) => _hover.value = false,
+              onEnter: (_) => setValueNotifierOutsideMouseTracker(_hover, true),
+              onExit: (_) => setValueNotifierOutsideMouseTracker(_hover, false),
               child: Material(color: bg ?? Colors.transparent, child: content),
             ),
           );
@@ -334,8 +335,8 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
           label: semanticsLabel,
           button: true,
           child: MouseRegion(
-            onEnter: (_) => _hover.value = true,
-            onExit: (_) => _hover.value = false,
+            onEnter: (_) => setValueNotifierOutsideMouseTracker(_hover, true),
+            onExit: (_) => setValueNotifierOutsideMouseTracker(_hover, false),
             child: Material(
               color: bg ?? Colors.transparent,
               clipBehavior: Clip.antiAlias,
