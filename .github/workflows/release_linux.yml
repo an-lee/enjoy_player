@@ -1,0 +1,49 @@
+name: Release Linux
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Upload AppImage + update feeds on dl.enjoy.bot
+        type: boolean
+        default: false
+
+concurrency:
+  group: release-linux-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Linux release
+    runs-on: [self-hosted, Linux]
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Ensure Linux tooling
+        run: bash .github/scripts/ensure_linux_tooling.sh
+
+      - uses: ./.github/actions/setup-flutter
+
+      - name: Build Linux release
+        run: bash .github/scripts/release_linux.sh
+
+      - name: Ensure publish tooling
+        if: inputs.publish
+        run: bash .github/scripts/ensure_publish_tooling.sh
+
+      - name: Publish Linux feeds
+        if: inputs.publish
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_ENDPOINT_URL_S3: ${{ secrets.AWS_ENDPOINT_URL_S3 }}
+          PUBLISH_BUCKET: ${{ secrets.PUBLISH_BUCKET }}
+          PUBLISH_PREFIX: player
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          RELEASE_REQUIRE_S3: "1"
+        run: bash .github/scripts/release_linux.sh --publish-only --publish

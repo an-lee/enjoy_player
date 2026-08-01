@@ -41,6 +41,11 @@ jobs:
           fi
           bash .github/scripts/release_windows.sh "${args[@]}"
 
+      - name: Ensure publish tooling
+        if: inputs.publish
+        shell: pwsh
+        run: .github/scripts/ensure_publish_tooling.ps1
+
       - name: Publish direct-download feeds
         if: inputs.publish
         shell: bash

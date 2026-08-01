@@ -70,4 +70,6 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
           RELEASE_REQUIRE_S3: "1"
-        run: bash .github/scripts/release_apple.sh --publish-only --publish
+        run: |
+          bash .github/scripts/ensure_publish_tooling.sh
+          bash .github/scripts/release_apple.sh --publish-only --publish

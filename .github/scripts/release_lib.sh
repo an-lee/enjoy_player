@@ -126,6 +126,13 @@ release_macos_zip_path() {
   echo "${root}/EnjoyPlayer-macOS-v${version}.zip"
 }
 
+release_linux_appimage_path() {
+  local root="$1"
+  local version
+  version="$(release_version)"
+  echo "${root}/build/linux/x64/release/enjoy-player-${version}-x86_64.AppImage"
+}
+
 # Populate publish argv with every versioned artifact that exists on disk.
 release_collect_publish_artifact_args() {
   local root="$1"
@@ -148,6 +155,11 @@ release_collect_publish_artifact_args() {
   f="$(release_macos_zip_path "${root}")"
   if [[ -f "${f}" ]]; then
     out+=(--macos-zip "${f}")
+  fi
+
+  f="$(release_linux_appimage_path "${root}")"
+  if [[ -f "${f}" ]]; then
+    out+=(--linux-appimage "${f}")
   fi
 
   eval "${out_name}=(\"\${out[@]}\")"
@@ -239,6 +251,10 @@ release_parse_artifact_args() {
         RELEASE_ARTIFACT_SPECS+=("macos|$2")
         shift 2
         ;;
+      --linux-appimage)
+        RELEASE_ARTIFACT_SPECS+=("linux|$2")
+        shift 2
+        ;;
       --android-apk)
         RELEASE_ARTIFACT_SPECS+=("$2|$3")
         shift 3
@@ -265,6 +281,9 @@ release_artifact_argv() {
         ;;
       macos)
         out+=(--macos-zip "${path}")
+        ;;
+      linux)
+        out+=(--linux-appimage "${path}")
         ;;
       *)
         out+=(--android-apk "${key}" "${path}")
@@ -424,8 +443,13 @@ release_print_artifacts() {
       compgen -G "${root}/EnjoyPlayer-macOS-v"*.zip >/dev/null 2>&1 &&
         ls -1 "${root}/"EnjoyPlayer-macOS-v*.zip || true
       ;;
+    linux)
+      local appimage
+      appimage="$(release_linux_appimage_path "${root}")"
+      [[ -f "${appimage}" ]] && echo "${appimage}" || true
+      ;;
     all)
-      local installer aab apk abi zip
+      local installer aab apk abi zip appimage
       installer="$(release_windows_installer_path "${root}")"
       [[ -f "${installer}" ]] && echo "${installer}" || true
       aab="$(release_android_aab_path "${root}")"
@@ -436,6 +460,8 @@ release_print_artifacts() {
       done
       zip="$(release_macos_zip_path "${root}")"
       [[ -f "${zip}" ]] && echo "${zip}" || true
+      appimage="$(release_linux_appimage_path "${root}")"
+      [[ -f "${appimage}" ]] && echo "${appimage}" || true
       ;;
   esac
   local feed_dir="${root}/build/update-feeds"

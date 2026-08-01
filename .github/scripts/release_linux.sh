@@ -1,91 +1,71 @@
 #!/usr/bin/env bash
-# Linux AppImage release: build + package + publish.
+# Linux AppImage release — same steps as release_linux.yml.
 #
 # Usage:
-#   bash .github/scripts/release.sh --platform linux
-#   bash .github/scripts/release_linux.sh [--publish] [--publish-only] [--skip-build] [--skip-checks]
-#
-# Integrates with the existing release.sh dispatcher and the same S3 publishing
-# infrastructure the other release scripts use.
+#   bash .github/scripts/release_linux.sh                       # build AppImage
+#   bash .github/scripts/release_linux.sh --publish             # build + upload feeds
+#   bash .github/scripts/release_linux.sh --feeds-only          # build + local feeds only
+#   bash .github/scripts/release_linux.sh --publish-only --publish
 set -euo pipefail
 
-scripts="$(cd "$(dirname "$0")" && pwd)"
-root="$(cd "$scripts/../.." && pwd)"
+lib="$(dirname "$0")/release_lib.sh"
+# shellcheck source=release_lib.sh
+source "${lib}"
 
-PUBLISH=false
-PUBLISH_ONLY=false
-SKIP_BUILD=false
-SKIP_CHECKS=false
+root="$(release_repo_root)"
+cd "${root}"
 
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --publish) PUBLISH=true; shift ;;
-    --publish-only) PUBLISH_ONLY=true; shift ;;
-    --skip-build) SKIP_BUILD=true; shift ;;
-    --skip-checks) SKIP_CHECKS=true; shift ;;
-    *) echo "Unknown flag: $1" >&2; exit 1 ;;
+release_parse_common_args "$@"
+for arg in ${RELEASE_EXTRA_ARGS[@]+"${RELEASE_EXTRA_ARGS[@]}"}; do
+  case "${arg}" in
+    -h | --help)
+      sed -n '2,8p' "$0"
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: ${arg}" >&2
+      exit 1
+      ;;
   esac
 done
 
-if ! $PUBLISH_ONLY; then
-  if ! $SKIP_CHECKS; then
-    echo "==> Pre-release checks"
-    flutter analyze
-    flutter test
-  fi
+release_log_publish_only
 
-  if ! $SKIP_BUILD; then
-    echo "==> Building Linux release"
-    flutter build linux --release
-  fi
-
-  # Read version from pubspec.yaml
-  VERSION="$(grep '^version:' "$root/pubspec.yaml" | awk '{print $2}' | cut -d'+' -f1)"
-  echo "==> Package version: $VERSION"
-
-  echo "==> Building AppImage"
-  bash "$root/linux/packaging/make_appimage.sh" \
-    --version "$VERSION" \
-    --bundle "$root/build/linux/x64/release/bundle" \
-    --output "$root/build/linux/x64/release"
-else
-  VERSION="$(grep '^version:' "$root/pubspec.yaml" | awk '{print $2}' | cut -d'+' -f1)"
+if [[ "${RELEASE_SKIP_CHECKS}" != true ]]; then
+  echo ">>> Pre-release checks"
+  release_run_checks "${root}"
 fi
 
-APPIMAGE="$root/build/linux/x64/release/enjoy-player-${VERSION}-x86_64.AppImage"
+if [[ "${RELEASE_SKIP_BUILD}" != true ]]; then
+  echo ">>> Build Linux release (direct channel)"
+  flutter build linux --release --dart-define=DISTRIBUTION_CHANNEL=direct
 
-if [[ ! -f "$APPIMAGE" ]]; then
-  echo "ERROR: AppImage not found at $APPIMAGE" >&2
-  exit 1
+  version="$(release_version)"
+  echo ">>> Package version: ${version}"
+
+  echo ">>> Build AppImage"
+  bash "${root}/linux/packaging/make_appimage.sh" \
+    --version "${version}" \
+    --bundle "${root}/build/linux/x64/release/bundle" \
+    --output "${root}/build/linux/x64/release"
 fi
 
-SHA256="$(sha256sum "$APPIMAGE" | awk '{print $1}')"
-echo "==> SHA-256: $SHA256"
-
-if $PUBLISH || $PUBLISH_ONLY; then
-  echo "==> Publishing to dl.enjoy.bot"
-  PUBLISH_PREFIX="${PUBLISH_PREFIX:-player}"
-  PUBLISH_BUCKET="${PUBLISH_BUCKET:-}"
-  if [[ -z "$PUBLISH_BUCKET" ]]; then
-    echo "ERROR: PUBLISH_BUCKET not set. Source publish_env.local.sh or set the env var." >&2
+if [[ "${RELEASE_PUBLISH}" == true ]]; then
+  release_load_publish_env "${root}"
+  appimage="$(release_linux_appimage_path "${root}")"
+  if [[ ! -f "${appimage}" ]]; then
+    echo "No AppImage at ${appimage} (expected pubspec version $(release_version))" >&2
     exit 1
   fi
-
-  S3_KEY="${PUBLISH_PREFIX}/v${VERSION}/enjoy-player-${VERSION}-x86_64.AppImage"
-  S3_URL="s3://${PUBLISH_BUCKET}/${S3_KEY}"
-
-  echo "==> Uploading $APPIMAGE → $S3_URL"
-  aws s3 cp "$APPIMAGE" "$S3_URL" --no-progress
-
-  echo "==> Done. Update latest.json manually with:"
-  echo "    \"linux\": {"
-  echo "      \"url\": \"https://dl.enjoy.bot/${S3_KEY}\","
-  echo "      \"sha256\": \"$SHA256\","
-  echo "      \"format\": \"appimage\""
-  echo "    }"
+  publish_args=(--linux-appimage "${appimage}")
+  if [[ "${RELEASE_FEEDS_ONLY}" == true ]]; then
+    publish_args=(--feeds-only "${publish_args[@]}")
+  else
+    export RELEASE_REQUIRE_S3=1
+  fi
+  echo ">>> Publish (${appimage})"
+  bash "${root}/.github/scripts/publish_player_release_to_s3.sh" "${publish_args[@]}"
 fi
 
-echo "==> Linux release done"
-echo "  AppImage: $APPIMAGE"
-echo "  SHA-256:  $SHA256"
-echo "  Version:  $VERSION"
+release_print_artifacts "${root}" linux
+echo "Done."
