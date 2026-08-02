@@ -187,8 +187,7 @@ class VttParser implements SubtitleParser {
     return cues;
   }
 
-  static String _stripTags(String l) =>
-      l.replaceAll(tagStripRegExp, '').trim();
+  static String _stripTags(String l) => l.replaceAll(tagStripRegExp, '').trim();
 
   static int _parseVttTs(String? hOpt, String mm, String ss, String ms) {
     final h = hOpt != null ? int.tryParse(hOpt.replaceAll(':', '')) ?? 0 : 0;
