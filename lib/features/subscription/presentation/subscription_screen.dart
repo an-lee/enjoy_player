@@ -1,10 +1,20 @@
-/// Subscription management: membership, plans, and credits packages.
+/// Subscription management: membership, plans, credits, and balance → credits.
+///
+/// Composed of three sections below the status card:
+///   - [TierCatalog] — unified Free / Pro tier cards with Monthly / Yearly
+///     toggle. The Pro card CTA opens [showUnifiedPurchaseSheet] with the
+///     selected interval.
+///   - [BalanceToCredits] — discoverable card for users with legacy USD
+///     balance to convert into permanent credits (replaces the retired
+///     "Use balance" path that used to live inside the prepaid flow).
+///   - [CreditsPackagesSection] — one-time permanent credits top-ups.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:enjoy_player/core/layout/enjoy_page_kind.dart';
+import 'package:enjoy_player/core/platform/subscription_purchase_capability.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_button.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_page.dart';
@@ -12,15 +22,15 @@ import 'package:enjoy_player/core/theme/widgets/skeleton.dart';
 import 'package:enjoy_player/features/auth/application/auth_controller.dart';
 import 'package:enjoy_player/features/auth/domain/auth_state.dart';
 import 'package:enjoy_player/features/auth/presentation/widgets/auth_required_callout.dart';
-import 'package:enjoy_player/features/subscription/application/subscription_status_provider.dart';
 import 'package:enjoy_player/features/credits/application/credits_packages_provider.dart';
 import 'package:enjoy_player/features/credits/application/credits_summary_provider.dart';
+import 'package:enjoy_player/features/subscription/application/subscription_status_provider.dart';
 import 'package:enjoy_player/features/subscription/presentation/widgets/auto_renew_plan_sheet.dart';
+import 'package:enjoy_player/features/subscription/presentation/widgets/balance_to_credits.dart';
 import 'package:enjoy_player/features/subscription/presentation/widgets/credits_packages_section.dart';
 import 'package:enjoy_player/features/subscription/presentation/widgets/mobile_purchase_unavailable.dart';
 import 'package:enjoy_player/features/subscription/presentation/widgets/subscription_status_card.dart';
-import 'package:enjoy_player/features/subscription/presentation/widgets/tier_comparison.dart';
-import 'package:enjoy_player/core/platform/subscription_purchase_capability.dart';
+import 'package:enjoy_player/features/subscription/presentation/widgets/tier_catalog.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
 class SubscriptionScreen extends ConsumerStatefulWidget {
@@ -83,17 +93,18 @@ class _SubscriptionBody extends ConsumerWidget {
       onRefresh: onRefresh,
       child: statusAsync.when(
         data: (status) {
-          final isPro = status.isPro;
           return ListView(
             padding: pad,
             children: [
-              if (!isPro) ...[
-                const _FreeUpgradeHero(),
-                SizedBox(height: t.space20),
-              ],
               SubscriptionStatusCard(status: status),
               SizedBox(height: t.space24),
-              TierComparison(status: status),
+              TierCatalog(
+                status: status,
+                onChoosePro: (interval) =>
+                    _openUnifiedPurchase(context, interval),
+              ),
+              SizedBox(height: t.space20),
+              const BalanceToCredits(),
               SizedBox(height: t.space32),
               const CreditsPackagesSection(),
             ],
@@ -127,96 +138,20 @@ class _SubscriptionBody extends ConsumerWidget {
   }
 }
 
-/// Compact upgrade pitch for free users (membership card covers Pro).
-class _FreeUpgradeHero extends StatelessWidget {
-  const _FreeUpgradeHero();
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final t = EnjoyThemeTokens.of(context);
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(t.radiusXl),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              t.gradientStart.withValues(alpha: 0.55),
-              t.gradientEnd.withValues(alpha: 0.45),
-            ],
-          ),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.28)),
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(t.space20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: cs.surface.withValues(alpha: 0.45),
-                      borderRadius: BorderRadius.circular(t.radiusMd),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.all(t.space12),
-                      child: Icon(
-                        Icons.workspace_premium_rounded,
-                        color: cs.onSurface,
-                        size: 26,
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: t.space16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          l10n.subscriptionUpgrade,
-                          style: tt.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                        SizedBox(height: t.space4),
-                        Text(
-                          l10n.subscriptionTierProDescription,
-                          style: tt.bodyMedium?.copyWith(
-                            color: cs.onSurface.withValues(alpha: 0.82),
-                            height: 1.35,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: t.space16),
-              EnjoyButton.primary(
-                onPressed: () => _openUpgrade(context),
-                child: Text(l10n.subscriptionUpgrade),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+/// Opens the unified purchase modal at the chosen catalog interval.
+///
+/// Surfaces platform-specific affordances (mobile in-app unavailable notice)
+/// before delegating to [showUnifiedPurchaseSheet], which itself defaults to
+/// the auto-renew path and offers pay-once as a secondary option.
+Future<void> _openUnifiedPurchase(
+  BuildContext context,
+  CatalogInterval interval,
+) async {
+  if (showsMobilePurchaseUnavailable()) {
+    await showMobilePurchaseUnavailableDialog(context);
+    return;
   }
-
-  Future<void> _openUpgrade(BuildContext context) async {
-    if (showsMobilePurchaseUnavailable()) {
-      await showMobilePurchaseUnavailableDialog(context);
-      return;
-    }
-    if (!supportsExternalSubscriptionPurchase()) return;
-    if (!context.mounted) return;
-    await showAutoRenewPlanSheet(context);
-  }
+  if (!supportsExternalSubscriptionPurchase()) return;
+  if (!context.mounted) return;
+  await showUnifiedPurchaseSheet(context, interval: interval);
 }

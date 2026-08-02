@@ -1752,5 +1752,62 @@
   "pronounceTextTooLong": "Text is too long to pronounce",
   "pronounceFailed": "Couldn't play pronunciation",
   "pronounceCreditsExhausted": "Not enough credits to generate pronunciation",
-  "pronounceSignInRequired": "Sign in to hear pronunciation"
+  "pronounceSignInRequired": "Sign in to hear pronunciation",
+
+  "subscriptionTierCatalogTitle": "Choose your plan",
+  "subscriptionTierCatalogDescription": "Pick a tier and billing interval. Continue to pick how you pay.",
+  "subscriptionTierCatalogRecommended": "Recommended",
+  "subscriptionTierCatalogChoosePro": "Choose Pro",
+  "subscriptionTierCatalogExtendPro": "Extend Pro",
+  "subscriptionTierCatalogNotSelected": "Downgrade is not available",
+  "subscriptionTierCatalogSelectedInterval": "{amount} / {unit} — billed via Stripe",
+  "@subscriptionTierCatalogSelectedInterval": {
+    "placeholders": {
+      "amount": {"type": "String"},
+      "unit": {"type": "String"}
+    }
+  },
+  "subscriptionTierCatalogIntervalYearSavings": "Save {percent}%",
+  "@subscriptionTierCatalogIntervalYearSavings": {
+    "placeholders": {
+      "percent": {"type": "String"}
+    }
+  },
+  "subscriptionTierCatalogPerMonth": "month",
+  "subscriptionTierCatalogPerYear": "year",
+
+  "subscriptionPurchaseModalUnifiedTitle": "Choose how to pay for {tier} · {interval}",
+  "@subscriptionPurchaseModalUnifiedTitle": {
+    "placeholders": {
+      "tier": {"type": "String"},
+      "interval": {"type": "String"}
+    }
+  },
+  "subscriptionPurchaseModalUnifiedDescription": "Auto-renew keeps Pro access continuous and renews automatically. Pay once buys a fixed prepaid period with no auto-renew.",
+  "subscriptionPurchaseModalAutoRenewActiveWarning": "You already have an active auto-renew subscription. Cancel it to switch billing options.",
+  "subscriptionPurchaseModalOptionAutoRenew": "Auto-renew",
+  "subscriptionPurchaseModalOptionAutoRenewSubtitle": "Recommended — renews automatically. Cancel anytime.",
+  "subscriptionPurchaseModalOptionAutoRenewFootnote": "Billed via Stripe",
+  "subscriptionPurchaseModalOptionPrepaid": "Pay once",
+  "subscriptionPurchaseModalOptionPrepaidSubtitle": "No auto-renew. Pay for a fixed period up front.",
+  "subscriptionPurchaseModalOptionPrepaidFootnote": "One-time payment",
+  "subscriptionPurchaseModalSubscribeAutoRenewCta": "Subscribe with auto-renew",
+
+  "subscriptionBalanceToCreditsTitle": "Convert balance to permanent credits",
+  "subscriptionBalanceToCreditsDescriptionWithPreview": "Move your {usd} legacy balance to ~{credits} permanent credits on the credits page.",
+  "@subscriptionBalanceToCreditsDescriptionWithPreview": {
+    "placeholders": {
+      "usd": {"type": "String"},
+      "credits": {"type": "String"}
+    }
+  },
+  "subscriptionBalanceToCreditsDescriptionEmpty": "Once you have a balance from prior deposits, convert it to permanent credits here.",
+  "subscriptionBalanceToCreditsCta": "Convert to credits",
+  "subscriptionBalanceToCreditsComingSoonTitle": "Balance transfer coming soon",
+  "subscriptionBalanceToCreditsComingSoonMessage": "You have {usd} in legacy balance. The transfer-to-credits flow is rolling out to the desktop app in a future update. Until then, manage your balance on the web app.",
+  "@subscriptionBalanceToCreditsComingSoonMessage": {
+    "placeholders": {
+      "usd": {"type": "String"}
+    }
+  }
 }

@@ -6806,6 +6806,165 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sign in to hear pronunciation'**
   String get pronounceSignInRequired;
+
+  /// No description provided for @subscriptionTierCatalogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose your plan'**
+  String get subscriptionTierCatalogTitle;
+
+  /// No description provided for @subscriptionTierCatalogDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a tier and billing interval. Continue to pick how you pay.'**
+  String get subscriptionTierCatalogDescription;
+
+  /// No description provided for @subscriptionTierCatalogRecommended.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended'**
+  String get subscriptionTierCatalogRecommended;
+
+  /// No description provided for @subscriptionTierCatalogChoosePro.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Pro'**
+  String get subscriptionTierCatalogChoosePro;
+
+  /// No description provided for @subscriptionTierCatalogExtendPro.
+  ///
+  /// In en, this message translates to:
+  /// **'Extend Pro'**
+  String get subscriptionTierCatalogExtendPro;
+
+  /// No description provided for @subscriptionTierCatalogNotSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Downgrade is not available'**
+  String get subscriptionTierCatalogNotSelected;
+
+  /// No description provided for @subscriptionTierCatalogSelectedInterval.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} / {unit} — billed via Stripe'**
+  String subscriptionTierCatalogSelectedInterval(String amount, String unit);
+
+  /// No description provided for @subscriptionTierCatalogIntervalYearSavings.
+  ///
+  /// In en, this message translates to:
+  /// **'Save {percent}%'**
+  String subscriptionTierCatalogIntervalYearSavings(String percent);
+
+  /// No description provided for @subscriptionTierCatalogPerMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'month'**
+  String get subscriptionTierCatalogPerMonth;
+
+  /// No description provided for @subscriptionTierCatalogPerYear.
+  ///
+  /// In en, this message translates to:
+  /// **'year'**
+  String get subscriptionTierCatalogPerYear;
+
+  /// No description provided for @subscriptionPurchaseModalUnifiedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose how to pay for {tier} · {interval}'**
+  String subscriptionPurchaseModalUnifiedTitle(String tier, String interval);
+
+  /// No description provided for @subscriptionPurchaseModalUnifiedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-renew keeps Pro access continuous and renews automatically. Pay once buys a fixed prepaid period with no auto-renew.'**
+  String get subscriptionPurchaseModalUnifiedDescription;
+
+  /// No description provided for @subscriptionPurchaseModalAutoRenewActiveWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'You already have an active auto-renew subscription. Cancel it to switch billing options.'**
+  String get subscriptionPurchaseModalAutoRenewActiveWarning;
+
+  /// No description provided for @subscriptionPurchaseModalOptionAutoRenew.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-renew'**
+  String get subscriptionPurchaseModalOptionAutoRenew;
+
+  /// No description provided for @subscriptionPurchaseModalOptionAutoRenewSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended — renews automatically. Cancel anytime.'**
+  String get subscriptionPurchaseModalOptionAutoRenewSubtitle;
+
+  /// No description provided for @subscriptionPurchaseModalOptionAutoRenewFootnote.
+  ///
+  /// In en, this message translates to:
+  /// **'Billed via Stripe'**
+  String get subscriptionPurchaseModalOptionAutoRenewFootnote;
+
+  /// No description provided for @subscriptionPurchaseModalOptionPrepaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Pay once'**
+  String get subscriptionPurchaseModalOptionPrepaid;
+
+  /// No description provided for @subscriptionPurchaseModalOptionPrepaidSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No auto-renew. Pay for a fixed period up front.'**
+  String get subscriptionPurchaseModalOptionPrepaidSubtitle;
+
+  /// No description provided for @subscriptionPurchaseModalOptionPrepaidFootnote.
+  ///
+  /// In en, this message translates to:
+  /// **'One-time payment'**
+  String get subscriptionPurchaseModalOptionPrepaidFootnote;
+
+  /// No description provided for @subscriptionPurchaseModalSubscribeAutoRenewCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribe with auto-renew'**
+  String get subscriptionPurchaseModalSubscribeAutoRenewCta;
+
+  /// No description provided for @subscriptionBalanceToCreditsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Convert balance to permanent credits'**
+  String get subscriptionBalanceToCreditsTitle;
+
+  /// No description provided for @subscriptionBalanceToCreditsDescriptionWithPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Move your {usd} legacy balance to ~{credits} permanent credits on the credits page.'**
+  String subscriptionBalanceToCreditsDescriptionWithPreview(
+    String usd,
+    String credits,
+  );
+
+  /// No description provided for @subscriptionBalanceToCreditsDescriptionEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Once you have a balance from prior deposits, convert it to permanent credits here.'**
+  String get subscriptionBalanceToCreditsDescriptionEmpty;
+
+  /// No description provided for @subscriptionBalanceToCreditsCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Convert to credits'**
+  String get subscriptionBalanceToCreditsCta;
+
+  /// No description provided for @subscriptionBalanceToCreditsComingSoonTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance transfer coming soon'**
+  String get subscriptionBalanceToCreditsComingSoonTitle;
+
+  /// No description provided for @subscriptionBalanceToCreditsComingSoonMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You have {usd} in legacy balance. The transfer-to-credits flow is rolling out to the desktop app in a future update. Until then, manage your balance on the web app.'**
+  String subscriptionBalanceToCreditsComingSoonMessage(String usd);
 }
 
 class _AppLocalizationsDelegate
