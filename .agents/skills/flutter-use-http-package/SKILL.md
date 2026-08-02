@@ -8,8 +8,8 @@ metadata:
 # Implementing Flutter Networking
 
 ## Contents
-- [Configuration & Permissions](#configuration--permissions)
-- [Request Execution & Response Handling](#request-execution--response-handling)
+- [Configuration & Permissions](#configuration-permissions)
+- [Request Execution & Response Handling](#request-execution-response-handling)
 - [Background Parsing](#background-parsing)
 - [Workflow: Executing Network Operations](#workflow-executing-network-operations)
 - [Examples](#examples)
