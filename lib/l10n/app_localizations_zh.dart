@@ -1501,6 +1501,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get subscriptionTierFreeDailyCredits => '1,000 积分/天';
 
   @override
+  String get subscriptionTierLiteName => '轻量版';
+
+  @override
+  String get subscriptionTierLiteDescription => '适合每日学习者';
+
+  @override
+  String get subscriptionTierLitePrice => '1.99 USD/月';
+
+  @override
+  String get subscriptionTierLiteDailyCredits => '12,000 积分/天';
+
+  @override
   String get subscriptionTierProName => '专业版';
 
   @override
@@ -1547,6 +1559,24 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get subscriptionFeatureProAssessment => '大量发音评估';
+
+  @override
+  String get subscriptionFeatureLiteTranslation => '完整翻译';
+
+  @override
+  String get subscriptionFeatureLiteSmartTranslation => '完整智能翻译';
+
+  @override
+  String get subscriptionFeatureLiteDictionary => '完整词典';
+
+  @override
+  String get subscriptionFeatureLiteAsr => '完整短语音识别';
+
+  @override
+  String get subscriptionFeatureLiteTts => '完整语音合成';
+
+  @override
+  String get subscriptionFeatureLiteAssessment => '完整发音评估';
 
   @override
   String get subscriptionUpgrade => '升级至专业版';

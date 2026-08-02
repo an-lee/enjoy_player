@@ -2937,6 +2937,30 @@ abstract class AppLocalizations {
   /// **'1,000 credits/day'**
   String get subscriptionTierFreeDailyCredits;
 
+  /// No description provided for @subscriptionTierLiteName.
+  ///
+  /// In en, this message translates to:
+  /// **'Lite'**
+  String get subscriptionTierLiteName;
+
+  /// No description provided for @subscriptionTierLiteDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'For daily learners'**
+  String get subscriptionTierLiteDescription;
+
+  /// No description provided for @subscriptionTierLitePrice.
+  ///
+  /// In en, this message translates to:
+  /// **'1.99 USD/month'**
+  String get subscriptionTierLitePrice;
+
+  /// No description provided for @subscriptionTierLiteDailyCredits.
+  ///
+  /// In en, this message translates to:
+  /// **'12,000 credits/day'**
+  String get subscriptionTierLiteDailyCredits;
+
   /// No description provided for @subscriptionTierProName.
   ///
   /// In en, this message translates to:
@@ -3032,6 +3056,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Extensive assessment'**
   String get subscriptionFeatureProAssessment;
+
+  /// No description provided for @subscriptionFeatureLiteTranslation.
+  ///
+  /// In en, this message translates to:
+  /// **'Full translation'**
+  String get subscriptionFeatureLiteTranslation;
+
+  /// No description provided for @subscriptionFeatureLiteSmartTranslation.
+  ///
+  /// In en, this message translates to:
+  /// **'Full smart translation'**
+  String get subscriptionFeatureLiteSmartTranslation;
+
+  /// No description provided for @subscriptionFeatureLiteDictionary.
+  ///
+  /// In en, this message translates to:
+  /// **'Full dictionary'**
+  String get subscriptionFeatureLiteDictionary;
+
+  /// No description provided for @subscriptionFeatureLiteAsr.
+  ///
+  /// In en, this message translates to:
+  /// **'Full short ASR'**
+  String get subscriptionFeatureLiteAsr;
+
+  /// No description provided for @subscriptionFeatureLiteTts.
+  ///
+  /// In en, this message translates to:
+  /// **'Full TTS'**
+  String get subscriptionFeatureLiteTts;
+
+  /// No description provided for @subscriptionFeatureLiteAssessment.
+  ///
+  /// In en, this message translates to:
+  /// **'Full assessment'**
+  String get subscriptionFeatureLiteAssessment;
 
   /// No description provided for @subscriptionUpgrade.
   ///

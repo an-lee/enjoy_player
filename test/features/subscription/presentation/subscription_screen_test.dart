@@ -206,11 +206,17 @@ void main() {
           colorScheme: scheme,
           extensions: [EnjoyThemeTokens.build(scheme)],
         ),
+        // TierComparison stacks three plan cards vertically on phone widths
+        // (>=900px switches to the side-by-side row). Mirror the production
+        // ListView by scrolling so the upgrade action stays reachable and the
+        // focused harness never overflows.
         home: const Scaffold(
-          body: TierComparison(
-            status: SubscriptionStatus(
-              subscriptionActive: true,
-              subscriptionTier: SubscriptionTier.free,
+          body: SingleChildScrollView(
+            child: TierComparison(
+              status: SubscriptionStatus(
+                subscriptionActive: true,
+                subscriptionTier: SubscriptionTier.free,
+              ),
             ),
           ),
         ),
@@ -219,7 +225,9 @@ void main() {
     await tester.pumpAndSettle();
 
     final l10n = lookupAppLocalizations(const Locale('en'));
-    await tester.tap(find.text(l10n.subscriptionUpgrade).last);
+    final upgrade = find.text(l10n.subscriptionUpgrade).last;
+    await tester.scrollUntilVisible(upgrade, 100);
+    await tester.tap(upgrade);
     await tester.pumpAndSettle();
 
     expect(find.text(l10n.subscriptionMobilePurchaseTitle), findsOneWidget);
