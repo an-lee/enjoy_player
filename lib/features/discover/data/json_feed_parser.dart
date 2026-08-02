@@ -5,6 +5,15 @@ import 'dart:convert';
 
 import 'package:enjoy_player/features/discover/domain/feed_entry.dart';
 
+/// Matches the YouTube watch URL query parameter.
+final RegExp _kYTUrlV = RegExp(r'[?&]v=([a-zA-Z0-9_-]{11})');
+
+/// Matches a bare 11-character YouTube video ID.
+final RegExp _kYTBare = RegExp(r'^([a-zA-Z0-9_-]{11})$');
+
+/// Matches a youtu.be short URL path component.
+final RegExp _kYTShort = RegExp(r'youtu\.be/([a-zA-Z0-9_-]{11})');
+
 /// Parsed result from a JSON Feed v1.1 worker response.
 class JsonFeedResult {
   const JsonFeedResult({
@@ -33,13 +42,13 @@ String extractVideoId(dynamic idValue) {
   if (idValue == null) return '';
   final idStr = idValue.toString().trim();
   // Try extracting from URL: https://www.youtube.com/watch?v=VIDEO_ID
-  final urlMatch = RegExp(r'[?&]v=([a-zA-Z0-9_-]{11})').firstMatch(idStr);
+  final urlMatch = _kYTUrlV.firstMatch(idStr);
   if (urlMatch != null) return urlMatch.group(1)!;
   // Try bare 11-char video ID
-  final bareMatch = RegExp(r'^([a-zA-Z0-9_-]{11})$').firstMatch(idStr);
+  final bareMatch = _kYTBare.firstMatch(idStr);
   if (bareMatch != null) return bareMatch.group(1)!;
   // Try youtu.be short URL
-  final shortMatch = RegExp(r'youtu\.be/([a-zA-Z0-9_-]{11})').firstMatch(idStr);
+  final shortMatch = _kYTShort.firstMatch(idStr);
   if (shortMatch != null) return shortMatch.group(1)!;
   return idStr;
 }
