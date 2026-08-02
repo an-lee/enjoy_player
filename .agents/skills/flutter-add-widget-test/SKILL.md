@@ -8,10 +8,10 @@ metadata:
 # Writing Flutter Widget Tests
 
 ## Contents
-- [Setup & Configuration](#setup--configuration)
+- [Setup & Configuration](#setup-configuration)
 - [Core Components](#core-components)
 - [Workflow: Implementing a Widget Test](#workflow-implementing-a-widget-test)
-- [Interaction & State Management](#interaction--state-management)
+- [Interaction & State Management](#interaction-state-management)
 - [Examples](#examples)
 
 ## Setup & Configuration
