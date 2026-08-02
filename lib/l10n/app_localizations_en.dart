@@ -1566,6 +1566,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get subscriptionTierFreeDailyCredits => '1,000 credits/day';
 
   @override
+  String get subscriptionTierLiteName => 'Lite';
+
+  @override
+  String get subscriptionTierLiteDescription => 'For daily learners';
+
+  @override
+  String get subscriptionTierLitePrice => '1.99 USD/month';
+
+  @override
+  String get subscriptionTierLiteDailyCredits => '12,000 credits/day';
+
+  @override
   String get subscriptionTierProName => 'Pro';
 
   @override
@@ -1614,6 +1626,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get subscriptionFeatureProAssessment => 'Extensive assessment';
+
+  @override
+  String get subscriptionFeatureLiteTranslation => 'Full translation';
+
+  @override
+  String get subscriptionFeatureLiteSmartTranslation =>
+      'Full smart translation';
+
+  @override
+  String get subscriptionFeatureLiteDictionary => 'Full dictionary';
+
+  @override
+  String get subscriptionFeatureLiteAsr => 'Full short ASR';
+
+  @override
+  String get subscriptionFeatureLiteTts => 'Full TTS';
+
+  @override
+  String get subscriptionFeatureLiteAssessment => 'Full assessment';
 
   @override
   String get subscriptionUpgrade => 'Upgrade to Pro';

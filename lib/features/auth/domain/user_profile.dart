@@ -4,12 +4,13 @@ library;
 import 'package:enjoy_player/core/json/json_cast.dart';
 import 'package:enjoy_player/core/utils/avatar_url.dart';
 
-enum SubscriptionTier { free, pro }
+enum SubscriptionTier { free, lite, pro }
 
 SubscriptionTier? _subscriptionTierFromJson(Object? value) {
   if (value == null) return null;
   final s = value.toString().toLowerCase();
   if (s == 'pro') return SubscriptionTier.pro;
+  if (s == 'lite') return SubscriptionTier.lite;
   return SubscriptionTier.free;
 }
 

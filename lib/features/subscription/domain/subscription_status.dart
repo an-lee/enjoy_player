@@ -38,10 +38,19 @@ class SubscriptionStatus {
   bool get isPro =>
       subscriptionTier == SubscriptionTier.pro && subscriptionActive;
 
+  bool get isLite =>
+      subscriptionTier == SubscriptionTier.lite && subscriptionActive;
+
+  bool get isPaidTier => isPro || isLite;
+
   /// True when the user has a living auto-renew Stripe subscription.
   bool get hasActiveAutoRenewPlan => autoRenew?.isActivelyRenewing ?? false;
 
-  int get dailyCreditsLimit => isPro ? 60_000 : 1_000;
+  int get dailyCreditsLimit {
+    if (isPro) return 60_000;
+    if (isLite) return 12_000;
+    return 1_000;
+  }
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
@@ -58,5 +67,6 @@ SubscriptionTier? _subscriptionTierFromJson(Object? value) {
   if (value == null) return null;
   final s = value.toString().toLowerCase();
   if (s == 'pro') return SubscriptionTier.pro;
+  if (s == 'lite') return SubscriptionTier.lite;
   return SubscriptionTier.free;
 }

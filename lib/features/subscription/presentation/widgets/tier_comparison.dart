@@ -49,17 +49,28 @@ class TierComparison extends StatelessWidget {
         SizedBox(height: t.space16),
         LayoutBuilder(
           builder: (context, constraints) {
-            final wide = constraints.maxWidth >= 640;
+            final wide = constraints.maxWidth >= 900;
             final freeCard = _PlanCard(
               title: l10n.subscriptionTierFreeName,
               description: l10n.subscriptionTierFreeDescription,
               price: l10n.subscriptionTierFreePrice,
               dailyCredits: l10n.subscriptionTierFreeDailyCredits,
               features: _freeFeatures(l10n),
-              isCurrent: true,
+              isCurrent: !status.isPaidTier,
               stretchVertically: wide,
               actionLabel: l10n.subscriptionCurrentPlan,
               onAction: null,
+            );
+            final liteCard = _PlanCard(
+              title: l10n.subscriptionTierLiteName,
+              description: l10n.subscriptionTierLiteDescription,
+              price: l10n.subscriptionTierLitePrice,
+              dailyCredits: l10n.subscriptionTierLiteDailyCredits,
+              features: _liteFeatures(l10n),
+              isCurrent: status.isLite,
+              stretchVertically: wide,
+              actionLabel: l10n.subscriptionUpgrade,
+              onAction: () => _handleUpgrade(context),
             );
             final proCard = _PlanCard(
               title: l10n.subscriptionTierProName,
@@ -67,7 +78,7 @@ class TierComparison extends StatelessWidget {
               price: l10n.subscriptionTierProPrice,
               dailyCredits: l10n.subscriptionTierProDailyCredits,
               features: _proFeatures(l10n),
-              isCurrent: false,
+              isCurrent: status.isPro,
               emphasize: true,
               showRecommended: true,
               stretchVertically: wide,
@@ -81,7 +92,9 @@ class TierComparison extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Expanded(child: freeCard),
-                    SizedBox(width: t.space16),
+                    SizedBox(width: t.space12),
+                    Expanded(child: liteCard),
+                    SizedBox(width: t.space12),
                     Expanded(child: proCard),
                   ],
                 ),
@@ -90,6 +103,8 @@ class TierComparison extends StatelessWidget {
             return Column(
               children: [
                 proCard,
+                SizedBox(height: t.space16),
+                liteCard,
                 SizedBox(height: t.space16),
                 freeCard,
               ],
@@ -116,6 +131,15 @@ class TierComparison extends StatelessWidget {
     l10n.subscriptionFeatureProAsr,
     l10n.subscriptionFeatureProTts,
     l10n.subscriptionFeatureProAssessment,
+  ];
+
+  List<String> _liteFeatures(AppLocalizations l10n) => [
+    l10n.subscriptionFeatureLiteTranslation,
+    l10n.subscriptionFeatureLiteSmartTranslation,
+    l10n.subscriptionFeatureLiteDictionary,
+    l10n.subscriptionFeatureLiteAsr,
+    l10n.subscriptionFeatureLiteTts,
+    l10n.subscriptionFeatureLiteAssessment,
   ];
 
   Future<void> _handleUpgrade(BuildContext context) async {
