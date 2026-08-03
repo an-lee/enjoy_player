@@ -53,6 +53,7 @@ Windows:
 Android:
   --no-apk            Skip sideload APKs
   --no-aab            Skip Play App Bundle
+  --play              Upload store AAB to Google Play (alpha track, draft)
 
 Apple (macOS host):
   --notarize          Notarize macOS .app for direct download

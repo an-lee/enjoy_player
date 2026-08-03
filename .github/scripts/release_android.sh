@@ -3,6 +3,7 @@
 #
 # Usage:
 #   bash .github/scripts/release_android.sh
+#   bash .github/scripts/release_android.sh --play
 #   bash .github/scripts/release_android.sh --publish
 #   bash .github/scripts/release_android.sh --feeds-only --publish-only --publish
 set -euo pipefail
@@ -16,14 +17,16 @@ cd "${root}"
 
 BUILD_APK=true
 BUILD_AAB=true
+UPLOAD_PLAY=false
 
 release_parse_common_args "$@"
 for arg in ${RELEASE_EXTRA_ARGS[@]+"${RELEASE_EXTRA_ARGS[@]}"}; do
   case "${arg}" in
     --no-apk) BUILD_APK=false ;;
     --no-aab) BUILD_AAB=false ;;
+    --play) UPLOAD_PLAY=true ;;
     -h | --help)
-      sed -n '2,8p' "$0"
+      sed -n '2,9p' "$0"
       exit 0
       ;;
     *)
@@ -44,14 +47,22 @@ if [[ "${RELEASE_SKIP_BUILD}" != true ]]; then
   if [[ -f "${root}/.github/scripts/setup_android_signing.sh" ]]; then
     if ! bash "${root}/.github/scripts/setup_android_signing.sh"; then
       if [[ -f "${root}/android/key.properties" ]]; then
-        echo "Using existing android/key.properties (signing setup skipped)."
-      elif [[ -n "${GITHUB_ACTIONS:-}" || "${RELEASE_PUBLISH}" == true ]]; then
-        echo "Android signing setup failed; CI/publish requires a release keystore." >&2
+        echo "setup_android_signing.sh skipped; validating existing android/key.properties."
+      elif [[ -n "${GITHUB_ACTIONS:-}" || "${RELEASE_PUBLISH}" == true || "${UPLOAD_PLAY}" == true ]]; then
+        echo "Android signing setup failed; CI/publish/--play requires a release keystore." >&2
+        echo "Create android/key.properties from android/key.properties.example, or set" >&2
+        echo "ANDROID_KEYSTORE_* env vars / ANDROID_USE_RUNNER_KEYSTORE=true." >&2
         exit 1
       else
         echo "WARNING: No release keystore; APK/AAB will be debug-signed." >&2
       fi
     fi
+  fi
+  if [[ "${UPLOAD_PLAY}" == true || -n "${GITHUB_ACTIONS:-}" || "${RELEASE_PUBLISH}" == true ]]; then
+    release_require_android_upload_keystore "${root}" || exit 1
+  elif [[ -f "${root}/android/key.properties" ]]; then
+    # key.properties present but incomplete → fail early instead of Gradle's opaque error.
+    release_require_android_upload_keystore "${root}" || exit 1
   fi
 
   echo ">>> Prune stale Android JNI merge cache (flutter/flutter#187553)"
@@ -63,6 +74,12 @@ if [[ "${RELEASE_SKIP_BUILD}" != true ]]; then
   bash "${root}/tool/patch_agp9_pub_plugins.sh"
   # Drop stale share_plus outputs from pre-patch builds (empty UP-TO-DATE Kotlin).
   rm -rf "${root}/build/share_plus"
+
+  # media_kit_libs_android_video downloads ~23MB of GitHub Release JARs during
+  # Gradle configuration via Java URL.openStream() (no retries). Prefetch with
+  # curl so flaky networks do not leave 0-byte jars / "Connection timed out".
+  echo ">>> Prefetch media_kit Android native libs"
+  bash "${root}/tool/prefetch_media_kit_android_libs.sh"
 
   release_stop_gradle_daemons "${root}"
 
@@ -96,6 +113,19 @@ if [[ "${RELEASE_SKIP_BUILD}" != true ]]; then
       exit 1
     fi
   fi
+fi
+
+if [[ "${UPLOAD_PLAY}" == true ]]; then
+  # Load publish_env.local.sh so GOOGLE_PLAY_* can live next to S3 credentials.
+  release_load_publish_env "${root}"
+  aab="$(release_android_aab_path "${root}")"
+  if [[ ! -f "${aab}" ]]; then
+    echo "Play upload requested but AAB not found at ${aab}." >&2
+    echo "Build with --play (without --no-aab), or pass an existing AAB via --publish-only --play." >&2
+    exit 1
+  fi
+  echo ">>> Upload Play AAB (alpha / draft)"
+  bash "${root}/.github/scripts/upload_play_aab.sh" "${aab}"
 fi
 
 if [[ "${RELEASE_PUBLISH}" == true ]]; then

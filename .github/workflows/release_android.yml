@@ -7,6 +7,10 @@ on:
         description: Also build per-ABI release APKs (sideload)
         type: boolean
         default: true
+      upload_play:
+        description: Upload store AAB to Google Play (alpha track, draft)
+        type: boolean
+        default: true
       publish:
         description: Upload sideload APKs + update feeds on dl.enjoy.bot
         type: boolean
@@ -53,10 +57,14 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
         run: |
           args=()
           if [[ "${{ inputs.build_apk }}" != "true" ]]; then
             args+=(--no-apk)
+          fi
+          if [[ "${{ inputs.upload_play }}" == "true" ]]; then
+            args+=(--play)
           fi
           bash .github/scripts/release_android.sh "${args[@]}"
 

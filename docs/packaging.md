@@ -93,6 +93,8 @@ flowchart TD
 | `-Publish` | `--publish` | Build + upload to `dl.enjoy.bot` |
 | `-FeedsOnly` | `--feeds-only` | Build local update feeds only (no S3) |
 
+Android-only flags: `--play` / `-Play` (upload store AAB to Google Play **alpha** track as a **draft**), `--no-apk`, `--no-aab`.
+
 Apple-only flags: `--notarize` (macOS direct download; auto-enabled when `--publish` builds a macOS zip), `--testflight` (upload IPA), `--macos-only` (skip iOS build).
 
 ---
@@ -168,6 +170,16 @@ flutter test
 3. Fill `storePassword`, `keyPassword`, `keyAlias`, `storeFile` (`storeFile` is relative to `android/`).
 
 **Without `key.properties`, release builds use the debug keystore — do not upload those to Play.**
+
+### Google Play upload (for `--play`)
+
+One-time API access (see [android-release-ci.md](android-release-ci.md#upload-to-google-play)):
+
+1. Enable **Google Play Android Developer API** on a GCP project and create a service account + JSON key.
+2. Play Console → **Users and permissions** → invite the service account email with permission to manage closed testing (alpha) releases for `ai.enjoy.player`.
+3. Locally set `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH` to that JSON file (or put the path in `publish_env.local.*`). CI uses secret `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`.
+
+Defaults: package `ai.enjoy.player`, track `alpha`, status `draft`. Override with `GOOGLE_PLAY_TRACK` / `GOOGLE_PLAY_RELEASE_STATUS` if needed. Requires **Python 3** (`ensure_play_upload_tooling.sh` installs API client deps into a repo-local venv).
 
 ### Apple signing
 
@@ -286,17 +298,22 @@ Builds: `flutter build windows --release`, fetches FFmpeg, runs Inno Setup.
 ```powershell
 # Windows
 pwsh ./release.ps1 -Platform android
+pwsh ./release.ps1 -Platform android -Play   # also upload AAB to Play (alpha / draft)
 ```
 
 ```bash
 # Linux (or Git Bash)
 bash .github/scripts/release.sh --platform android
+bash .github/scripts/release.sh --platform android --play
+# Re-upload an already-built AAB:
+bash .github/scripts/release.sh --platform android --publish-only --play
 ```
 
 Builds:
 
 - **Play AAB**: `flutter build appbundle --release --flavor store`
 - **Sideload APKs**: `flutter build apk --release --split-per-abi --flavor direct --dart-define=DISTRIBUTION_CHANNEL=direct`
+- **`--play`**: upload the store AAB to Google Play closed testing (**alpha**) as a **draft** (skipped if Play service-account env is unset)
 
 ### Linux AppImage
 
@@ -412,7 +429,7 @@ After local verification, enable CI. Each workflow calls the same platform scrip
 | Workflow | Runner | Local equivalent |
 |----------|--------|------------------|
 | [`release_windows.yml`](../.github/workflows/release_windows.yml) | `windows-latest` | `pwsh ./release.ps1` |
-| [`release_android.yml`](../.github/workflows/release_android.yml) | self-hosted Linux | `bash .github/scripts/release.sh --platform android` |
+| [`release_android.yml`](../.github/workflows/release_android.yml) | self-hosted Linux | `bash .github/scripts/release.sh --platform android --play` |
 | [`release_apple.yml`](../.github/workflows/release_apple.yml) | self-hosted macOS | `bash .github/scripts/release.sh --platform apple --notarize --testflight` |
 
 The [`build_linux.yml`](../.github/workflows/build_linux.yml) workflow covers compile smoke on CI; the release AppImage is produced by maintainers running `release.sh --platform linux [--publish]` locally. Promote it to a dedicated `release_linux.yml` when AppImage auto-update lands.
@@ -435,6 +452,7 @@ Platform CI setup (secrets, runners):
 - **Release APK crashes immediately with `Wrong full snapshot version`**: Flutter 3.44 Gradle regression when using product flavors (`store` / `direct`) — stale `libapp.so` can be packaged into the APK while `libflutter.so` expects a newer AOT snapshot ([flutter/flutter#187553](https://github.com/flutter/flutter/issues/187553)). Debug builds are unaffected. The project applies a Gradle workaround in [`android/app/build.gradle.kts`](../android/app/build.gradle.kts) and prunes JNI merge intermediates in [`release_android.sh`](../.github/scripts/release_android.sh). Rebuild the direct release APK (`flutter clean` if needed), uninstall the broken install, and reinstall. Remove the Gradle workaround after upgrading to a Flutter stable that includes [flutter/flutter#187688](https://github.com/flutter/flutter/pull/187688).
 - **Debug-signed AAB/APK**: missing `android/key.properties` — create from example and rebuild.
 - **Gradle / `dl.google.com` TLS**: mirrors are in [`settings.gradle.kts`](../android/settings.gradle.kts); use JDK 17; check VPN/proxy.
+- **`media_kit_libs_android_video` / `Connection timed out` downloading `default-*.jar`**: the plugin fetches libmpv JARs from GitHub Releases during Gradle configuration with Java `URL.openStream()` (no retries). A timeout can leave a **0-byte** jar under `build/media_kit_libs_android_video/v1.1.7/`, which then fails MD5 and re-downloads on every evaluate. Run [`tool/prefetch_media_kit_android_libs.sh`](../tool/prefetch_media_kit_android_libs.sh) (curl + retries + MD5; also run by `release_android.sh` and Android smoke CI) before `flutter build`, or delete the empty jars and retry on a stable network. Optional mirror: `MEDIA_KIT_ANDROID_LIBS_BASE_URL`.
 - **`packageStoreReleaseBundle` OutOfMemoryError**: the Play AAB is large (~180MB with ffmpeg-kit native libs). The previous `MaxMetaspaceSize=4G` in [`android/gradle.properties`](../android/gradle.properties) let Gradle reserve up to ~12G virtual memory, which often fails after `flutter test` on 16GB Windows hosts. Release scripts stop Gradle daemons before building. If it still fails, close other heavy apps, run `./android/gradlew --stop`, and retry with `pwsh ./release.ps1 -Platform android -SkipChecks`.
 - **`lintVitalAnalyze*` / `OutOfMemoryError: Metaspace`**: Android Lint's UAST analysis of plugins (e.g. `PortCleaner.java`) can exhaust the 512m Metaspace cap. [`android/app/build.gradle.kts`](../android/app/build.gradle.kts) sets `lint.checkReleaseBuilds = false` so release AAB/APK packaging skips lintVital. Run `./android/gradlew :app:lint` when you want a dedicated lint pass.
 - **AGP 9 plugin errors**: run `tool/patch_agp9_pub_plugins.ps1` (Windows) or `tool/patch_agp9_pub_plugins.sh` (Linux/macOS) after `flutter pub get`. Android release scripts run the bash patch automatically before building.

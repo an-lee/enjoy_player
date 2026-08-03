@@ -66,6 +66,14 @@ app.*.map.json
 .github/scripts/publish_env.local.ps1
 .github/scripts/publish_env.local.sh
 
+# Play Store upload venv (created by ensure_play_upload_tooling.sh)
+.github/scripts/.play-upload-venv/
+# Local Play service-account JSON (never commit)
+.github/scripts/play-service-account.json
+
+# Google keys
+.google/
+
 # WinSparkle update signing (generate with `dart run auto_updater:generate_keys`)
 dsa_priv.pem
 

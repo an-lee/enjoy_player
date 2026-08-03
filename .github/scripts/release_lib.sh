@@ -39,6 +39,57 @@ release_hint_publish() {
   fi
 }
 
+# Validate android/key.properties points at an existing keystore file.
+# storeFile is relative to android/ (see android/key.properties.example).
+release_require_android_upload_keystore() {
+  local root="$1"
+  local props="${root}/android/key.properties"
+  if [[ ! -f "${props}" ]]; then
+    echo "Missing ${props}." >&2
+    echo "Copy android/key.properties.example → android/key.properties and place the" >&2
+    echo "Play upload .jks next to it, or run setup_android_signing.sh with ANDROID_KEYSTORE_*." >&2
+    return 1
+  fi
+
+  local store_file=""
+  store_file="$(sed -n 's/^storeFile=//p' "${props}" | head -1 | tr -d '\r')"
+  if [[ -z "${store_file}" ]]; then
+    echo "${props} has no storeFile= entry." >&2
+    return 1
+  fi
+
+  local ks_path
+  if [[ "${store_file}" = /* ]]; then
+    ks_path="${store_file}"
+  else
+    ks_path="${root}/android/${store_file}"
+  fi
+
+  if [[ ! -f "${ks_path}" ]]; then
+    cat >&2 <<EOF
+Release keystore file not found:
+  ${ks_path}
+  (from storeFile=${store_file} in android/key.properties)
+
+key.properties alone is not enough — place the Play upload .jks at that path.
+Expected SHA1 must match Play Console → Setup → App signing → Upload key certificate.
+
+Restore options:
+  1. Copy your backup release-keystore.jks to ${ks_path}
+  2. Or decode the same blob stored as GitHub secret ANDROID_KEYSTORE_BASE64:
+       printf '%s' "\$ANDROID_KEYSTORE_BASE64" | base64 --decode > ${ks_path}
+       # then ensure storePassword / keyPassword / keyAlias match that keystore
+  3. Or export ANDROID_KEYSTORE_* and run:
+       bash .github/scripts/setup_android_signing.sh
+       # writes android/ci-release-keystore.jks + updates key.properties
+EOF
+    return 1
+  fi
+
+  echo "Using release keystore: ${ks_path}"
+  return 0
+}
+
 # Download latest.json / appcast.xml for merge before overwrite. Prefer the public CDN URL
 # (read-only R2 tokens often cannot s3 cp objects back down).
 release_fetch_remote_feed_file() {

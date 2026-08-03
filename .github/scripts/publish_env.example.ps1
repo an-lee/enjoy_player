@@ -24,6 +24,14 @@ $env:CLOUDFLARE_API_TOKEN = "<token with Cache Purge>"
 $env:CLOUDFLARE_ZONE_ID = "<zone id for enjoy.bot>"
 # $env:ENJOY_PLAYER_DL_BASE = "https://dl.enjoy.bot/player"
 
+# Google Play AAB upload (for -Play). Prefer a file path locally; CI uses the
+# GOOGLE_PLAY_SERVICE_ACCOUNT_JSON secret (raw JSON string) instead.
+# $repoRoot = & git rev-parse --show-toplevel
+# $env:GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH = Join-Path $repoRoot ".github/scripts/play-service-account.json"
+# $env:GOOGLE_PLAY_PACKAGE_NAME = "ai.enjoy.player"
+# $env:GOOGLE_PLAY_TRACK = "alpha"
+# $env:GOOGLE_PLAY_RELEASE_STATUS = "draft"
+
 # WinSparkle signing (required for desktop auto-update appcast).
 # sign_sparkle_enclosure.sh auto-detects a `dsa_priv.pem` at the repo root,
 # so leave SPARKLE_DSA_PRIV_PEM unset when the key lives there. Only set it

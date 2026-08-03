@@ -10,6 +10,7 @@ on:
       - "analysis_options.yaml"
       - "android/**"
       - "tool/patch_agp9_pub_plugins.sh"
+      - "tool/prefetch_media_kit_android_libs.sh"
       - ".github/flutter-version"
       - ".github/actions/setup-flutter/**"
       - ".github/scripts/ensure_linux_tooling.sh"
@@ -55,6 +56,9 @@ jobs:
         run: |
           flutter pub get
           bash tool/patch_agp9_pub_plugins.sh
+
+      - name: Prefetch media_kit Android native libs
+        run: bash tool/prefetch_media_kit_android_libs.sh
 
       - name: Flutter build apk (debug)
         run: flutter build apk --debug --flavor store

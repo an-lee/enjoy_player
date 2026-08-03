@@ -19,6 +19,8 @@ packages=(
   unzip
   xz-utils
   zip
+  python3
+  python3-venv
   libgtk-3-dev
   liblzma-dev
   libsqlite3-dev

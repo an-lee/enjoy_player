@@ -4,6 +4,7 @@
 # Examples (see docs/packaging.md):
 #   pwsh ./release.ps1                          # Windows build + installer
 #   pwsh ./release.ps1 -Platform android        # Android AAB + sideload APKs
+#   pwsh ./release.ps1 -Platform android -Play  # also upload AAB to Play (alpha/draft)
 #   pwsh ./release.ps1 -Publish                 # build + upload to dl.enjoy.bot
 #   pwsh ./release.ps1 -FeedsOnly               # build + local feeds (no S3)
 #   pwsh ./release.ps1 -SkipChecks              # faster iteration
@@ -18,6 +19,7 @@ param(
   [switch]$SkipChecks,
   [switch]$PublishOnly,
   [switch]$NoInstaller,
+  [switch]$Play,
   [switch]$Help
 )
 
@@ -73,6 +75,7 @@ if ($PublishOnly) { $bashArgs += '--publish-only' }
 if ($Publish) { $bashArgs += '--publish' }
 if ($FeedsOnly) { $bashArgs += '--feeds-only' }
 if ($NoInstaller -and $effectivePlatform -eq 'windows') { $bashArgs += '--no-installer' }
+if ($Play -and $effectivePlatform -eq 'android') { $bashArgs += '--play' }
 
 Write-Host ">>> release.ps1 -Platform $effectivePlatform $bashExe $($bashArgs -join ' ')"
 
