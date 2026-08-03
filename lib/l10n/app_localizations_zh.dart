@@ -3525,6 +3525,101 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get pronounceSignInRequired => '登录后即可收听发音';
+
+  @override
+  String get subscriptionTierCatalogTitle => '选择你的方案';
+
+  @override
+  String get subscriptionTierCatalogDescription => '选择档位和计费周期，下一步选择支付方式。';
+
+  @override
+  String get subscriptionTierCatalogRecommended => '推荐';
+
+  @override
+  String get subscriptionTierCatalogChoosePro => '选择 Pro';
+
+  @override
+  String get subscriptionTierCatalogExtendPro => '续费 Pro';
+
+  @override
+  String get subscriptionTierCatalogNotSelected => '暂不支持降级';
+
+  @override
+  String subscriptionTierCatalogSelectedInterval(String amount, String unit) {
+    return '$amount / $unit — 通过 Stripe 计费';
+  }
+
+  @override
+  String subscriptionTierCatalogIntervalYearSavings(String percent) {
+    return '节省 $percent%';
+  }
+
+  @override
+  String get subscriptionTierCatalogPerMonth => '月';
+
+  @override
+  String get subscriptionTierCatalogPerYear => '年';
+
+  @override
+  String subscriptionPurchaseModalUnifiedTitle(String tier, String interval) {
+    return '选择 $tier · $interval 的支付方式';
+  }
+
+  @override
+  String get subscriptionPurchaseModalUnifiedDescription =>
+      '自动续订可持续使用 Pro 权益并自动续费；一次性购买则按固定时长预付，到期后不再续订。';
+
+  @override
+  String get subscriptionPurchaseModalAutoRenewActiveWarning =>
+      '你已有进行中的自动续订。请先取消后再切换计费方式。';
+
+  @override
+  String get subscriptionPurchaseModalOptionAutoRenew => '自动续订';
+
+  @override
+  String get subscriptionPurchaseModalOptionAutoRenewSubtitle =>
+      '推荐 — 自动续费，可随时取消。';
+
+  @override
+  String get subscriptionPurchaseModalOptionAutoRenewFootnote => '通过 Stripe 扣款';
+
+  @override
+  String get subscriptionPurchaseModalOptionPrepaid => '一次性购买';
+
+  @override
+  String get subscriptionPurchaseModalOptionPrepaidSubtitle => '不自动续订，按固定时长预付。';
+
+  @override
+  String get subscriptionPurchaseModalOptionPrepaidFootnote => '一次性支付';
+
+  @override
+  String get subscriptionPurchaseModalSubscribeAutoRenewCta => '开通自动续订';
+
+  @override
+  String get subscriptionBalanceToCreditsTitle => '将余额转换为永久积分';
+
+  @override
+  String subscriptionBalanceToCreditsDescriptionWithPreview(
+    String usd,
+    String credits,
+  ) {
+    return '前往积分页面，将你的 $usd 历史余额转换为约 $credits 永久积分。';
+  }
+
+  @override
+  String get subscriptionBalanceToCreditsDescriptionEmpty =>
+      '当你拥有来自历史充值的余额时，可在此转换为永久积分。';
+
+  @override
+  String get subscriptionBalanceToCreditsCta => '转换为积分';
+
+  @override
+  String get subscriptionBalanceToCreditsComingSoonTitle => '余额转换即将推出';
+
+  @override
+  String subscriptionBalanceToCreditsComingSoonMessage(String usd) {
+    return '你有 $usd 的历史余额。余额转积分功能将在后续桌面端更新中上线。在此之前，请先在网页端管理你的余额。';
+  }
 }
 
 /// The translations for Chinese, as used in China (`zh_CN`).

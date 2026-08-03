@@ -3683,4 +3683,106 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pronounceSignInRequired => 'Sign in to hear pronunciation';
+
+  @override
+  String get subscriptionTierCatalogTitle => 'Choose your plan';
+
+  @override
+  String get subscriptionTierCatalogDescription =>
+      'Pick a tier and billing interval. Continue to pick how you pay.';
+
+  @override
+  String get subscriptionTierCatalogRecommended => 'Recommended';
+
+  @override
+  String get subscriptionTierCatalogChoosePro => 'Choose Pro';
+
+  @override
+  String get subscriptionTierCatalogExtendPro => 'Extend Pro';
+
+  @override
+  String get subscriptionTierCatalogNotSelected => 'Downgrade is not available';
+
+  @override
+  String subscriptionTierCatalogSelectedInterval(String amount, String unit) {
+    return '$amount / $unit — billed via Stripe';
+  }
+
+  @override
+  String subscriptionTierCatalogIntervalYearSavings(String percent) {
+    return 'Save $percent%';
+  }
+
+  @override
+  String get subscriptionTierCatalogPerMonth => 'month';
+
+  @override
+  String get subscriptionTierCatalogPerYear => 'year';
+
+  @override
+  String subscriptionPurchaseModalUnifiedTitle(String tier, String interval) {
+    return 'Choose how to pay for $tier · $interval';
+  }
+
+  @override
+  String get subscriptionPurchaseModalUnifiedDescription =>
+      'Auto-renew keeps Pro access continuous and renews automatically. Pay once buys a fixed prepaid period with no auto-renew.';
+
+  @override
+  String get subscriptionPurchaseModalAutoRenewActiveWarning =>
+      'You already have an active auto-renew subscription. Cancel it to switch billing options.';
+
+  @override
+  String get subscriptionPurchaseModalOptionAutoRenew => 'Auto-renew';
+
+  @override
+  String get subscriptionPurchaseModalOptionAutoRenewSubtitle =>
+      'Recommended — renews automatically. Cancel anytime.';
+
+  @override
+  String get subscriptionPurchaseModalOptionAutoRenewFootnote =>
+      'Billed via Stripe';
+
+  @override
+  String get subscriptionPurchaseModalOptionPrepaid => 'Pay once';
+
+  @override
+  String get subscriptionPurchaseModalOptionPrepaidSubtitle =>
+      'No auto-renew. Pay for a fixed period up front.';
+
+  @override
+  String get subscriptionPurchaseModalOptionPrepaidFootnote =>
+      'One-time payment';
+
+  @override
+  String get subscriptionPurchaseModalSubscribeAutoRenewCta =>
+      'Subscribe with auto-renew';
+
+  @override
+  String get subscriptionBalanceToCreditsTitle =>
+      'Convert balance to permanent credits';
+
+  @override
+  String subscriptionBalanceToCreditsDescriptionWithPreview(
+    String usd,
+    String credits,
+  ) {
+    return 'Move your $usd legacy balance to ~$credits permanent credits on the credits page.';
+  }
+
+  @override
+  String get subscriptionBalanceToCreditsDescriptionEmpty =>
+      'Once you have a balance from prior deposits, convert it to permanent credits here.';
+
+  @override
+  String get subscriptionBalanceToCreditsCta => 'Convert to credits';
+
+  @override
+  String get subscriptionBalanceToCreditsComingSoonTitle =>
+      'Balance transfer coming soon';
+
+  @override
+  String subscriptionBalanceToCreditsComingSoonMessage(String usd) {
+    return 'You have $usd in legacy balance. The transfer-to-credits flow is rolling out to the desktop app in a future update. Until then, manage your balance on the web app.';
+  }
 }

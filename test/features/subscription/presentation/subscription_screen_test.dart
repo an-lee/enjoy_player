@@ -8,13 +8,13 @@ import 'package:enjoy_player/features/credits/application/credits_packages_provi
 import 'package:enjoy_player/features/credits/application/credits_summary_provider.dart';
 import 'package:enjoy_player/features/credits/domain/credits_package.dart';
 import 'package:enjoy_player/features/credits/domain/credits_summary.dart';
+import 'package:enjoy_player/features/subscription/application/subscription_plans_provider.dart';
 import 'package:enjoy_player/features/subscription/application/subscription_status_provider.dart';
 import 'package:enjoy_player/features/subscription/domain/auto_renew_billing.dart';
+import 'package:enjoy_player/features/subscription/domain/subscription_plan.dart';
 import 'package:enjoy_player/features/subscription/domain/subscription_status.dart';
 import 'package:enjoy_player/features/subscription/presentation/subscription_screen.dart';
-import 'package:enjoy_player/features/subscription/presentation/widgets/tier_comparison.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -36,15 +36,35 @@ const _emptySummary = CreditsSummary(
   resetAt: 0,
 );
 
-Widget _harness(Widget child, {List<Override> overrides = const []}) {
+const _testPlans = [
+  SubscriptionPlan(
+    id: 'plan_monthly',
+    tier: 'pro',
+    interval: 'month',
+    amount: 9.99,
+  ),
+  SubscriptionPlan(
+    id: 'plan_yearly',
+    tier: 'pro',
+    interval: 'year',
+    amount: 79.99,
+  ),
+];
+
+Widget _harness(
+  Widget child, {
+  List<Override> overrides = const [],
+  AuthCtrl Function()? authCtrlFactory,
+}) {
   final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF7B61FF));
   return ProviderScope(
     overrides: [
-      authCtrlProvider.overrideWith(_SignedInAuthCtrl.new),
+      authCtrlProvider.overrideWith(authCtrlFactory ?? _SignedInAuthCtrl.new),
       creditsPackagesProvider.overrideWith(
         (ref) async => const <CreditsPackage>[],
       ),
       creditsSummaryProvider.overrideWith((ref) async => _emptySummary),
+      subscriptionPlansProvider.overrideWith((ref) async => _testPlans),
       ...overrides,
     ],
     child: MaterialApp(
@@ -89,7 +109,7 @@ void main() {
     expect(find.byType(ListView), findsOneWidget);
   });
 
-  testWidgets('shows free tier comparison when status loads', (tester) async {
+  testWidgets('shows unified tier catalog for free users', (tester) async {
     await tester.pumpWidget(
       _harness(
         const SubscriptionScreen(),
@@ -107,8 +127,13 @@ void main() {
 
     final l10n = lookupAppLocalizations(const Locale('en'));
     expect(find.text(l10n.subscriptionTitle), findsWidgets);
+    // Catalog title is shown.
+    expect(find.text(l10n.subscriptionTierCatalogTitle), findsOneWidget);
+    // Free + Pro tier names appear on their cards.
     expect(find.text(l10n.subscriptionTierFreeName), findsWidgets);
-    expect(find.text(l10n.subscriptionUpgrade), findsWidgets);
+    expect(find.text(l10n.subscriptionTierProName), findsWidgets);
+    // Pro tier CTA is "Choose Pro" (the user is not on Pro yet).
+    expect(find.text(l10n.subscriptionTierCatalogChoosePro), findsOneWidget);
   });
 
   testWidgets('shows retry on error', (tester) async {
@@ -129,32 +154,33 @@ void main() {
     expect(find.text(l10n.retry), findsOneWidget);
   });
 
-  testWidgets('renders tier comparison on narrow phone without layout errors', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(320, 568);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
+  testWidgets(
+    'renders subscription screen on narrow phone without layout errors',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(
-      _harness(
-        const SubscriptionScreen(),
-        overrides: [
-          subscriptionStatusProvider.overrideWith(
-            (ref) async => const SubscriptionStatus(
-              subscriptionActive: true,
-              subscriptionTier: SubscriptionTier.free,
+      await tester.pumpWidget(
+        _harness(
+          const SubscriptionScreen(),
+          overrides: [
+            subscriptionStatusProvider.overrideWith(
+              (ref) async => const SubscriptionStatus(
+                subscriptionActive: true,
+                subscriptionTier: SubscriptionTier.free,
+              ),
             ),
-          ),
-        ],
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
-  });
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
-    'auto-renew Pro shows membership cancel link without prepaid upsell',
+    'auto-renew Pro hides tier catalog and shows membership cancel link',
     (tester) async {
       await tester.pumpWidget(
         _harness(
@@ -186,53 +212,58 @@ void main() {
       expect(find.text(l10n.subscriptionProMemberTitle), findsOneWidget);
       expect(find.text(l10n.subscriptionAutoRenewCancel), findsOneWidget);
       expect(find.text(l10n.subscriptionPayOnceTitle), findsNothing);
-      expect(find.text(l10n.subscriptionExtend), findsNothing);
-      expect(find.text(l10n.subscriptionTierComparisonTitle), findsNothing);
-      expect(find.text(l10n.subscriptionIncludedWithPro), findsOneWidget);
+      // TierCatalog hides itself when a non-terminal auto-renew blocks new
+      // subscriptions.
+      expect(find.text(l10n.subscriptionTierCatalogTitle), findsNothing);
+      expect(find.text(l10n.subscriptionTierCatalogChoosePro), findsNothing);
     },
   );
 
-  testWidgets('iOS upgrade shows coming-soon dialog not purchase sheet', (
-    tester,
-  ) async {
-    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
-
-    final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF7B61FF));
-    await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        theme: ThemeData(
-          colorScheme: scheme,
-          extensions: [EnjoyThemeTokens.build(scheme)],
-        ),
-        // TierComparison stacks three plan cards vertically on phone widths
-        // (>=900px switches to the side-by-side row). Mirror the production
-        // ListView by scrolling so the upgrade action stays reachable and the
-        // focused harness never overflows.
-        home: const Scaffold(
-          body: SingleChildScrollView(
-            child: TierComparison(
-              status: SubscriptionStatus(
+  testWidgets(
+    'free user with legacy balance shows the discoverable balance-to-credits card',
+    (tester) async {
+      await tester.pumpWidget(
+        _harness(
+          const SubscriptionScreen(),
+          authCtrlFactory: () => _BalanceAuthCtrl(
+            const UserProfile(
+              id: 'u2',
+              email: 'b@c.com',
+              name: 'Balance',
+              balance: 12.5,
+            ),
+          ),
+          overrides: [
+            subscriptionStatusProvider.overrideWith(
+              (ref) async => const SubscriptionStatus(
                 subscriptionActive: true,
                 subscriptionTier: SubscriptionTier.free,
               ),
             ),
-          ),
+          ],
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    final l10n = lookupAppLocalizations(const Locale('en'));
-    final upgrade = find.text(l10n.subscriptionUpgrade).last;
-    await tester.scrollUntilVisible(upgrade, 100);
-    await tester.tap(upgrade);
-    await tester.pumpAndSettle();
+      final l10n = lookupAppLocalizations(const Locale('en'));
+      // The balance card lives below the fold on a default test viewport;
+      // scroll the ListView until it's built.
+      await tester.scrollUntilVisible(
+        find.text(l10n.subscriptionBalanceToCreditsTitle),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text(l10n.subscriptionBalanceToCreditsTitle), findsOneWidget);
+      expect(find.text(l10n.subscriptionBalanceToCreditsCta), findsOneWidget);
+    },
+  );
+}
 
-    expect(find.text(l10n.subscriptionMobilePurchaseTitle), findsOneWidget);
-    expect(find.text(l10n.subscriptionPurchaseTitle), findsNothing);
+class _BalanceAuthCtrl extends AuthCtrl {
+  _BalanceAuthCtrl(this._profile);
 
-    debugDefaultTargetPlatformOverride = null;
-  });
+  final UserProfile _profile;
+
+  @override
+  Future<AuthState> build() async => AuthSignedIn(profile: _profile);
 }

@@ -1,21 +1,21 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/misc.dart' show Override;
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
-import 'package:enjoy_player/features/auth/domain/user_profile.dart';
 import 'package:enjoy_player/features/subscription/application/subscription_plans_provider.dart';
 import 'package:enjoy_player/features/subscription/application/subscription_purchase_provider.dart';
 import 'package:enjoy_player/features/subscription/application/subscription_status_provider.dart';
 import 'package:enjoy_player/features/subscription/domain/auto_renew_billing.dart';
 import 'package:enjoy_player/features/subscription/domain/subscription_plan.dart';
 import 'package:enjoy_player/features/subscription/domain/subscription_status.dart';
+import 'package:enjoy_player/features/auth/domain/user_profile.dart';
 import 'package:enjoy_player/features/subscription/presentation/widgets/auto_renew_plan_sheet.dart';
+import 'package:enjoy_player/features/subscription/presentation/widgets/tier_catalog.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
+import 'package:flutter_test/flutter_test.dart';
 
 const _testPlans = [
   SubscriptionPlan(
@@ -37,7 +37,12 @@ class _IdlePurchaseCtrl extends SubscriptionPurchaseCtrl {
   AsyncValue<void> build() => const AsyncData(null);
 }
 
-Widget _harness({required List<Override> overrides, required Widget child}) {
+Widget _harness({
+  required List<Override> overrides,
+  required Widget child,
+  TargetPlatform platform = TargetPlatform.linux,
+}) {
+  debugDefaultTargetPlatformOverride = platform;
   final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF7B61FF));
   return ProviderScope(
     overrides: [
@@ -57,16 +62,21 @@ Widget _harness({required List<Override> overrides, required Widget child}) {
   );
 }
 
-/// A scaffold with a button that opens the auto-renew plan sheet.
+/// A scaffold with a button that opens the unified purchase sheet at the
+/// chosen [interval] (defaults to monthly).
 class _SheetLauncher extends StatelessWidget {
-  const _SheetLauncher();
+  // ignore: unused_element_parameter
+  const _SheetLauncher({this.interval = CatalogInterval.month});
+
+  final CatalogInterval interval;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
         child: ElevatedButton(
-          onPressed: () => showAutoRenewPlanSheet(context),
+          onPressed: () =>
+              showUnifiedPurchaseSheet(context, interval: interval),
           child: const Text('Open Sheet'),
         ),
       ),
@@ -74,66 +84,15 @@ class _SheetLauncher extends StatelessWidget {
   }
 }
 
+void _resetPlatform() {
+  debugDefaultTargetPlatformOverride = null;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('AutoRenewPlanSheet', () {
-    testWidgets('shows plan tiles with monthly and yearly options', (
-      tester,
-    ) async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.linux;
-
-      await tester.pumpWidget(
-        _harness(
-          overrides: [
-            subscriptionPlansProvider.overrideWith((ref) async => _testPlans),
-            subscriptionStatusProvider.overrideWith(
-              (ref) async => const SubscriptionStatus(
-                subscriptionActive: false,
-                subscriptionTier: SubscriptionTier.free,
-              ),
-            ),
-          ],
-          child: const _SheetLauncher(),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // Open the sheet.
-      await tester.tap(find.text('Open Sheet'));
-      await tester.pumpAndSettle();
-
-      final l10n = lookupAppLocalizations(const Locale('en'));
-
-      // Title is shown.
-      expect(find.text(l10n.subscriptionAutoRenewTitle), findsOneWidget);
-
-      // Monthly and yearly plan tiles are shown.
-      expect(find.text(l10n.subscriptionAutoRenewMonthly), findsOneWidget);
-      expect(find.text(l10n.subscriptionAutoRenewYearly), findsOneWidget);
-
-      // Prices are formatted.
-      expect(
-        find.text(l10n.subscriptionAutoRenewPriceMonth('9.99')),
-        findsOneWidget,
-      );
-      expect(
-        find.text(l10n.subscriptionAutoRenewPriceYear('79.99')),
-        findsOneWidget,
-      );
-
-      // Subscribe button is present.
-      expect(find.text(l10n.subscriptionAutoRenewSubscribe), findsOneWidget);
-
-      expect(tester.takeException(), isNull);
-      debugDefaultTargetPlatformOverride = null;
-    });
-
-    testWidgets('shows prepaid upsell when no active auto-renew plan', (
-      tester,
-    ) async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.linux;
-
+  group('UnifiedPurchaseSheet', () {
+    testWidgets('shows unified title and both payment options', (tester) async {
       await tester.pumpWidget(
         _harness(
           overrides: [
@@ -155,38 +114,182 @@ void main() {
 
       final l10n = lookupAppLocalizations(const Locale('en'));
 
-      // Pay-once link is shown when no active auto-renew.
-      expect(find.text(l10n.subscriptionPayOnceTitle), findsOneWidget);
-      expect(find.text(l10n.subscriptionPayOnceSubtitle), findsOneWidget);
+      // Unified modal title includes tier + interval label.
+      expect(
+        find.text(
+          l10n.subscriptionPurchaseModalUnifiedTitle(
+            l10n.subscriptionTierProName,
+            l10n.subscriptionAutoRenewMonthly,
+          ),
+        ),
+        findsOneWidget,
+      );
+
+      // Both options are visible.
+      expect(
+        find.text(l10n.subscriptionPurchaseModalOptionAutoRenew),
+        findsOneWidget,
+      );
+      expect(
+        find.text(l10n.subscriptionPurchaseModalOptionPrepaid),
+        findsOneWidget,
+      );
 
       expect(tester.takeException(), isNull);
-      debugDefaultTargetPlatformOverride = null;
+      _resetPlatform();
     });
 
-    testWidgets('hides prepaid upsell when active auto-renew plan exists', (
+    testWidgets('auto-renew is the default-selected path with CTA visible', (
       tester,
     ) async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.linux;
-
       await tester.pumpWidget(
         _harness(
           overrides: [
             subscriptionPlansProvider.overrideWith((ref) async => _testPlans),
             subscriptionStatusProvider.overrideWith(
               (ref) async => const SubscriptionStatus(
-                subscriptionActive: true,
-                subscriptionTier: SubscriptionTier.pro,
-                autoRenew: AutoRenewBilling(
-                  active: true,
-                  provider: 'stripe',
-                  status: 'active',
-                  autoRenew: true,
-                  cancelAtPeriodEnd: false,
-                  interval: 'month',
-                  amount: 9.99,
-                  tier: 'pro',
+                subscriptionActive: false,
+                subscriptionTier: SubscriptionTier.free,
+              ),
+            ),
+          ],
+          child: const _SheetLauncher(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Open Sheet'));
+      await tester.pumpAndSettle();
+
+      final l10n = lookupAppLocalizations(const Locale('en'));
+
+      // The auto-renew CTA is rendered (default path).
+      expect(
+        find.text(l10n.subscriptionPurchaseModalSubscribeAutoRenewCta),
+        findsOneWidget,
+      );
+
+      // Pay-once controls are NOT rendered yet (duration / processor live in
+      // the prepaid panel which is collapsed by default).
+      expect(find.text(l10n.subscriptionPurchaseDuration), findsNothing);
+
+      expect(tester.takeException(), isNull);
+      _resetPlatform();
+    });
+
+    testWidgets(
+      'switching to pay-once reveals prepaid duration + processor controls',
+      (tester) async {
+        await tester.pumpWidget(
+          _harness(
+            overrides: [
+              subscriptionPlansProvider.overrideWith((ref) async => _testPlans),
+              subscriptionStatusProvider.overrideWith(
+                (ref) async => const SubscriptionStatus(
+                  subscriptionActive: false,
+                  subscriptionTier: SubscriptionTier.free,
                 ),
               ),
+            ],
+            child: const _SheetLauncher(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Open Sheet'));
+        await tester.pumpAndSettle();
+
+        final l10n = lookupAppLocalizations(const Locale('en'));
+
+        // Tap the prepaid card to switch paths.
+        await tester.tap(
+          find.text(l10n.subscriptionPurchaseModalOptionPrepaid),
+        );
+        await tester.pumpAndSettle();
+
+        // Prepaid panel content is now visible.
+        expect(find.text(l10n.subscriptionPurchaseDuration), findsOneWidget);
+        expect(
+          find.text(l10n.subscriptionPurchasePaymentMethod),
+          findsOneWidget,
+        );
+        expect(find.text(l10n.subscriptionContinueToPayment), findsOneWidget);
+
+        expect(tester.takeException(), isNull);
+        _resetPlatform();
+      },
+    );
+
+    testWidgets(
+      'shows active auto-renew warning + disables auto-renew CTA when active',
+      (tester) async {
+        await tester.pumpWidget(
+          _harness(
+            overrides: [
+              subscriptionPlansProvider.overrideWith((ref) async => _testPlans),
+              subscriptionStatusProvider.overrideWith(
+                (ref) async => const SubscriptionStatus(
+                  subscriptionActive: true,
+                  subscriptionTier: SubscriptionTier.pro,
+                  autoRenew: AutoRenewBilling(
+                    active: true,
+                    provider: 'stripe',
+                    status: 'active',
+                    autoRenew: true,
+                    cancelAtPeriodEnd: false,
+                    interval: 'month',
+                    amount: 9.99,
+                    tier: 'pro',
+                  ),
+                ),
+              ),
+            ],
+            child: const _SheetLauncher(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Open Sheet'));
+        await tester.pumpAndSettle();
+
+        final l10n = lookupAppLocalizations(const Locale('en'));
+
+        // Warning is shown.
+        expect(
+          find.text(l10n.subscriptionPurchaseModalAutoRenewActiveWarning),
+          findsOneWidget,
+        );
+
+        // Auto-renew CTA is rendered but disabled.
+        final cta = find.text(
+          l10n.subscriptionPurchaseModalSubscribeAutoRenewCta,
+        );
+        expect(cta, findsOneWidget);
+        final widget = tester.widget<FilledButton>(
+          find.ancestor(of: cta, matching: find.byType(FilledButton)).first,
+        );
+        expect(widget.onPressed, isNull);
+
+        expect(tester.takeException(), isNull);
+        _resetPlatform();
+      },
+    );
+
+    testWidgets('shows loading indicator while plans load', (tester) async {
+      final completer = Completer<List<SubscriptionPlan>>();
+      addTearDown(() {
+        if (!completer.isCompleted) completer.complete(_testPlans);
+      });
+
+      await tester.pumpWidget(
+        _harness(
+          overrides: [
+            subscriptionPlansProvider.overrideWith((ref) => completer.future),
+            subscriptionStatusProvider.overrideWith(
+              (ref) async => const SubscriptionStatus(
+                subscriptionActive: false,
+                subscriptionTier: SubscriptionTier.free,
+              ),
             ),
           ],
           child: const _SheetLauncher(),
@@ -195,26 +298,18 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Open Sheet'));
-      await tester.pumpAndSettle();
+      await tester.pump();
 
-      final l10n = lookupAppLocalizations(const Locale('en'));
-
-      // Pay-once link is hidden when active auto-renew exists.
-      expect(find.text(l10n.subscriptionPayOnceTitle), findsNothing);
-      expect(find.text(l10n.subscriptionPayOnceSubtitle), findsNothing);
-
-      // Subscribe button still present.
-      expect(find.text(l10n.subscriptionAutoRenewSubscribe), findsOneWidget);
+      // Either the option-card skeleton or a CircularProgressIndicator shows.
+      expect(find.byType(CircularProgressIndicator), findsWidgets);
 
       expect(tester.takeException(), isNull);
-      debugDefaultTargetPlatformOverride = null;
+      _resetPlatform();
     });
 
     testWidgets('shows unavailable message when plans list is empty', (
       tester,
     ) async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.linux;
-
       await tester.pumpWidget(
         _harness(
           overrides: [
@@ -243,106 +338,102 @@ void main() {
       );
 
       expect(tester.takeException(), isNull);
-      debugDefaultTargetPlatformOverride = null;
+      _resetPlatform();
     });
 
-    testWidgets('shows loading indicator while plans load', (tester) async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.linux;
-
-      final completer = Completer<List<SubscriptionPlan>>();
-      addTearDown(() {
-        if (!completer.isCompleted) completer.complete(_testPlans);
-      });
-
-      await tester.pumpWidget(
-        _harness(
-          overrides: [
-            subscriptionPlansProvider.overrideWith((ref) => completer.future),
-            subscriptionStatusProvider.overrideWith(
-              (ref) async => const SubscriptionStatus(
-                subscriptionActive: false,
-                subscriptionTier: SubscriptionTier.free,
+    testWidgets(
+      'auto-renew fallback price matches the selected interval when no matching plan',
+      (tester) async {
+        // Only a yearly pro plan exists, so opening the sheet at the monthly
+        // interval forces the fallback price path (no plan matches `month`).
+        const yearlyOnly = [
+          SubscriptionPlan(
+            id: 'plan_yearly',
+            tier: 'pro',
+            interval: 'year',
+            amount: 79.99,
+          ),
+        ];
+        await tester.pumpWidget(
+          _harness(
+            overrides: [
+              subscriptionPlansProvider.overrideWith((ref) async => yearlyOnly),
+              subscriptionStatusProvider.overrideWith(
+                (ref) async => const SubscriptionStatus(
+                  subscriptionActive: false,
+                  subscriptionTier: SubscriptionTier.free,
+                ),
               ),
-            ),
-          ],
-          child: const _SheetLauncher(),
-        ),
-      );
-      await tester.pumpAndSettle();
+            ],
+            child: const _SheetLauncher(interval: CatalogInterval.month),
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Open Sheet'));
-      await tester.pump();
+        await tester.tap(find.text('Open Sheet'));
+        await tester.pumpAndSettle();
 
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+        final l10n = lookupAppLocalizations(const Locale('en'));
 
-      expect(tester.takeException(), isNull);
-      debugDefaultTargetPlatformOverride = null;
-    });
+        // Auto-renew card shows the monthly fallback price plus the monthly
+        // interval label, never the yearly fallback.
+        expect(
+          find.text(
+            '${l10n.subscriptionAutoRenewPriceMonth('9.99')} · '
+            '${l10n.subscriptionAutoRenewMonthly}',
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.text(
+            '${l10n.subscriptionAutoRenewPriceMonth('99.99')} · '
+            '${l10n.subscriptionAutoRenewMonthly}',
+          ),
+          findsNothing,
+        );
 
-    testWidgets('shows unavailable message on plans error', (tester) async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+        expect(tester.takeException(), isNull);
+        _resetPlatform();
+      },
+    );
 
-      await tester.pumpWidget(
-        _harness(
-          overrides: [
-            subscriptionPlansProvider.overrideWith(
-              (ref) async => throw Exception('network error'),
-            ),
-            subscriptionStatusProvider.overrideWith(
-              (ref) async => const SubscriptionStatus(
-                subscriptionActive: false,
-                subscriptionTier: SubscriptionTier.free,
+    testWidgets(
+      'mobile platform surfaces coming-soon dialog instead of sheet',
+      (tester) async {
+        await tester.pumpWidget(
+          _harness(
+            platform: TargetPlatform.iOS,
+            overrides: [
+              subscriptionPlansProvider.overrideWith((ref) async => _testPlans),
+              subscriptionStatusProvider.overrideWith(
+                (ref) async => const SubscriptionStatus(
+                  subscriptionActive: false,
+                  subscriptionTier: SubscriptionTier.free,
+                ),
               ),
+            ],
+            child: const _SheetLauncher(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Open Sheet'));
+        await tester.pumpAndSettle();
+
+        final l10n = lookupAppLocalizations(const Locale('en'));
+        expect(find.text(l10n.subscriptionMobilePurchaseTitle), findsOneWidget);
+        expect(
+          find.text(
+            l10n.subscriptionPurchaseModalUnifiedTitle(
+              l10n.subscriptionTierProName,
+              l10n.subscriptionAutoRenewMonthly,
             ),
-          ],
-          child: const _SheetLauncher(),
-        ),
-      );
-      await tester.pumpAndSettle();
+          ),
+          findsNothing,
+        );
 
-      await tester.tap(find.text('Open Sheet'));
-      await tester.pumpAndSettle();
-
-      final l10n = lookupAppLocalizations(const Locale('en'));
-      expect(
-        find.text(l10n.subscriptionAutoRenewPlansUnavailable),
-        findsOneWidget,
-      );
-
-      expect(tester.takeException(), isNull);
-      debugDefaultTargetPlatformOverride = null;
-    });
-
-    testWidgets('first plan is selected by default (radio checked)', (
-      tester,
-    ) async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.linux;
-
-      await tester.pumpWidget(
-        _harness(
-          overrides: [
-            subscriptionPlansProvider.overrideWith((ref) async => _testPlans),
-            subscriptionStatusProvider.overrideWith(
-              (ref) async => const SubscriptionStatus(
-                subscriptionActive: false,
-                subscriptionTier: SubscriptionTier.free,
-              ),
-            ),
-          ],
-          child: const _SheetLauncher(),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Open Sheet'));
-      await tester.pumpAndSettle();
-
-      // First plan (monthly) should have radio_button_checked icon.
-      expect(find.byIcon(Icons.radio_button_checked), findsOneWidget);
-      expect(find.byIcon(Icons.radio_button_off), findsOneWidget);
-
-      expect(tester.takeException(), isNull);
-      debugDefaultTargetPlatformOverride = null;
-    });
+        _resetPlatform();
+      },
+    );
   });
 }
