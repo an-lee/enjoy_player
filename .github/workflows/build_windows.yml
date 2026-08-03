@@ -43,16 +43,20 @@ jobs:
         run: .github/scripts/ensure_nuget_feed.ps1
 
       - name: Flutter pub get
+        working-directory: ${{ env.GITHUB_WORKSPACE }}
         run: flutter pub get
 
       - name: Ensure Windows FFmpeg
         shell: pwsh
+        working-directory: ${{ env.GITHUB_WORKSPACE }}
         run: windows/scripts/fetch_ffmpeg.ps1
 
       - name: Flutter build windows (debug)
+        working-directory: ${{ env.GITHUB_WORKSPACE }}
         run: flutter build windows --debug
 
       - name: Flutter build windows (release)
+        working-directory: ${{ env.GITHUB_WORKSPACE }}
         run: flutter build windows --release
 
       - name: Remove short workspace stage
