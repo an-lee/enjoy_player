@@ -46,3 +46,4 @@ if ($LASTEXITCODE -ge 8) {
 
 "GITHUB_WORKSPACE=$shortPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 Write-Host "Staged $workspace -> $shortPath"
+exit 0
