@@ -33,13 +33,19 @@ jobs:
       - uses: ./.github/actions/setup-flutter
 
       - name: Build Windows release
-        shell: bash
+        shell: pwsh
+        env:
+          INPUT_BUILD_INSTALLER: ${{ inputs.build_installer }}
         run: |
-          args=()
-          if [[ "${{ inputs.build_installer }}" != "true" ]]; then
-            args+=(--no-installer)
-          fi
-          bash .github/scripts/release_windows.sh "${args[@]}"
+          $gitBash = 'C:\Program Files\Git\bin\bash.exe'
+          if (-not (Test-Path $gitBash)) {
+            throw "Git Bash not found at $gitBash (required for release_windows.sh on Windows)."
+          }
+          $scriptArgs = @('.github/scripts/release_windows.sh')
+          if ($env:INPUT_BUILD_INSTALLER -ne 'true') {
+            $scriptArgs += '--no-installer'
+          }
+          & $gitBash @scriptArgs
 
       - name: Ensure publish tooling
         if: inputs.publish
@@ -48,7 +54,7 @@ jobs:
 
       - name: Publish direct-download feeds
         if: inputs.publish
-        shell: bash
+        shell: pwsh
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -60,7 +66,12 @@ jobs:
           CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
           SPARKLE_DSA_PRIV_PEM_BASE64: ${{ secrets.SPARKLE_DSA_PRIV_PEM_BASE64 }}
           RELEASE_REQUIRE_S3: "1"
-        run: bash .github/scripts/release_windows.sh --publish-only --publish
+        run: |
+          $gitBash = 'C:\Program Files\Git\bin\bash.exe'
+          if (-not (Test-Path $gitBash)) {
+            throw "Git Bash not found at $gitBash (required for release_windows.sh on Windows)."
+          }
+          & $gitBash .github/scripts/release_windows.sh --publish-only --publish
 
       - name: Remove short workspace drive mapping
         if: always()
