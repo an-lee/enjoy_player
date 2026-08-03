@@ -38,12 +38,23 @@ if [[ "${subj}" != *"Apple Distribution"* && "${subj}" != *"iPhone Distribution"
   echo "  ${subj}" >&2
 fi
 
-openssl pkcs12 -export \
+# OpenSSL 3 defaults to PBES2/SHA256 PKCS#12 that macOS `security import` rejects.
+# Prefer -legacy (OpenSSL 3+) for Keychain-compatible export.
+if ! openssl pkcs12 -export \
   -inkey "${key}" \
   -in "${pem}" \
   -out "${p12}" \
   -passout "pass:${pass}" \
-  -name "Apple Distribution"
+  -name "Apple Distribution" \
+  -legacy 2>/dev/null; then
+  openssl pkcs12 -export \
+    -inkey "${key}" \
+    -in "${pem}" \
+    -out "${p12}" \
+    -passout "pass:${pass}" \
+    -name "Apple Distribution" \
+    -macalg sha1 -certpbe PBE-SHA1-3DES -keypbe PBE-SHA1-3DES
+fi
 
 keychain="${HOME}/Library/Keychains/login.keychain-db"
 [[ -f "${keychain}" ]] || keychain="login.keychain"

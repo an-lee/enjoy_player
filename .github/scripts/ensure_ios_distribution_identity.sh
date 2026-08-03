@@ -166,12 +166,22 @@ puts "Created IOS_DISTRIBUTION certificate #{created.dig('data', 'id')}"
 RUBY
 
 openssl x509 -inform DER -in "${CERT_PATH}" -out "${WORKDIR}/ios_distribution.pem"
-openssl pkcs12 -export \
+# OpenSSL 3 defaults break macOS `security import`; use legacy PKCS#12.
+if ! openssl pkcs12 -export \
   -inkey "${CSR_KEY}" \
   -in "${WORKDIR}/ios_distribution.pem" \
   -out "${P12_PATH}" \
   -passout "pass:${P12_PASSWORD}" \
-  -name "Apple Distribution"
+  -name "Apple Distribution" \
+  -legacy 2>/dev/null; then
+  openssl pkcs12 -export \
+    -inkey "${CSR_KEY}" \
+    -in "${WORKDIR}/ios_distribution.pem" \
+    -out "${P12_PATH}" \
+    -passout "pass:${P12_PASSWORD}" \
+    -name "Apple Distribution" \
+    -macalg sha1 -certpbe PBE-SHA1-3DES -keypbe PBE-SHA1-3DES
+fi
 
 KEYCHAIN="${HOME}/Library/Keychains/login.keychain-db"
 if [[ ! -f "${KEYCHAIN}" ]]; then
