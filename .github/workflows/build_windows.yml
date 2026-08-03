@@ -55,8 +55,10 @@ jobs:
       - name: Flutter build windows (release)
         run: flutter build windows --release
 
-      - name: Remove short workspace drive mapping
+      - name: Remove short workspace junction
         if: always()
         shell: pwsh
         run: |
-          if (Test-Path 'W:\') { subst W: /d }
+          $baseName = Split-Path -Leaf $env:GITHUB_WORKSPACE
+          $shortPath = Join-Path 'C:\e' $baseName
+          if (Test-Path $shortPath) { cmd /c rmdir $shortPath }
