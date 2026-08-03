@@ -4,6 +4,7 @@ library;
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
 import 'package:enjoy_player/data/db/dexie_target_type_provider.dart';
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
@@ -13,7 +14,7 @@ import 'package:enjoy_player/features/transcript/domain/transcript_recording_cou
 
 part 'transcript_line_recording_counts_provider.g.dart';
 
-final _log = Logger('TranscriptLineRecordingCounts');
+final _log = logNamed('TranscriptLineRecordingCounts');
 
 /// Combines async transcript/recording inputs into per-line counts.
 ///

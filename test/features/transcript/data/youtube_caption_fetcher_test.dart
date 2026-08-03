@@ -904,4 +904,117 @@ void main() {
       expect(playerAttempts, ['android_vr']);
     });
   });
+
+  group('YoutubeCaptionFetchException', () {
+    test(
+      'innertubePlayer stage flows through aggregation error string',
+      () async {
+        mockClient = MockClient((request) async {
+          return http.Response('Forbidden', 403);
+        });
+
+        final fetcher = YoutubeCaptionFetcher(httpClient: mockClient);
+        // Per-profile `_fetchPlayer` throws, but the inner
+        // `try { ... } on Object catch` aggregates into `AllCaptionsResult.error`
+        // so callers see the typed exception via the embedded toString() —
+        // not as a propagated throw.
+        final result = await fetcher.fetchAllSubtitles(videoId: 'test1234567');
+        expect(result.isSuccess, isFalse);
+        expect(result.error, isNotNull);
+        expect(
+          result.error,
+          contains(YoutubeCaptionErrorStage.innertubePlayer.name),
+        );
+        expect(result.error, contains('403'));
+      },
+    );
+
+    test(
+      'innertubePlayability stage fires on non-OK playabilityStatus',
+      () async {
+        mockClient = MockClient((request) async {
+          return http.Response(
+            jsonEncode(_cannedPlayerResponse(status: 'LOGIN_REQUIRED')),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        });
+
+        final fetcher = YoutubeCaptionFetcher(httpClient: mockClient);
+        // The exception is caught inside fetchAllSubtitles (so chained
+        // profiles can still try), but `allResult.error` must reference the
+        // typed exception's `toString()` for log/monitoring correlation.
+        final result = await fetcher.fetchAllSubtitles(videoId: 'test1234567');
+        expect(result.isSuccess, isFalse);
+        expect(result.error, isNotNull);
+        expect(result.error, contains('LOGIN_REQUIRED'));
+      },
+    );
+
+    test('timedTextGet stage fires on non-200 timedtext response', () async {
+      mockClient = MockClient((request) async {
+        if (request.method == 'POST') {
+          return http.Response(
+            jsonEncode(
+              _cannedPlayerResponse(
+                tracks: [
+                  {
+                    'baseUrl': 'https://www.youtube.com/api/timedtext?v=t',
+                    'vssId': '.en',
+                    'languageCode': 'en',
+                  },
+                ],
+              ),
+            ),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        return http.Response('Not Found', 404);
+      });
+
+      final fetcher = YoutubeCaptionFetcher(httpClient: mockClient);
+      final result = await fetcher.fetchAllSubtitles(
+        videoId: 'test1234567',
+        preferredLang: 'en',
+      );
+      expect(result.isSuccess, isTrue);
+      expect(result.results.length, 1);
+      expect(result.results[0].isSuccess, isFalse);
+      expect(result.results[0].error, contains('404'));
+    });
+
+    test('toString embeds stage name and status code', () {
+      final ex = YoutubeCaptionFetchException(
+        stage: YoutubeCaptionErrorStage.timedTextJson,
+        message: 'broken body',
+      );
+      expect(ex.toString(), contains('timedTextJson'));
+      expect(ex.toString(), contains('broken body'));
+      expect(ex.toString(), isNot(contains('null')));
+
+      final exWithCode = YoutubeCaptionFetchException(
+        stage: YoutubeCaptionErrorStage.timedTextGet,
+        statusCode: 503,
+        message: 'upstream busy',
+      );
+      expect(exWithCode.toString(), contains('(503)'));
+      expect(exWithCode.toString(), contains('upstream busy'));
+    });
+
+    test('is catchable as plain Exception for backward compatibility', () {
+      final ex = YoutubeCaptionFetchException(
+        stage: YoutubeCaptionErrorStage.innertubePlayer,
+        message: 'x',
+      );
+      // Existing `on Object catch` / `on Exception catch` blocks continue to
+      // catch this type without modification.
+      expect(ex, isA<Exception>());
+      try {
+        throw ex;
+      } on Exception catch (e) {
+        expect(e, same(ex));
+      }
+    });
+  });
 }
