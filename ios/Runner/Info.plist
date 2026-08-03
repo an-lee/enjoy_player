@@ -67,6 +67,13 @@
 	</array>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Enjoy Player uses the microphone for shadow-reading practice recordings.</string>
+	<!-- Required by App Store Connect even when camera is only referenced via
+	     dependencies (e.g. file_picker); the app may offer capture when picking
+	     a profile photo or media on device. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Enjoy Player may use the camera when you choose to take a photo for your profile avatar or to import media for learning.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Enjoy Player accesses your photo library when you choose an image for your profile avatar or import media for learning.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<!-- `app_links` (AuthDeepLinkListener) owns enjoyplayer:// callbacks.
