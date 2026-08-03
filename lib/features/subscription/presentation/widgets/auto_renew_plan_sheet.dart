@@ -253,6 +253,7 @@ class _UnifiedPurchaseSheetBodyState
                     }
                     return _PaymentPathSelector(
                       selected: _path,
+                      interval: interval,
                       intervalLabel: intervalLabel,
                       plan: selectedPlan,
                       plansLoading: false,
@@ -333,6 +334,7 @@ class _ActiveAutoRenewWarning extends StatelessWidget {
 class _PaymentPathSelector extends StatelessWidget {
   const _PaymentPathSelector({
     required this.selected,
+    required this.interval,
     required this.intervalLabel,
     required this.plan,
     required this.plansLoading,
@@ -340,6 +342,7 @@ class _PaymentPathSelector extends StatelessWidget {
   });
 
   final _PaymentPath selected;
+  final CatalogInterval interval;
   final String intervalLabel;
   final SubscriptionPlan? plan;
   final bool plansLoading;
@@ -362,7 +365,7 @@ class _PaymentPathSelector extends StatelessWidget {
           footnote: l10n.subscriptionPurchaseModalOptionAutoRenewFootnote,
           leadingIcon: Icons.autorenew_rounded,
           emphasis: true,
-          price: _autoRenewPriceLabel(l10n, plan),
+          price: _autoRenewPriceLabel(l10n, plan, interval),
           plansLoading: plansLoading,
           intervalLabel: intervalLabel,
         );
@@ -402,14 +405,17 @@ class _PaymentPathSelector extends StatelessWidget {
     );
   }
 
-  String _autoRenewPriceLabel(AppLocalizations l10n, SubscriptionPlan? plan) {
+  String _autoRenewPriceLabel(
+    AppLocalizations l10n,
+    SubscriptionPlan? plan,
+    CatalogInterval interval,
+  ) {
     if (plan != null) {
       final formatted = NumberFormat('0.00').format(plan.amount);
       return l10n.subscriptionAutoRenewPriceMonth(formatted);
     }
-    return l10n.subscriptionAutoRenewPriceMonth(
-      CatalogInterval.year == CatalogInterval.year ? '99.99' : '9.99',
-    );
+    final fallback = interval == CatalogInterval.year ? '99.99' : '9.99';
+    return l10n.subscriptionAutoRenewPriceMonth(fallback);
   }
 }
 

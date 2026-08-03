@@ -342,6 +342,62 @@ void main() {
     });
 
     testWidgets(
+      'auto-renew fallback price matches the selected interval when no matching plan',
+      (tester) async {
+        // Only a yearly pro plan exists, so opening the sheet at the monthly
+        // interval forces the fallback price path (no plan matches `month`).
+        const yearlyOnly = [
+          SubscriptionPlan(
+            id: 'plan_yearly',
+            tier: 'pro',
+            interval: 'year',
+            amount: 79.99,
+          ),
+        ];
+        await tester.pumpWidget(
+          _harness(
+            overrides: [
+              subscriptionPlansProvider.overrideWith((ref) async => yearlyOnly),
+              subscriptionStatusProvider.overrideWith(
+                (ref) async => const SubscriptionStatus(
+                  subscriptionActive: false,
+                  subscriptionTier: SubscriptionTier.free,
+                ),
+              ),
+            ],
+            child: const _SheetLauncher(interval: CatalogInterval.month),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Open Sheet'));
+        await tester.pumpAndSettle();
+
+        final l10n = lookupAppLocalizations(const Locale('en'));
+
+        // Auto-renew card shows the monthly fallback price plus the monthly
+        // interval label, never the yearly fallback.
+        expect(
+          find.text(
+            '${l10n.subscriptionAutoRenewPriceMonth('9.99')} · '
+            '${l10n.subscriptionAutoRenewMonthly}',
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.text(
+            '${l10n.subscriptionAutoRenewPriceMonth('99.99')} · '
+            '${l10n.subscriptionAutoRenewMonthly}',
+          ),
+          findsNothing,
+        );
+
+        expect(tester.takeException(), isNull);
+        _resetPlatform();
+      },
+    );
+
+    testWidgets(
       'mobile platform surfaces coming-soon dialog instead of sheet',
       (tester) async {
         await tester.pumpWidget(
