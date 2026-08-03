@@ -58,7 +58,7 @@ void main() {
           expect(
             seen.add(key),
             isTrue,
-            reason: 'duplicate descriptionKey "${key}" in ${entry.key.name}',
+            reason: 'duplicate descriptionKey "$key" in ${entry.key.name}',
           );
         }
         expect(seen.length, entry.value.length);

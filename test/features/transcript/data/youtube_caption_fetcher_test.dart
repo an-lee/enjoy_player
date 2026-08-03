@@ -906,46 +906,50 @@ void main() {
   });
 
   group('YoutubeCaptionFetchException', () {
-    test('innertubePlayer stage flows through aggregation error string',
-        () async {
-      mockClient = MockClient((request) async {
-        return http.Response('Forbidden', 403);
-      });
+    test(
+      'innertubePlayer stage flows through aggregation error string',
+      () async {
+        mockClient = MockClient((request) async {
+          return http.Response('Forbidden', 403);
+        });
 
-      final fetcher = YoutubeCaptionFetcher(httpClient: mockClient);
-      // Per-profile `_fetchPlayer` throws, but the inner
-      // `try { ... } on Object catch` aggregates into `AllCaptionsResult.error`
-      // so callers see the typed exception via the embedded toString() —
-      // not as a propagated throw.
-      final result = await fetcher.fetchAllSubtitles(videoId: 'test1234567');
-      expect(result.isSuccess, isFalse);
-      expect(result.error, isNotNull);
-      expect(
-        result.error,
-        contains(YoutubeCaptionErrorStage.innertubePlayer.name),
-      );
-      expect(result.error, contains('403'));
-    });
-
-    test('innertubePlayability stage fires on non-OK playabilityStatus',
-        () async {
-      mockClient = MockClient((request) async {
-        return http.Response(
-          jsonEncode(_cannedPlayerResponse(status: 'LOGIN_REQUIRED')),
-          200,
-          headers: {'content-type': 'application/json'},
+        final fetcher = YoutubeCaptionFetcher(httpClient: mockClient);
+        // Per-profile `_fetchPlayer` throws, but the inner
+        // `try { ... } on Object catch` aggregates into `AllCaptionsResult.error`
+        // so callers see the typed exception via the embedded toString() —
+        // not as a propagated throw.
+        final result = await fetcher.fetchAllSubtitles(videoId: 'test1234567');
+        expect(result.isSuccess, isFalse);
+        expect(result.error, isNotNull);
+        expect(
+          result.error,
+          contains(YoutubeCaptionErrorStage.innertubePlayer.name),
         );
-      });
+        expect(result.error, contains('403'));
+      },
+    );
 
-      final fetcher = YoutubeCaptionFetcher(httpClient: mockClient);
-      // The exception is caught inside fetchAllSubtitles (so chained
-      // profiles can still try), but `allResult.error` must reference the
-      // typed exception's `toString()` for log/monitoring correlation.
-      final result = await fetcher.fetchAllSubtitles(videoId: 'test1234567');
-      expect(result.isSuccess, isFalse);
-      expect(result.error, isNotNull);
-      expect(result.error, contains('LOGIN_REQUIRED'));
-    });
+    test(
+      'innertubePlayability stage fires on non-OK playabilityStatus',
+      () async {
+        mockClient = MockClient((request) async {
+          return http.Response(
+            jsonEncode(_cannedPlayerResponse(status: 'LOGIN_REQUIRED')),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        });
+
+        final fetcher = YoutubeCaptionFetcher(httpClient: mockClient);
+        // The exception is caught inside fetchAllSubtitles (so chained
+        // profiles can still try), but `allResult.error` must reference the
+        // typed exception's `toString()` for log/monitoring correlation.
+        final result = await fetcher.fetchAllSubtitles(videoId: 'test1234567');
+        expect(result.isSuccess, isFalse);
+        expect(result.error, isNotNull);
+        expect(result.error, contains('LOGIN_REQUIRED'));
+      },
+    );
 
     test('timedTextGet stage fires on non-200 timedtext response', () async {
       mockClient = MockClient((request) async {
