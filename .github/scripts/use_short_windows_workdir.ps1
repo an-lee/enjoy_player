@@ -35,11 +35,13 @@ if (Test-Path $shortPath) {
 
 # /MIR mirrors the tree; /XD skips heavy/regenerable dirs.
 # robocopy exit codes 0-7 are success (8+ are real failures).
-$exit = robocopy $workspace $shortPath /MIR `
+# In PowerShell, $LASTEXITCODE (not the assignment expression) holds the
+# native exit code, so capture explicitly.
+robocopy $workspace $shortPath /MIR `
   /XD '.git' '.dart_tool' 'build' '.idea' '.vs' 'windows\ffmpeg' `
-  /NFL /NDL /NJH /NJS /NP /R:1 /W:1
-if ($exit -ge 8) {
-  throw "robocopy $workspace -> $shortPath failed with exit code $exit"
+  /NFL /NDL /NJH /NJS /NP /R:1 /W:1 | Out-Null
+if ($LASTEXITCODE -ge 8) {
+  throw "robocopy $workspace -> $shortPath failed with exit code $LASTEXITCODE"
 }
 
 "GITHUB_WORKSPACE=$shortPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
