@@ -71,7 +71,7 @@ Leave `ANDROID_USE_RUNNER_KEYSTORE` unset or set to `false`.
 
 | Secret name | Where to get it |
 |-------------|-----------------|
-| `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` | Full JSON key for a GCP service account with Play Console access (see [Upload to Google Play](#upload-to-google-play)) |
+| `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64` | Base64 of the GCP Play service-account JSON (see [Upload to Google Play](#upload-to-google-play)). Prefer this over raw JSON — GHA multiline env vars corrupt `private_key` newlines. |
 
 Optional overrides (repository variables or workflow `env`): `GOOGLE_PLAY_TRACK` (default `alpha`), `GOOGLE_PLAY_RELEASE_STATUS` (default `draft`), `GOOGLE_PLAY_PACKAGE_NAME` (default `ai.enjoy.player`).
 
@@ -116,8 +116,11 @@ CI and local releases share [`.github/scripts/upload_play_aab.sh`](../.github/sc
 3. In [Play Console](https://play.google.com/console/) → **Users and permissions** → **Invite new users**, paste the service account email.
 4. Under app permissions for `ai.enjoy.player`, grant rights to manage releases on the **closed testing (alpha)** track (and view app information as needed).
 5. Store the JSON:
-   - **CI**: GitHub → Secrets → `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` (full file contents).
-   - **Local**: `export GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH=/path/to/play-sa.json` (or set it in gitignored `publish_env.local.sh` / `.ps1`).
+   - **CI**: GitHub → Secrets → `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64`:
+     ```bash
+     base64 -w0 .google/play-service-account.json | gh secret set GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64
+     ```
+   - **Local**: `export GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH="$(git rev-parse --show-toplevel)/.google/play-service-account.json"` (or set it in gitignored `publish_env.local.sh` / `.ps1`). Keep `.google/` out of git (already in `.gitignore`).
 
 Ensure the **upload keystore** used to sign the AAB matches the upload key registered in Play Console (App signing).
 
@@ -143,7 +146,8 @@ If Play credentials are unset, the script logs *Skipping Play upload* and exits 
 | *Missing ANDROID_KEYSTORE_* | Add secrets or set `ANDROID_USE_RUNNER_KEYSTORE=true` with local `key.properties` |
 | *ANDROID_SDK_ROOT not set* | Set `ANDROID_SDK_ROOT` in runner service environment |
 | AAB signed with debug key | Signing setup failed — check secrets / `key.properties` paths |
-| *Skipping Play upload* | Set `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` (CI) or `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH` (local) |
+| *Skipping Play upload* | Set `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64` (CI) or `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH` (local) |
+| *Invalid control character* / invalid JSON for Play SA | Use **base64** secret (`GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64`), not raw JSON in a GHA env var |
 | Play API 403 / permission denied | Re-check Play Console invite + closed-testing permissions for the service account |
 | *signed with the wrong key* / *Android debug keystore* | AAB was not signed with the Play **upload** key. This machine needs `android/key.properties` + the upload `.jks` (SHA1 must match Play Console → Setup → App signing → Upload key). Rebuild after fixing — `--publish-only` will keep re-uploading a bad AAB. GitHub already stores `ANDROID_KEYSTORE_*`; copy that same keystore locally. |
 | Upload `TimeoutError` / chunk retries exhausted | Store AAB is large (~180MB). Uploader uses resumable 8 MiB chunks with a 600s HTTP timeout; raise `GOOGLE_PLAY_UPLOAD_TIMEOUT_SEC` or `GOOGLE_PLAY_UPLOAD_CHUNK_RETRIES` if the link is slow. Retry with `--publish-only --play` (no rebuild). |

@@ -50,11 +50,32 @@ def _resolve_credentials_path(explicit_path: str | None) -> Path:
             raise SystemExit(f"GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH not found: {path}")
         return path
 
+    # Prefer base64 in CI — raw JSON secrets corrupt private_key newlines in GHA env.
+    b64 = os.environ.get("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64", "").strip()
+    if b64:
+        import base64
+
+        try:
+            raw_bytes = base64.b64decode(b64, validate=False)
+            raw = raw_bytes.decode("utf-8")
+            json.loads(raw)
+        except Exception as exc:  # noqa: BLE001 — surface decode/parse clearly
+            raise SystemExit(
+                f"GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 is not valid base64 JSON: {exc}"
+            ) from exc
+        fd, tmp_name = tempfile.mkstemp(prefix="play-sa-", suffix=".json")
+        os.close(fd)
+        tmp = Path(tmp_name)
+        tmp.write_bytes(raw_bytes)
+        os.chmod(tmp, 0o600)
+        return tmp
+
     raw = os.environ.get("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON", "").strip()
     if not raw:
         raise SystemExit(
-            "Set GOOGLE_PLAY_SERVICE_ACCOUNT_JSON or "
-            "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH"
+            "Set GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH, "
+            "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64, or "
+            "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON"
         )
 
     # GitHub secrets sometimes store literal "\n" sequences.
@@ -64,7 +85,11 @@ def _resolve_credentials_path(explicit_path: str | None) -> Path:
     try:
         json.loads(raw)
     except json.JSONDecodeError as exc:
-        raise SystemExit(f"GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is not valid JSON: {exc}") from exc
+        raise SystemExit(
+            f"GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is not valid JSON: {exc}\n"
+            "In GitHub Actions prefer GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 "
+            "(base64 -w0 .google/play-service-account.json)."
+        ) from exc
 
     fd, tmp_name = tempfile.mkstemp(prefix="play-sa-", suffix=".json")
     os.close(fd)
@@ -261,11 +286,14 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    # Temp file only when credentials came from the inline JSON env var.
+    # Temp file when credentials came from inline JSON / base64 env (not a path).
     cleanup = (
         not args.credentials
         and not os.environ.get("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH", "").strip()
-        and bool(os.environ.get("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON", "").strip())
+        and (
+            bool(os.environ.get("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64", "").strip())
+            or bool(os.environ.get("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON", "").strip())
+        )
     )
     cred_path = _resolve_credentials_path(args.credentials)
     try:

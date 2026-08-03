@@ -177,7 +177,7 @@ One-time API access (see [android-release-ci.md](android-release-ci.md#upload-to
 
 1. Enable **Google Play Android Developer API** on a GCP project and create a service account + JSON key.
 2. Play Console → **Users and permissions** → invite the service account email with permission to manage closed testing (alpha) releases for `ai.enjoy.player`.
-3. Locally set `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH` to that JSON file (or put the path in `publish_env.local.*`). CI uses secret `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`.
+3. Locally set `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH` to that JSON file (or put the path in `publish_env.local.*`). CI uses secret `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64` (`base64 -w0` of the JSON).
 
 Defaults: package `ai.enjoy.player`, track `alpha`, status `draft`. Override with `GOOGLE_PLAY_TRACK` / `GOOGLE_PLAY_RELEASE_STATUS` if needed. Requires **Python 3** (`ensure_play_upload_tooling.sh` installs API client deps into a repo-local venv).
 

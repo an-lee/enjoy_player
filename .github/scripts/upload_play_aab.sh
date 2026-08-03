@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Upload a signed Play AAB to Google Play (alpha track / draft by default).
 #
-# Auth (either):
-#   GOOGLE_PLAY_SERVICE_ACCOUNT_JSON       — raw JSON string (CI secret)
-#   GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH  — path to JSON file (local)
+# Auth (prefer in this order):
+#   GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH     — path to JSON file (local)
+#   GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64   — base64 of JSON (CI; avoids multiline env corruption)
+#   GOOGLE_PLAY_SERVICE_ACCOUNT_JSON          — raw JSON string (local only; fragile in GHA)
 #
 # Optional:
 #   GOOGLE_PLAY_PACKAGE_NAME      (default: ai.enjoy.player)
@@ -26,12 +27,25 @@ if [[ ! -f "${AAB}" ]]; then
   exit 1
 fi
 
-has_json="${GOOGLE_PLAY_SERVICE_ACCOUNT_JSON:-}"
 has_path="${GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH:-}"
-if [[ -z "${has_json}" && -z "${has_path}" ]]; then
-  echo "Skipping Play upload: GOOGLE_PLAY_SERVICE_ACCOUNT_JSON(_PATH) not set."
+has_b64="${GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64:-}"
+has_json="${GOOGLE_PLAY_SERVICE_ACCOUNT_JSON:-}"
+if [[ -z "${has_path}" && -z "${has_b64}" && -z "${has_json}" ]]; then
+  echo "Skipping Play upload: GOOGLE_PLAY_SERVICE_ACCOUNT_JSON(_PATH|_BASE64) not set."
   exit 0
 fi
+
+# Decode base64 → temp file so Python never sees a multiline-mangled env secret.
+cleanup_sa=""
+if [[ -z "${has_path}" && -n "${has_b64}" ]]; then
+  sa_tmp="$(mktemp "${RUNNER_TEMP:-/tmp}/play-sa-XXXXXX.json")"
+  printf '%s' "${has_b64}" | base64 --decode >"${sa_tmp}"
+  chmod 600 "${sa_tmp}"
+  export GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH="${sa_tmp}"
+  unset GOOGLE_PLAY_SERVICE_ACCOUNT_JSON || true
+  cleanup_sa="${sa_tmp}"
+fi
+trap '[[ -n "${cleanup_sa}" ]] && rm -f "${cleanup_sa}"' EXIT
 
 echo ">>> Ensure Play upload tooling"
 # shellcheck source=ensure_play_upload_tooling.sh
