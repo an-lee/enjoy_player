@@ -36,10 +36,12 @@ platform="${1:-all}"
 rename_android() {
   local aab_dest="build/app/outputs/bundle/release/${prefix}.aab"
   mkdir -p "$(dirname "${aab_dest}")"
+  # AAB-only (--no-apk) and APK-only (--no-aab) builds are valid; missing
+  # artifacts are OK here — release_android.sh validates what it requested.
   rename_first_match "${aab_dest}" \
     "build/app/outputs/bundle/storeRelease/app-store-release.aab" \
     "build/app/outputs/bundle/storeRelease/app-release.aab" \
-    "build/app/outputs/bundle/release/app-release.aab"
+    "build/app/outputs/bundle/release/app-release.aab" || true
 
   local apk_dir="build/app/outputs/flutter-apk"
   local abi
@@ -47,7 +49,7 @@ rename_android() {
     rename_first_match "${apk_dir}/${prefix}-${abi}.apk" \
       "${apk_dir}/app-${abi}-direct-release.apk" \
       "${apk_dir}/app-direct-${abi}-release.apk" \
-      "${apk_dir}/app-${abi}-release.apk"
+      "${apk_dir}/app-${abi}-release.apk" || true
   done
 }
 
