@@ -73,10 +73,10 @@ jobs:
           }
           & $gitBash .github/scripts/release_windows.sh --publish-only --publish
 
-      - name: Remove short workspace junction
+      - name: Remove short workspace stage
         if: always()
         shell: pwsh
         run: |
           $baseName = Split-Path -Leaf $env:GITHUB_WORKSPACE
           $shortPath = Join-Path 'C:\e' $baseName
-          if (Test-Path $shortPath) { cmd /c rmdir $shortPath }
+          if (Test-Path $shortPath) { Remove-Item -Path $shortPath -Recurse -Force }

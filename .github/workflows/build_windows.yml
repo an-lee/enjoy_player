@@ -55,10 +55,10 @@ jobs:
       - name: Flutter build windows (release)
         run: flutter build windows --release
 
-      - name: Remove short workspace junction
+      - name: Remove short workspace stage
         if: always()
         shell: pwsh
         run: |
           $baseName = Split-Path -Leaf $env:GITHUB_WORKSPACE
           $shortPath = Join-Path 'C:\e' $baseName
-          if (Test-Path $shortPath) { cmd /c rmdir $shortPath }
+          if (Test-Path $shortPath) { Remove-Item -Path $shortPath -Recurse -Force }
