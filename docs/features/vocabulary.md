@@ -50,14 +50,14 @@ This document is the implementation contract for Enjoy Player (Flutter). It desc
 | Home due nudge | `VocabularyReviewSection` | Optional home card once feature ships |
 | Add from transcript | Selection → `TextSelectionPanel` → `AddToVocabularyButton` | CTA on existing [dictionary lookup sheet](dictionary-lookup.md) |
 | Add from ebook | Ebook selection toolbar | **Defer** until Flutter ebook exists |
-| Review session | Review tab → options → fullscreen flashcard | Fullscreen / modal review route |
+| Review session | Review tab → options → fullscreen flashcard | Immersive full-window review route (`/vocabulary/review`): `RootShell` hides sidebar / bottom nav and the mini media player bar for the session (shell-covering immersion; still under `ShellRoute`, ADR-0053) |
 | Export Anki | List → Export (Pro) | Same, gated by [subscription](subscription.md) |
 | Extension API-only add | Sidepanel (no Dexie) | Out of scope for player |
 
 ### Primary flows
 
 1. **Add word + context** — User selects text → lookup sheet → header bookmark icon (Add to Vocabulary / Add Context / Already in Vocabulary). Remove deletes the **entire item** (all contexts), not one context.
-2. **Review** — Open Vocabulary → Review → choose due / all / filter / random → fullscreen cards → flip → rate `0|1|2` or skip → optional undo last rating → session complete.
+2. **Review** — Open Vocabulary → Review → choose due / all / filter / random → immersive full-window cards (no app sidebar / bottom nav / mini player bar) → flip → rate `0|1|2` or skip → optional undo last rating → session complete → leave restores normal shell chrome.
 3. **Manage** — All Words tab: search + status/language filters → delete confirm → Export Anki.
 4. **During review (card back)** — Context tab (practice overlay for play clip / echo reading; open player; contextual AI; context pager when multi-context); Dictionary tab (persist explanation on item); Notes placeholder.
 
@@ -434,10 +434,10 @@ Empty states: no words; no due with **Custom review** CTA in the empty panel (no
 - Immersive study chrome (no dense AppBar): progress `current / total` + progress track (5px); **Skip** as quiet header text; undo; desktop-only muted keyboard shortcut hint; close tooltip = exit review.
 - **Adaptive study stage:** compact windows fill available height (cap 560); regular windows use ~82% height (420–640) and `contentMaxWidth`; front/back share the same stage; fade-only flip.
 - Front: hero word + muted context with **word highlight**; **Pronounce** control beside the headword (Worker model audio via shared pronounce stack — [ADR-0064](../decisions/0064-word-pronounce-client.md)); locale from the card’s **`item.language`** (bare tags like `ja` resolve to regional Worker locales). Distinct from Context **Play segment** (media clip). Stronger pill “tap to flip” affordance + semantics.
-- Space **toggles** flip; **Flip back** under ratings. Flipping prefetches contextual translation when missing (signed-in).
+- Space **toggles** flip; **Flip back** under ratings. Flipping prefetches contextual translation **and** dictionary when missing (signed-in).
 - Back tabs (pill segmented control — **Notes hidden until implemented**):
   - **Context** — quote block with word highlight; **context pager** (prev/next + n of m) when the item has 2+ contexts; **media title** from library; locator meta; media actions; contextual content parsed into app section labels + body markdown (redundant/empty heading sections pruned). Headword row repeats the same **Pronounce** control as the front (not the Play segment / Echo media chips). Flip, rate, and session transitions stop any in-flight pronounce playback.
-  - **Dictionary** — structured senses (IPA single slash pair, POS, definition, translation, examples) or fetch.
+  - **Dictionary** — auto-loads when cache empty (loading spinner while fetching; retry only after failure). Structured senses (IPA single slash pair, POS, definition, translation, examples) when available.
 - **Practice overlay (in-route, adaptive):** Play segment and Echo reading open a shared panel stacked over the flashcard (bottom-aligned on compact, centered on wide) — not a navigator modal/dialog. Clip practice claims a `PlayerSurfaceTarget` so the permanent RootShell [`PlayerSurfaceHost`](../../lib/features/player/presentation/widgets/player_surface_host.dart) positions its sole video/WebView stage at the modal's global bounds (ADR-0057). Pipeline: `clipOpening` (resolve/open with `OpenMediaOptions.explicitLaunch`) → await surface readiness → seek → activate bounded clip window → play → `clipReady` (attach portal). Dismiss pauses, clears the playback session (no mini-bar), keeps the YouTube WebView mounted on its idle page, parks the surface, and keeps the flashcard mounted. Echo is recorder-only (`ShadowReadingPanel` with context media id / locator / language; no `PlayerController` / global echo activation): the overlay shows the **context sentence** (word highlighted) above the recorder so the learner can read while practicing; its recorder controls remain enabled independently of global EchoMode. Shadow-reading hotkeys (record / play take / pitch / assess) pulse the shared bus while echo practice is open even without a player session. Modes are mutually exclusive. Overlay is modal (dismiss before rate/flip; Esc clears practice, does not exit review). Global mini-bar is suppressed while clip practice is open.
 - **Open in player / source** — confirm **replaces** the review route with `/player/:id?start=…&end=…&autoplay=1&clip=1&norestore=1` via `PlayerLaunchRequest.vocabularyOpenSource`. This opens the normal expanded video + transcript screen at the context locator with Echo active, rather than a standalone video-only destination. Review `onExit` clears the session once; do not pop-then-navigate.
 

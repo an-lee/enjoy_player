@@ -13,7 +13,7 @@ import 'package:enjoy_player/features/vocabulary/presentation/vocabulary_ipa_for
 import 'package:enjoy_player/features/vocabulary/presentation/widgets/flashcard_soft_error.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
-class FlashcardDictionaryTab extends ConsumerWidget {
+class FlashcardDictionaryTab extends ConsumerStatefulWidget {
   const FlashcardDictionaryTab({
     super.key,
     required this.explanation,
@@ -28,11 +28,39 @@ class FlashcardDictionaryTab extends ConsumerWidget {
   final VoidCallback onFetch;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FlashcardDictionaryTab> createState() =>
+      _FlashcardDictionaryTabState();
+}
+
+class _FlashcardDictionaryTabState
+    extends ConsumerState<FlashcardDictionaryTab> {
+  var _autoloadRequested = false;
+
+  @override
+  void didUpdateWidget(covariant FlashcardDictionaryTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // New cache payload (or cleared after navigation) may need a fresh load.
+    if (oldWidget.explanation != widget.explanation) {
+      _autoloadRequested = false;
+    }
+  }
+
+  void _maybeAutoload({required bool signedIn}) {
+    if (!mounted || _autoloadRequested) return;
+    if (decodeDictionaryExplanation(widget.explanation) != null) return;
+    if (widget.fetchInFlight || widget.error != null) return;
+    if (!signedIn) return;
+    _autoloadRequested = true;
+    widget.onFetch();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final t = EnjoyThemeTokens.of(context);
-    final result = decodeDictionaryExplanation(explanation);
+    final result = decodeDictionaryExplanation(widget.explanation);
     final auth = ref.watch(authCtrlProvider);
+    final authLoading = auth.isLoading;
     final signedIn = auth.maybeWhen(
       data: (s) => s is AuthSignedIn,
       orElse: () => false,
@@ -42,6 +70,10 @@ class FlashcardDictionaryTab extends ConsumerWidget {
       return _DictionaryResultView(result: result);
     }
 
+    if (authLoading) {
+      return _DictionaryLoading(label: l10n.vocabularyFetching);
+    }
+
     if (!signedIn) {
       return const AuthRequiredCallout(
         surface: AuthRequiredSurface.lookupDictionary,
@@ -49,24 +81,62 @@ class FlashcardDictionaryTab extends ConsumerWidget {
       );
     }
 
+    // Kick off load once auth is ready and cache is empty.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeAutoload(signedIn: signedIn);
+    });
+
+    if (widget.fetchInFlight || widget.error == null) {
+      return _DictionaryLoading(label: l10n.vocabularyFetching);
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(l10n.vocabularyDictionaryNotAvailable),
-        if (error != null) ...[
-          SizedBox(height: t.space8),
-          FlashcardSoftError(message: l10n.vocabularyAiFetchFailed),
-        ],
+        FlashcardSoftError(message: l10n.vocabularyAiFetchFailed),
         SizedBox(height: t.space12),
         EnjoyButton.secondary(
-          onPressed: fetchInFlight ? null : onFetch,
-          child: Text(
-            fetchInFlight
-                ? l10n.vocabularyFetching
-                : l10n.vocabularyFetchDictionary,
-          ),
+          onPressed: widget.onFetch,
+          child: Text(l10n.vocabularyFetchDictionary),
         ),
       ],
+    );
+  }
+}
+
+class _DictionaryLoading extends StatelessWidget {
+  const _DictionaryLoading({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = EnjoyThemeTokens.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: t.space24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: scheme.primary,
+              ),
+            ),
+            SizedBox(height: t.space12),
+            Text(
+              label,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

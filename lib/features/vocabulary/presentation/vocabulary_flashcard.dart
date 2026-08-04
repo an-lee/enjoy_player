@@ -422,6 +422,7 @@ class _FlashcardBack extends StatelessWidget {
                       ),
                       _TabBody(
                         child: FlashcardDictionaryTab(
+                          key: ValueKey('dict-${item.id}'),
                           explanation: item.explanation,
                           fetchInFlight: dictionaryFetchInFlight,
                           error: dictionaryError,
