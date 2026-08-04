@@ -40,7 +40,30 @@
 - **Auto translate** ([ADR-0038](../decisions/0038-viewport-per-line-auto-translate.md), persistence from [ADR-0037](../decisions/0037-transcript-auto-translate.md), identity from [ADR-0039](../decisions/0039-auto-translate-primary-text-keyed-overlay.md)): the translation picker offers **Auto translate** after **None** (AI `source: ai` tracks are hidden from the generic list to avoid duplicate rows). Selecting it ensures a durable AI secondary track keyed by native language; the transcript list then calls `requestTranslateLine` for each built row with empty AI text (viewport / cache-extent driven, ≤2 concurrent). Finished lines are **cached in Drift** — scrolling away and back shows cached text without re-requesting. Display uses the **primary line index** (not time matching); each cue stores a `sourceKey` fingerprint of normalized primary text + language pair so edited primary text soft-invalidates that line. Identical primary lines can reuse a cached translation. Each translated line has an inline **refresh** control to re-translate that line only. In-flight lines show a compact “Translating…” placeholder. Coexists with YouTube bilingual secondary tracks and imported captions (those still use time-based matching).
 - **Recording counts** read from local Drift (`recordings` table); when signed in, cloud metadata sync runs on media open ([`schedulePlayerOpenSideEffects`](../../lib/features/player/application/player_open_side_effects.dart)) and counts update live when new takes are saved in echo mode.
 - **Auto-follow**: While the engine is **playing**, the list auto-scrolls when the target would be off-screen (`Scrollable.ensureVisible`). **Non-echo**: the **active cue** is brought into view with a mid-viewport bias (`alignment ~0.42`). **Echo mode**: the merged **echo block** (controls + cue card + shadow-reading stack) is the scroll target and is aligned to the **top** of the transcript viewport to leave more vertical room for the shadow panel. When paused, the list does not auto-scroll.
-- **Echo region** (echo mode on): **Expand / shrink** controls sit **between** the transcript list and the shadow panel as separate rows (not inside the cue card). **Cue lines** use one merged rounded **transcript card**; **shadow reading** is a **compact stack** below with an **idle toolbar** (pitch **icon** toggle, **centered** 56pt record FAB, play + **more** menu **grouped at center**; **delete** is in the menu as a **list-style row** (leading delete icon, same column as take checkmarks), with a **confirm dialog** before removal), **pitch chart** when expanded (headerless body only), and **recording focus** (centered FAB + elapsed vs segment target; over-target warning only). Long hint is in the record control **tooltip** (shortcut + `shadowReadingHint`) — see [`ShadowReadingPanel`](../../lib/features/shadow_reading/presentation/shadow_reading_panel.dart). Take duration is derived from the **WAV header** (see [`wav_duration_ms`](../../lib/core/audio/wav_duration_ms.dart)). Take playback uses a dedicated **`media_kit`** preview player ([`recording_preview_player`](../../lib/core/audio/recording_preview_player.dart)), separate from lesson playback so the loaded lesson is not replaced.
+- **Echo region** (echo mode on): **Expand / shrink** controls sit **between** the transcript list and the shadow panel as separate rows (not inside the cue card). **Cue lines** use one merged rounded **transcript card**; **shadow reading** is a **compact stack** below with an **idle toolbar** (optional **share** slot on the left, pitch **icon** toggle, **centered** 56pt record FAB, play + **more** menu **grouped at center**; **delete** is in the menu as a **list-style row** (leading delete icon, same column as take checkmarks), with a **confirm dialog** before removal), **pitch chart** when expanded (headerless body only), and **recording focus** (centered FAB + elapsed vs segment target; over-target warning only). Long hint is in the record control **tooltip** (shortcut + `shadowReadingHint`) — see [`ShadowReadingPanel`](../../lib/features/shadow_reading/presentation/shadow_reading_panel.dart). Take duration is derived from the **WAV header** (see [`wav_duration_ms`](../../lib/core/audio/wav_duration_ms.dart)). Take playback uses a dedicated **`media_kit`** preview player ([`recording_preview_player`](../../lib/core/audio/recording_preview_player.dart)), separate from lesson playback so the loaded lesson is not replaced. The share slot hosts [`SharePracticePosterButton`](../../lib/features/share_poster/presentation/share_practice_poster_button.dart); it is visible only when echo mode is active **and** recordings exist for the active target — see [ADR-0068](../decisions/0068-shadow-toolbar-share-button.md).
+
+## Mobile density
+
+Transcript list and echo-region chrome use [`TranscriptDensity.of(context)`](../../lib/core/transcript/transcript_density.dart) to switch between full and compact values. Compact is selected when `isMobilePlatform` ([`lib/core/platform/mobile_platform.dart`](../../lib/core/platform/mobile_platform.dart)) is true (iOS / Android). Values are summarized below:
+
+| Property | Desktop | Mobile |
+|----------|--------:|-------:|
+| ListView horizontal padding | 12 | 8 |
+| ListView vertical padding | 8 | 4 |
+| Transcript line vertical padding | 10 | 6 |
+| Inter-line gap | 8 | 4 |
+| Header-to-body gap | 4 | 2 |
+| Primary-to-secondary gap | 8 | 4 |
+| Secondary text left padding | 12 | 8 |
+| Body line height | 1.6 | 1.45 |
+| Secondary line height | 1.55 | 1.4 |
+| Echo controls vertical padding | 4 | 2 |
+| Echo card gap | 8 | 4 |
+| Echo bottom-panel gap | 16 | 8 |
+| Echo divider thickness | 1.0 | 0.5 |
+| Echo control icon size | 20 | 16 |
+
+The horizontal transcript line padding stays at 16 across both platforms so the active-line rail and 44dp tap targets remain readable. The density is resolved from each affected widget's `BuildContext` so the choice follows the live `defaultTargetPlatform` (no static-initialized token).
 
 ## Code layout
 

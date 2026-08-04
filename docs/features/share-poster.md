@@ -6,7 +6,7 @@ The **share practice poster** feature renders a **9:16** branded poster from the
 
 ## MVP behavior
 
-- **Trigger**: the expanded player title chrome shows a **share** action (`SharePracticePosterButton`) **only when the open media has at least one local recording**. Tapping it opens `PracticePosterPreviewSheet`.
+- **Trigger**: the shadow-reading toolbar's **leading share slot** shows a **share** action (`SharePracticePosterButton`) on the left of the idle toolbar row. The button is visible only when **echo mode is active** **and** the open media has at least one local recording (the button self-hides via `SizedBox.shrink()` otherwise). Tapping it opens `PracticePosterPreviewSheet`. See [ADR-0068](../decisions/0068-shadow-toolbar-share-button.md) for the relocation from the previously-overlaid transcript chrome.
 - **Preview sheet** (`practice_poster_preview_sheet.dart`): 9:16 poster, hero quote, takes / sentences / spoken stats, QR to `https://player.enjoy.bot`.
 - **Cover priority**: `echoCoverBytes` (echo-region live capture) → `localThumbnailPath` → `networkThumbnailUrl` → **generative cover** (`GenerativeMediaCover`) seeded by content hash.
 - **Export pipeline**: `practice_poster_export.dart` rasterizes the widget tree at the configured pixel ratio and writes PNG to a temp file; the system share sheet picks it up. Capture must **not** read `RenderObject.debugNeedsPaint` (that getter throws `LateInitializationError` in release/profile on Flutter versions that still use `late` + `assert`).

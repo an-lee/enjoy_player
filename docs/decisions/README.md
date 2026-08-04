@@ -91,3 +91,4 @@ Trade-offs, follow-up work, risks.
 | [0065](0065-enjoy-modals-root-navigator.md) | Enjoy modals default to root navigator (above PlayerSurfaceHost; supplements 0057) |
 | [0066](0066-park-player-surface-for-overlays.md) | Park PlayerSurfaceHost while dialogs/sheets/snackbars are visible (WebView2 z-order; supplements 0057/0065) |
 | [0067](0067-github-release-publishing.md) | GitHub Release publishing — per-platform workflows keep building, idempotent draft uploads, coordinator finalizes notes |
+| [0068](0068-shadow-toolbar-share-button.md) | Share practice poster moved from transcript overlay into shadow-reading toolbar's leading slot; visibility narrows to echo mode + recordings |
