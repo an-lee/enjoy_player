@@ -1,4 +1,5 @@
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
+import 'package:enjoy_player/features/shadow_reading/presentation/widgets/shadow_record_fab.dart';
 import 'package:enjoy_player/features/shadow_reading/presentation/widgets/shadow_reading_toolbar_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -54,7 +55,10 @@ void main() {
                     ),
                   ],
                 ),
-                recordFab: const SizedBox(width: 68, height: 68),
+                recordFab: const SizedBox(
+                  width: ShadowRecordFab.ringOuterHitSize,
+                  height: ShadowRecordFab.ringOuterHitSize,
+                ),
               ),
             ),
           ),
@@ -95,7 +99,10 @@ void main() {
                   icon: Icon(Icons.ios_share_rounded),
                 ),
                 takesActions: null,
-                recordFab: const SizedBox(width: 68, height: 68),
+                recordFab: const SizedBox(
+                  width: ShadowRecordFab.ringOuterHitSize,
+                  height: ShadowRecordFab.ringOuterHitSize,
+                ),
               ),
             ),
           ),
@@ -134,7 +141,10 @@ void main() {
                 hasMediaPath: true,
                 onPitchTap: () {},
                 takesActions: null,
-                recordFab: const SizedBox(width: 68, height: 68),
+                recordFab: const SizedBox(
+                  width: ShadowRecordFab.ringOuterHitSize,
+                  height: ShadowRecordFab.ringOuterHitSize,
+                ),
               ),
             ),
           ),

@@ -232,9 +232,9 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
             : TranscriptBlurText(revealed: isRevealed, child: secondaryWidget);
 
         final textBody = Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: tok.transcriptLinePadding.horizontal,
-            vertical: density.lineVerticalPadding,
+          padding: tok.transcriptLinePadding.copyWith(
+            top: density.lineVerticalPadding,
+            bottom: density.lineVerticalPadding,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

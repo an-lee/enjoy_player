@@ -677,118 +677,112 @@ class _ShadowReadingPanelState extends ConsumerState<ShadowReadingPanel>
                 _recording || overTarget || (ringProgress > 1e-6);
 
             if (_recording) {
-              return Padding(
-                padding: EdgeInsets.only(bottom: tok.space4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Center(
-                      child: Tooltip(
-                        message: ttToggleRecording,
-                        child: ShadowRecordFab(
-                          recording: true,
-                          echoActive: widget.echoActive,
-                          ringProgress: ringProgress,
-                          overTarget: overTarget,
-                          overPulseHigh: _overPulseHigh,
-                          showProgressArc: showProgressArc,
-                          onTap: () => _toggleRecord(l10n),
-                          scheme: scheme,
-                          tok: tok,
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: tok.space4),
-                    ShadowRecordingCaptionRow(
-                      elapsedSec: elapsedSec,
-                      targetSec: targetSec,
-                      overTarget: overTarget,
-                      overBySec: overBySec,
-                      l10n: l10n,
-                      tt: tt,
-                      scheme: scheme,
-                      tok: tok,
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            return Padding(
-              padding: EdgeInsets.only(bottom: tok.space4),
-              child: Column(
+              return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  ShadowReadingToolbarRow(
-                    tok: tok,
-                    scheme: scheme,
-                    pitchExpanded: _pitchExpanded,
-                    pitchTooltip: pitchContourTooltip,
-                    hasMediaPath: mediaPath != null && mediaPath.isNotEmpty,
-                    onPitchTap: () =>
-                        setState(() => _pitchExpanded = !_pitchExpanded),
-                    leadingShare: SharePracticePosterButton(
-                      mediaId: widget.mediaId,
-                      iconColor: scheme.onSurface,
-                    ),
-                    takesActions: list.isNotEmpty && sel != null
-                        ? ShadowTakesToolbarActions(
-                            row: sel,
-                            list: list,
-                            echoActive: widget.echoActive,
-                            scheme: scheme,
-                            tok: tok,
-                            l10n: l10n,
-                            onPlayOrPause: () {
-                              final path = sel.localPath;
-                              if (path != null && path.isNotEmpty) {
-                                unawaited(_playOrPauseTake(path));
-                              }
-                            },
-                            onDeleteCurrent: () =>
-                                unawaited(_deleteRecording(sel)),
-                            onChooseTake: (id) async {
-                              await ref
-                                  .read(recordingPreviewPlayerProvider)
-                                  .stop();
-                              if (mounted) {
-                                setState(() => _selectedRecordingId = id);
-                              }
-                            },
-                          )
-                        : null,
-                    recordFab: Tooltip(
-                      message: recordFabTooltip,
+                  Center(
+                    child: Tooltip(
+                      message: ttToggleRecording,
                       child: ShadowRecordFab(
-                        recording: false,
+                        recording: true,
                         echoActive: widget.echoActive,
-                        ringProgress: 0,
-                        overTarget: false,
-                        overPulseHigh: false,
-                        showProgressArc: false,
+                        ringProgress: ringProgress,
+                        overTarget: overTarget,
+                        overPulseHigh: _overPulseHigh,
+                        showProgressArc: showProgressArc,
                         onTap: () => _toggleRecord(l10n),
                         scheme: scheme,
                         tok: tok,
                       ),
                     ),
                   ),
-                  if (mediaPath != null && mediaPath.isNotEmpty) ...[
-                    if (_pitchExpanded) SizedBox(height: tok.space8),
-                    PitchContourSection(
-                      mediaPath: mediaPath,
-                      startSec: widget.startSec,
-                      endSec: widget.endSec,
-                      currentTimeRelativeSec: _relativeSec,
-                      selectedRecordingPath: sel?.localPath,
-                      selectedRecordingDurationMs: sel?.duration,
-                      expanded: _pitchExpanded,
-                      onToggleExpanded: () =>
-                          setState(() => _pitchExpanded = !_pitchExpanded),
-                      showHeader: false,
-                    ),
-                  ],
+                  SizedBox(height: tok.space4),
+                  ShadowRecordingCaptionRow(
+                    elapsedSec: elapsedSec,
+                    targetSec: targetSec,
+                    overTarget: overTarget,
+                    overBySec: overBySec,
+                    l10n: l10n,
+                    tt: tt,
+                    scheme: scheme,
+                    tok: tok,
+                  ),
                 ],
-              ),
+              );
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ShadowReadingToolbarRow(
+                  tok: tok,
+                  scheme: scheme,
+                  pitchExpanded: _pitchExpanded,
+                  pitchTooltip: pitchContourTooltip,
+                  hasMediaPath: mediaPath != null && mediaPath.isNotEmpty,
+                  onPitchTap: () =>
+                      setState(() => _pitchExpanded = !_pitchExpanded),
+                  leadingShare: SharePracticePosterButton(
+                    mediaId: widget.mediaId,
+                    iconColor: scheme.onSurface,
+                  ),
+                  takesActions: list.isNotEmpty && sel != null
+                      ? ShadowTakesToolbarActions(
+                          row: sel,
+                          list: list,
+                          echoActive: widget.echoActive,
+                          scheme: scheme,
+                          tok: tok,
+                          l10n: l10n,
+                          onPlayOrPause: () {
+                            final path = sel.localPath;
+                            if (path != null && path.isNotEmpty) {
+                              unawaited(_playOrPauseTake(path));
+                            }
+                          },
+                          onDeleteCurrent: () =>
+                              unawaited(_deleteRecording(sel)),
+                          onChooseTake: (id) async {
+                            await ref
+                                .read(recordingPreviewPlayerProvider)
+                                .stop();
+                            if (mounted) {
+                              setState(() => _selectedRecordingId = id);
+                            }
+                          },
+                        )
+                      : null,
+                  recordFab: Tooltip(
+                    message: recordFabTooltip,
+                    child: ShadowRecordFab(
+                      recording: false,
+                      echoActive: widget.echoActive,
+                      ringProgress: 0,
+                      overTarget: false,
+                      overPulseHigh: false,
+                      showProgressArc: false,
+                      onTap: () => _toggleRecord(l10n),
+                      scheme: scheme,
+                      tok: tok,
+                    ),
+                  ),
+                ),
+                if (mediaPath != null && mediaPath.isNotEmpty) ...[
+                  if (_pitchExpanded) SizedBox(height: tok.space8),
+                  PitchContourSection(
+                    mediaPath: mediaPath,
+                    startSec: widget.startSec,
+                    endSec: widget.endSec,
+                    currentTimeRelativeSec: _relativeSec,
+                    selectedRecordingPath: sel?.localPath,
+                    selectedRecordingDurationMs: sel?.duration,
+                    expanded: _pitchExpanded,
+                    onToggleExpanded: () =>
+                        setState(() => _pitchExpanded = !_pitchExpanded),
+                    showHeader: false,
+                  ),
+                ],
+              ],
             );
           },
         );

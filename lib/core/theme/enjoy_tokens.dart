@@ -43,10 +43,8 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
       echoActive: AppColors.echoActive,
       blurActive: AppColors.blurActive,
       ccBadge: scheme.primary,
-      transcriptLinePadding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 10,
-      ),
+      // Vertical padding is applied per-line via [TranscriptDensity.lineVerticalPadding].
+      transcriptLinePadding: const EdgeInsets.symmetric(horizontal: 16),
       contentMaxWidth: 720,
       formMaxWidth: 680,
       hubMaxWidth: 840,

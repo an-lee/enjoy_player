@@ -1,8 +1,8 @@
 /// Mobile-density tokens for the transcript panel and echo region controls.
 ///
 /// On phones (iOS / Android) the script size, list padding, and echo chrome
-/// shrink ~30 % so a single screen-fit shows more cues without crowding
-/// tap targets. Desktop keeps the previous generous spacing.
+/// use a denser rhythm so a single screen-fit shows more cues without crowding
+/// tap targets. Desktop stays slightly more open but still compact.
 ///
 /// Read via [TranscriptDensity.of] from a widget `BuildContext`; the helper
 /// resolves [isMobilePlatform] against the current [defaultTargetPlatform].
@@ -60,16 +60,16 @@ class TranscriptDensity {
     return TranscriptDensity(
       listHorizontalPadding: compact ? 8 : tok.space12,
       listVerticalPadding: compact ? 4 : tok.space8,
-      lineVerticalPadding: compact ? 6 : 10,
-      lineInterGap: compact ? 4 : tok.space8,
-      headerBodyGap: compact ? 2 : tok.space4,
-      primarySecondaryGap: compact ? 4 : tok.space8,
+      lineVerticalPadding: compact ? 4 : 6,
+      lineInterGap: compact ? 2 : tok.space4,
+      headerBodyGap: 2,
+      primarySecondaryGap: compact ? 2 : tok.space4,
       secondaryLeftPadding: compact ? 8 : tok.space12,
-      bodyHeight: compact ? 1.45 : 1.6,
-      secondaryHeight: compact ? 1.4 : 1.55,
+      bodyHeight: compact ? 1.35 : 1.45,
+      secondaryHeight: compact ? 1.3 : 1.4,
       echoControlsPadding: compact ? 2 : tok.space4,
       echoCardGap: compact ? 4 : tok.space8,
-      echoBottomPanelGap: compact ? 8 : tok.space16,
+      echoBottomPanelGap: compact ? 4 : tok.space8,
       echoDividerThickness: compact ? 0.5 : 1.0,
       echoControlIconSize: compact ? 16 : 20,
     );
