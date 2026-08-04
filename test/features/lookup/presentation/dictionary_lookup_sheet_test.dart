@@ -152,6 +152,37 @@ void main() {
       expect(popped, isTrue);
     });
 
+    testWidgets('header row orders pronounce → copy → close by x', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        _harness(
+          overrides: baseOverrides(),
+          child: const SizedBox(
+            height: 600,
+            child: DictionaryLookupSheet(request: request),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final pronounceX = tester
+          .getCenter(find.byIcon(Icons.volume_up_rounded))
+          .dx;
+      final copyX = tester.getCenter(find.byIcon(Icons.copy_all_rounded)).dx;
+      final closeX = tester.getCenter(find.byIcon(Icons.close_rounded)).dx;
+
+      expect(pronounceX, lessThan(copyX));
+      expect(copyX, lessThan(closeX));
+    });
+
     testWidgets('swap button swaps source and target languages', (
       tester,
     ) async {

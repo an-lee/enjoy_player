@@ -185,12 +185,12 @@ class _DictionaryLookupSheetState extends ConsumerState<DictionaryLookupSheet> {
                         ),
                       ),
                     ),
-                    AddToVocabularyControl(request: _effectiveRequest),
                     PronounceIconButton(
                       text: widget.request.selectedText,
                       localeTag: _sourceLanguage,
                       surfaceId: PronounceSurfaceId.lookup,
                     ),
+                    AddToVocabularyControl(request: _effectiveRequest),
                     IconButton(
                       style: IconButton.styleFrom(
                         minimumSize: const Size(44, 44),
