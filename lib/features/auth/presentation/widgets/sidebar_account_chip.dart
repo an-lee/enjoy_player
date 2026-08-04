@@ -58,10 +58,15 @@ class SidebarAccountChip extends ConsumerWidget {
           if (state is AuthSignedIn) {
             final p = state.profile;
             final avatarUrl = rasterAvatarUrl(p.avatarUrl);
-            final isPro =
-                ref.watch(currentTierProvider) == SubscriptionTier.pro;
-            final isFree = !isPro;
+            final tier = ref.watch(currentTierProvider);
+            final isPaid = tier != SubscriptionTier.free;
+            final isFree = !isPaid;
             final updateBadge = ref.watch(updateAvailableBadgeProvider);
+            final tierBadgeLabel = switch (tier) {
+              SubscriptionTier.pro => l10n.profileSubscriptionPro,
+              SubscriptionTier.lite => l10n.subscriptionTierLiteName,
+              SubscriptionTier.free => null,
+            };
             return ListTile(
               dense: true,
               leading: Stack(
@@ -98,10 +103,10 @@ class SidebarAccountChip extends ConsumerWidget {
                       style: Theme.of(context).textTheme.labelLarge,
                     ),
                   ),
-                  if (isPro) ...[
+                  if (tierBadgeLabel != null) ...[
                     SizedBox(width: t.space4),
                     _SidebarTierBadge(
-                      label: l10n.profileSubscriptionPro,
+                      label: tierBadgeLabel,
                       background: cs.primaryContainer,
                       foreground: cs.onPrimaryContainer,
                     ),

@@ -193,7 +193,11 @@ void main() {
 
       final result = await container
           .read(subscriptionPurchaseCtrlProvider.notifier)
-          .purchaseExternal(months: 3, processor: PaymentProcessor.stripe);
+          .purchaseExternal(
+            months: 3,
+            processor: PaymentProcessor.stripe,
+            tier: 'pro',
+          );
 
       expect(result, isNotNull);
       expect(result!.id, 'sess-1');
@@ -222,7 +226,11 @@ void main() {
       await expectLater(
         container
             .read(subscriptionPurchaseCtrlProvider.notifier)
-            .purchaseExternal(months: 1, processor: PaymentProcessor.mixin),
+            .purchaseExternal(
+              months: 1,
+              processor: PaymentProcessor.mixin,
+              tier: 'pro',
+            ),
         throwsA(
           isA<StateError>().having(
             (e) => e.message,
@@ -247,7 +255,11 @@ void main() {
       await expectLater(
         container
             .read(subscriptionPurchaseCtrlProvider.notifier)
-            .purchaseExternal(months: 1, processor: PaymentProcessor.stripe),
+            .purchaseExternal(
+              months: 1,
+              processor: PaymentProcessor.stripe,
+              tier: 'pro',
+            ),
         throwsA(
           isA<StateError>().having(
             (e) => e.message,
@@ -269,7 +281,11 @@ void main() {
       await expectLater(
         container
             .read(subscriptionPurchaseCtrlProvider.notifier)
-            .purchaseExternal(months: 1, processor: PaymentProcessor.stripe),
+            .purchaseExternal(
+              months: 1,
+              processor: PaymentProcessor.stripe,
+              tier: 'pro',
+            ),
         throwsA(
           isA<StateError>().having(
             (e) => e.message,
@@ -293,7 +309,11 @@ void main() {
       await expectLater(
         container
             .read(subscriptionPurchaseCtrlProvider.notifier)
-            .purchaseExternal(months: 6, processor: PaymentProcessor.stripe),
+            .purchaseExternal(
+              months: 6,
+              processor: PaymentProcessor.stripe,
+              tier: 'pro',
+            ),
         throwsA(isA<StateError>()),
       );
 

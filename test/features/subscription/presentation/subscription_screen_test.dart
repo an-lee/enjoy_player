@@ -129,11 +129,13 @@ void main() {
     expect(find.text(l10n.subscriptionTitle), findsWidgets);
     // Catalog title is shown.
     expect(find.text(l10n.subscriptionTierCatalogTitle), findsOneWidget);
-    // Free + Pro tier names appear on their cards.
+    // Free + Lite + Pro tier names appear on their cards.
     expect(find.text(l10n.subscriptionTierFreeName), findsWidgets);
+    expect(find.text(l10n.subscriptionTierLiteName), findsWidgets);
     expect(find.text(l10n.subscriptionTierProName), findsWidgets);
     // Pro tier CTA is "Choose Pro" (the user is not on Pro yet).
     expect(find.text(l10n.subscriptionTierCatalogChoosePro), findsOneWidget);
+    expect(find.text(l10n.subscriptionTierCatalogChooseLite), findsOneWidget);
   });
 
   testWidgets('shows retry on error', (tester) async {

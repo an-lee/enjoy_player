@@ -21,6 +21,7 @@ import 'package:enjoy_player/core/theme/widgets/enjoy_page.dart';
 import 'package:enjoy_player/core/theme/widgets/skeleton.dart';
 import 'package:enjoy_player/features/auth/application/auth_controller.dart';
 import 'package:enjoy_player/features/auth/domain/auth_state.dart';
+import 'package:enjoy_player/features/auth/domain/user_profile.dart';
 import 'package:enjoy_player/features/auth/presentation/widgets/auth_required_callout.dart';
 import 'package:enjoy_player/features/credits/application/credits_packages_provider.dart';
 import 'package:enjoy_player/features/credits/application/credits_summary_provider.dart';
@@ -100,8 +101,8 @@ class _SubscriptionBody extends ConsumerWidget {
               SizedBox(height: t.space24),
               TierCatalog(
                 status: status,
-                onChoosePro: (interval) =>
-                    _openUnifiedPurchase(context, interval),
+                onChoosePaid: (tier, interval) =>
+                    _openUnifiedPurchase(context, tier, interval),
               ),
               SizedBox(height: t.space20),
               const BalanceToCredits(),
@@ -138,13 +139,14 @@ class _SubscriptionBody extends ConsumerWidget {
   }
 }
 
-/// Opens the unified purchase modal at the chosen catalog interval.
+/// Opens the unified purchase modal at the chosen catalog tier + interval.
 ///
 /// Surfaces platform-specific affordances (mobile in-app unavailable notice)
 /// before delegating to [showUnifiedPurchaseSheet], which itself defaults to
 /// the auto-renew path and offers pay-once as a secondary option.
 Future<void> _openUnifiedPurchase(
   BuildContext context,
+  SubscriptionTier tier,
   CatalogInterval interval,
 ) async {
   if (showsMobilePurchaseUnavailable()) {
@@ -153,5 +155,9 @@ Future<void> _openUnifiedPurchase(
   }
   if (!supportsExternalSubscriptionPurchase()) return;
   if (!context.mounted) return;
-  await showUnifiedPurchaseSheet(context, interval: interval);
+  await showUnifiedPurchaseSheet(
+    context,
+    tier: tier,
+    interval: interval,
+  );
 }

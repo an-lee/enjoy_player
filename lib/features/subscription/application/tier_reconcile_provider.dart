@@ -132,7 +132,7 @@ class TierReconcileCtrl extends _$TierReconcileCtrl {
         if (kind == PendingPurchaseKind.creditsPackage) {
           confirmed = await _pollUntilPackageOrTimeout();
         } else {
-          confirmed = await _pollUntilProOrTimeout();
+          confirmed = await _pollUntilPaidOrTimeout();
         }
         _pendingKind = null;
         _clearPackagePendingState();
@@ -187,25 +187,25 @@ class TierReconcileCtrl extends _$TierReconcileCtrl {
     }
   }
 
-  Future<bool> _pollUntilProOrTimeout() async {
+  Future<bool> _pollUntilPaidOrTimeout() async {
     final deadline = DateTime.now().add(_eagerPollTimeout);
     while (DateTime.now().isBefore(deadline)) {
       ref.invalidate(subscriptionStatusProvider);
-      final confirmed = await _pollProOnce();
+      final confirmed = await _pollPaidOnce();
       if (confirmed) return true;
       await Future<void>.delayed(_eagerPollInterval);
     }
     _log.info(
-      'eager reconcile timed out before Pro confirmed; '
+      'eager reconcile timed out before paid tier confirmed; '
       'background reconcile will retry',
     );
     return false;
   }
 
-  Future<bool> _pollProOnce() async {
+  Future<bool> _pollPaidOnce() async {
     try {
       final status = await ref.read(subscriptionStatusProvider.future);
-      if (status.subscriptionTier == SubscriptionTier.pro) {
+      if (status.isPaidTier) {
         await _safeProfileRefresh();
         return true;
       }

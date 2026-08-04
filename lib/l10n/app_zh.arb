@@ -1385,7 +1385,10 @@
   "subscriptionTierCatalogRecommended": "推荐",
   "subscriptionTierCatalogChoosePro": "选择 Pro",
   "subscriptionTierCatalogExtendPro": "续费 Pro",
+  "subscriptionTierCatalogChooseLite": "选择 Lite",
+  "subscriptionTierCatalogExtendLite": "续费 Lite",
   "subscriptionTierCatalogNotSelected": "暂不支持降级",
+  "subscriptionUpgradedToLite": "您已成为 Lite 会员！",
   "subscriptionTierCatalogSelectedInterval": "{amount} / {unit} — 通过 Stripe 计费",
   "@subscriptionTierCatalogSelectedInterval": {
     "placeholders": {

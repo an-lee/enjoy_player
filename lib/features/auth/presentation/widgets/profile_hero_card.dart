@@ -93,7 +93,7 @@ class ProfileHeroCard extends ConsumerWidget {
                   ],
                 ),
               ),
-              if (tier != SubscriptionTier.pro) ...[
+              if (tier == SubscriptionTier.free) ...[
                 SizedBox(width: t.space12),
                 FilledButton.tonal(
                   onPressed: () => context.push('/subscription'),
@@ -115,7 +115,7 @@ class ProfileHeroCard extends ConsumerWidget {
   }
 }
 
-/// Pill chip showing the Pro / Free tier on the hero card.
+/// Pill chip showing the current tier on the hero card.
 class SubscriptionChip extends StatelessWidget {
   const SubscriptionChip({required this.tier, super.key});
 
@@ -126,9 +126,11 @@ class SubscriptionChip extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final label = tier == SubscriptionTier.pro
-        ? l10n.profileSubscriptionPro
-        : l10n.profileSubscriptionFree;
+    final label = switch (tier) {
+      SubscriptionTier.pro => l10n.profileSubscriptionPro,
+      SubscriptionTier.lite => l10n.subscriptionTierLiteName,
+      SubscriptionTier.free || null => l10n.profileSubscriptionFree,
+    };
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),

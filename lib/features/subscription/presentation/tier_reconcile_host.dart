@@ -63,10 +63,10 @@ class _TierReconcileHostState extends ConsumerState<TierReconcileHost>
     _lastEmittedTier ??= auth.profile.subscriptionTier ?? SubscriptionTier.free;
     unawaited(ref.read(tierReconcileCtrlProvider.notifier).reconcile());
     final liveTier = ref.read(currentTierProvider);
-    if (liveTier == SubscriptionTier.pro &&
-        _lastEmittedTier != SubscriptionTier.pro) {
+    if (liveTier != SubscriptionTier.free &&
+        _lastEmittedTier == SubscriptionTier.free) {
       _lastEmittedTier = liveTier;
-      _celebrate();
+      _celebrate(liveTier);
     }
   }
 
@@ -102,15 +102,20 @@ class _TierReconcileHostState extends ConsumerState<TierReconcileHost>
       }
       return;
     }
-    if (!confirmed && ref.read(currentTierProvider) != SubscriptionTier.pro) {
+    if (!confirmed && ref.read(currentTierProvider) == SubscriptionTier.free) {
       AppNotice.info(context, l10n.subscriptionVerifyTimeout);
     }
   }
 
-  void _celebrate() {
+  void _celebrate(SubscriptionTier tier) {
     if (!mounted) return;
     final l10n = AppLocalizations.of(context)!;
-    AppNotice.success(context, l10n.subscriptionUpgradedToPro);
+    final message = switch (tier) {
+      SubscriptionTier.lite => l10n.subscriptionUpgradedToLite,
+      SubscriptionTier.pro => l10n.subscriptionUpgradedToPro,
+      SubscriptionTier.free => l10n.subscriptionUpgradedToPro,
+    };
+    AppNotice.success(context, message);
   }
 
   @override
@@ -129,9 +134,9 @@ class _TierReconcileHostState extends ConsumerState<TierReconcileHost>
 
     ref.listen<SubscriptionTier>(currentTierProvider, (prev, next) {
       if (_lastEmittedTier == null) return;
-      if (next == SubscriptionTier.pro &&
-          _lastEmittedTier != SubscriptionTier.pro) {
-        _celebrate();
+      if (next != SubscriptionTier.free &&
+          _lastEmittedTier == SubscriptionTier.free) {
+        _celebrate(next);
       }
       _lastEmittedTier = next;
     });

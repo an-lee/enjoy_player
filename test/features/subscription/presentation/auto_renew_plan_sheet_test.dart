@@ -75,8 +75,11 @@ class _SheetLauncher extends StatelessWidget {
     return Scaffold(
       body: Center(
         child: ElevatedButton(
-          onPressed: () =>
-              showUnifiedPurchaseSheet(context, interval: interval),
+          onPressed: () => showUnifiedPurchaseSheet(
+            context,
+            tier: SubscriptionTier.pro,
+            interval: interval,
+          ),
           child: const Text('Open Sheet'),
         ),
       ),
@@ -342,10 +345,11 @@ void main() {
     });
 
     testWidgets(
-      'auto-renew fallback price matches the selected interval when no matching plan',
+      'auto-renew falls back to a skeleton when no matching plan is loaded',
       (tester) async {
         // Only a yearly pro plan exists, so opening the sheet at the monthly
-        // interval forces the fallback price path (no plan matches `month`).
+        // interval forces the no-plan-for-this-interval path. The UI must
+        // show a skeleton, never a hardcoded fallback price.
         const yearlyOnly = [
           SubscriptionPlan(
             id: 'plan_yearly',
@@ -373,22 +377,23 @@ void main() {
         await tester.tap(find.text('Open Sheet'));
         await tester.pumpAndSettle();
 
+        // When the selected plan is missing, the auto-renew CTA is rendered
+        // but disabled (so the user cannot proceed with a stale price).
         final l10n = lookupAppLocalizations(const Locale('en'));
+        final cta = find.text(l10n.subscriptionPurchaseModalSubscribeAutoRenewCta);
+        expect(cta, findsOneWidget);
+        final widget = tester.widget<FilledButton>(
+          find.ancestor(of: cta, matching: find.byType(FilledButton)).first,
+        );
+        expect(widget.onPressed, isNull);
 
-        // Auto-renew card shows the monthly fallback price plus the monthly
-        // interval label, never the yearly fallback.
+        // No hardcoded fallback price is rendered.
         expect(
-          find.text(
-            '${l10n.subscriptionAutoRenewPriceMonth('9.99')} · '
-            '${l10n.subscriptionAutoRenewMonthly}',
-          ),
-          findsOneWidget,
+          find.text(l10n.subscriptionAutoRenewPriceMonth('9.99')),
+          findsNothing,
         );
         expect(
-          find.text(
-            '${l10n.subscriptionAutoRenewPriceMonth('99.99')} · '
-            '${l10n.subscriptionAutoRenewMonthly}',
-          ),
+          find.text(l10n.subscriptionAutoRenewPriceMonth('99.99')),
           findsNothing,
         );
 

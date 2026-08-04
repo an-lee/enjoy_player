@@ -22,6 +22,10 @@ const _proStatus = SubscriptionStatus(
   subscriptionActive: true,
   subscriptionTier: SubscriptionTier.pro,
 );
+const _liteStatus = SubscriptionStatus(
+  subscriptionActive: true,
+  subscriptionTier: SubscriptionTier.lite,
+);
 const _freeStatus = SubscriptionStatus(
   subscriptionActive: true,
   subscriptionTier: SubscriptionTier.free,
@@ -148,7 +152,7 @@ void main() {
     expect(notifier.hasPendingPurchase, isTrue);
   });
 
-  test('eager reconcile polls until Pro and clears the pending flag', () async {
+  test('eager reconcile polls until paid and clears the pending flag', () async {
     var statusCalls = 0;
     final container = ProviderContainer(
       overrides: [
@@ -173,6 +177,31 @@ void main() {
 
     expect(container.read(currentTierProvider), SubscriptionTier.pro);
     expect(authNotifier.refreshCalls, greaterThanOrEqualTo(1));
+    expect(notifier.hasPendingPurchase, isFalse);
+  });
+
+  test('eager reconcile also confirms Lite as a paid tier', () async {
+    var statusCalls = 0;
+    final container = ProviderContainer(
+      overrides: [
+        authCtrlProvider.overrideWith(_RecordingAuthCtrl.new),
+        subscriptionStatusProvider.overrideWith((ref) async {
+          statusCalls++;
+          return statusCalls >= 2 ? _liteStatus : _freeStatus;
+        }),
+        creditsSummaryProvider.overrideWith(
+          (ref) async => _summary(permanent: 0),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(authCtrlProvider.future);
+    final notifier = container.read(tierReconcileCtrlProvider.notifier);
+
+    notifier.markPurchasePending();
+    expect(await notifier.reconcile(eager: true), isTrue);
+
+    expect(container.read(currentTierProvider), SubscriptionTier.lite);
     expect(notifier.hasPendingPurchase, isFalse);
   });
 

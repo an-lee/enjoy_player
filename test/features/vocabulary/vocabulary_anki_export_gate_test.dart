@@ -7,26 +7,37 @@ import 'package:enjoy_player/features/vocabulary/domain/vocabulary_models.dart';
 
 void main() {
   group('vocabularyAnkiExportAllowedFrom', () {
-    test('uses subscriptionIsPro when provided', () {
+    test('uses subscriptionIsPaid when provided', () {
       expect(
         vocabularyAnkiExportAllowedFrom(
           tier: SubscriptionTier.free,
-          subscriptionIsPro: true,
+          subscriptionIsPaid: true,
         ),
         isTrue,
       );
       expect(
         vocabularyAnkiExportAllowedFrom(
+          tier: SubscriptionTier.lite,
+          subscriptionIsPaid: false,
+        ),
+        isFalse,
+      );
+      expect(
+        vocabularyAnkiExportAllowedFrom(
           tier: SubscriptionTier.pro,
-          subscriptionIsPro: false,
+          subscriptionIsPaid: false,
         ),
         isFalse,
       );
     });
 
-    test('falls back to tier when subscriptionIsPro is null', () {
+    test('falls back to tier when subscriptionIsPaid is null', () {
       expect(
         vocabularyAnkiExportAllowedFrom(tier: SubscriptionTier.pro),
+        isTrue,
+      );
+      expect(
+        vocabularyAnkiExportAllowedFrom(tier: SubscriptionTier.lite),
         isTrue,
       );
       expect(
@@ -37,16 +48,16 @@ void main() {
   });
 
   group('runVocabularyAnkiExport', () {
-    test('throws pro_required when not Pro', () async {
+    test('throws paid_required when not paid', () async {
       expect(
         () => runVocabularyAnkiExport(
-          isPro: false,
+          isPaid: false,
           listAll: () async => const [],
           getContextsForItem: (_) async => const [],
           filters: const VocabularyAnkiExportFilters(),
         ),
         throwsA(
-          isA<StateError>().having((e) => e.message, 'message', 'pro_required'),
+          isA<StateError>().having((e) => e.message, 'message', 'paid_required'),
         ),
       );
     });
@@ -71,7 +82,7 @@ void main() {
       ];
       expect(
         () => runVocabularyAnkiExport(
-          isPro: true,
+          isPaid: true,
           listAll: () async => items,
           getContextsForItem: (_) async => const [],
           filters: const VocabularyAnkiExportFilters(

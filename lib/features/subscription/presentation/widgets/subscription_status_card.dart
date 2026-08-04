@@ -10,12 +10,14 @@ import 'package:enjoy_player/core/notices/app_notice.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_button.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_card.dart';
+import 'package:enjoy_player/features/auth/domain/user_profile.dart';
 import 'package:enjoy_player/features/subscription/application/subscription_purchase_provider.dart';
 import 'package:enjoy_player/features/subscription/application/subscription_status_provider.dart';
 import 'package:enjoy_player/features/subscription/domain/auto_renew_billing.dart';
 import 'package:enjoy_player/features/subscription/domain/subscription_status.dart';
 import 'package:enjoy_player/features/subscription/presentation/widgets/auto_renew_plan_sheet.dart';
 import 'package:enjoy_player/features/subscription/presentation/widgets/mobile_purchase_unavailable.dart';
+import 'package:enjoy_player/features/subscription/presentation/widgets/tier_catalog.dart';
 import 'package:enjoy_player/core/platform/subscription_purchase_capability.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
@@ -82,14 +84,18 @@ class SubscriptionStatusCard extends ConsumerWidget {
     }
   }
 
-  Future<void> _extend(BuildContext context) async {
+  Future<void> _extendToPro(BuildContext context) async {
     if (showsMobilePurchaseUnavailable()) {
       await showMobilePurchaseUnavailableDialog(context);
       return;
     }
     if (!supportsExternalSubscriptionPurchase()) return;
     if (!context.mounted) return;
-    await showAutoRenewPlanSheet(context);
+    await showUnifiedPurchaseSheet(
+      context,
+      tier: SubscriptionTier.pro,
+      interval: CatalogInterval.month,
+    );
   }
 
   @override
@@ -98,15 +104,15 @@ class SubscriptionStatusCard extends ConsumerWidget {
     final t = EnjoyThemeTokens.of(context);
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final isPro = status.isPro;
+    final isPaid = status.isPaidTier;
     final ar = status.autoRenew;
     final cancelBusy = ref.watch(subscriptionPurchaseCtrlProvider).isLoading;
     final creditsLabel = l10n.subscriptionDailyCredits(
       NumberFormat.decimalPattern().format(status.dailyCreditsLimit),
     );
 
-    if (isPro) {
-      return _ProMembershipCard(
+    if (isPaid) {
+      return _PaidMembershipCard(
         status: status,
         autoRenew: ar,
         creditsLabel: creditsLabel,
@@ -114,17 +120,13 @@ class SubscriptionStatusCard extends ConsumerWidget {
         onCancel: ar != null && ar.isCancelable
             ? () => _cancel(context, ref, ar)
             : null,
-        onExtend: status.hasActiveAutoRenewPlan ? null : () => _extend(context),
+        onExtend: status.hasActiveAutoRenewPlan ? null : _extendToPro,
       );
     }
 
-    // Lite members get a paid-tier status card with the correct label.
-    final tierName = status.isLite
-        ? l10n.subscriptionTierLiteName
-        : l10n.profileSubscriptionFree;
-    final tierDescription = status.isLite
-        ? l10n.subscriptionTierLiteDescription
-        : l10n.subscriptionTierFreeDescription;
+    // Free users get a basic card.
+    final tierName = l10n.profileSubscriptionFree;
+    final tierDescription = l10n.subscriptionTierFreeDescription;
 
     return EnjoyCard(
       padding: EdgeInsets.all(t.space20),
@@ -160,8 +162,8 @@ class SubscriptionStatusCard extends ConsumerWidget {
   }
 }
 
-class _ProMembershipCard extends StatelessWidget {
-  const _ProMembershipCard({
+class _PaidMembershipCard extends StatelessWidget {
+  const _PaidMembershipCard({
     required this.status,
     required this.autoRenew,
     required this.creditsLabel,
@@ -186,6 +188,7 @@ class _ProMembershipCard extends StatelessWidget {
     final ar = autoRenew;
     final renewing = status.hasActiveAutoRenewPlan;
     final endingSoon = ar != null && ar.cancelAtPeriodEnd;
+    final isLite = status.isLite;
 
     final periodDate =
         _formatDate(context, ar?.currentPeriodEnd) ??
@@ -206,6 +209,12 @@ class _ProMembershipCard extends StatelessWidget {
         : l10n.subscriptionAutoRenewPriceMonth(
             NumberFormat('0.00').format(ar.amount),
           );
+    final tierTitle = isLite
+        ? l10n.subscriptionTierLiteName
+        : l10n.subscriptionProMemberTitle;
+    final tierBadge = isLite
+        ? l10n.subscriptionTierLiteName
+        : l10n.profileSubscriptionPro;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -252,7 +261,7 @@ class _ProMembershipCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        l10n.subscriptionProMemberTitle,
+                        tierTitle,
                         style: tt.titleLarge?.copyWith(
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.3,
@@ -271,7 +280,7 @@ class _ProMembershipCard extends StatelessWidget {
                 _SoftChip(
                   label: renewing
                       ? l10n.subscriptionAutoRenewOn
-                      : l10n.profileSubscriptionPro,
+                      : tierBadge,
                   emphasized: true,
                 ),
               ],

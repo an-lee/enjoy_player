@@ -41,6 +41,16 @@ const _proStatus = SubscriptionStatus(
   subscriptionActive: true,
   subscriptionTier: SubscriptionTier.pro,
 );
+const _liteStatus = SubscriptionStatus(
+  subscriptionActive: true,
+  subscriptionTier: SubscriptionTier.lite,
+);
+const _liteProfile = UserProfile(
+  id: 'u1',
+  email: 'a@b.com',
+  name: 'Lite',
+  subscriptionTier: SubscriptionTier.lite,
+);
 
 Widget _harness({
   required UserProfile profile,
@@ -70,6 +80,29 @@ void main() {
 
     final l10n = lookupAppLocalizations(const Locale('en'));
     expect(find.text(l10n.subscriptionUpgradedToPro), findsOneWidget);
+  });
+
+  testWidgets('celebrates a free -> Lite transition', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authCtrlProvider.overrideWith(
+            () => _NoOpRefreshAuthCtrl(_freeProfile),
+          ),
+          subscriptionStatusProvider.overrideWith((ref) async => _liteStatus),
+        ],
+        child: MaterialApp(
+          scaffoldMessengerKey: appScaffoldMessengerKey,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const TierReconcileHost(child: Scaffold(body: SizedBox.expand())),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final l10n = lookupAppLocalizations(const Locale('en'));
+    expect(find.text(l10n.subscriptionUpgradedToLite), findsOneWidget);
   });
 
   testWidgets('does not celebrate when already Pro on mount', (tester) async {

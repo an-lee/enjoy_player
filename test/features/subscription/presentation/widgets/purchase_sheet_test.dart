@@ -121,8 +121,15 @@ void main() {
   });
 
   group('PurchaseRequest', () {
-    test('monthly price constant is positive', () {
-      expect(kSubscriptionMonthlyPriceUsd, greaterThan(0));
+    test('toJson includes tier', () {
+      const request = PurchaseRequest(
+        months: 1,
+        processor: PaymentProcessor.stripe,
+        tier: 'pro',
+      );
+      expect(request.toJson()['tier'], 'pro');
+      expect(request.toJson()['months'], 1);
+      expect(request.toJson()['processor'], 'stripe');
     });
   });
 }

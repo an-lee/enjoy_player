@@ -1,10 +1,14 @@
-/// Tier catalog: unified Free / Pro selection with a Monthly / Yearly toggle.
+/// Tier catalog: unified Free / Lite / Pro selection with a Monthly / Yearly toggle.
 ///
 /// Replaces the previous free-vs-Pro comparison layout that lived in the
 /// subscription screen. The Free card is read-only — it always reflects the
-/// user's current tier when applicable. The Pro card exposes an [onChoosePro]
-/// callback that the host page wires up to the unified purchase modal
-/// (auto-renew primary, prepaid secondary).
+/// user's current tier when applicable. The Lite and Pro cards expose an
+/// [onChoosePaid] callback that the host page wires up to the unified
+/// purchase modal (auto-renew primary, prepaid secondary).
+///
+/// **Pricing is sourced from the catalog endpoint** (`GET /api/v1/subscriptions/plans`).
+/// When a plan has not loaded yet, the price line renders a skeleton rather
+/// than a hardcoded fallback — the Rails API is the single source of truth.
 library;
 
 import 'package:flutter/material.dart';
@@ -14,6 +18,7 @@ import 'package:intl/intl.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_button.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_card.dart';
+import 'package:enjoy_player/features/auth/domain/user_profile.dart';
 import 'package:enjoy_player/features/subscription/application/subscription_plans_provider.dart';
 import 'package:enjoy_player/features/subscription/domain/subscription_plan.dart';
 import 'package:enjoy_player/features/subscription/domain/subscription_status.dart';
@@ -28,15 +33,15 @@ CatalogInterval _intervalFromString(String s) =>
 String _intervalToString(CatalogInterval interval) =>
     interval == CatalogInterval.year ? 'year' : 'month';
 
-/// Approximate savings percentage when paying yearly vs monthly.
+/// Approximate savings percentage when paying yearly vs monthly for a tier.
 ///
 /// Returns the integer percentage (e.g. `17` for a 17% saving) or `null` when
 /// the inputs are missing or non-positive.
-int? _savingsPercentFor(List<SubscriptionPlan> plans) {
+int? _savingsPercentForTier(List<SubscriptionPlan> plans, String tier) {
   SubscriptionPlan? monthly;
   SubscriptionPlan? yearly;
   for (final plan in plans) {
-    if (plan.tier != 'pro') continue;
+    if (plan.tier != tier) continue;
     if (plan.isYearly) {
       yearly = plan;
     } else {
@@ -54,12 +59,22 @@ int? _savingsPercentFor(List<SubscriptionPlan> plans) {
 }
 
 class TierCatalog extends ConsumerStatefulWidget {
-  const TierCatalog({required this.status, this.onChoosePro, super.key});
+  const TierCatalog({
+    required this.status,
+    this.onChoosePaid,
+    @Deprecated('Use onChoosePaid.') this.onChoosePro,
+    super.key,
+  });
 
   final SubscriptionStatus status;
 
-  /// Fired when the user taps the Pro tier's CTA. The host wires this to the
-  /// unified purchase modal (auto-renew primary, prepaid secondary).
+  /// Fired when the user taps a paid tier's CTA (Lite or Pro). The host wires
+  /// this to the unified purchase modal (auto-renew primary, prepaid secondary).
+  final void Function(SubscriptionTier tier, CatalogInterval interval)?
+      onChoosePaid;
+
+  /// Backwards-compatible alias for Pro-only callers. Prefer [onChoosePaid].
+  @Deprecated('Use onChoosePaid. Pass SubscriptionTier.pro explicitly.')
   final void Function(CatalogInterval interval)? onChoosePro;
 
   @override
@@ -117,7 +132,11 @@ class _TierCatalogState extends ConsumerState<TierCatalog> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    final savingsPercent = _savingsPercentFor(plans);
+    // Pick the better savings percent across Lite and Pro (helps the yearly
+    // badge stay meaningful when either tier is missing from the catalog).
+    final liteSavings = _savingsPercentForTier(plans, 'lite');
+    final proSavings = _savingsPercentForTier(plans, 'pro');
+    final savingsPercent = proSavings ?? liteSavings;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -136,15 +155,26 @@ class _TierCatalogState extends ConsumerState<TierCatalog> {
         SizedBox(height: t.space20),
         LayoutBuilder(
           builder: (context, constraints) {
-            final wide = constraints.maxWidth >= 720;
+            final wide = constraints.maxWidth >= 840;
             final freeCard = _FreeTierCard(
-              isCurrent: !widget.status.isPaidTier,
+              isCurrent: widget.status.subscriptionTier == SubscriptionTier.free,
             );
-            final proCard = _ProTierCard(
+            final liteCard = _PaidTierCard(
+              tier: SubscriptionTier.lite,
               plans: plans,
               interval: _interval,
-              isCurrent: widget.status.isPro,
-              onChoose: () => widget.onChoosePro?.call(_interval),
+              isCurrent: widget.status.subscriptionTier == SubscriptionTier.lite,
+              isLowerThanCurrent:
+                  widget.status.subscriptionTier == SubscriptionTier.pro,
+              onChoose: () => _onChoosePaid(SubscriptionTier.lite),
+            );
+            final proCard = _PaidTierCard(
+              tier: SubscriptionTier.pro,
+              plans: plans,
+              interval: _interval,
+              isCurrent: widget.status.subscriptionTier == SubscriptionTier.pro,
+              isLowerThanCurrent: false,
+              onChoose: () => _onChoosePaid(SubscriptionTier.pro),
             );
             if (wide) {
               return IntrinsicHeight(
@@ -152,6 +182,8 @@ class _TierCatalogState extends ConsumerState<TierCatalog> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Expanded(child: freeCard),
+                    SizedBox(width: t.space12),
+                    Expanded(child: liteCard),
                     SizedBox(width: t.space12),
                     Expanded(child: proCard),
                   ],
@@ -161,6 +193,8 @@ class _TierCatalogState extends ConsumerState<TierCatalog> {
             return Column(
               children: [
                 proCard,
+                SizedBox(height: t.space16),
+                liteCard,
                 SizedBox(height: t.space16),
                 freeCard,
               ],
@@ -174,6 +208,24 @@ class _TierCatalogState extends ConsumerState<TierCatalog> {
           style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
         ),
       ],
+    );
+  }
+
+  void _onChoosePaid(SubscriptionTier tier) {
+    // New callback first.
+    widget.onChoosePaid?.call(tier, _interval);
+    // Legacy alias: only Pro had a callback historically.
+    if (tier == SubscriptionTier.pro) {
+      // ignore: deprecated_member_use_from_same_package
+      widget.onChoosePro?.call(_interval);
+    }
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(
+      DiagnosticsProperty<CatalogInterval>('interval', _interval),
     );
   }
 }
@@ -415,18 +467,24 @@ class _FreeTierCard extends StatelessWidget {
   ];
 }
 
-class _ProTierCard extends StatelessWidget {
-  const _ProTierCard({
+class _PaidTierCard extends StatelessWidget {
+  const _PaidTierCard({
+    required this.tier,
     required this.plans,
     required this.interval,
     required this.isCurrent,
+    required this.isLowerThanCurrent,
     required this.onChoose,
   });
 
+  final SubscriptionTier tier;
   final List<SubscriptionPlan> plans;
   final CatalogInterval interval;
   final bool isCurrent;
+  final bool isLowerThanCurrent;
   final VoidCallback onChoose;
+
+  bool get _isLite => tier == SubscriptionTier.lite;
 
   @override
   Widget build(BuildContext context) {
@@ -435,15 +493,40 @@ class _ProTierCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    final selectedPlan = _resolvePlan(plans, interval);
-    final fallbackPlan = _resolvePlan(plans, CatalogInterval.month);
+    final selectedPlan = _resolvePlan(plans, interval, tier);
+    final fallbackPlan = _resolvePlan(plans, CatalogInterval.month, tier);
     final resolved = selectedPlan ?? fallbackPlan;
     final amount = resolved != null
         ? NumberFormat('0.00').format(resolved.amount)
-        : (interval == CatalogInterval.year ? '99.99' : '9.99');
+        : null;
     final unitLabel = interval == CatalogInterval.year
         ? l10n.subscriptionTierCatalogPerYear
         : l10n.subscriptionTierCatalogPerMonth;
+
+    final tierName = _isLite
+        ? l10n.subscriptionTierLiteName
+        : l10n.subscriptionTierProName;
+    final tierDescription = _isLite
+        ? l10n.subscriptionTierLiteDescription
+        : l10n.subscriptionTierProDescription;
+    final dailyCredits = _isLite
+        ? l10n.subscriptionTierLiteDailyCredits
+        : l10n.subscriptionTierProDailyCredits;
+    final features = _isLite
+        ? _liteFeatures(l10n)
+        : _proFeatures(l10n);
+
+    final ctaLabel = isCurrent
+        ? (_isLite
+            ? l10n.subscriptionTierCatalogExtendLite
+            : l10n.subscriptionTierCatalogExtendPro)
+        : (_isLite
+            ? l10n.subscriptionTierCatalogChooseLite
+            : l10n.subscriptionTierCatalogChoosePro);
+    final ctaEnabled = !isLowerThanCurrent && resolved != null;
+    final ctaLabelActual = isLowerThanCurrent
+        ? l10n.subscriptionTierCatalogNotSelected
+        : ctaLabel;
 
     final inner = EnjoyCard(
       padding: EdgeInsets.all(t.space20),
@@ -451,34 +534,45 @@ class _ProTierCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            children: [
-              _Pill(
-                label: l10n.subscriptionTierCatalogRecommended,
-                color: cs.primary,
-                textColor: cs.onPrimary,
-                tt: tt,
-                leading: Icons.auto_awesome_rounded,
-              ),
-              if (isCurrent) ...[
-                SizedBox(width: t.space8),
+          // Lite card has no "Recommended" badge — Pro is the recommended tier.
+          if (!_isLite) ...[
+            Row(
+              children: [
                 _Pill(
-                  label: l10n.subscriptionCurrentPlan,
-                  color: cs.secondaryContainer,
-                  textColor: cs.onSecondaryContainer,
+                  label: l10n.subscriptionTierCatalogRecommended,
+                  color: cs.primary,
+                  textColor: cs.onPrimary,
                   tt: tt,
+                  leading: Icons.auto_awesome_rounded,
                 ),
+                if (isCurrent) ...[
+                  SizedBox(width: t.space8),
+                  _Pill(
+                    label: l10n.subscriptionCurrentPlan,
+                    color: cs.secondaryContainer,
+                    textColor: cs.onSecondaryContainer,
+                    tt: tt,
+                  ),
+                ],
               ],
-            ],
-          ),
-          SizedBox(height: t.space12),
+            ),
+            SizedBox(height: t.space12),
+          ] else if (isCurrent) ...[
+            _Pill(
+              label: l10n.subscriptionCurrentPlan,
+              color: cs.secondaryContainer,
+              textColor: cs.onSecondaryContainer,
+              tt: tt,
+            ),
+            SizedBox(height: t.space12),
+          ],
           Text(
-            l10n.subscriptionTierProName,
+            tierName,
             style: tt.titleLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
           SizedBox(height: t.space4),
           Text(
-            l10n.subscriptionTierProDescription,
+            tierDescription,
             style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
           SizedBox(height: t.space16),
@@ -487,13 +581,24 @@ class _ProTierCard extends StatelessWidget {
             textBaseline: TextBaseline.alphabetic,
             children: [
               Flexible(
-                child: Text(
-                  '\$$amount',
-                  style: tt.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: cs.primary,
-                  ),
-                ),
+                child: amount != null
+                    ? Text(
+                        '\$$amount',
+                        style: tt.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: _isLite ? null : cs.primary,
+                        ),
+                      )
+                    : SizedBox(
+                        width: 72,
+                        height: 28,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: cs.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(t.radiusSm),
+                          ),
+                        ),
+                      ),
               ),
               SizedBox(width: t.space4),
               Flexible(
@@ -507,57 +612,68 @@ class _ProTierCard extends StatelessWidget {
           ),
           SizedBox(height: t.space4),
           Text(
-            l10n.subscriptionTierProDailyCredits,
+            dailyCredits,
             style: tt.bodySmall?.copyWith(
               color: cs.onSurfaceVariant,
               fontWeight: FontWeight.w600,
             ),
           ),
-          SizedBox(height: t.space12),
-          Text(
-            l10n.subscriptionTierCatalogSelectedInterval(amount, unitLabel),
-            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-          ),
+          if (amount != null) ...[
+            SizedBox(height: t.space12),
+            Text(
+              l10n.subscriptionTierCatalogSelectedInterval(amount, unitLabel),
+              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ],
           SizedBox(height: t.space16),
-          for (final feature in _proFeatures(l10n)) ...[
-            _Bullet(text: feature, emphasize: true, tt: tt),
+          for (final feature in features) ...[
+            _Bullet(text: feature, emphasize: !_isLite, tt: tt),
             SizedBox(height: t.space8),
           ],
           SizedBox(height: t.space16),
           EnjoyButton.primary(
-            onPressed: onChoose,
-            child: Text(
-              isCurrent
-                  ? l10n.subscriptionTierCatalogExtendPro
-                  : l10n.subscriptionTierCatalogChoosePro,
-            ),
+            onPressed: ctaEnabled ? onChoose : null,
+            child: Text(ctaLabelActual),
           ),
         ],
       ),
     );
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(t.radiusLg + 2),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            cs.primary.withValues(alpha: 0.85),
-            cs.tertiary.withValues(alpha: 0.75),
+    // Pro card gets the gradient treatment; Lite uses the standard card.
+    if (!_isLite) {
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(t.radiusLg + 2),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              cs.primary.withValues(alpha: 0.85),
+              cs.tertiary.withValues(alpha: 0.75),
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: cs.primary.withValues(alpha: 0.22),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
           ],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: cs.primary.withValues(alpha: 0.22),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Padding(padding: const EdgeInsets.all(1.5), child: inner),
-    );
+        child: Padding(padding: const EdgeInsets.all(1.5), child: inner),
+      );
+    }
+    return inner;
   }
+
+  List<String> _liteFeatures(AppLocalizations l10n) => [
+    l10n.subscriptionFeatureLiteTranslation,
+    l10n.subscriptionFeatureLiteSmartTranslation,
+    l10n.subscriptionFeatureLiteDictionary,
+    l10n.subscriptionFeatureLiteAsr,
+    l10n.subscriptionFeatureLiteTts,
+    l10n.subscriptionFeatureLiteAssessment,
+  ];
 
   List<String> _proFeatures(AppLocalizations l10n) => [
     l10n.subscriptionFeatureProTranslation,
@@ -571,9 +687,11 @@ class _ProTierCard extends StatelessWidget {
   SubscriptionPlan? _resolvePlan(
     List<SubscriptionPlan> plans,
     CatalogInterval target,
+    SubscriptionTier tier,
   ) {
+    final tierName = tier == SubscriptionTier.lite ? 'lite' : 'pro';
     for (final plan in plans) {
-      if (_intervalFromString(plan.interval) == target && plan.tier == 'pro') {
+      if (_intervalFromString(plan.interval) == target && plan.tier == tierName) {
         return plan;
       }
     }
