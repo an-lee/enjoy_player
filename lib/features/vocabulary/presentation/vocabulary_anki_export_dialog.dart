@@ -45,9 +45,9 @@ class _VocabularyAnkiExportDialogState
     final l10n = AppLocalizations.of(context)!;
     final t = EnjoyThemeTokens.of(context);
     final status = ref.watch(subscriptionStatusProvider).valueOrNull;
-    final isPro = vocabularyAnkiExportAllowedFrom(
+    final isPaid = vocabularyAnkiExportAllowedFrom(
       tier: ref.watch(currentTierProvider),
-      subscriptionIsPro: status?.isPro,
+      subscriptionIsPaid: status?.isPaidTier,
     );
     final itemsAsync = ref.watch(vocabularyItemsProvider);
 
@@ -62,7 +62,7 @@ class _VocabularyAnkiExportDialogState
           ),
           error: (e, _) => Text('$e'),
           data: (items) {
-            if (!isPro) {
+            if (!isPaid) {
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -175,7 +175,7 @@ class _VocabularyAnkiExportDialogState
           onPressed: _exporting ? null : () => Navigator.of(context).pop(),
           child: Text(l10n.vocabularyCancel),
         ),
-        if (isPro)
+        if (isPaid)
           TextButton(
             onPressed: _exporting ? null : () => _export(context, l10n),
             child: Text(l10n.vocabularyExport),
@@ -192,12 +192,12 @@ class _VocabularyAnkiExportDialogState
     try {
       final repo = ref.read(vocabularyRepositoryProvider);
       final status = ref.read(subscriptionStatusProvider).valueOrNull;
-      final isPro = vocabularyAnkiExportAllowedFrom(
+      final isPaid = vocabularyAnkiExportAllowedFrom(
         tier: ref.read(currentTierProvider),
-        subscriptionIsPro: status?.isPro,
+        subscriptionIsPaid: status?.isPaidTier,
       );
       final outcome = await runVocabularyAnkiExport(
-        isPro: isPro,
+        isPaid: isPaid,
         listAll: repo.listAll,
         getContextsForItem: repo.getContextsForItem,
         filters: _filters,

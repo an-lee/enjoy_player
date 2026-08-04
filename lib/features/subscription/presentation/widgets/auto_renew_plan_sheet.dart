@@ -394,6 +394,7 @@ class _PaymentPathSelector extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 520;
+        final prepaidUnitPrice = unitPrice;
         final autoRenewCard = _PaymentOptionCard(
           path: _PaymentPath.autoRenew,
           selected: selected == _PaymentPath.autoRenew,
@@ -419,9 +420,9 @@ class _PaymentPathSelector extends StatelessWidget {
           subtitle: l10n.subscriptionPurchaseModalOptionPrepaidSubtitle,
           footnote: l10n.subscriptionPurchaseModalOptionPrepaidFootnote,
           leadingIcon: Icons.event_available_rounded,
-          price: unitPrice != null
+          price: prepaidUnitPrice != null
               ? l10n.subscriptionAutoRenewPriceMonth(
-                  unitPrice.toStringAsFixed(2),
+                  prepaidUnitPrice.toStringAsFixed(2),
                 )
               : '—',
           plansLoading: false,

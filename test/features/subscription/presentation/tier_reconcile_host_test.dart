@@ -45,12 +45,6 @@ const _liteStatus = SubscriptionStatus(
   subscriptionActive: true,
   subscriptionTier: SubscriptionTier.lite,
 );
-const _liteProfile = UserProfile(
-  id: 'u1',
-  email: 'a@b.com',
-  name: 'Lite',
-  subscriptionTier: SubscriptionTier.lite,
-);
 
 Widget _harness({
   required UserProfile profile,

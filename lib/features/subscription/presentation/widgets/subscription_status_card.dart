@@ -1,6 +1,8 @@
 /// Current membership card: tier, renewal, credits — cancel stays low-emphasis.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -120,7 +122,11 @@ class SubscriptionStatusCard extends ConsumerWidget {
         onCancel: ar != null && ar.isCancelable
             ? () => _cancel(context, ref, ar)
             : null,
-        onExtend: status.hasActiveAutoRenewPlan ? null : _extendToPro,
+        onExtend: status.hasActiveAutoRenewPlan
+            ? null
+            : () {
+                unawaited(_extendToPro(context));
+              },
       );
     }
 
