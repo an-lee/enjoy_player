@@ -6837,11 +6837,29 @@ abstract class AppLocalizations {
   /// **'Extend Pro'**
   String get subscriptionTierCatalogExtendPro;
 
+  /// No description provided for @subscriptionTierCatalogChooseLite.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Lite'**
+  String get subscriptionTierCatalogChooseLite;
+
+  /// No description provided for @subscriptionTierCatalogExtendLite.
+  ///
+  /// In en, this message translates to:
+  /// **'Extend Lite'**
+  String get subscriptionTierCatalogExtendLite;
+
   /// No description provided for @subscriptionTierCatalogNotSelected.
   ///
   /// In en, this message translates to:
   /// **'Downgrade is not available'**
   String get subscriptionTierCatalogNotSelected;
+
+  /// No description provided for @subscriptionUpgradedToLite.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re now Lite — enjoy!'**
+  String get subscriptionUpgradedToLite;
 
   /// No description provided for @subscriptionTierCatalogSelectedInterval.
   ///

@@ -3536,22 +3536,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get subscriptionTierCatalogRecommended => '推荐';
 
   @override
-  String get subscriptionTierCatalogChooseLite => '选择 Lite';
-
-  @override
-  String get subscriptionTierCatalogExtendLite => '续费 Lite';
-
-  @override
-  String get subscriptionUpgradedToLite => '已升级为 Lite，尽情享受吧！';
-
-  @override
   String get subscriptionTierCatalogChoosePro => '选择 Pro';
 
   @override
   String get subscriptionTierCatalogExtendPro => '续费 Pro';
 
   @override
+  String get subscriptionTierCatalogChooseLite => '选择 Lite';
+
+  @override
+  String get subscriptionTierCatalogExtendLite => '续费 Lite';
+
+  @override
   String get subscriptionTierCatalogNotSelected => '暂不支持降级';
+
+  @override
+  String get subscriptionUpgradedToLite => '您已成为 Lite 会员！';
 
   @override
   String subscriptionTierCatalogSelectedInterval(String amount, String unit) {
