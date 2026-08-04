@@ -72,6 +72,11 @@ dependencies:
   ai_sdk_google: ^1.2.0
   ai_sdk_provider: ^1.2.0
   flutter_timezone: ^5.1.0
+  # Pin `jni_flutter` >= 1.0.2 so the transitive `jni` resolves past the
+  # retracted 1.0.1 (Flutter pub surfaces a "version 1.0.1 is retracted"
+  # warning otherwise). The `jni` 1.0.3 API used by `path_provider_android` is
+  # ABI-compatible with the surface the app exercises.
+  jni_flutter: ^1.0.2
 
 dev_dependencies:
   flutter_test:

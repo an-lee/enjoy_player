@@ -4,3 +4,7 @@ output-localization-file: app_localizations.dart
 preferred-supported-locales:
   - zh_CN
   - en
+# Per-run report of every message still missing in each non-template ARB
+# file. Reviewed by translators and turned into CI guardrails: any new
+# entry should be a deliberate translation debt, not a silent miss.
+untranslated-messages-file: tool/untranslated_messages.json
