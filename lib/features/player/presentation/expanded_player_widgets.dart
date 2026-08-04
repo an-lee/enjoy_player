@@ -21,7 +21,6 @@ import 'package:enjoy_player/features/player/application/youtube_open_preview_pr
 import 'package:enjoy_player/features/player/presentation/widgets/player_surface_target.dart';
 import 'package:enjoy_player/features/player/presentation/widgets/youtube_loading_video_stage.dart';
 
-import 'package:enjoy_player/features/share_poster/presentation/share_practice_poster_button.dart';
 import 'package:enjoy_player/features/transcript/presentation/transcript_panel.dart';
 
 /// Centered loading indicator while [openMediaActionProvider] resolves.
@@ -151,24 +150,7 @@ class ExpandedPlayerChromeBody extends ConsumerWidget {
         (p) => p.videoTranscriptSplitWidthPx,
       ),
     );
-    final transcript = Stack(
-      fit: StackFit.expand,
-      children: [
-        TranscriptPanel(mediaId: mediaId),
-        Positioned(
-          top: 0,
-          right: 0,
-          child: SafeArea(
-            bottom: false,
-            left: false,
-            child: SharePracticePosterButton(
-              mediaId: mediaId,
-              iconColor: cs.onSurface,
-            ),
-          ),
-        ),
-      ],
-    );
+    final transcript = TranscriptPanel(mediaId: mediaId);
 
     final mediaBody = isVideo
         ? VideoPlayerLayout(

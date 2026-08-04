@@ -67,4 +67,83 @@ void main() {
     await tester.pump();
     expect(assessTaps, 1);
   });
+
+  testWidgets('leadingShare renders before the pitch toggle', (tester) async {
+    final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF1144AA));
+    final tok = EnjoyThemeTokens.build(scheme);
+
+    await tester.binding.setSurfaceSize(const Size(800, 200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(colorScheme: scheme, extensions: [tok]),
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 800,
+              child: ShadowReadingToolbarRow(
+                tok: tok,
+                scheme: scheme,
+                pitchExpanded: false,
+                pitchTooltip: 'pitch',
+                hasMediaPath: true,
+                onPitchTap: () {},
+                leadingShare: const IconButton(
+                  key: Key('share'),
+                  onPressed: null,
+                  icon: Icon(Icons.ios_share_rounded),
+                ),
+                takesActions: null,
+                recordFab: const SizedBox(width: 68, height: 68),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('share')), findsOneWidget);
+    final shareX = tester.getCenter(find.byKey(const Key('share'))).dx;
+    final pitchX = tester.getCenter(find.byIcon(Icons.show_chart_rounded)).dx;
+    expect(shareX, lessThan(pitchX));
+  });
+
+  testWidgets('no leadingShare keeps the original pitch-only layout', (
+    tester,
+  ) async {
+    final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF1144AA));
+    final tok = EnjoyThemeTokens.build(scheme);
+
+    await tester.binding.setSurfaceSize(const Size(800, 200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(colorScheme: scheme, extensions: [tok]),
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 800,
+              child: ShadowReadingToolbarRow(
+                tok: tok,
+                scheme: scheme,
+                pitchExpanded: false,
+                pitchTooltip: 'pitch',
+                hasMediaPath: true,
+                onPitchTap: () {},
+                takesActions: null,
+                recordFab: const SizedBox(width: 68, height: 68),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.ios_share_rounded), findsNothing);
+    expect(find.byIcon(Icons.show_chart_rounded), findsOneWidget);
+  });
 }

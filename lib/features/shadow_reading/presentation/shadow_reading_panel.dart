@@ -26,6 +26,7 @@ import 'package:enjoy_player/features/hotkeys/presentation/hotkey_tooltip_label.
 import 'package:enjoy_player/features/shadow_reading/application/recording_input_device_controller.dart';
 import 'package:enjoy_player/features/shadow_reading/application/shadow_reading_hotkey_bus.dart';
 import 'package:enjoy_player/features/shadow_reading/presentation/recording_assessment_flow.dart';
+import 'package:enjoy_player/features/share_poster/presentation/share_practice_poster_button.dart';
 import 'package:enjoy_player/features/sync/application/sync_providers.dart';
 import 'package:enjoy_player/features/sync/domain/sync_types.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
@@ -726,6 +727,10 @@ class _ShadowReadingPanelState extends ConsumerState<ShadowReadingPanel>
                     hasMediaPath: mediaPath != null && mediaPath.isNotEmpty,
                     onPitchTap: () =>
                         setState(() => _pitchExpanded = !_pitchExpanded),
+                    leadingShare: SharePracticePosterButton(
+                      mediaId: widget.mediaId,
+                      iconColor: scheme.onSurface,
+                    ),
                     takesActions: list.isNotEmpty && sel != null
                         ? ShadowTakesToolbarActions(
                             row: sel,

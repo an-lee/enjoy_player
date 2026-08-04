@@ -4,10 +4,11 @@ import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 
 import 'shadow_record_fab.dart';
 
-/// Idle shadow-reading toolbar: pitch toggle (left) · record FAB (center) ·
-/// takes actions slot (right). The FAB is overlaid on a Row whose middle
-/// reserves [ShadowRecordFab.ringOuterHitSize] so pitch/takes hug the center
-/// without shifting the mic off true horizontal center.
+/// Idle shadow-reading toolbar: optional **leading** slot (share) · pitch
+/// toggle (left) · record FAB (center) · takes actions slot (right). The FAB
+/// is overlaid on a Row whose middle reserves [ShadowRecordFab.ringOuterHitSize]
+/// so the leading / pitch / takes slots hug the center without shifting the
+/// mic off true horizontal center.
 ///
 /// Extracted from `shadow_reading_panel.dart` — see issue #180.
 class ShadowReadingToolbarRow extends StatelessWidget {
@@ -20,6 +21,7 @@ class ShadowReadingToolbarRow extends StatelessWidget {
     required this.onPitchTap,
     required this.takesActions,
     required this.recordFab,
+    this.leadingShare,
     super.key,
   });
 
@@ -31,6 +33,11 @@ class ShadowReadingToolbarRow extends StatelessWidget {
   final VoidCallback onPitchTap;
   final Widget? takesActions;
   final Widget recordFab;
+
+  /// Optional widget rendered at the left edge of the toolbar, before the
+  /// pitch toggle. Used by the player chrome to host
+  /// [SharePracticePosterButton] when there are recordings.
+  final Widget? leadingShare;
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +94,14 @@ class ShadowReadingToolbarRow extends StatelessWidget {
                 alignment: Alignment.centerRight,
                 child: Padding(
                   padding: EdgeInsets.only(right: tok.space12),
-                  child: pitchControl,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (leadingShare != null) leadingShare!,
+                      if (leadingShare != null) SizedBox(width: tok.space4),
+                      pitchControl,
+                    ],
+                  ),
                 ),
               ),
             ),
