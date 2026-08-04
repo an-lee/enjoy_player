@@ -25,6 +25,7 @@ class _FakeSubscriptionApi implements SubscriptionApi {
   Future<Map<String, dynamic>> purchase({
     required int months,
     PaymentProcessor processor = PaymentProcessor.stripe,
+    required String tier,
   }) => _handler('purchase');
 
   @override
@@ -102,7 +103,11 @@ void main() {
       );
 
       final session = await repo.purchase(
-        const PurchaseRequest(months: 1, processor: PaymentProcessor.stripe),
+        const PurchaseRequest(
+          months: 1,
+          processor: PaymentProcessor.stripe,
+          tier: 'pro',
+        ),
       );
       expect(session.payUrl, 'https://pay.example.com');
     });
@@ -145,6 +150,7 @@ class _ThrowingApi implements SubscriptionApi {
   Future<Map<String, dynamic>> purchase({
     required int months,
     PaymentProcessor processor = PaymentProcessor.stripe,
+    required String tier,
   }) => throw error;
 
   @override

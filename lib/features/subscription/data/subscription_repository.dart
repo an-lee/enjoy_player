@@ -40,7 +40,11 @@ class SubscriptionRepository with RestRepository {
 
   Future<PaymentSession> purchase(PurchaseRequest request) => apiCall(
     () async => PaymentSession.fromJson(
-      await _api.purchase(months: request.months, processor: request.processor),
+      await _api.purchase(
+        months: request.months,
+        processor: request.processor,
+        tier: request.tier,
+      ),
     ),
   );
 

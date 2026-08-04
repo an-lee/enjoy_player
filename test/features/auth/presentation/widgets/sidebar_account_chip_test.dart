@@ -160,6 +160,21 @@ const _proStatus = SubscriptionStatus(
   ),
 );
 
+const _liteStatus = SubscriptionStatus(
+  subscriptionActive: true,
+  subscriptionTier: SubscriptionTier.lite,
+  subscriptionExpireDate: '2030-12-31T00:00:00Z',
+);
+
+const _liteProfile = UserProfile(
+  id: 'user-3',
+  email: 'lite@example.com',
+  name: 'Lite Reader',
+  avatarUrl: null,
+  balance: 0,
+  subscriptionTier: SubscriptionTier.lite,
+);
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -226,6 +241,46 @@ void main() {
 
     expect(find.text('Pro Reader'), findsOneWidget);
     expect(find.text('Pro'), findsOneWidget);
+    expect(find.text('Upgrade'), findsNothing);
+  });
+
+  testWidgets('Signed-in lite: shows tier badge, no upgrade button', (
+    tester,
+  ) async {
+    final auth = _FakeAuthCtrl(const AuthSignedIn(profile: _liteProfile));
+    final scheme = ColorScheme.fromSeed(
+      seedColor: const Color(0xFF7B61FF),
+      brightness: Brightness.dark,
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authCtrlProvider.overrideWith(() => auth),
+          subscriptionStatusProvider.overrideWith((ref) async => _liteStatus),
+        ],
+        child: MaterialApp(
+          theme: ThemeData(
+            colorScheme: scheme,
+            useMaterial3: true,
+            brightness: Brightness.dark,
+            extensions: [EnjoyThemeTokens.build(scheme)],
+          ),
+          locale: const Locale('en', 'US'),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const Scaffold(body: SidebarAccountChip()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Lite Reader'), findsOneWidget);
+    expect(find.text('Lite'), findsOneWidget);
     expect(find.text('Upgrade'), findsNothing);
   });
 

@@ -192,12 +192,12 @@ void main() {
   });
 
   group('runVocabularyAnkiExport', () {
-    test('returns cancelled when not Pro and IO is not invoked', () async {
-      // Even with valid items, !isPro must short-circuit before reaching IO.
+    test('returns cancelled when not paid and IO is not invoked', () async {
+      // Even with valid items, !isPaid must short-circuit before reaching IO.
       var listAllCalled = false;
       try {
         await runVocabularyAnkiExport(
-          isPro: false,
+          isPaid: false,
           listAll: () async {
             listAllCalled = true;
             return const <VocabularyItem>[];
@@ -207,7 +207,7 @@ void main() {
         );
         fail('expected StateError');
       } on StateError catch (e) {
-        expect(e.message, 'pro_required');
+        expect(e.message, 'paid_required');
       }
       expect(listAllCalled, isFalse);
     });
@@ -235,32 +235,32 @@ void main() {
         ),
       ];
       // Stub the IO layer indirectly: we cannot in test (no GetIt / DI),
-      // however Pro gating is the testable seam — called with isPro=false ⇒ throw.
+      // however paid gating is the testable seam — called with isPaid=false ⇒ throw.
       expect(
         () => runVocabularyAnkiExport(
-          isPro: false,
+          isPaid: false,
           listAll: () async => items,
           getContextsForItem: (_) async => const <VocabularyContext>[],
           filters: const VocabularyAnkiExportFilters(),
         ),
         throwsA(
-          isA<StateError>().having((e) => e.message, 'message', 'pro_required'),
+          isA<StateError>().having((e) => e.message, 'message', 'paid_required'),
         ),
       );
     });
 
-    test('pro_required is the only error when isPro is false', () async {
-      // Sanity check: empty listAll + isPro=false still throws pro_required,
-      // confirming the pro gate runs BEFORE the no-items check.
+    test('paid_required is the only error when isPaid is false', () async {
+      // Sanity check: empty listAll + isPaid=false still throws paid_required,
+      // confirming the paid gate runs BEFORE the no-items check.
       expect(
         () => runVocabularyAnkiExport(
-          isPro: false,
+          isPaid: false,
           listAll: () async => const <VocabularyItem>[],
           getContextsForItem: (_) async => const <VocabularyContext>[],
           filters: const VocabularyAnkiExportFilters(),
         ),
         throwsA(
-          isA<StateError>().having((e) => e.message, 'message', 'pro_required'),
+          isA<StateError>().having((e) => e.message, 'message', 'paid_required'),
         ),
       );
     });
@@ -274,14 +274,14 @@ void main() {
       Future<void> probe() async {
         try {
           await runVocabularyAnkiExport(
-            isPro: false,
+            isPaid: false,
             listAll: () async => const <VocabularyItem>[],
             getContextsForItem: (_) async => const <VocabularyContext>[],
             filters: const VocabularyAnkiExportFilters(),
             dialogTitle: title,
           );
         } on StateError {
-          // expected: pro_required
+          // expected: paid_required
         }
       }
 

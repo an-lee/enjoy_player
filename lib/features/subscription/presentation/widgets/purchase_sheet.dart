@@ -1,4 +1,8 @@
 /// Desktop purchase sheet: external checkout only.
+///
+/// **Deprecated:** prefer [showUnifiedPurchaseSheet] which is tier-aware and
+/// driven by the catalog endpoint. This entry point remains available for
+/// legacy callers and is hardcoded to Pro when the monthly plan is available.
 library;
 
 import 'package:flutter/material.dart';
@@ -7,12 +11,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:enjoy_player/core/errors/app_failure.dart';
 import 'package:enjoy_player/core/notices/app_notice.dart';
 import 'package:enjoy_player/core/platform/subscription_purchase_capability.dart';
+import 'package:enjoy_player/core/riverpod/async_value_x.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_button.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_modal.dart';
+import 'package:enjoy_player/features/auth/domain/user_profile.dart';
+import 'package:enjoy_player/features/subscription/application/subscription_plans_provider.dart';
 import 'package:enjoy_player/features/subscription/application/subscription_purchase_provider.dart';
 import 'package:enjoy_player/features/subscription/domain/payment_processor.dart';
 import 'package:enjoy_player/features/subscription/domain/purchase_request.dart';
+import 'package:enjoy_player/features/subscription/domain/subscription_plan.dart';
 import 'package:enjoy_player/features/subscription/presentation/widgets/payment_processor_option.dart';
 import 'package:enjoy_player/features/subscription/presentation/widgets/subscription_duration_selector.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
@@ -41,14 +49,21 @@ class _PurchaseSheetBodyState extends ConsumerState<_PurchaseSheetBody> {
   int _months = 1;
   PaymentProcessor _processor = PaymentProcessor.stripe;
 
-  double get _totalPrice => _months * kSubscriptionMonthlyPriceUsd;
+  double? _totalPrice(List<SubscriptionPlan> plans) {
+    final unit = prepaidUnitPriceForTier(plans, SubscriptionTier.pro.name);
+    return unit == null ? null : _months * unit;
+  }
 
   Future<void> _purchaseExternal() async {
     final l10n = AppLocalizations.of(context)!;
     try {
       await ref
           .read(subscriptionPurchaseCtrlProvider.notifier)
-          .purchaseExternal(months: _months, processor: _processor);
+          .purchaseExternal(
+            months: _months,
+            processor: _processor,
+            tier: SubscriptionTier.pro.name,
+          );
       if (!mounted) return;
       Navigator.pop(context);
       AppNotice.info(context, l10n.subscriptionRedirectingToPayment);
@@ -76,6 +91,8 @@ class _PurchaseSheetBodyState extends ConsumerState<_PurchaseSheetBody> {
     final tt = Theme.of(context).textTheme;
     final purchaseState = ref.watch(subscriptionPurchaseCtrlProvider);
     final busy = purchaseState.isLoading;
+    final plans = ref.watch(subscriptionPlansProvider).valueOrNull ?? const [];
+    final totalPrice = _totalPrice(plans);
 
     return Padding(
       padding: EdgeInsets.only(
@@ -158,7 +175,7 @@ class _PurchaseSheetBodyState extends ConsumerState<_PurchaseSheetBody> {
                       Text(l10n.subscriptionTotalPriceLabel),
                       Text(
                         l10n.subscriptionTotalPrice(
-                          _totalPrice.toStringAsFixed(2),
+                          totalPrice?.toStringAsFixed(2) ?? '—',
                         ),
                         style: tt.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,

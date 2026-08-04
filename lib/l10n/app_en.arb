@@ -1759,7 +1759,10 @@
   "subscriptionTierCatalogRecommended": "Recommended",
   "subscriptionTierCatalogChoosePro": "Choose Pro",
   "subscriptionTierCatalogExtendPro": "Extend Pro",
+  "subscriptionTierCatalogChooseLite": "Choose Lite",
+  "subscriptionTierCatalogExtendLite": "Extend Lite",
   "subscriptionTierCatalogNotSelected": "Downgrade is not available",
+  "subscriptionUpgradedToLite": "You're now Lite — enjoy!",
   "subscriptionTierCatalogSelectedInterval": "{amount} / {unit} — billed via Stripe",
   "@subscriptionTierCatalogSelectedInterval": {
     "placeholders": {

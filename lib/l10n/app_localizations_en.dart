@@ -3695,6 +3695,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get subscriptionTierCatalogRecommended => 'Recommended';
 
   @override
+  String get subscriptionTierCatalogChooseLite => 'Choose Lite';
+
+  @override
+  String get subscriptionTierCatalogExtendLite => 'Extend Lite';
+
+  @override
+  String get subscriptionUpgradedToLite => 'You\'re now Lite — enjoy!';
+
+  @override
   String get subscriptionTierCatalogChoosePro => 'Choose Pro';
 
   @override

@@ -26,6 +26,7 @@ import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_button.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_card.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_modal.dart';
+import 'package:enjoy_player/features/auth/domain/user_profile.dart';
 import 'package:enjoy_player/features/subscription/application/subscription_plans_provider.dart';
 import 'package:enjoy_player/features/subscription/application/subscription_purchase_provider.dart';
 import 'package:enjoy_player/features/subscription/application/subscription_status_provider.dart';
@@ -45,17 +46,22 @@ enum _PaymentPath { autoRenew, prepaid }
 ///
 /// Kept for backwards compatibility with callers that don't yet know the
 /// selected catalog interval (e.g. legacy upgrade CTAs). New code should call
-/// [showUnifiedPurchaseSheet] and pass the interval chosen on the catalog.
+/// [showUnifiedPurchaseSheet] and pass the tier + interval chosen on the catalog.
 Future<void> showAutoRenewPlanSheet(BuildContext context) {
-  return showUnifiedPurchaseSheet(context, interval: CatalogInterval.month);
+  return showUnifiedPurchaseSheet(
+    context,
+    tier: SubscriptionTier.pro,
+    interval: CatalogInterval.month,
+  );
 }
 
-/// Opens the unified purchase modal at the chosen catalog interval.
+/// Opens the unified purchase modal at the chosen catalog tier + interval.
 ///
 /// On compact widths this is a bottom sheet; on wide widths it presents as a
 /// centered adaptive dialog so the side-by-side payment cards stay legible.
 Future<void> showUnifiedPurchaseSheet(
   BuildContext context, {
+  required SubscriptionTier tier,
   required CatalogInterval interval,
 }) async {
   if (showsMobilePurchaseUnavailable()) {
@@ -67,13 +73,20 @@ Future<void> showUnifiedPurchaseSheet(
   await showEnjoyAdaptiveSheet<void>(
     context: context,
     isScrollControlled: true,
-    builder: (ctx) => _UnifiedPurchaseSheetBody(initialInterval: interval),
+    builder: (ctx) => _UnifiedPurchaseSheetBody(
+      initialTier: tier,
+      initialInterval: interval,
+    ),
   );
 }
 
 class _UnifiedPurchaseSheetBody extends ConsumerStatefulWidget {
-  const _UnifiedPurchaseSheetBody({required this.initialInterval});
+  const _UnifiedPurchaseSheetBody({
+    required this.initialTier,
+    required this.initialInterval,
+  });
 
+  final SubscriptionTier initialTier;
   final CatalogInterval initialInterval;
 
   @override
@@ -95,15 +108,21 @@ class _UnifiedPurchaseSheetBodyState
     _processor = PaymentProcessor.stripe;
   }
 
-  double get _prepaidTotal => _months * kSubscriptionMonthlyPriceUsd;
+  double? _prepaidTotal(List<SubscriptionPlan> plans) {
+    final unit = prepaidUnitPriceForTier(plans, widget.initialTier.name);
+    if (unit == null) return null;
+    return _months * unit;
+  }
 
-  SubscriptionPlan? _resolveProPlan(
+  SubscriptionPlan? _resolvePlan(
     List<SubscriptionPlan> plans,
     CatalogInterval target,
+    SubscriptionTier tier,
   ) {
+    final tierName = tier.name;
     for (final plan in plans) {
       if (catalogIntervalFromString(plan.interval) == target &&
-          plan.tier == 'pro') {
+          plan.tier == tierName) {
         return plan;
       }
     }
@@ -151,7 +170,11 @@ class _UnifiedPurchaseSheetBodyState
     try {
       await ref
           .read(subscriptionPurchaseCtrlProvider.notifier)
-          .purchaseExternal(months: _months, processor: _processor);
+          .purchaseExternal(
+            months: _months,
+            processor: _processor,
+            tier: widget.initialTier.name,
+          );
       if (!mounted) return;
       Navigator.pop(context);
       AppNotice.info(context, l10n.subscriptionRedirectingToPayment);
@@ -185,14 +208,26 @@ class _UnifiedPurchaseSheetBodyState
     final intervalLabel = interval == CatalogInterval.year
         ? l10n.subscriptionAutoRenewYearly
         : l10n.subscriptionAutoRenewMonthly;
-    final tierLabel = l10n.subscriptionTierProName;
+    final tierLabel = widget.initialTier == SubscriptionTier.lite
+        ? l10n.subscriptionTierLiteName
+        : l10n.subscriptionTierProName;
 
     // Resolve the selected plan from the loaded plans list. When the provider
     // is still loading, errored, or returned an empty list, [selectedPlan] is
     // null and the bottom panel is hidden — we never present a "Subscribe"
     // CTA without a valid plan to back it.
     final selectedPlan = plansAsync.maybeWhen(
-      data: (plans) => plans.isEmpty ? null : _resolveProPlan(plans, interval),
+      data: (plans) =>
+          plans.isEmpty ? null : _resolvePlan(plans, interval, widget.initialTier),
+      orElse: () => null,
+    );
+
+    final unitPrice = plansAsync.maybeWhen(
+      data: (plans) => prepaidUnitPriceForTier(plans, widget.initialTier.name),
+      orElse: () => null,
+    );
+    final prepaidTotal = plansAsync.maybeWhen(
+      data: (plans) => _prepaidTotal(plans),
       orElse: () => null,
     );
 
@@ -256,6 +291,7 @@ class _UnifiedPurchaseSheetBodyState
                       interval: interval,
                       intervalLabel: intervalLabel,
                       plan: selectedPlan,
+                      unitPrice: unitPrice,
                       plansLoading: false,
                       onChanged: busy
                           ? null
@@ -284,10 +320,12 @@ class _UnifiedPurchaseSheetBodyState
                       months: _months,
                       processor: _processor,
                       busy: busy,
-                      totalPrice: _prepaidTotal,
+                      unitPrice: unitPrice,
+                      totalPrice: prepaidTotal,
                       onMonthsChanged: (m) => setState(() => _months = m),
                       onProcessorChanged: (p) => setState(() => _processor = p),
-                      onContinue: busy ? null : _startPrepaidPurchase,
+                      onContinue:
+                          busy || unitPrice == null ? null : _startPrepaidPurchase,
                     ),
               ],
             ),
@@ -337,6 +375,7 @@ class _PaymentPathSelector extends StatelessWidget {
     required this.interval,
     required this.intervalLabel,
     required this.plan,
+    required this.unitPrice,
     required this.plansLoading,
     required this.onChanged,
   });
@@ -345,6 +384,7 @@ class _PaymentPathSelector extends StatelessWidget {
   final CatalogInterval interval;
   final String intervalLabel;
   final SubscriptionPlan? plan;
+  final double? unitPrice;
   final bool plansLoading;
   final ValueChanged<_PaymentPath>? onChanged;
 
@@ -379,9 +419,11 @@ class _PaymentPathSelector extends StatelessWidget {
           subtitle: l10n.subscriptionPurchaseModalOptionPrepaidSubtitle,
           footnote: l10n.subscriptionPurchaseModalOptionPrepaidFootnote,
           leadingIcon: Icons.event_available_rounded,
-          price: l10n.subscriptionAutoRenewPriceMonth(
-            kSubscriptionMonthlyPriceUsd.toStringAsFixed(2),
-          ),
+          price: unitPrice != null
+              ? l10n.subscriptionAutoRenewPriceMonth(
+                  unitPrice.toStringAsFixed(2),
+                )
+              : '—',
           plansLoading: false,
           intervalLabel: null,
         );
@@ -414,8 +456,7 @@ class _PaymentPathSelector extends StatelessWidget {
       final formatted = NumberFormat('0.00').format(plan.amount);
       return l10n.subscriptionAutoRenewPriceMonth(formatted);
     }
-    final fallback = interval == CatalogInterval.year ? '99.99' : '9.99';
-    return l10n.subscriptionAutoRenewPriceMonth(fallback);
+    return '—';
   }
 }
 
@@ -609,6 +650,7 @@ class _PrepaidPanel extends StatelessWidget {
     required this.months,
     required this.processor,
     required this.busy,
+    required this.unitPrice,
     required this.totalPrice,
     required this.onMonthsChanged,
     required this.onProcessorChanged,
@@ -618,7 +660,8 @@ class _PrepaidPanel extends StatelessWidget {
   final int months;
   final PaymentProcessor processor;
   final bool busy;
-  final double totalPrice;
+  final double? unitPrice;
+  final double? totalPrice;
   final ValueChanged<int> onMonthsChanged;
   final ValueChanged<PaymentProcessor> onProcessorChanged;
   final VoidCallback? onContinue;
@@ -666,7 +709,9 @@ class _PrepaidPanel extends StatelessWidget {
               children: [
                 Text(l10n.subscriptionTotalPriceLabel),
                 Text(
-                  l10n.subscriptionTotalPrice(totalPrice.toStringAsFixed(2)),
+                  l10n.subscriptionTotalPrice(
+                    totalPrice?.toStringAsFixed(2) ?? '—',
+                  ),
                   style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ],

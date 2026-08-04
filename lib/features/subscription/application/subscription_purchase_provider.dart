@@ -21,12 +21,13 @@ class SubscriptionPurchaseCtrl extends _$SubscriptionPurchaseCtrl {
   Future<PaymentSession?> purchaseExternal({
     required int months,
     required PaymentProcessor processor,
+    required String tier,
   }) async {
     state = const AsyncLoading();
     try {
       final repo = ref.read(subscriptionRepositoryProvider);
       final session = await repo.purchase(
-        PurchaseRequest(months: months, processor: processor),
+        PurchaseRequest(months: months, processor: processor, tier: tier),
       );
       state = const AsyncData(null);
       await launchPayUrl(session.payUrl);

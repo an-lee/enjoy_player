@@ -26,6 +26,8 @@ import 'package:enjoy_player/features/credits/application/todays_credits_provide
 import 'package:enjoy_player/features/library/application/learning_statistics_provider.dart';
 import 'package:enjoy_player/features/settings/presentation/widgets/settings_row.dart';
 import 'package:enjoy_player/features/subscription/application/current_tier_provider.dart';
+import 'package:enjoy_player/features/subscription/application/subscription_status_provider.dart';
+import 'package:enjoy_player/features/subscription/domain/subscription_status.dart';
 import 'package:enjoy_player/features/update/application/update_controller.dart';
 import 'package:enjoy_player/features/update/presentation/update_notification_dot.dart';
 import 'package:enjoy_player/features/vocabulary/application/vocabulary_providers.dart';
@@ -101,7 +103,11 @@ class _ProfileContentState extends ConsumerState<ProfileContent> {
         final p = state.profile;
 
         final tier = ref.watch(currentTierProvider);
-        final dailyLimit = tier == SubscriptionTier.pro ? 60000 : 1000;
+        final status = ref.watch(subscriptionStatusProvider).valueOrNull;
+        // Prefer the live subscription status so the daily limit reflects the
+        // actual tier (free=1,000 / lite=12,000 / pro=60,000). Fall back to a
+        // tier-based default when the status hasn't loaded yet.
+        final dailyLimit = status?.dailyCreditsLimit ?? _fallbackDailyLimit(tier);
 
         final creditsUsedAsync = ref.watch(todaysCreditsUsedProvider);
         final creditsUsed = creditsUsedAsync.valueOrNull;
@@ -223,5 +229,19 @@ class _ProfileNavSection extends StatelessWidget {
       padding: EdgeInsets.zero,
       child: Column(mainAxisSize: MainAxisSize.min, children: children),
     );
+  }
+}
+
+/// Tier-based fallback for the daily credit limit when the live subscription
+/// status has not loaded yet. Matches the entitlements in
+/// [SubscriptionStatus.dailyCreditsLimit].
+int _fallbackDailyLimit(SubscriptionTier tier) {
+  switch (tier) {
+    case SubscriptionTier.pro:
+      return 60000;
+    case SubscriptionTier.lite:
+      return 12000;
+    case SubscriptionTier.free:
+      return 1000;
   }
 }

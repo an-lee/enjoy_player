@@ -1,4 +1,4 @@
-/// Orchestrates Pro-gated Anki CSV export.
+/// Orchestrates paid-tier-gated Anki CSV export.
 library;
 
 import 'dart:typed_data';
@@ -15,13 +15,13 @@ import 'package:enjoy_player/features/vocabulary/domain/vocabulary_anki_csv.dart
 import 'package:enjoy_player/features/vocabulary/domain/vocabulary_anki_export_filters.dart';
 import 'package:enjoy_player/features/vocabulary/domain/vocabulary_models.dart';
 
-/// Whether the current session may export Anki CSV (active Pro when known).
+/// Whether the current session may export Anki CSV (paid tier when known).
 bool vocabularyAnkiExportAllowedFrom({
   required SubscriptionTier tier,
-  bool? subscriptionIsPro,
+  bool? subscriptionIsPaid,
 }) {
-  if (subscriptionIsPro != null) return subscriptionIsPro;
-  return tier == SubscriptionTier.pro;
+  if (subscriptionIsPaid != null) return subscriptionIsPaid;
+  return tier != SubscriptionTier.free;
 }
 
 /// Convenience for Riverpod [Ref] / test containers.
@@ -29,7 +29,7 @@ bool vocabularyAnkiExportAllowed(Ref ref) {
   final status = ref.read(subscriptionStatusProvider).valueOrNull;
   return vocabularyAnkiExportAllowedFrom(
     tier: ref.read(currentTierProvider),
-    subscriptionIsPro: status?.isPro,
+    subscriptionIsPaid: status?.isPaidTier,
   );
 }
 
@@ -86,16 +86,16 @@ Future<VocabularyAnkiExportBundle> buildVocabularyAnkiExport({
 }
 
 Future<VocabularyAnkiExportIoOutcome> runVocabularyAnkiExport({
-  required bool isPro,
+  required bool isPaid,
   required Future<List<VocabularyItem>> Function() listAll,
   required Future<List<VocabularyContext>> Function(String itemId)
-  getContextsForItem,
+      getContextsForItem,
   required VocabularyAnkiExportFilters filters,
   String? dialogTitle,
   void Function(double progress)? onProgress,
 }) async {
-  if (!isPro) {
-    throw StateError('pro_required');
+  if (!isPaid) {
+    throw StateError('paid_required');
   }
   final bundle = await buildVocabularyAnkiExport(
     listAll: listAll,
@@ -115,7 +115,7 @@ Future<VocabularyAnkiExportIoOutcome> runVocabularyAnkiExportWithRef({
 }) {
   final repo = ref.read(vocabularyRepositoryProvider);
   return runVocabularyAnkiExport(
-    isPro: vocabularyAnkiExportAllowed(ref),
+    isPaid: vocabularyAnkiExportAllowed(ref),
     listAll: repo.listAll,
     getContextsForItem: repo.getContextsForItem,
     filters: filters,
