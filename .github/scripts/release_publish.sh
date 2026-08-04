@@ -17,8 +17,15 @@ release_parse_common_args "$@"
 
 release_log_publish_only
 
-if [[ "${RELEASE_PUBLISH}" != true ]]; then
-  echo "Missing --publish (or --feeds-only)." >&2
+RELEASE_PUBLISH_GITHUB=false
+for arg in ${RELEASE_EXTRA_ARGS[@]+"${RELEASE_EXTRA_ARGS[@]}"}; do
+  case "${arg}" in
+    --publish-github) RELEASE_PUBLISH_GITHUB=true ;;
+  esac
+done
+
+if [[ "${RELEASE_PUBLISH}" != true && "${RELEASE_PUBLISH_GITHUB}" != true ]]; then
+  echo "Missing --publish (or --feeds-only), or --publish-github." >&2
   exit 1
 fi
 
@@ -27,7 +34,7 @@ release_load_publish_env "${root}"
 publish_args=()
 release_collect_publish_artifact_args "${root}" publish_args
 
-if [[ ${#publish_args[@]} -eq 0 ]]; then
+if [[ ${#publish_args[@]} -eq 0 && "${RELEASE_PUBLISH_GITHUB}" != true ]]; then
   echo "No release artifacts found for version $(release_version)." >&2
   echo "Expected paths such as:" >&2
   echo "  $(release_windows_installer_path "${root}")" >&2
@@ -43,7 +50,13 @@ else
 fi
 
 echo ">>> Publish all available artifacts"
-bash "${root}/.github/scripts/publish_player_release_to_s3.sh" ${publish_args[@]+"${publish_args[@]}"}
+if [[ "${RELEASE_PUBLISH}" == true ]]; then
+  bash "${root}/.github/scripts/publish_player_release_to_s3.sh" ${publish_args[@]+"${publish_args[@]}"}
+fi
+
+if [[ "${RELEASE_PUBLISH_GITHUB}" == true ]]; then
+  release_publish_github "${root}" all
+fi
 
 release_print_artifacts "${root}" all
 echo "Done."

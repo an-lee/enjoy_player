@@ -39,6 +39,179 @@ release_hint_publish() {
   fi
 }
 
+# Resolve the canonical GitHub Release tag for the current build.
+# Reads VERSION (override) → "v$(pubspec version)". Examples: 0.7.3 → v0.7.3.
+release_github_tag() {
+  local version="${VERSION:-$(release_version)}"
+  echo "v${version}"
+}
+
+# Resolve existing on-disk artifacts for a single platform into the
+# RELEASE_ARTIFACT_SPECS that softprops/action-gh-release / gh release upload
+# consume. Skips missing files so a partial build still produces a partial
+# release (matches the four per-platform workflows' incremental behavior).
+release_collect_github_release_files_for_platform() {
+  local root="$1"
+  local platform="$2"
+  local out_name="$3"
+  local -a out=()
+  local f abi
+
+  case "${platform}" in
+    windows)
+      f="$(release_windows_installer_path "${root}")"
+      if [[ -f "${f}" ]]; then out+=("${f}"); fi
+      ;;
+    macos)
+      f="$(release_macos_zip_path "${root}")"
+      if [[ -f "${f}" ]]; then out+=("${f}"); fi
+      ;;
+    linux)
+      f="$(release_linux_appimage_path "${root}")"
+      if [[ -f "${f}" ]]; then out+=("${f}"); fi
+      ;;
+    apple)
+      f="$(release_macos_zip_path "${root}")"
+      if [[ -f "${f}" ]]; then out+=("${f}"); fi
+      compgen -G "${root}/build/ios/ipa/EnjoyPlayer-v"*.ipa >/dev/null 2>&1 || true
+      for f in "${root}"/build/ios/ipa/EnjoyPlayer-v*.ipa; do
+        if [[ -f "${f}" ]]; then out+=("${f}"); fi
+      done
+      ;;
+    android)
+      f="$(release_android_aab_path "${root}")"
+      if [[ -f "${f}" ]]; then out+=("${f}"); fi
+      for abi in arm64-v8a armeabi-v7a x86_64; do
+        f="$(release_android_apk_path "${root}" "${abi}")"
+        if [[ -f "${f}" ]]; then out+=("${f}"); fi
+      done
+      ;;
+    all)
+      local aab installer appimage zip
+      installer="$(release_windows_installer_path "${root}")"
+      [[ -f "${installer}" ]] && out+=("${installer}") || true
+      aab="$(release_android_aab_path "${root}")"
+      [[ -f "${aab}" ]] && out+=("${aab}") || true
+      for abi in arm64-v8a armeabi-v7a x86_64; do
+        f="$(release_android_apk_path "${root}" "${abi}")"
+        [[ -f "${f}" ]] && out+=("${f}") || true
+      done
+      zip="$(release_macos_zip_path "${root}")"
+      [[ -f "${zip}" ]] && out+=("${zip}") || true
+      appimage="$(release_linux_appimage_path "${root}")"
+      [[ -f "${appimage}" ]] && out+=("${appimage}") || true
+      ;;
+    *)
+      echo "Unknown platform for GitHub Release: ${platform}" >&2
+      return 1
+      ;;
+  esac
+
+  eval "${out_name}=(\"\${out[@]}\")"
+}
+
+# Upload artifacts to the GitHub Release for the current tag.
+# Creates the release as a draft when it does not exist, and uploads /
+# replaces assets on an existing release. Idempotent — safe to re-run.
+#
+# Requires `gh` CLI on PATH; uses GH_TOKEN / GITHUB_TOKEN when set so the
+# same helper works for both maintainer laptops (`gh auth login`) and CI
+# (`GITHUB_TOKEN` injected by the runner).
+#
+# Args:
+#   $1 root
+#   $2 platform  (windows|macos|linux|apple|android|all)
+#   $3 tag       (default: v$(pubspec version))
+release_publish_github() {
+  local root="$1"
+  local platform="$2"
+  local tag="${3:-$(release_github_tag)}"
+
+  if ! command -v gh >/dev/null 2>&1; then
+    echo "GitHub Release upload failed: gh CLI not found on PATH." >&2
+    echo "Install: https://cli.github.com/  (or run from GitHub Actions)." >&2
+    return 1
+  fi
+
+  local -a files=()
+  release_collect_github_release_files_for_platform "${root}" "${platform}" files
+  if [[ ${#files[@]} -eq 0 ]]; then
+    echo "GitHub Release upload skipped: no artifacts on disk for ${platform} at tag ${tag}." >&2
+    echo "Build first, or pass --publish-only with an existing artifact set." >&2
+    return 1
+  fi
+
+  echo ">>> GitHub Release plan: tag=${tag} platform=${platform}"
+  local f
+  for f in "${files[@]}"; do
+    local size
+    size="$(wc -c < "${f}" | tr -d ' ')"
+    echo "    ${f}  (${size} bytes)"
+  done
+
+  if [[ "${RELEASE_GITHUB_ASSUME_YES:-}" != "true" && -t 0 ]]; then
+    local reply
+    read -r -p "Upload ${#files[@]} asset(s) to GitHub Release ${tag}? [y/N] " reply
+    case "${reply}" in
+      y|Y|yes|YES) ;;
+      *)
+        echo "Aborted by user."
+        return 0
+        ;;
+    esac
+  fi
+
+  local -a existing_files=()
+  local -a new_files=()
+  if gh release view "${tag}" >/dev/null 2>&1; then
+    echo ">>> GitHub Release ${tag} already exists; will upload/replace assets."
+    while IFS= read -r line; do
+      existing_files+=("${line}")
+    done < <(gh release view "${tag}" --json assets --jq '.assets[].name' 2>/dev/null || true)
+    for f in "${files[@]}"; do
+      local base
+      base="$(basename "${f}")"
+      local found=0
+      local existing
+      for existing in "${existing_files[@]+"${existing_files[@]}"}"; do
+        if [[ "${existing}" == "${base}" ]]; then
+          found=1
+          break
+        fi
+      done
+      if [[ "${found}" -eq 1 ]]; then
+        echo "  - ${base} (already attached; skipping re-upload)"
+      else
+        new_files+=("${f}")
+      fi
+    done
+  else
+    echo ">>> Creating draft GitHub Release ${tag}."
+    new_files=("${files[@]}")
+    local -a create_args=(
+      "${tag}"
+      --title "Enjoy Player ${tag}"
+      --draft
+      --target "$(git -C "${root}" rev-parse --abbrev-ref HEAD 2>/dev/null \
+        || git -C "${root}" rev-parse --short HEAD 2>/dev/null \
+        || echo main)"
+      --notes "Draft release. Notes will be filled in by release_publish.yml."
+    )
+    GH_TOKEN="${GH_TOKEN:-${GITHUB_TOKEN:-}}" \
+      gh release create "${create_args[@]}"
+  fi
+
+  if [[ ${#new_files[@]} -gt 0 ]]; then
+    echo ">>> Uploading ${#new_files[@]} asset(s) to ${tag}"
+    GH_TOKEN="${GH_TOKEN:-${GITHUB_TOKEN:-}}" \
+      gh release upload "${tag}" "${new_files[@]}" --clobber
+  fi
+
+  echo ">>> GitHub Release draft: https://github.com/$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null || echo '<owner>/<repo>')/releases/tag/${tag}"
+  echo "Promote to ready via: gh release edit ${tag} --draft=false"
+  echo "Or run .github/workflows/release_publish.yml (workflow_dispatch, finalize=true)."
+}
+
 # Validate android/key.properties points at an existing keystore file.
 # storeFile is relative to android/ (see android/key.properties.example).
 release_require_android_upload_keystore() {

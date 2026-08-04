@@ -1,6 +1,9 @@
 name: Release Windows
 
 on:
+  push:
+    tags:
+      - "v*.*.*"
   workflow_dispatch:
     inputs:
       build_installer:
@@ -11,13 +14,17 @@ on:
         description: Upload artifacts + update feeds on dl.enjoy.bot
         type: boolean
         default: false
+      publish_github:
+        description: Upload binaries to the GitHub Release for this tag (draft; finalize via release_publish.yml)
+        type: boolean
+        default: false
 
 concurrency:
   group: release-windows-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   release:
@@ -25,6 +32,8 @@ jobs:
     runs-on: [self-hosted, windows, flutter]
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Short workspace path (Windows MAX_PATH)
         shell: pwsh
@@ -74,6 +83,42 @@ jobs:
             throw "Git Bash not found at $gitBash (required for release_windows.sh on Windows)."
           }
           & $gitBash .github/scripts/release_windows.sh --publish-only --publish
+
+      - name: Upload binaries to GitHub Release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        working-directory: ${{ env.GITHUB_WORKSPACE }}
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          $version = $tag.TrimStart('v')
+          $installer = Join-Path $env:GITHUB_WORKSPACE "build\windows\installer\EnjoyPlayerSetup-v${version}.exe"
+          if (-not (Test-Path $installer)) {
+            throw "Windows installer not found at $installer (expected for tag $tag)."
+          }
+          & gh release create $tag $installer `
+            --title "Enjoy Player $tag" `
+            --draft `
+            --generate-notes `
+            --target main `
+            || & gh release upload $tag $installer --clobber
+
+      - name: Upload binaries to GitHub Release (manual)
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_github
+        shell: pwsh
+        working-directory: ${{ env.GITHUB_WORKSPACE }}
+        run: |
+          $version = (& bash .github/scripts/read_pubspec_version.sh).Trim()
+          $tag = "v$version"
+          $installer = Join-Path $env:GITHUB_WORKSPACE "build\windows\installer\EnjoyPlayerSetup-v${version}.exe"
+          if (-not (Test-Path $installer)) {
+            throw "Windows installer not found at $installer (expected for tag $tag)."
+          }
+          & gh release create $tag $installer `
+            --title "Enjoy Player $tag" `
+            --draft `
+            --generate-notes `
+            --target main `
+            || & gh release upload $tag $installer --clobber
 
       - name: Remove short workspace stage
         if: always()

@@ -431,10 +431,30 @@ After local verification, enable CI. Each workflow calls the same platform scrip
 | [`release_windows.yml`](../.github/workflows/release_windows.yml) | `windows-latest` | `pwsh ./release.ps1` |
 | [`release_android.yml`](../.github/workflows/release_android.yml) | self-hosted Linux | `bash .github/scripts/release.sh --platform android --play` |
 | [`release_apple.yml`](../.github/workflows/release_apple.yml) | self-hosted macOS | `bash .github/scripts/release.sh --platform apple --notarize --testflight` |
+| [`release_linux.yml`](../.github/workflows/release_linux.yml) | self-hosted Linux | `bash .github/scripts/release.sh --platform linux` |
+| [`release_publish.yml`](../.github/workflows/release_publish.yml) | `ubuntu-latest` | finalize notes / draft→ready on a tag |
 
-The [`build_linux.yml`](../.github/workflows/build_linux.yml) workflow covers compile smoke on CI; the release AppImage is produced by maintainers running `release.sh --platform linux [--publish]` locally. Promote it to a dedicated `release_linux.yml` when AppImage auto-update lands.
+The [`build_linux.yml`](../.github/workflows/build_linux.yml) workflow covers compile smoke on CI; the release AppImage is produced by the dedicated `release_linux.yml` workflow above (or locally via `release.sh --platform linux [--publish]`).
 
-Trigger: manual only (`workflow_dispatch`) — GitHub → Actions → pick the release workflow → **Run workflow**.
+Triggers: both **`workflow_dispatch`** (manual per-platform rerun) and **`push: tags: ['v*.*.*']`** (auto for tag pushes). The four per-platform workflows stay independent because each requires a different self-hosted runner and a different secret surface (Apple keychain + notary creds, Android Play SA + keystore, Windows Sparkle DSA). See [ADR-0067](decisions/0067-github-release-publishing.md) for the design.
+
+### GitHub Release flow
+
+When a tag like `v0.7.3` is pushed, the four `release_*.yml` workflows run in parallel and each uploads its artifacts to a **draft** GitHub Release for that tag using [`softprops/action-gh-release@v2`](https://github.com/softprops/action-gh-release). Re-running any one platform is safe — the action is idempotent and only adds/replaces the named assets.
+
+After all four platforms finish, promote the draft with [`release_publish.yml`](../.github/workflows/release_publish.yml):
+
+1. Actions → **Publish GitHub Release** → **Run workflow**.
+2. Leave `tag_name` blank to auto-pick the latest draft, set `notes_file` (default: `docs/releases/<version>.md` or `CHANGELOG.md`), set **`finalize=true`** to unmark draft.
+
+The same `--publish-github` flag works locally:
+
+```bash
+bash .github/scripts/release.sh --platform apple  --publish-only --publish-github
+bash .github/scripts/release.sh --platform all    --publish-only --publish-github
+```
+
+This calls [`release_lib.sh::release_publish_github`](../.github/scripts/release_lib.sh) which uses `gh release` (authenticate once with `gh auth login`). It creates the release as a draft; promote via the workflow above or `gh release edit vX.Y.Z --draft=false`.
 
 Platform CI setup (secrets, runners):
 

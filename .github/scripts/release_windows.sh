@@ -70,5 +70,16 @@ if [[ "${RELEASE_PUBLISH}" == true ]]; then
   bash "${root}/.github/scripts/publish_player_release_to_s3.sh" "${publish_args[@]}"
 fi
 
+RELEASE_PUBLISH_GITHUB=false
+for arg in ${RELEASE_EXTRA_ARGS[@]+"${RELEASE_EXTRA_ARGS[@]}"}; do
+  case "${arg}" in
+    --publish-github) RELEASE_PUBLISH_GITHUB=true ;;
+  esac
+done
+
+if [[ "${RELEASE_PUBLISH_GITHUB}" == true ]]; then
+  release_publish_github "${root}" windows
+fi
+
 release_print_artifacts "${root}" windows
 echo "Done."

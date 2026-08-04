@@ -45,6 +45,7 @@ Common options (forwarded to the platform script):
   --skip-build        Skip compile; use existing .app (with --notarize to retry notarization)
   --publish-only      Skip build and checks; publish existing artifacts
   --publish           Upload to dl.enjoy.bot (needs S3 env / publish_env.local.*)
+  --publish-github    Also upload to the GitHub Release for v$(pubspec) (needs `gh` CLI)
   --feeds-only        Build feeds locally (build/update-feeds/) without S3 upload
 
 Windows:

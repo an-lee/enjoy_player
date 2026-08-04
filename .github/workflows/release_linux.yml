@@ -1,10 +1,17 @@
 name: Release Linux
 
 on:
+  push:
+    tags:
+      - "v*.*.*"
   workflow_dispatch:
     inputs:
       publish:
         description: Upload AppImage + update feeds on dl.enjoy.bot
+        type: boolean
+        default: false
+      publish_github:
+        description: Upload binaries to the GitHub Release for this tag (draft; finalize via release_publish.yml)
         type: boolean
         default: false
 
@@ -13,7 +20,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   release:
@@ -21,6 +28,8 @@ jobs:
     runs-on: [self-hosted, Linux]
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Ensure Linux tooling
         run: bash .github/scripts/ensure_linux_tooling.sh
@@ -47,3 +56,25 @@ jobs:
           CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
           RELEASE_REQUIRE_S3: "1"
         run: bash .github/scripts/release_linux.sh --publish-only --publish
+
+      - name: Upload binaries to GitHub Release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Enjoy Player ${{ github.ref_name }}
+          draft: true
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: build/linux/x64/release/enjoy-player-v*-x86_64.AppImage
+
+      - name: Upload binaries to GitHub Release (manual)
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_github
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v$(bash .github/scripts/read_pubspec_version.sh)
+          name: Enjoy Player v$(bash .github/scripts/read_pubspec_version.sh)
+          draft: true
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: build/linux/x64/release/enjoy-player-v*-x86_64.AppImage

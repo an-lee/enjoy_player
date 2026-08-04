@@ -1,6 +1,9 @@
 name: Release Android
 
 on:
+  push:
+    tags:
+      - "v*.*.*"
   workflow_dispatch:
     inputs:
       build_apk:
@@ -15,13 +18,17 @@ on:
         description: Upload sideload APKs + update feeds on dl.enjoy.bot
         type: boolean
         default: false
+      publish_github:
+        description: Upload binaries to the GitHub Release for this tag (draft; finalize via release_publish.yml)
+        type: boolean
+        default: false
 
 concurrency:
   group: release-android-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   release:
@@ -31,6 +38,8 @@ jobs:
       ANDROID_USE_RUNNER_KEYSTORE: ${{ vars.ANDROID_USE_RUNNER_KEYSTORE || 'false' }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Ensure Linux tooling
         run: bash .github/scripts/ensure_linux_tooling.sh
@@ -84,6 +93,36 @@ jobs:
         run: |
           bash .github/scripts/ensure_publish_tooling.sh
           bash .github/scripts/release_android.sh --publish-only --publish
+
+      - name: Upload binaries to GitHub Release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Enjoy Player ${{ github.ref_name }}
+          draft: true
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            build/app/outputs/bundle/release/EnjoyPlayer-v*.aab
+            build/app/outputs/flutter-apk/EnjoyPlayer-v*-arm64-v8a.apk
+            build/app/outputs/flutter-apk/EnjoyPlayer-v*-armeabi-v7a.apk
+            build/app/outputs/flutter-apk/EnjoyPlayer-v*-x86_64.apk
+
+      - name: Upload binaries to GitHub Release (manual)
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_github
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v$(bash .github/scripts/read_pubspec_version.sh)
+          name: Enjoy Player v$(bash .github/scripts/read_pubspec_version.sh)
+          draft: true
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            build/app/outputs/bundle/release/EnjoyPlayer-v*.aab
+            build/app/outputs/flutter-apk/EnjoyPlayer-v*-arm64-v8a.apk
+            build/app/outputs/flutter-apk/EnjoyPlayer-v*-armeabi-v7a.apk
+            build/app/outputs/flutter-apk/EnjoyPlayer-v*-x86_64.apk
 
       - name: Clean up signing files
         if: always() && env.ANDROID_USE_RUNNER_KEYSTORE != 'true'

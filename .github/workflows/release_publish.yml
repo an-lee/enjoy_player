@@ -1,0 +1,104 @@
+name: Publish GitHub Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Release tag (e.g. v0.7.3). Defaults to the latest draft release.
+        type: string
+        required: false
+      notes_file:
+        description: Path (relative to repo root) to a markdown file with release notes. Leave blank to use CHANGELOG.md.
+        type: string
+        required: false
+      finalize:
+        description: Mark release as ready (unmark draft). Leave false to only update notes.
+        type: boolean
+        default: false
+
+concurrency:
+  group: publish-github-release-${{ inputs.tag_name || 'latest' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    name: Update notes and finalize release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve tag
+        id: tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [[ -n "${{ inputs.tag_name }}" ]]; then
+            tag="${{ inputs.tag_name }}"
+          else
+            tag="$(gh release list --limit 50 --json tagName,isDraft --jq '.[] | select(.isDraft) | .tagName' | head -1)"
+            if [[ -z "${tag}" ]]; then
+              echo "::error::No draft GitHub Release found. Specify tag_name or create a draft via release_*.yml first." >&2
+              exit 1
+            fi
+          fi
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          if ! gh release view "${tag}" >/dev/null 2>&1; then
+            echo "::error::GitHub Release ${tag} does not exist. Create one via release_*.yml (push a tag, or run with publish_github=true)." >&2
+            exit 1
+          fi
+
+      - name: Resolve notes file
+        id: notes
+        run: |
+          notes_path="${{ inputs.notes_file }}"
+          if [[ -z "${notes_path}" ]]; then
+            version="${tag#v}"
+            notes_path="docs/releases/${version}.md"
+            if [[ ! -f "${notes_path}" ]]; then
+              notes_path="CHANGELOG.md"
+            fi
+          fi
+          if [[ ! -f "${notes_path}" ]]; then
+            echo "::error::Notes file not found: ${notes_path}" >&2
+            exit 1
+          fi
+          echo "path=${notes_path}" >> "$GITHUB_OUTPUT"
+
+      - name: Update release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${{ steps.tag.outputs.tag }}" --notes-file "${{ steps.notes.outputs.path }}"
+
+      - name: Mark release ready
+        if: inputs.finalize
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Promoting ${{ steps.tag.outputs.tag }} from draft to published."
+          gh release edit "${{ steps.tag.outputs.tag }}" --draft=false
+
+      - name: Summary
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${{ steps.tag.outputs.tag }}"
+          notes_path="${{ steps.notes.outputs.path }}"
+          {
+            echo "### GitHub Release updated"
+            echo
+            echo "- **Tag**: \`${tag}\`"
+            echo "- **Notes**: ${notes_path}"
+            if [[ "${{ inputs.finalize }}" == "true" ]]; then
+              echo "- **Status**: ready (draft → published)"
+            else
+              echo "- **Status**: notes updated; release still draft"
+              echo
+              echo "Re-run with \`finalize=true\` to publish when all platforms are uploaded."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
