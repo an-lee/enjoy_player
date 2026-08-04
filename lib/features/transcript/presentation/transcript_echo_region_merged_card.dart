@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
+import 'package:enjoy_player/core/transcript/transcript_density.dart';
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
 import 'package:enjoy_player/features/player/application/display_position_provider.dart';
 import 'package:enjoy_player/features/player/application/echo_mode_provider.dart';
@@ -48,6 +49,7 @@ class EchoRegionMergedCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final tok = EnjoyThemeTokens.of(context);
+    final density = TranscriptDensity.of(context);
     final chrome = ref.watch(playerControllerProvider.select(playbackChromeOf));
     final matcher =
         secondaryMatcher ?? TranscriptSecondaryMatcher.from(secondaryLines);
@@ -175,7 +177,7 @@ class EchoRegionMergedCard extends ConsumerWidget {
             () => ref.read(echoModeProvider.notifier).shrinkEchoBackward(lines),
           ),
         ),
-        SizedBox(height: tok.space8),
+        SizedBox(height: density.echoCardGap),
         // Neutral card with 8px warm orange left rail
         ClipRRect(
           borderRadius: BorderRadius.circular(tok.radiusMd),
@@ -220,7 +222,7 @@ class EchoRegionMergedCard extends ConsumerWidget {
             ),
           ),
         ),
-        SizedBox(height: tok.space8),
+        SizedBox(height: density.echoCardGap),
         EchoRegionControlsBar(
           position: EchoRegionBarPosition.bottom,
           expandDisabled: echo.endLineIndex >= lines.length - 1,
@@ -236,7 +238,7 @@ class EchoRegionMergedCard extends ConsumerWidget {
           ),
         ),
         if (showShadow) ...[
-          SizedBox(height: tok.space16),
+          SizedBox(height: density.echoBottomPanelGap),
           _EchoShadowReadingPanel(
             mediaId: mediaId,
             targetType: chrome?.dexieTargetType ?? 'Audio',

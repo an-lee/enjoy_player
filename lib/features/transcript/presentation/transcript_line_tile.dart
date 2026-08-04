@@ -9,6 +9,7 @@ import 'package:enjoy_player/core/interaction/haptics.dart';
 import 'package:enjoy_player/core/interaction/mouse_tracker_safe.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/typography.dart';
+import 'package:enjoy_player/core/transcript/transcript_density.dart';
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_blur_mode_provider.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_cue_reveal_provider.dart';
@@ -111,8 +112,12 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
     final scheme = Theme.of(context).colorScheme;
     final tok = EnjoyThemeTokens.of(context);
     final typography = TranscriptTypographyTokens.of(context);
+    final density = TranscriptDensity.of(context);
     final l10n = AppLocalizations.of(context);
-    final baseBody = typography.bodyStyle;
+    final baseBody = typography.bodyStyle.copyWith(height: density.bodyHeight);
+    final secondaryTypographyStyle = typography.secondaryStyle.copyWith(
+      height: density.secondaryHeight,
+    );
     final defaultFg = scheme.onSurface;
 
     final echoCurrent = widget.isActive && widget.inEcho;
@@ -175,7 +180,7 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
           ? TranscriptSelectableRichText(
               span: transcriptMarkupToTextSpan(
                 widget.secondaryText!,
-                typography.secondaryStyle,
+                secondaryTypographyStyle,
                 defaultColor: scheme.onSurfaceVariant,
                 emphasize: false,
               ),
@@ -185,7 +190,7 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
           : Text.rich(
               transcriptMarkupToTextSpan(
                 widget.secondaryText!,
-                typography.secondaryStyle,
+                secondaryTypographyStyle,
                 defaultColor: scheme.onSurfaceVariant,
                 emphasize: false,
               ),
@@ -227,7 +232,10 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
             : TranscriptBlurText(revealed: isRevealed, child: secondaryWidget);
 
         final textBody = Padding(
-          padding: tok.transcriptLinePadding,
+          padding: EdgeInsets.symmetric(
+            horizontal: tok.transcriptLinePadding.horizontal,
+            vertical: density.lineVerticalPadding,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -238,10 +246,10 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
                   TranscriptLineRecordingBadge(count: widget.recordingCount),
                 ],
               ),
-              SizedBox(height: tok.space4),
+              SizedBox(height: density.headerBodyGap),
               blurredPrimary,
               if (blurredSecondary != null) ...[
-                SizedBox(height: tok.space8),
+                SizedBox(height: density.primarySecondaryGap),
                 DecoratedBox(
                   decoration: BoxDecoration(
                     border: Border(
@@ -252,7 +260,9 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
                     ),
                   ),
                   child: Padding(
-                    padding: EdgeInsets.only(left: tok.space12),
+                    padding: EdgeInsets.only(
+                      left: density.secondaryLeftPadding,
+                    ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

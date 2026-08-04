@@ -8,6 +8,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
+import 'package:enjoy_player/core/transcript/transcript_density.dart';
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
 import 'package:enjoy_player/features/player/application/echo_mode_provider.dart';
 import 'package:enjoy_player/features/player/application/player_interactions.dart';
@@ -395,7 +396,7 @@ class _TranscriptScrollableListState
     final activeForUi = ref.watch(
       transcriptPlaybackHighlightProvider(widget.mediaId).select((i) => i),
     );
-    final tok = EnjoyThemeTokens.of(context);
+    final density = TranscriptDensity.of(context);
     final secondaryAsync = ref.watch(
       secondaryTranscriptLinesForMediaProvider(widget.mediaId),
     );
@@ -468,8 +469,8 @@ class _TranscriptScrollableListState
           scrollCacheExtent: const ScrollCacheExtent.pixels(1400),
           controller: _scrollController,
           padding: EdgeInsets.symmetric(
-            horizontal: tok.space12,
-            vertical: tok.space8,
+            horizontal: density.listHorizontalPadding,
+            vertical: density.listVerticalPadding,
           ),
           itemCount: items.length,
           itemBuilder: (context, index) {
@@ -480,7 +481,7 @@ class _TranscriptScrollableListState
                   key: ValueKey<String>(
                     'echo-${e.startLineIndex}-${e.endLineIndex}',
                   ),
-                  padding: EdgeInsets.only(bottom: tok.space8),
+                  padding: EdgeInsets.only(bottom: density.lineInterGap),
                   child: KeyedSubtree(
                     key: _scrollKeyForEcho(echo),
                     child: EchoRegionMergedCard(
@@ -582,7 +583,7 @@ class _TranscriptScrollableListState
 
                 return Padding(
                   key: ValueKey<String>('line-$lineIndex'),
-                  padding: EdgeInsets.only(bottom: tok.space8),
+                  padding: EdgeInsets.only(bottom: density.lineInterGap),
                   child: tile,
                 );
             }

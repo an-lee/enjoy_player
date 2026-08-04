@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:enjoy_player/core/interaction/list_safe_icon_button.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
+import 'package:enjoy_player/core/transcript/transcript_density.dart';
 import 'package:enjoy_player/features/hotkeys/presentation/hotkey_tooltip_label.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
@@ -36,6 +37,7 @@ class EchoRegionControlsBar extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
     final scheme = Theme.of(context).colorScheme;
     final tok = EnjoyThemeTokens.of(context);
+    final density = TranscriptDensity.of(context);
 
     final expandLabel = position == EchoRegionBarPosition.top
         ? l10n.expandEchoBackward
@@ -58,10 +60,10 @@ class EchoRegionControlsBar extends ConsumerWidget {
         : Icons.expand_more;
 
     final edgePadding = dense
-        ? EdgeInsets.symmetric(vertical: tok.space4)
+        ? EdgeInsets.symmetric(vertical: density.echoControlsPadding)
         : (position == EchoRegionBarPosition.top
-              ? EdgeInsets.only(bottom: tok.space4)
-              : EdgeInsets.only(top: tok.space4));
+              ? EdgeInsets.only(bottom: density.echoControlsPadding)
+              : EdgeInsets.only(top: density.echoControlsPadding));
 
     return Padding(
       padding: edgePadding,
@@ -71,6 +73,7 @@ class EchoRegionControlsBar extends ConsumerWidget {
           Expanded(
             child: Divider(
               height: 1,
+              thickness: density.echoDividerThickness,
               color: scheme.outlineVariant.withValues(alpha: 0.5),
             ),
           ),
@@ -78,17 +81,18 @@ class EchoRegionControlsBar extends ConsumerWidget {
           ListSafeIconButton(
             semanticLabel: expandTip,
             onPressed: expandDisabled ? null : onExpand,
-            icon: Icon(expandIcon, size: 20),
+            icon: Icon(expandIcon, size: density.echoControlIconSize),
           ),
           ListSafeIconButton(
             semanticLabel: shrinkTip,
             onPressed: shrinkDisabled ? null : onShrink,
-            icon: const Icon(Icons.remove, size: 20),
+            icon: Icon(Icons.remove, size: density.echoControlIconSize),
           ),
           SizedBox(width: tok.space8),
           Expanded(
             child: Divider(
               height: 1,
+              thickness: density.echoDividerThickness,
               color: scheme.outlineVariant.withValues(alpha: 0.5),
             ),
           ),
