@@ -60,7 +60,7 @@ void main() {
 
       expect(
         tokens.transcriptLinePadding,
-        const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        const EdgeInsets.symmetric(horizontal: 16),
       );
     });
 

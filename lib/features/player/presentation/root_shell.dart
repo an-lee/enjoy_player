@@ -72,6 +72,10 @@ class _RootShellState extends ConsumerState<RootShell> {
     final l10n = AppLocalizations.of(context)!;
     final path = GoRouterState.of(context).uri.path;
     final onPlayer = path.startsWith('/player/');
+    // Immersive flashcard review: hide shell chrome (sidebar / bottom nav /
+    // mini transport) while `/vocabulary/review` is active — same path-flag
+    // family as `/player/` nav hiding (specs/033-immersive-flashcard-review).
+    final onReview = path.startsWith('/vocabulary/review');
 
     return TierReconcileHost(
       child: AppBackground(
@@ -79,9 +83,11 @@ class _RootShellState extends ConsumerState<RootShell> {
           builder: (context, constraints) {
             final tokens = EnjoyThemeTokens.of(context);
             final useSidebar =
-                constraints.maxWidth >= tokens.breakpointRail && !onPlayer;
+                constraints.maxWidth >= tokens.breakpointRail &&
+                !onPlayer &&
+                !onReview;
 
-            final bottomNav = (!useSidebar && !onPlayer)
+            final bottomNav = (!useSidebar && !onPlayer && !onReview)
                 ? EnjoyBottomNav(
                     selectedIndex: _navIndexForPath(path),
                     onDestinationSelected: (i) => _goNavIndex(context, i),
@@ -124,7 +130,8 @@ class _RootShellState extends ConsumerState<RootShell> {
             final showMiniTransport =
                 sessionActive &&
                 !playerWithTransport &&
-                !suppressTransportForVocabularyPractice;
+                !suppressTransportForVocabularyPractice &&
+                !onReview;
 
             final pageColumn = Column(
               children: [
@@ -136,7 +143,7 @@ class _RootShellState extends ConsumerState<RootShell> {
 
             final bottomClearance =
                 (showMiniTransport ? kRootShellTransportSnackClearance : 0.0) +
-                (!useSidebar && !onPlayer
+                (!useSidebar && !onPlayer && !onReview
                     ? rootShellBottomNavClearance(context)
                     : 0.0);
 

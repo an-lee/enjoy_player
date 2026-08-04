@@ -23,8 +23,8 @@ class ShadowRecordFab extends StatelessWidget {
 
   /// Outer hit target / ring diameter; keep in sync with the toolbar slot in
   /// [ShadowReadingToolbarRow].
-  static const double ringOuterHitSize = 68;
-  static const double _fabInner = 56;
+  static const double ringOuterHitSize = 56;
+  static const double _fabInner = 44;
 
   final bool recording;
   final bool echoActive;
@@ -40,7 +40,7 @@ class ShadowRecordFab extends StatelessWidget {
   Widget build(BuildContext context) {
     final scale = overTarget ? (overPulseHigh ? 1.04 : 1.0) : 1.0;
     final trackAlpha = showProgressArc ? 0.38 : 0.18;
-    final iconSize = _fabInner <= 56 ? 24.0 : 28.0;
+    final iconSize = _fabInner <= 44 ? 22.0 : (_fabInner <= 56 ? 24.0 : 28.0);
 
     return AnimatedScale(
       scale: scale,

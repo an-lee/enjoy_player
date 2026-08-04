@@ -192,6 +192,22 @@ class _VocabularyReviewSessionScreenState
     );
   }
 
+  void _maybePrefetchDictionary(ReviewSessionState session) {
+    if (!session.flipped || session.dictionaryFetchInFlight) return;
+    final item = session.currentItem;
+    if (item == null) return;
+    if (decodeDictionaryExplanation(item.explanation) != null) return;
+    final auth = ref.read(authCtrlProvider);
+    final signedIn = auth.maybeWhen(
+      data: (s) => s is AuthSignedIn,
+      orElse: () => false,
+    );
+    if (!signedIn) return;
+    unawaited(
+      ref.read(vocabularyReviewSessionProvider.notifier).fetchDictionary(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -202,6 +218,7 @@ class _VocabularyReviewSessionScreenState
     ref.listen(vocabularyReviewSessionProvider, (prev, next) {
       if (next.flipped && prev?.flipped != true) {
         _maybePrefetchContextual(next);
+        _maybePrefetchDictionary(next);
       }
     });
 
@@ -252,12 +269,15 @@ class _VocabularyReviewSessionScreenState
                                   0.0,
                                   t.contentMaxWidth,
                                 );
+                                // Immersive shell frees vertical space (no mini
+                                // transport / nav); use more of the stage height.
                                 final compact = constraints.maxHeight < 640;
                                 final stageHeight = compact
                                     ? constraints.maxHeight.clamp(0.0, 560.0)
-                                    : (constraints.maxHeight * 0.82)
-                                          .clamp(420.0, 640.0)
-                                          .clamp(0.0, constraints.maxHeight);
+                                    : (constraints.maxHeight * 0.88).clamp(
+                                        420.0,
+                                        constraints.maxHeight,
+                                      );
                                 return Center(
                                   child: SizedBox(
                                     width: stageWidth,

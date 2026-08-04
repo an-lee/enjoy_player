@@ -76,6 +76,34 @@ void main() {
     expect(ios, equals(android));
   });
 
+  testWidgets('line horizontal padding is 16 not summed EdgeInsets.horizontal', (
+    tester,
+  ) async {
+    await tester.pumpWidget(transcriptTileHarness(child: _buildTile()));
+
+    final paddings = tester.widgetList<Padding>(
+      find.descendant(
+        of: find.byType(TranscriptLineTile),
+        matching: find.byType(Padding),
+      ),
+    );
+    final linePads = paddings.where((p) {
+      final r = p.padding.resolve(TextDirection.ltr);
+      return r.left == 16 && r.right == 16;
+    });
+    expect(
+      linePads,
+      isNotEmpty,
+      reason: 'TranscriptLineTile must apply 16px side padding (not 32)',
+    );
+    // Guard against the old bug: EdgeInsets.horizontal (== 32) used as each side.
+    final doubled = paddings.where((p) {
+      final r = p.padding.resolve(TextDirection.ltr);
+      return r.left == 32 && r.right == 32;
+    });
+    expect(doubled, isEmpty);
+  });
+
   testWidgets('TranscriptDensity values differ between mobile and desktop', (
     tester,
   ) async {

@@ -8,13 +8,22 @@ import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
 import 'package:enjoy_player/data/db/app_database_provider.dart';
 import 'package:enjoy_player/features/player/application/player_controller.dart';
+import 'package:enjoy_player/features/player/application/player_engine_test_double_provider.dart';
+import 'package:enjoy_player/features/player/application/player_state_providers.dart';
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
 import 'package:enjoy_player/features/player/presentation/root_shell.dart';
+import 'package:enjoy_player/features/player/presentation/widgets/global_transport_bar.dart';
 import 'package:enjoy_player/features/auth/domain/user_profile.dart';
 import 'package:enjoy_player/features/discover/application/discover_providers.dart';
 import 'package:enjoy_player/features/subscription/application/subscription_status_provider.dart';
 import 'package:enjoy_player/features/subscription/domain/subscription_status.dart';
 import 'package:enjoy_player/features/sync/application/sync_controller.dart';
+import 'package:enjoy_player/features/transcript/application/all_transcripts_provider.dart';
+import 'package:enjoy_player/features/transcript/application/transcript_blur_mode_provider.dart';
+import 'package:enjoy_player/features/transcript/application/transcript_fetch_controller.dart';
+import 'package:enjoy_player/features/transcript/application/transcript_lines_provider.dart';
+import 'package:enjoy_player/features/transcript/domain/transcript_fetch_status.dart';
+import 'package:enjoy_player/features/transcript/domain/transcript_track.dart';
 import 'package:enjoy_player/features/update/application/update_controller.dart';
 import 'package:enjoy_player/features/vocabulary/application/vocabulary_review_session.dart';
 import 'package:enjoy_player/features/vocabulary/domain/vocabulary_review_practice.dart';
@@ -25,6 +34,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../../support/fake_player_engine.dart';
+
+const _kShellMediaId = 'shell-transport-test';
+
+PlaybackSession _shellSession() {
+  final now = DateTime(2026, 1, 1);
+  return PlaybackSession(
+    mediaId: _kShellMediaId,
+    dexieTargetType: 'Audio',
+    mediaType: 'audio',
+    mediaTitle: 'Shell transport test',
+    durationSeconds: 120,
+    currentTimeSeconds: 0,
+    currentSegmentIndex: 0,
+    language: 'en',
+    startedAt: now,
+    lastActiveAt: now,
+  );
+}
 
 class _FakeVocabSession extends VocabularyReviewSession {
   _FakeVocabSession({ReviewSessionState? initial})
@@ -41,6 +70,20 @@ class _NullPlayerController extends PlayerController {
 
   @override
   PlaybackSession? build() => null;
+}
+
+class _SessionPlayerController extends PlayerController {
+  _SessionPlayerController(this._session);
+
+  final PlaybackSession _session;
+
+  @override
+  PlaybackSession? build() => _session;
+}
+
+class _BlurModeOff extends TranscriptBlurMode {
+  @override
+  bool build() => false;
 }
 
 GoRouter _router({required String initial}) {
@@ -82,6 +125,15 @@ GoRouter _router({required String initial}) {
             path: '/youtube/login',
             builder: (_, _) => const Scaffold(body: Text('youtube-login-page')),
           ),
+          GoRoute(
+            path: '/vocabulary',
+            builder: (_, _) => const Scaffold(body: Text('vocabulary-page')),
+          ),
+          GoRoute(
+            path: '/vocabulary/review',
+            builder: (_, _) =>
+                const Scaffold(body: Text('vocabulary-review-page')),
+          ),
         ],
       ),
     ],
@@ -92,13 +144,14 @@ List<Override> _shellOverrides(
   AppDatabase db, {
   ReviewSessionState? vocab,
   bool updateBadge = false,
+  PlaybackSession? playerSession,
+  FakePlayerEngine? playerEngine,
 }) {
-  return [
+  final overrides = <Override>[
     appDatabaseProvider.overrideWithValue(db),
     deviceGlobalAppDatabaseProvider.overrideWithValue(db),
     syncCtrlProvider.overrideWithValue(0),
     discoverFeedRefreshSchedulerProvider.overrideWithValue(0),
-    playerControllerProvider.overrideWith(_NullPlayerController.new),
     updateAvailableBadgeProvider.overrideWithValue(updateBadge),
     subscriptionStatusProvider.overrideWith(
       (ref) async => const SubscriptionStatus(
@@ -110,6 +163,34 @@ List<Override> _shellOverrides(
       () => _FakeVocabSession(initial: vocab),
     ),
   ];
+
+  if (playerSession == null) {
+    overrides.add(
+      playerControllerProvider.overrideWith(_NullPlayerController.new),
+    );
+  } else {
+    final engine = playerEngine ?? FakePlayerEngine();
+    overrides.addAll([
+      playerEngineTestDoubleProvider.overrideWithValue(engine),
+      playerControllerProvider.overrideWith(
+        () => _SessionPlayerController(playerSession),
+      ),
+      transcriptHasLinesForMediaProvider(
+        playerSession.mediaId,
+      ).overrideWith((ref) => Stream.value(false)),
+      playerIsPlayingProvider.overrideWith((ref) => Stream.value(false)),
+      playerIsBufferingProvider.overrideWith((ref) => Stream.value(false)),
+      allTranscriptsForMediaProvider(
+        playerSession.mediaId,
+      ).overrideWith((ref) => Stream.value(const <TranscriptTrack>[])),
+      transcriptFetchCtrlProvider(playerSession.mediaId).overrideWithValue(
+        const TranscriptFetchUiState(status: TranscriptFetchStatus.idle),
+      ),
+      transcriptBlurModeProvider.overrideWith(_BlurModeOff.new),
+    ]);
+  }
+
+  return overrides;
 }
 
 Future<void> _pump(
@@ -151,13 +232,16 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late AppDatabase db;
+  late FakePlayerEngine fakeEngine;
 
   setUp(() {
     db = AppDatabase(executor: NativeDatabase.memory());
+    fakeEngine = FakePlayerEngine();
   });
 
   tearDown(() async {
     await db.close();
+    await fakeEngine.dispose();
   });
 
   group('RootShell narrow layout (mobile)', () {
@@ -437,5 +521,162 @@ void main() {
       expect(find.text('profile-page'), findsOneWidget);
       expect(find.byIcon(Icons.person_rounded), findsOneWidget);
     });
+  });
+
+  // Chrome matrix: specs/033-immersive-flashcard-review/contracts/immersive-review-shell.md
+  // - /vocabulary/review → hide sidebar, bottom nav, mini transport
+  // - /vocabulary (hub) → normal chrome; mini transport when session active
+  // - leave review → chrome restored (path-derived)
+  // - resize while on review → chrome stays hidden
+  group('RootShell immersive vocabulary review', () {
+    testWidgets('hides AppSidebar on /vocabulary/review (wide)', (
+      tester,
+    ) async {
+      final router = _router(initial: '/vocabulary/review');
+      await _pump(
+        tester,
+        router: router,
+        overrides: _shellOverrides(db),
+        surface: const Size(1100, 900),
+      );
+
+      expect(find.text('vocabulary-review-page'), findsOneWidget);
+      expect(find.byIcon(Icons.search_rounded), findsNothing);
+      expect(find.byIcon(Icons.home_outlined), findsNothing);
+    });
+
+    testWidgets('hides bottom nav on /vocabulary/review (narrow)', (
+      tester,
+    ) async {
+      final router = _router(initial: '/vocabulary/review');
+      await _pump(
+        tester,
+        router: router,
+        overrides: _shellOverrides(db),
+        surface: const Size(400, 900),
+      );
+
+      expect(find.text('vocabulary-review-page'), findsOneWidget);
+      expect(find.byIcon(Icons.home_outlined), findsNothing);
+      expect(find.byIcon(Icons.explore_outlined), findsNothing);
+    });
+
+    testWidgets(
+      'hides mini transport on /vocabulary/review with active session',
+      (tester) async {
+        final router = _router(initial: '/vocabulary/review');
+        await _pump(
+          tester,
+          router: router,
+          overrides: _shellOverrides(
+            db,
+            playerSession: _shellSession(),
+            playerEngine: fakeEngine,
+          ),
+          surface: const Size(1100, 900),
+        );
+
+        expect(find.text('vocabulary-review-page'), findsOneWidget);
+        expect(find.byType(GlobalTransportBar), findsNothing);
+        expect(find.byIcon(Icons.play_arrow_rounded), findsNothing);
+      },
+    );
+
+    testWidgets('shows mini transport on /vocabulary hub with active session', (
+      tester,
+    ) async {
+      final router = _router(initial: '/vocabulary');
+      await _pump(
+        tester,
+        router: router,
+        overrides: _shellOverrides(
+          db,
+          playerSession: _shellSession(),
+          playerEngine: fakeEngine,
+        ),
+        surface: const Size(1100, 900),
+      );
+
+      expect(find.text('vocabulary-page'), findsOneWidget);
+      expect(find.byType(GlobalTransportBar), findsOneWidget);
+      expect(find.byIcon(Icons.play_arrow_rounded), findsOneWidget);
+    });
+
+    testWidgets('restores sidebar after leaving /vocabulary/review (wide)', (
+      tester,
+    ) async {
+      final router = _router(initial: '/vocabulary/review');
+      await _pump(
+        tester,
+        router: router,
+        overrides: _shellOverrides(db),
+        surface: const Size(1100, 900),
+      );
+
+      expect(find.byIcon(Icons.search_rounded), findsNothing);
+
+      router.go('/vocabulary');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.text('vocabulary-page'), findsOneWidget);
+      expect(find.byIcon(Icons.search_rounded), findsOneWidget);
+    });
+
+    testWidgets(
+      'restores mini transport after leaving review with active session',
+      (tester) async {
+        final router = _router(initial: '/vocabulary/review');
+        await _pump(
+          tester,
+          router: router,
+          overrides: _shellOverrides(
+            db,
+            playerSession: _shellSession(),
+            playerEngine: fakeEngine,
+          ),
+          surface: const Size(400, 900),
+        );
+
+        expect(find.byType(GlobalTransportBar), findsNothing);
+
+        router.go('/library');
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+
+        expect(find.text('library-page'), findsOneWidget);
+        expect(find.byType(GlobalTransportBar), findsOneWidget);
+        expect(find.byIcon(Icons.play_arrow_rounded), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'keeps chrome hidden when resizing while on /vocabulary/review',
+      (tester) async {
+        final router = _router(initial: '/vocabulary/review');
+        await _pump(
+          tester,
+          router: router,
+          overrides: _shellOverrides(db),
+          surface: const Size(400, 900),
+        );
+
+        expect(find.byIcon(Icons.home_outlined), findsNothing);
+
+        await tester.binding.setSurfaceSize(const Size(1100, 900));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+
+        expect(find.text('vocabulary-review-page'), findsOneWidget);
+        expect(find.byIcon(Icons.search_rounded), findsNothing);
+        expect(find.byIcon(Icons.home_outlined), findsNothing);
+
+        await tester.binding.setSurfaceSize(const Size(400, 900));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+
+        expect(find.byIcon(Icons.home_outlined), findsNothing);
+      },
+    );
   });
 }
