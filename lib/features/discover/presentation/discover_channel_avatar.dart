@@ -1,6 +1,7 @@
 /// Circular channel avatar with generative fallback (Discover UI).
 library;
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import 'package:enjoy_player/core/theme/generative_media_cover.dart';
@@ -47,8 +48,8 @@ class DiscoverChannelAvatar extends StatelessWidget {
         width: size,
         height: size,
         child: url != null
-            ? Image.network(
-                url!,
+            ? Image(
+                image: CachedNetworkImageProvider(url!),
                 fit: BoxFit.cover,
                 errorBuilder: (_, _, _) => fallback(),
                 loadingBuilder: (context, child, progress) {

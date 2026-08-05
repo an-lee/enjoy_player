@@ -3,6 +3,7 @@ library;
 
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -282,8 +283,8 @@ class _VideoThumbnail extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             if (thumbUrl != null)
-              Image.network(
-                thumbUrl!,
+              Image(
+                image: CachedNetworkImageProvider(thumbUrl!),
                 fit: BoxFit.cover,
                 errorBuilder: (_, _, _) =>
                     GenerativeMediaCover(seed: coverSeed, isVideo: true),
@@ -419,8 +420,8 @@ class _ChannelAvatar extends StatelessWidget {
         width: 36,
         height: 36,
         child: imageUrl != null
-            ? Image.network(
-                imageUrl!,
+            ? Image(
+                image: CachedNetworkImageProvider(imageUrl!),
                 fit: BoxFit.cover,
                 errorBuilder: (_, _, _) => fallback(),
               )
