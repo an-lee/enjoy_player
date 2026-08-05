@@ -1575,7 +1575,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get subscriptionTierLitePrice => '1.99 USD/month';
 
   @override
-  String get subscriptionTierLiteDailyCredits => '12,000 credits/day';
+  String get subscriptionTierLiteDailyCredits =>
+      '12,000 credits/day (12× Free)';
 
   @override
   String get subscriptionTierProName => 'Pro';
@@ -1587,64 +1588,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get subscriptionTierProPrice => '9.99 USD/month';
 
   @override
-  String get subscriptionTierProDailyCredits => '60,000 credits/day';
+  String get subscriptionTierProDailyCredits => '60,000 credits/day (60× Free)';
 
   @override
-  String get subscriptionFeatureFreeTranslation => 'Basic translation';
+  String get subscriptionFeatureTranslation => 'Translation';
 
   @override
-  String get subscriptionFeatureFreeSmartTranslation =>
-      'Limited smart translation';
+  String get subscriptionFeatureSmartTranslation => 'Smart translation';
 
   @override
-  String get subscriptionFeatureFreeDictionary => 'Limited dictionary';
+  String get subscriptionFeatureDictionary => 'Dictionary';
 
   @override
-  String get subscriptionFeatureFreeAsr => 'Limited ASR';
+  String get subscriptionFeatureAsr => 'Speech recognition';
 
   @override
-  String get subscriptionFeatureFreeTts => 'Limited TTS';
+  String get subscriptionFeatureTts => 'Speech synthesis';
 
   @override
-  String get subscriptionFeatureFreeAssessment => 'Limited assessment';
+  String get subscriptionFeatureAssessment => 'Pronunciation assessment';
 
   @override
-  String get subscriptionFeatureProTranslation => 'Unlimited translation';
+  String get subscriptionFeaturePaidFlashcards =>
+      'Download vocabulary flashcards';
 
   @override
-  String get subscriptionFeatureProSmartTranslation =>
-      'Extensive smart translation';
-
-  @override
-  String get subscriptionFeatureProDictionary => 'Extensive dictionary';
-
-  @override
-  String get subscriptionFeatureProAsr => 'Extensive ASR';
-
-  @override
-  String get subscriptionFeatureProTts => 'Extensive TTS';
-
-  @override
-  String get subscriptionFeatureProAssessment => 'Extensive assessment';
-
-  @override
-  String get subscriptionFeatureLiteTranslation => 'Full translation';
-
-  @override
-  String get subscriptionFeatureLiteSmartTranslation =>
-      'Full smart translation';
-
-  @override
-  String get subscriptionFeatureLiteDictionary => 'Full dictionary';
-
-  @override
-  String get subscriptionFeatureLiteAsr => 'Full short ASR';
-
-  @override
-  String get subscriptionFeatureLiteTts => 'Full TTS';
-
-  @override
-  String get subscriptionFeatureLiteAssessment => 'Full assessment';
+  String get subscriptionFeaturePaidMoreComing => 'More features coming';
 
   @override
   String get subscriptionUpgrade => 'Upgrade to Pro';
@@ -3689,7 +3658,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get subscriptionTierCatalogDescription =>
-      'Pick a tier and billing interval. Continue to pick how you pay.';
+      'All tiers include the same AI features. Choose a credit allowance and billing cycle, then pick how you pay.';
 
   @override
   String get subscriptionTierCatalogRecommended => 'Recommended';

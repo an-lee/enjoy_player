@@ -73,10 +73,8 @@ Future<void> showUnifiedPurchaseSheet(
   await showEnjoyAdaptiveSheet<void>(
     context: context,
     isScrollControlled: true,
-    builder: (ctx) => _UnifiedPurchaseSheetBody(
-      initialTier: tier,
-      initialInterval: interval,
-    ),
+    builder: (ctx) =>
+        _UnifiedPurchaseSheetBody(initialTier: tier, initialInterval: interval),
   );
 }
 
@@ -213,13 +211,19 @@ class _UnifiedPurchaseSheetBodyState
         : l10n.subscriptionTierProName;
 
     // Resolve the selected plan from the loaded plans list. When the provider
-    // is still loading, errored, or returned an empty list, [selectedPlan] is
-    // null and the bottom panel is hidden — we never present a "Subscribe"
-    // CTA without a valid plan to back it.
+    // is still loading, errored, or returned an empty list, the bottom panel
+    // stays hidden. When plans loaded but no row matches the chosen
+    // tier/interval, [selectedPlan] is null and the CTA is shown disabled —
+    // never a hardcoded fallback price.
     final selectedPlan = plansAsync.maybeWhen(
-      data: (plans) =>
-          plans.isEmpty ? null : _resolvePlan(plans, interval, widget.initialTier),
+      data: (plans) => plans.isEmpty
+          ? null
+          : _resolvePlan(plans, interval, widget.initialTier),
       orElse: () => null,
+    );
+    final plansLoadedNonEmpty = plansAsync.maybeWhen(
+      data: (plans) => plans.isNotEmpty,
+      orElse: () => false,
     );
 
     final unitPrice = plansAsync.maybeWhen(
@@ -305,13 +309,13 @@ class _UnifiedPurchaseSheetBodyState
                   ),
                 ),
                 SizedBox(height: t.space16),
-                if (selectedPlan != null)
+                if (plansLoadedNonEmpty)
                   if (_path == _PaymentPath.autoRenew)
                     _AutoRenewPanel(
                       busy: busy,
                       blocked: hasActiveAutoRenew,
                       plan: selectedPlan,
-                      onSubscribe: busy
+                      onSubscribe: busy || selectedPlan == null
                           ? null
                           : () => _startAutoRenew(selectedPlan),
                     )
@@ -324,8 +328,9 @@ class _UnifiedPurchaseSheetBodyState
                       totalPrice: prepaidTotal,
                       onMonthsChanged: (m) => setState(() => _months = m),
                       onProcessorChanged: (p) => setState(() => _processor = p),
-                      onContinue:
-                          busy || unitPrice == null ? null : _startPrepaidPurchase,
+                      onContinue: busy || unitPrice == null
+                          ? null
+                          : _startPrepaidPurchase,
                     ),
               ],
             ),

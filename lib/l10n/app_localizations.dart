@@ -2958,7 +2958,7 @@ abstract class AppLocalizations {
   /// No description provided for @subscriptionTierLiteDailyCredits.
   ///
   /// In en, this message translates to:
-  /// **'12,000 credits/day'**
+  /// **'12,000 credits/day (12× Free)'**
   String get subscriptionTierLiteDailyCredits;
 
   /// No description provided for @subscriptionTierProName.
@@ -2982,116 +2982,56 @@ abstract class AppLocalizations {
   /// No description provided for @subscriptionTierProDailyCredits.
   ///
   /// In en, this message translates to:
-  /// **'60,000 credits/day'**
+  /// **'60,000 credits/day (60× Free)'**
   String get subscriptionTierProDailyCredits;
 
-  /// No description provided for @subscriptionFeatureFreeTranslation.
+  /// No description provided for @subscriptionFeatureTranslation.
   ///
   /// In en, this message translates to:
-  /// **'Basic translation'**
-  String get subscriptionFeatureFreeTranslation;
+  /// **'Translation'**
+  String get subscriptionFeatureTranslation;
 
-  /// No description provided for @subscriptionFeatureFreeSmartTranslation.
+  /// No description provided for @subscriptionFeatureSmartTranslation.
   ///
   /// In en, this message translates to:
-  /// **'Limited smart translation'**
-  String get subscriptionFeatureFreeSmartTranslation;
+  /// **'Smart translation'**
+  String get subscriptionFeatureSmartTranslation;
 
-  /// No description provided for @subscriptionFeatureFreeDictionary.
+  /// No description provided for @subscriptionFeatureDictionary.
   ///
   /// In en, this message translates to:
-  /// **'Limited dictionary'**
-  String get subscriptionFeatureFreeDictionary;
+  /// **'Dictionary'**
+  String get subscriptionFeatureDictionary;
 
-  /// No description provided for @subscriptionFeatureFreeAsr.
+  /// No description provided for @subscriptionFeatureAsr.
   ///
   /// In en, this message translates to:
-  /// **'Limited ASR'**
-  String get subscriptionFeatureFreeAsr;
+  /// **'Speech recognition'**
+  String get subscriptionFeatureAsr;
 
-  /// No description provided for @subscriptionFeatureFreeTts.
+  /// No description provided for @subscriptionFeatureTts.
   ///
   /// In en, this message translates to:
-  /// **'Limited TTS'**
-  String get subscriptionFeatureFreeTts;
+  /// **'Speech synthesis'**
+  String get subscriptionFeatureTts;
 
-  /// No description provided for @subscriptionFeatureFreeAssessment.
+  /// No description provided for @subscriptionFeatureAssessment.
   ///
   /// In en, this message translates to:
-  /// **'Limited assessment'**
-  String get subscriptionFeatureFreeAssessment;
+  /// **'Pronunciation assessment'**
+  String get subscriptionFeatureAssessment;
 
-  /// No description provided for @subscriptionFeatureProTranslation.
+  /// No description provided for @subscriptionFeaturePaidFlashcards.
   ///
   /// In en, this message translates to:
-  /// **'Unlimited translation'**
-  String get subscriptionFeatureProTranslation;
+  /// **'Download vocabulary flashcards'**
+  String get subscriptionFeaturePaidFlashcards;
 
-  /// No description provided for @subscriptionFeatureProSmartTranslation.
+  /// No description provided for @subscriptionFeaturePaidMoreComing.
   ///
   /// In en, this message translates to:
-  /// **'Extensive smart translation'**
-  String get subscriptionFeatureProSmartTranslation;
-
-  /// No description provided for @subscriptionFeatureProDictionary.
-  ///
-  /// In en, this message translates to:
-  /// **'Extensive dictionary'**
-  String get subscriptionFeatureProDictionary;
-
-  /// No description provided for @subscriptionFeatureProAsr.
-  ///
-  /// In en, this message translates to:
-  /// **'Extensive ASR'**
-  String get subscriptionFeatureProAsr;
-
-  /// No description provided for @subscriptionFeatureProTts.
-  ///
-  /// In en, this message translates to:
-  /// **'Extensive TTS'**
-  String get subscriptionFeatureProTts;
-
-  /// No description provided for @subscriptionFeatureProAssessment.
-  ///
-  /// In en, this message translates to:
-  /// **'Extensive assessment'**
-  String get subscriptionFeatureProAssessment;
-
-  /// No description provided for @subscriptionFeatureLiteTranslation.
-  ///
-  /// In en, this message translates to:
-  /// **'Full translation'**
-  String get subscriptionFeatureLiteTranslation;
-
-  /// No description provided for @subscriptionFeatureLiteSmartTranslation.
-  ///
-  /// In en, this message translates to:
-  /// **'Full smart translation'**
-  String get subscriptionFeatureLiteSmartTranslation;
-
-  /// No description provided for @subscriptionFeatureLiteDictionary.
-  ///
-  /// In en, this message translates to:
-  /// **'Full dictionary'**
-  String get subscriptionFeatureLiteDictionary;
-
-  /// No description provided for @subscriptionFeatureLiteAsr.
-  ///
-  /// In en, this message translates to:
-  /// **'Full short ASR'**
-  String get subscriptionFeatureLiteAsr;
-
-  /// No description provided for @subscriptionFeatureLiteTts.
-  ///
-  /// In en, this message translates to:
-  /// **'Full TTS'**
-  String get subscriptionFeatureLiteTts;
-
-  /// No description provided for @subscriptionFeatureLiteAssessment.
-  ///
-  /// In en, this message translates to:
-  /// **'Full assessment'**
-  String get subscriptionFeatureLiteAssessment;
+  /// **'More features coming'**
+  String get subscriptionFeaturePaidMoreComing;
 
   /// No description provided for @subscriptionUpgrade.
   ///
@@ -6816,7 +6756,7 @@ abstract class AppLocalizations {
   /// No description provided for @subscriptionTierCatalogDescription.
   ///
   /// In en, this message translates to:
-  /// **'Pick a tier and billing interval. Continue to pick how you pay.'**
+  /// **'All tiers include the same AI features. Choose a credit allowance and billing cycle, then pick how you pay.'**
   String get subscriptionTierCatalogDescription;
 
   /// No description provided for @subscriptionTierCatalogRecommended.

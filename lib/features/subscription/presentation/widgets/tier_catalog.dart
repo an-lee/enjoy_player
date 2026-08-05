@@ -72,7 +72,7 @@ class TierCatalog extends ConsumerStatefulWidget {
   /// Fired when the user taps a paid tier's CTA (Lite or Pro). The host wires
   /// this to the unified purchase modal (auto-renew primary, prepaid secondary).
   final void Function(SubscriptionTier tier, CatalogInterval interval)?
-      onChoosePaid;
+  onChoosePaid;
 
   /// Backwards-compatible alias for Pro-only callers. Prefer [onChoosePaid].
   @Deprecated('Use onChoosePaid. Pass SubscriptionTier.pro explicitly.')
@@ -158,18 +158,23 @@ class _TierCatalogState extends ConsumerState<TierCatalog> {
           builder: (context, constraints) {
             final wide = constraints.maxWidth >= 840;
             final freeCard = _FreeTierCard(
-              isCurrent: widget.status.subscriptionTier == SubscriptionTier.free,
+              expand: wide,
+              isCurrent:
+                  widget.status.subscriptionTier == SubscriptionTier.free,
             );
             final liteCard = _PaidTierCard(
+              expand: wide,
               tier: SubscriptionTier.lite,
               plans: plans,
               interval: _interval,
-              isCurrent: widget.status.subscriptionTier == SubscriptionTier.lite,
+              isCurrent:
+                  widget.status.subscriptionTier == SubscriptionTier.lite,
               isLowerThanCurrent:
                   widget.status.subscriptionTier == SubscriptionTier.pro,
               onChoose: () => _onChoosePaid(SubscriptionTier.lite),
             );
             final proCard = _PaidTierCard(
+              expand: wide,
               tier: SubscriptionTier.pro,
               plans: plans,
               interval: _interval,
@@ -225,9 +230,7 @@ class _TierCatalogState extends ConsumerState<TierCatalog> {
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
-    properties.add(
-      DiagnosticsProperty<CatalogInterval>('interval', _interval),
-    );
+    properties.add(DiagnosticsProperty<CatalogInterval>('interval', _interval));
   }
 }
 
@@ -391,85 +394,156 @@ class _IntervalChip extends StatelessWidget {
   }
 }
 
-class _FreeTierCard extends StatelessWidget {
-  const _FreeTierCard({required this.isCurrent});
+/// Fixed badge-row height so Free / Lite / Pro titles align in the wide row.
+const double _kTierBadgeSlotHeight = 28;
 
+List<String> _sharedAiFeatures(AppLocalizations l10n) => [
+  l10n.subscriptionFeatureTranslation,
+  l10n.subscriptionFeatureSmartTranslation,
+  l10n.subscriptionFeatureDictionary,
+  l10n.subscriptionFeatureAsr,
+  l10n.subscriptionFeatureTts,
+  l10n.subscriptionFeatureAssessment,
+];
+
+List<String> _paidTierFeatures(AppLocalizations l10n) => [
+  ..._sharedAiFeatures(l10n),
+  l10n.subscriptionFeaturePaidFlashcards,
+  l10n.subscriptionFeaturePaidMoreComing,
+];
+
+/// Shared shell for Free / Lite / Pro cards: reserved badge slot, feature list,
+/// and (when [expand] is true) a spacer that pins the CTA to the bottom so
+/// wide-layout cards stretch to equal height.
+class _TierCardScaffold extends StatelessWidget {
+  const _TierCardScaffold({
+    required this.expand,
+    required this.badges,
+    required this.title,
+    required this.description,
+    required this.price,
+    required this.dailyCredits,
+    this.intervalLine,
+    required this.features,
+    required this.emphasizeFeatures,
+    required this.cta,
+  });
+
+  final bool expand;
+  final Widget? badges;
+  final String title;
+  final String description;
+  final Widget price;
+  final String dailyCredits;
+  final String? intervalLine;
+  final List<String> features;
+  final bool emphasizeFeatures;
+  final Widget cta;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = EnjoyThemeTokens.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
+    final body = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: _kTierBadgeSlotHeight,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: badges ?? const SizedBox.shrink(),
+          ),
+        ),
+        SizedBox(height: t.space12),
+        Text(
+          title,
+          style: tt.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        SizedBox(height: t.space4),
+        Text(
+          description,
+          style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+        ),
+        SizedBox(height: t.space16),
+        price,
+        SizedBox(height: t.space4),
+        Text(
+          dailyCredits,
+          style: tt.bodySmall?.copyWith(
+            color: cs.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        if (intervalLine != null) ...[
+          SizedBox(height: t.space12),
+          Text(
+            intervalLine!,
+            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          ),
+        ],
+        SizedBox(height: t.space16),
+        for (final feature in features) ...[
+          _Bullet(text: feature, emphasize: emphasizeFeatures, tt: tt),
+          SizedBox(height: t.space8),
+        ],
+        if (expand) const Spacer() else SizedBox(height: t.space16),
+        cta,
+      ],
+    );
+
+    return EnjoyCard(padding: EdgeInsets.all(t.space20), child: body);
+  }
+}
+
+class _FreeTierCard extends StatelessWidget {
+  const _FreeTierCard({required this.expand, required this.isCurrent});
+
+  final bool expand;
   final bool isCurrent;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final t = EnjoyThemeTokens.of(context);
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    return EnjoyCard(
-      padding: EdgeInsets.all(t.space20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (isCurrent)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: _Pill(
-                label: l10n.subscriptionCurrentPlan,
-                color: cs.secondaryContainer,
-                textColor: cs.onSecondaryContainer,
-                tt: tt,
-              ),
-            ),
-          if (isCurrent) SizedBox(height: t.space8),
-          Text(
-            l10n.subscriptionTierFreeName,
-            style: tt.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          SizedBox(height: t.space4),
-          Text(
-            l10n.subscriptionTierFreeDescription,
-            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-          ),
-          SizedBox(height: t.space16),
-          Text(
-            l10n.subscriptionTierFreePrice,
-            style: tt.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          SizedBox(height: t.space4),
-          Text(
-            l10n.subscriptionTierFreeDailyCredits,
-            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-          ),
-          SizedBox(height: t.space16),
-          for (final feature in _freeFeatures(l10n)) ...[
-            _Bullet(text: feature, emphasize: false, tt: tt),
-            SizedBox(height: t.space8),
-          ],
-          SizedBox(height: t.space16),
-          EnjoyButton.secondary(
-            onPressed: null,
-            child: Text(
-              isCurrent
-                  ? l10n.subscriptionCurrentPlan
-                  : l10n.subscriptionTierCatalogNotSelected,
-            ),
-          ),
-        ],
+    return _TierCardScaffold(
+      expand: expand,
+      badges: isCurrent
+          ? _Pill(
+              label: l10n.subscriptionCurrentPlan,
+              color: cs.secondaryContainer,
+              textColor: cs.onSecondaryContainer,
+              tt: tt,
+            )
+          : null,
+      title: l10n.subscriptionTierFreeName,
+      description: l10n.subscriptionTierFreeDescription,
+      price: Text(
+        l10n.subscriptionTierFreePrice,
+        style: tt.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
+      ),
+      dailyCredits: l10n.subscriptionTierFreeDailyCredits,
+      features: _sharedAiFeatures(l10n),
+      emphasizeFeatures: false,
+      cta: EnjoyButton.secondary(
+        onPressed: null,
+        child: Text(
+          isCurrent
+              ? l10n.subscriptionCurrentPlan
+              : l10n.subscriptionTierCatalogNotSelected,
+        ),
       ),
     );
   }
-
-  List<String> _freeFeatures(AppLocalizations l10n) => [
-    l10n.subscriptionFeatureFreeTranslation,
-    l10n.subscriptionFeatureFreeSmartTranslation,
-    l10n.subscriptionFeatureFreeDictionary,
-    l10n.subscriptionFeatureFreeAsr,
-    l10n.subscriptionFeatureFreeTts,
-    l10n.subscriptionFeatureFreeAssessment,
-  ];
 }
 
 class _PaidTierCard extends StatelessWidget {
   const _PaidTierCard({
+    required this.expand,
     required this.tier,
     required this.plans,
     required this.interval,
@@ -478,6 +552,7 @@ class _PaidTierCard extends StatelessWidget {
     required this.onChoose,
   });
 
+  final bool expand;
   final SubscriptionTier tier;
   final List<SubscriptionPlan> plans;
   final CatalogInterval interval;
@@ -513,130 +588,101 @@ class _PaidTierCard extends StatelessWidget {
     final dailyCredits = _isLite
         ? l10n.subscriptionTierLiteDailyCredits
         : l10n.subscriptionTierProDailyCredits;
-    final features = _isLite
-        ? _liteFeatures(l10n)
-        : _proFeatures(l10n);
 
     final ctaLabel = isCurrent
         ? (_isLite
-            ? l10n.subscriptionTierCatalogExtendLite
-            : l10n.subscriptionTierCatalogExtendPro)
+              ? l10n.subscriptionTierCatalogExtendLite
+              : l10n.subscriptionTierCatalogExtendPro)
         : (_isLite
-            ? l10n.subscriptionTierCatalogChooseLite
-            : l10n.subscriptionTierCatalogChoosePro);
+              ? l10n.subscriptionTierCatalogChooseLite
+              : l10n.subscriptionTierCatalogChoosePro);
     final ctaEnabled = !isLowerThanCurrent && resolved != null;
     final ctaLabelActual = isLowerThanCurrent
         ? l10n.subscriptionTierCatalogNotSelected
         : ctaLabel;
 
-    final inner = EnjoyCard(
-      padding: EdgeInsets.all(t.space20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
+    Widget? badges;
+    if (!_isLite) {
+      // Lite has no "Recommended" badge — Pro is the recommended tier.
+      badges = Row(
         children: [
-          // Lite card has no "Recommended" badge — Pro is the recommended tier.
-          if (!_isLite) ...[
-            Row(
-              children: [
-                _Pill(
-                  label: l10n.subscriptionTierCatalogRecommended,
-                  color: cs.primary,
-                  textColor: cs.onPrimary,
-                  tt: tt,
-                  leading: Icons.auto_awesome_rounded,
-                ),
-                if (isCurrent) ...[
-                  SizedBox(width: t.space8),
-                  _Pill(
-                    label: l10n.subscriptionCurrentPlan,
-                    color: cs.secondaryContainer,
-                    textColor: cs.onSecondaryContainer,
-                    tt: tt,
-                  ),
-                ],
-              ],
-            ),
-            SizedBox(height: t.space12),
-          ] else if (isCurrent) ...[
+          _Pill(
+            label: l10n.subscriptionTierCatalogRecommended,
+            color: cs.primary,
+            textColor: cs.onPrimary,
+            tt: tt,
+            leading: Icons.auto_awesome_rounded,
+          ),
+          if (isCurrent) ...[
+            SizedBox(width: t.space8),
             _Pill(
               label: l10n.subscriptionCurrentPlan,
               color: cs.secondaryContainer,
               textColor: cs.onSecondaryContainer,
               tt: tt,
             ),
-            SizedBox(height: t.space12),
           ],
-          Text(
-            tierName,
-            style: tt.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          SizedBox(height: t.space4),
-          Text(
-            tierDescription,
-            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-          ),
-          SizedBox(height: t.space16),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Flexible(
-                child: amount != null
-                    ? Text(
-                        '\$$amount',
-                        style: tt.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: _isLite ? null : cs.primary,
-                        ),
-                      )
-                    : SizedBox(
-                        width: 72,
-                        height: 28,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: cs.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(t.radiusSm),
-                          ),
-                        ),
-                      ),
-              ),
-              SizedBox(width: t.space4),
-              Flexible(
-                child: Text(
-                  '/ $unitLabel',
-                  style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: t.space4),
-          Text(
-            dailyCredits,
-            style: tt.bodySmall?.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          if (amount != null) ...[
-            SizedBox(height: t.space12),
-            Text(
-              l10n.subscriptionTierCatalogSelectedInterval(amount, unitLabel),
-              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-            ),
-          ],
-          SizedBox(height: t.space16),
-          for (final feature in features) ...[
-            _Bullet(text: feature, emphasize: !_isLite, tt: tt),
-            SizedBox(height: t.space8),
-          ],
-          SizedBox(height: t.space16),
-          EnjoyButton.primary(
-            onPressed: ctaEnabled ? onChoose : null,
-            child: Text(ctaLabelActual),
-          ),
         ],
+      );
+    } else if (isCurrent) {
+      badges = _Pill(
+        label: l10n.subscriptionCurrentPlan,
+        color: cs.secondaryContainer,
+        textColor: cs.onSecondaryContainer,
+        tt: tt,
+      );
+    }
+
+    final price = Row(
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        Flexible(
+          child: amount != null
+              ? Text(
+                  '\$$amount',
+                  style: tt.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: _isLite ? null : cs.primary,
+                  ),
+                )
+              : SizedBox(
+                  width: 72,
+                  height: 28,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(t.radiusSm),
+                    ),
+                  ),
+                ),
+        ),
+        SizedBox(width: t.space4),
+        Flexible(
+          child: Text(
+            '/ $unitLabel',
+            style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+
+    final inner = _TierCardScaffold(
+      expand: expand,
+      badges: badges,
+      title: tierName,
+      description: tierDescription,
+      price: price,
+      dailyCredits: dailyCredits,
+      intervalLine: amount == null
+          ? null
+          : l10n.subscriptionTierCatalogSelectedInterval(amount, unitLabel),
+      features: _paidTierFeatures(l10n),
+      emphasizeFeatures: !_isLite,
+      cta: EnjoyButton.primary(
+        onPressed: ctaEnabled ? onChoose : null,
+        child: Text(ctaLabelActual),
       ),
     );
 
@@ -667,24 +713,6 @@ class _PaidTierCard extends StatelessWidget {
     return inner;
   }
 
-  List<String> _liteFeatures(AppLocalizations l10n) => [
-    l10n.subscriptionFeatureLiteTranslation,
-    l10n.subscriptionFeatureLiteSmartTranslation,
-    l10n.subscriptionFeatureLiteDictionary,
-    l10n.subscriptionFeatureLiteAsr,
-    l10n.subscriptionFeatureLiteTts,
-    l10n.subscriptionFeatureLiteAssessment,
-  ];
-
-  List<String> _proFeatures(AppLocalizations l10n) => [
-    l10n.subscriptionFeatureProTranslation,
-    l10n.subscriptionFeatureProSmartTranslation,
-    l10n.subscriptionFeatureProDictionary,
-    l10n.subscriptionFeatureProAsr,
-    l10n.subscriptionFeatureProTts,
-    l10n.subscriptionFeatureProAssessment,
-  ];
-
   SubscriptionPlan? _resolvePlan(
     List<SubscriptionPlan> plans,
     CatalogInterval target,
@@ -692,7 +720,8 @@ class _PaidTierCard extends StatelessWidget {
   ) {
     final tierName = tier == SubscriptionTier.lite ? 'lite' : 'pro';
     for (final plan in plans) {
-      if (_intervalFromString(plan.interval) == target && plan.tier == tierName) {
+      if (_intervalFromString(plan.interval) == target &&
+          plan.tier == tierName) {
         return plan;
       }
     }

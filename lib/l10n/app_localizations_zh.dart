@@ -1510,7 +1510,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get subscriptionTierLitePrice => '1.99 USD/月';
 
   @override
-  String get subscriptionTierLiteDailyCredits => '12,000 积分/天';
+  String get subscriptionTierLiteDailyCredits => '12,000 积分/天（免费版的 12 倍）';
 
   @override
   String get subscriptionTierProName => '专业版';
@@ -1522,61 +1522,31 @@ class AppLocalizationsZh extends AppLocalizations {
   String get subscriptionTierProPrice => '9.99 USD/月';
 
   @override
-  String get subscriptionTierProDailyCredits => '60,000 积分/天';
+  String get subscriptionTierProDailyCredits => '60,000 积分/天（免费版的 60 倍）';
 
   @override
-  String get subscriptionFeatureFreeTranslation => '基础翻译';
+  String get subscriptionFeatureTranslation => '翻译';
 
   @override
-  String get subscriptionFeatureFreeSmartTranslation => '有限智能翻译';
+  String get subscriptionFeatureSmartTranslation => '智能翻译';
 
   @override
-  String get subscriptionFeatureFreeDictionary => '有限词典';
+  String get subscriptionFeatureDictionary => '词典查询';
 
   @override
-  String get subscriptionFeatureFreeAsr => '有限语音识别';
+  String get subscriptionFeatureAsr => '语音识别';
 
   @override
-  String get subscriptionFeatureFreeTts => '有限语音合成';
+  String get subscriptionFeatureTts => '语音合成';
 
   @override
-  String get subscriptionFeatureFreeAssessment => '有限发音评估';
+  String get subscriptionFeatureAssessment => '发音评估';
 
   @override
-  String get subscriptionFeatureProTranslation => '无限翻译';
+  String get subscriptionFeaturePaidFlashcards => '下载词汇闪卡';
 
   @override
-  String get subscriptionFeatureProSmartTranslation => '大量智能翻译';
-
-  @override
-  String get subscriptionFeatureProDictionary => '大量词典查询';
-
-  @override
-  String get subscriptionFeatureProAsr => '大量语音识别';
-
-  @override
-  String get subscriptionFeatureProTts => '大量语音合成';
-
-  @override
-  String get subscriptionFeatureProAssessment => '大量发音评估';
-
-  @override
-  String get subscriptionFeatureLiteTranslation => '完整翻译';
-
-  @override
-  String get subscriptionFeatureLiteSmartTranslation => '完整智能翻译';
-
-  @override
-  String get subscriptionFeatureLiteDictionary => '完整词典';
-
-  @override
-  String get subscriptionFeatureLiteAsr => '完整短语音识别';
-
-  @override
-  String get subscriptionFeatureLiteTts => '完整语音合成';
-
-  @override
-  String get subscriptionFeatureLiteAssessment => '完整发音评估';
+  String get subscriptionFeaturePaidMoreComing => '更多功能即将推出';
 
   @override
   String get subscriptionUpgrade => '升级至专业版';
@@ -3530,7 +3500,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get subscriptionTierCatalogTitle => '选择你的方案';
 
   @override
-  String get subscriptionTierCatalogDescription => '选择档位和计费周期，下一步选择支付方式。';
+  String get subscriptionTierCatalogDescription =>
+      '所有方案均包含相同的 AI 功能。选择积分额度与计费周期，下一步选择支付方式。';
 
   @override
   String get subscriptionTierCatalogRecommended => '推荐';

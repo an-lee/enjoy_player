@@ -12,7 +12,7 @@ Signed-in users open **Subscription** from any of:
 ### All platforms
 
 - Live status from `GET /api/v1/subscriptions` (tier, active/inactive, expiration, daily credits limit, optional nested `auto_renew`).
-- Free vs Pro comparison with feature bullets aligned to the Enjoy web app.
+- Free / Lite / Pro tier catalog (`TierCatalog`): all tiers share the same AI feature set; differentiation is daily credits (**Free 1,000**, **Lite 12,000 = 12× Free**, **Pro 60,000 = 60× Free**). Paid tiers also advertise vocabulary flashcard download (Anki CSV, gated by `isPaidTier`) and more features coming.
 - Auto-renew plan catalog from `GET /api/v1/subscriptions/plans` (monthly / yearly when configured).
 - Cancel auto-renew via `POST /api/v1/subscriptions/cancel` when the billing subscription is cancelable (works on mobile too — no external checkout).
 - Credits packages section (`$2` / `$5` / `$50` permanent credits) from Rails `/api/v1/credits/packages`; standing from Worker `GET /credits/summary`.
