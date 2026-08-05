@@ -346,16 +346,16 @@ The default `release_apple.sh` path always builds **both** iOS and macOS unless 
 
 ## Artifacts
 
-Version comes from `pubspec.yaml` (`version: 0.7.3+7` → `0.7.3` in filenames).
+Version comes from `pubspec.yaml` (`version: 0.8.0+9` → `0.8.0` in filenames).
 
-| Platform | Output (example at `0.7.3`) |
-|----------|-------------------------------|
-| Windows installer | `build/windows/installer/EnjoyPlayerSetup-v0.7.3.exe` |
-| Android (Play) | `build/app/outputs/bundle/release/EnjoyPlayer-v0.7.3.aab` |
-| Android (sideload) | `build/app/outputs/flutter-apk/EnjoyPlayer-v0.7.3-arm64-v8a.apk` (+ `armeabi-v7a`, `x86_64`) |
-| iOS | `build/ios/ipa/EnjoyPlayer-v0.7.3.ipa` |
-| macOS | `EnjoyPlayer-macOS-v0.7.3.zip` (repo root) |
-| Linux AppImage | `enjoy-player-v0.7.3-x86_64.AppImage` (repo root) |
+| Platform | Output (example at `0.8.0`) |
+|----------|-----------------------------|
+| Windows installer | `build/windows/installer/EnjoyPlayerSetup-v0.8.0.exe` |
+| Android (Play) | `build/app/outputs/bundle/release/EnjoyPlayer-v0.8.0.aab` |
+| Android (sideload) | `build/app/outputs/flutter-apk/EnjoyPlayer-v0.8.0-arm64-v8a.apk` (+ `armeabi-v7a`, `x86_64`) |
+| iOS | `build/ios/ipa/EnjoyPlayer-v0.8.0.ipa` |
+| macOS | `EnjoyPlayer-macOS-v0.8.0.zip` (repo root) |
+| Linux AppImage | `enjoy-player-v0.8.0-x86_64.AppImage` (repo root) |
 
 After a successful run, scripts print artifact paths. For manual rename only:
 

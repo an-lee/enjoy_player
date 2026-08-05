@@ -4,7 +4,7 @@ Welcome to the **Enjoy Player** wiki — a cross-platform language-learning medi
 
 Enjoy Player is a language-learning companion that plays local audio/video files, YouTube videos, and provides interactive transcripts, dictionary lookup, vocabulary SRS review, and shadow-reading (echo) practice — all with optional cloud sync and AI-powered transcript/explanations. Supported platforms: **Android, iOS, macOS, Windows, Linux**. Flutter web is not supported.
 
-Current version: **0.7.3+7** ([pubspec.yaml](https://github.com/baizhiheizi/enjoy_player/blob/main/pubspec.yaml)).
+Current version: **0.8.0+9** ([pubspec.yaml](https://github.com/baizhiheizi/enjoy_player/blob/main/pubspec.yaml)).
 
 ## Quick Links
 

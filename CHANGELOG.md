@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-08-05
+
+### Added
+
+- **Lite and Pro subscription tiers** with a unified tier catalog, credit balances, purchase flow, and paid-feature gating.
+- **Immersive vocabulary flashcard review** with automatic dictionary loading for focused study sessions.
+- **Practice poster sharing** from the shadow-reading recording toolbar.
+
+### Changed
+
+- **Transcript and echo layouts** use a more compact mobile density while preserving comfortable 16px line padding.
+- **Dictionary lookup actions** are ordered Pronounce → Collect → Copy → Close for a more natural learning flow.
+- **Subscription cards** use equal-height layouts and credit-first copy across the tier catalog.
+
+### Fixed
+
+- **YouTube playback** no longer gets stuck in repeated play-then-pause transport retries.
+- **iOS App Store builds** include the camera and photo-library usage descriptions required by file-picker integrations.
+- **Windows release builds** avoid MAX_PATH failures by staging builds in a short workspace path.
+
 ## [0.7.3] - 2026-07-31
 
 ### Added
