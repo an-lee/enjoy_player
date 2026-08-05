@@ -71,22 +71,28 @@ void main() {
       }
     });
 
-    test('successful launch does not throw and forwards the parsed uri', () async {
-      launcher.nextResult = true;
-      const target = 'https://example.com/checkout?plan=pro';
-      await launchPayUrl(target);
-      expect(launcher.lastUrl, isNotNull);
-      expect(launcher.lastUrl, target);
-    });
+    test(
+      'successful launch does not throw and forwards the parsed uri',
+      () async {
+        launcher.nextResult = true;
+        const target = 'https://example.com/checkout?plan=pro';
+        await launchPayUrl(target);
+        expect(launcher.lastUrl, isNotNull);
+        expect(launcher.lastUrl, target);
+      },
+    );
 
-    test('message keys are pinned for backwards-compatible StateError catch', () {
-      // The credits + subscription sheets match on these exact strings
-      // (`StateError(:final message) when message == 'missing_pay_url'`).
-      // Renaming any of them is a breaking change for those call sites.
-      expect(PayUrlLaunchFailure.missing.message, 'missing_pay_url');
-      expect(PayUrlLaunchFailure.invalid.message, 'invalid_pay_url');
-      expect(PayUrlLaunchFailure.launchFailed.message, 'launch_failed');
-    });
+    test(
+      'message keys are pinned for backwards-compatible StateError catch',
+      () {
+        // The credits + subscription sheets match on these exact strings
+        // (`StateError(:final message) when message == 'missing_pay_url'`).
+        // Renaming any of them is a breaking change for those call sites.
+        expect(PayUrlLaunchFailure.missing.message, 'missing_pay_url');
+        expect(PayUrlLaunchFailure.invalid.message, 'invalid_pay_url');
+        expect(PayUrlLaunchFailure.launchFailed.message, 'launch_failed');
+      },
+    );
 
     test('every failure variant produces a non-blank message', () {
       for (final f in PayUrlLaunchFailure.values) {

@@ -25,10 +25,7 @@ enum PayUrlLaunchFailure {
 /// message) when` catch site keeps working unchanged. New call sites can
 /// prefer the structured [failure] enum for switch-style handling.
 class PayUrlLaunchException extends StateError implements Exception {
-  PayUrlLaunchException(this.failure)
-      : super(
-          failure.message,
-        );
+  PayUrlLaunchException(this.failure) : super(failure.message);
 
   /// Which checkout-launch failure category this exception represents.
   final PayUrlLaunchFailure failure;

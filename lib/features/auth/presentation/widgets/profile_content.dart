@@ -107,7 +107,8 @@ class _ProfileContentState extends ConsumerState<ProfileContent> {
         // Prefer the live subscription status so the daily limit reflects the
         // actual tier (free=1,000 / lite=12,000 / pro=60,000). Fall back to a
         // tier-based default when the status hasn't loaded yet.
-        final dailyLimit = status?.dailyCreditsLimit ?? _fallbackDailyLimit(tier);
+        final dailyLimit =
+            status?.dailyCreditsLimit ?? _fallbackDailyLimit(tier);
 
         final creditsUsedAsync = ref.watch(todaysCreditsUsedProvider);
         final creditsUsed = creditsUsedAsync.valueOrNull;

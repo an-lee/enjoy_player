@@ -19,11 +19,7 @@ class SubscriptionApi extends RestApi {
     required String tier,
   }) => client.postJson(
     _path,
-    body: {
-      'months': months,
-      'processor': processor.apiValue,
-      'tier': tier,
-    },
+    body: {'months': months, 'processor': processor.apiValue, 'tier': tier},
   );
 
   Future<Map<String, dynamic>> startAutoRenew({required String planId}) =>

@@ -155,9 +155,5 @@ Future<void> _openUnifiedPurchase(
   }
   if (!supportsExternalSubscriptionPurchase()) return;
   if (!context.mounted) return;
-  await showUnifiedPurchaseSheet(
-    context,
-    tier: tier,
-    interval: interval,
-  );
+  await showUnifiedPurchaseSheet(context, tier: tier, interval: interval);
 }

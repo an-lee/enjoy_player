@@ -89,7 +89,9 @@ void main() {
           scaffoldMessengerKey: appScaffoldMessengerKey,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: const TierReconcileHost(child: Scaffold(body: SizedBox.expand())),
+          home: const TierReconcileHost(
+            child: Scaffold(body: SizedBox.expand()),
+          ),
         ),
       ),
     );

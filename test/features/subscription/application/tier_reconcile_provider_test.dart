@@ -152,33 +152,36 @@ void main() {
     expect(notifier.hasPendingPurchase, isTrue);
   });
 
-  test('eager reconcile polls until paid and clears the pending flag', () async {
-    var statusCalls = 0;
-    final container = ProviderContainer(
-      overrides: [
-        authCtrlProvider.overrideWith(_RecordingAuthCtrl.new),
-        subscriptionStatusProvider.overrideWith((ref) async {
-          statusCalls++;
-          return statusCalls >= 2 ? _proStatus : _freeStatus;
-        }),
-        creditsSummaryProvider.overrideWith(
-          (ref) async => _summary(permanent: 0),
-        ),
-      ],
-    );
-    addTearDown(container.dispose);
-    await container.read(authCtrlProvider.future);
-    final authNotifier =
-        container.read(authCtrlProvider.notifier) as _RecordingAuthCtrl;
-    final notifier = container.read(tierReconcileCtrlProvider.notifier);
+  test(
+    'eager reconcile polls until paid and clears the pending flag',
+    () async {
+      var statusCalls = 0;
+      final container = ProviderContainer(
+        overrides: [
+          authCtrlProvider.overrideWith(_RecordingAuthCtrl.new),
+          subscriptionStatusProvider.overrideWith((ref) async {
+            statusCalls++;
+            return statusCalls >= 2 ? _proStatus : _freeStatus;
+          }),
+          creditsSummaryProvider.overrideWith(
+            (ref) async => _summary(permanent: 0),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(authCtrlProvider.future);
+      final authNotifier =
+          container.read(authCtrlProvider.notifier) as _RecordingAuthCtrl;
+      final notifier = container.read(tierReconcileCtrlProvider.notifier);
 
-    notifier.markPurchasePending();
-    expect(await notifier.reconcile(eager: true), isTrue);
+      notifier.markPurchasePending();
+      expect(await notifier.reconcile(eager: true), isTrue);
 
-    expect(container.read(currentTierProvider), SubscriptionTier.pro);
-    expect(authNotifier.refreshCalls, greaterThanOrEqualTo(1));
-    expect(notifier.hasPendingPurchase, isFalse);
-  });
+      expect(container.read(currentTierProvider), SubscriptionTier.pro);
+      expect(authNotifier.refreshCalls, greaterThanOrEqualTo(1));
+      expect(notifier.hasPendingPurchase, isFalse);
+    },
+  );
 
   test('eager reconcile also confirms Lite as a paid tier', () async {
     var statusCalls = 0;

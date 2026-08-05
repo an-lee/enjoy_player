@@ -244,7 +244,11 @@ void main() {
           filters: const VocabularyAnkiExportFilters(),
         ),
         throwsA(
-          isA<StateError>().having((e) => e.message, 'message', 'paid_required'),
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'paid_required',
+          ),
         ),
       );
     });
@@ -260,7 +264,11 @@ void main() {
           filters: const VocabularyAnkiExportFilters(),
         ),
         throwsA(
-          isA<StateError>().having((e) => e.message, 'message', 'paid_required'),
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'paid_required',
+          ),
         ),
       );
     });

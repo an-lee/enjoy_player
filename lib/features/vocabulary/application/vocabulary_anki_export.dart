@@ -89,7 +89,7 @@ Future<VocabularyAnkiExportIoOutcome> runVocabularyAnkiExport({
   required bool isPaid,
   required Future<List<VocabularyItem>> Function() listAll,
   required Future<List<VocabularyContext>> Function(String itemId)
-      getContextsForItem,
+  getContextsForItem,
   required VocabularyAnkiExportFilters filters,
   String? dialogTitle,
   void Function(double progress)? onProgress,

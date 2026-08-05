@@ -284,9 +284,7 @@ class _PaidMembershipCard extends StatelessWidget {
                   ),
                 ),
                 _SoftChip(
-                  label: renewing
-                      ? l10n.subscriptionAutoRenewOn
-                      : tierBadge,
+                  label: renewing ? l10n.subscriptionAutoRenewOn : tierBadge,
                   emphasized: true,
                 ),
               ],

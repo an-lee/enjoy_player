@@ -380,7 +380,9 @@ void main() {
         // When the selected plan is missing, the auto-renew CTA is rendered
         // but disabled (so the user cannot proceed with a stale price).
         final l10n = lookupAppLocalizations(const Locale('en'));
-        final cta = find.text(l10n.subscriptionPurchaseModalSubscribeAutoRenewCta);
+        final cta = find.text(
+          l10n.subscriptionPurchaseModalSubscribeAutoRenewCta,
+        );
         expect(cta, findsOneWidget);
         final widget = tester.widget<FilledButton>(
           find.ancestor(of: cta, matching: find.byType(FilledButton)).first,
