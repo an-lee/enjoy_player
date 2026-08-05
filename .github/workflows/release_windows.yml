@@ -62,12 +62,16 @@ jobs:
           & $gitBash @scriptArgs
 
       - name: Ensure publish tooling
-        if: inputs.publish
+        if: >-
+          (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+          (github.event_name == 'workflow_dispatch' && inputs.publish)
         shell: pwsh
         run: .github/scripts/ensure_publish_tooling.ps1
 
       - name: Publish direct-download feeds
-        if: inputs.publish
+        if: >-
+          (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+          (github.event_name == 'workflow_dispatch' && inputs.publish)
         shell: pwsh
         working-directory: ${{ env.GITHUB_WORKSPACE }}
         env:
