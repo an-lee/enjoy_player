@@ -71,12 +71,18 @@ jobs:
           # pubspec.yaml, not the git tag, so it never has a leading 'v'.
           files: build/linux/x64/release/enjoy-player-*-x86_64.AppImage
 
+      - name: Read pubspec version
+        id: read_version
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_github
+        shell: bash
+        run: echo "version=$(bash .github/scripts/read_pubspec_version.sh)" >> "$GITHUB_OUTPUT"
+
       - name: Upload binaries to GitHub Release (manual)
         if: github.event_name == 'workflow_dispatch' && inputs.publish_github
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v$(bash .github/scripts/read_pubspec_version.sh)
-          name: Enjoy Player v$(bash .github/scripts/read_pubspec_version.sh)
+          tag_name: v${{ steps.read_version.outputs.version }}
+          name: Enjoy Player v${{ steps.read_version.outputs.version }}
           draft: true
           generate_release_notes: true
           fail_on_unmatched_files: true
