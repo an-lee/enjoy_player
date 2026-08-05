@@ -15,6 +15,11 @@
 # After the build, only the artifacts (build/windows/.../Release, the
 # .exe, the Inno Setup installer) are needed; the rest of the short-path
 # copy is cleaned up.
+#
+# Note: github.workspace (Actions context) stays at the original checkout
+# with .git. Steps that need git (e.g. `gh release create --generate-notes`)
+# must use working-directory: ${{ github.workspace }} and read build
+# outputs from $env:GITHUB_WORKSPACE (the short path).
 $ErrorActionPreference = 'Stop'
 
 $shortRoot = 'C:\e'
