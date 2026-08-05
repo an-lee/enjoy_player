@@ -45,14 +45,18 @@ jobs:
         shell: pwsh
         working-directory: ${{ env.GITHUB_WORKSPACE }}
         env:
-          INPUT_BUILD_INSTALLER: ${{ inputs.build_installer }}
+          # Tag pushes have no workflow inputs (null). Treat null/true as build;
+          # only workflow_dispatch with build_installer=false skips the installer.
+          INPUT_BUILD_INSTALLER: ${{ inputs.build_installer != false }}
         run: |
           $gitBash = 'C:\Program Files\Git\bin\bash.exe'
           if (-not (Test-Path $gitBash)) {
             throw "Git Bash not found at $gitBash (required for release_windows.sh on Windows)."
           }
           $scriptArgs = @('.github/scripts/release_windows.sh')
-          if ($env:INPUT_BUILD_INSTALLER -ne 'true') {
+          # Only skip when explicitly false (empty/null must still build — tag pushes
+          # have no inputs, and the GitHub Release upload step expects the .exe).
+          if ($env:INPUT_BUILD_INSTALLER -eq 'false') {
             $scriptArgs += '--no-installer'
           }
           & $gitBash @scriptArgs
@@ -91,8 +95,10 @@ jobs:
         run: |
           $tag = $env:GITHUB_REF_NAME
           $version = $tag.TrimStart('v')
-          $installer = Join-Path $env:GITHUB_WORKSPACE "build\windows\installer\EnjoyPlayerSetup-v${version}.exe"
-          if (-not (Test-Path $installer)) {
+          # Resolve via cwd (pinned to the short workspace), not $env:GITHUB_WORKSPACE —
+          # the runner's process env can still point at the long checkout path.
+          $installer = Join-Path (Get-Location).Path "build\windows\installer\EnjoyPlayerSetup-v${version}.exe"
+          if (-not (Test-Path -LiteralPath $installer)) {
             throw "Windows installer not found at $installer (expected for tag $tag)."
           }
           & gh release create $tag $installer `
@@ -109,8 +115,8 @@ jobs:
         run: |
           $version = (& bash .github/scripts/read_pubspec_version.sh).Trim()
           $tag = "v$version"
-          $installer = Join-Path $env:GITHUB_WORKSPACE "build\windows\installer\EnjoyPlayerSetup-v${version}.exe"
-          if (-not (Test-Path $installer)) {
+          $installer = Join-Path (Get-Location).Path "build\windows\installer\EnjoyPlayerSetup-v${version}.exe"
+          if (-not (Test-Path -LiteralPath $installer)) {
             throw "Windows installer not found at $installer (expected for tag $tag)."
           }
           & gh release create $tag $installer `
