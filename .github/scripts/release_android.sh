@@ -132,10 +132,16 @@ if [[ "${UPLOAD_PLAY}" == true ]]; then
   if [[ ! -f "${aab}" ]]; then
     echo "Play upload requested but AAB not found at ${aab}." >&2
     echo "Build with --play (without --no-aab), or pass an existing AAB via --publish-only --play." >&2
-    exit 1
+    echo "Skipping Play upload; continuing with sideload feed publish + GitHub Release upload." >&2
+  else
+    echo ">>> Upload Play AAB (alpha / draft)"
+    if ! bash "${root}/.github/scripts/upload_play_aab.sh" "${aab}"; then
+      # Play upload failures (e.g. version code already on the track) must not
+      # block the rest of the release. The sideload APKs are independent of
+      # Play, and the GitHub Release draft still needs the AAB + APKs.
+      echo "!!! Play upload failed (see error above); continuing with the rest of the release." >&2
+    fi
   fi
-  echo ">>> Upload Play AAB (alpha / draft)"
-  bash "${root}/.github/scripts/upload_play_aab.sh" "${aab}"
 fi
 
 if [[ "${RELEASE_PUBLISH}" == true ]]; then
