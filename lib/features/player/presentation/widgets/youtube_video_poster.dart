@@ -1,6 +1,7 @@
 /// Thumbnail poster overlay while YouTube WebView loads or buffers.
 library;
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import 'package:enjoy_player/core/utils/remote_thumbnail_url.dart';
@@ -50,8 +51,8 @@ class _YoutubeVideoPosterState extends State<YoutubeVideoPoster> {
       duration: const Duration(milliseconds: 220),
       child: ColoredBox(
         color: Colors.black,
-        child: Image.network(
-          url,
+        child: Image(
+          image: CachedNetworkImageProvider(url),
           fit: BoxFit.contain,
           width: double.infinity,
           height: double.infinity,
