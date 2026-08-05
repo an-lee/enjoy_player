@@ -3652,19 +3652,19 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get libraryEmptyAudioTitle => '未找到任何音频';
 
   @override
-  String get libraryEmptyAudioHint => '你的资料库中没有任何音频内容。';
+  String get libraryEmptyAudioHint => '资料库中暂无音频。';
 
   @override
   String get libraryEmptyVideoTitle => '未找到任何视频';
 
   @override
-  String get libraryEmptyVideoHint => '你的资料库中没有任何视频内容。';
+  String get libraryEmptyVideoHint => '资料库中暂无视频。';
 
   @override
   String get librarySearchNoMatchesTitle => '没有匹配结果';
 
   @override
-  String get librarySearchNoMatchesHint => '资料库中没有符合此搜索的内容。';
+  String get librarySearchNoMatchesHint => '没有符合条件的内容。';
 
   @override
   String get librarySearchClear => '清除搜索';
@@ -3704,7 +3704,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get transcriptErrorFriendlyTitle => '字幕暂不可用';
 
   @override
-  String get transcriptErrorFriendlyHint => '请尝试选择其他字幕轨道或导入字幕文件。';
+  String get transcriptErrorFriendlyHint => '请选择其他字幕轨道或导入字幕文件。';
 
   @override
   String get transcriptFetchingSubtitles => '正在获取字幕…';
@@ -3743,7 +3743,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get asrErrorFfmpegUnavailable => '当前设备无法提取音频';
 
   @override
-  String get asrErrorFfmpegUnavailableHint => '请安装 ffmpeg 或使用其他视频文件。';
+  String get asrErrorFfmpegUnavailableHint => '请安装 ffmpeg，或更换其他视频文件。';
 
   @override
   String get asrErrorNoAudioTrack => '此文件没有可识别的音频';
@@ -3755,7 +3755,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get asrErrorFileTooLarge => '文件过大，无法生成字幕';
 
   @override
-  String get asrErrorUnsupportedSource => '不支持此来源';
+  String get asrErrorUnsupportedSource => '不支持此类来源';
 
   @override
   String get asrErrorUnsupportedMedia => '此音频格式不支持长音频转写';
@@ -3770,13 +3770,13 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get asrErrorByokMissing => '请先配置 AI 服务以生成字幕';
 
   @override
-  String get asrErrorByokMissingHint => '打开 设置 → AI 服务 添加凭据。';
+  String get asrErrorByokMissingHint => '前往 设置 → AI 服务 添加凭据。';
 
   @override
   String get asrErrorCreditsExhausted => 'Enjoy 积分已用完';
 
   @override
-  String get asrErrorCreditsExhaustedHint => '升级套餐以继续生成字幕。';
+  String get asrErrorCreditsExhaustedHint => '升级套餐即可继续。';
 
   @override
   String get asrErrorNetwork => '网络错误，请检查连接后重试。';
@@ -3829,7 +3829,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get discoverSubscribeTitle => '订阅频道';
 
   @override
-  String get discoverSubscribeHint => '粘贴 YouTube 频道链接或 @用户名。';
+  String get discoverSubscribeHint => '粘贴 YouTube 频道链接或 @用户名';
 
   @override
   String get discoverSubscribePlaceholder => 'https://www.youtube.com/@channel';
@@ -3874,7 +3874,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get discoverFeedEmptyTitle => '暂无视频';
 
   @override
-  String get discoverFeedEmptyHint => '订阅频道并刷新以加载最近上传。';
+  String get discoverFeedEmptyHint => '订阅频道并刷新以加载最新上传。';
 
   @override
   String get discoverFeedErrorTitle => '无法加载动态';
@@ -3905,7 +3905,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get discoverSubscriptionsLoadFailed => '无法加载订阅。';
 
   @override
-  String get discoverNoSubscriptionsHint => '订阅推荐频道或粘贴频道链接。';
+  String get discoverNoSubscriptionsHint => '订阅推荐频道，或粘贴频道链接。';
 
   @override
   String get discoverManageChannels => '管理频道';
@@ -3986,7 +3986,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get importMediaFailed => '无法导入此文件。';
 
   @override
-  String get importUnsupportedFileType => '不支持此文件类型。请选择音频或视频文件。';
+  String get importUnsupportedFileType => '不支持的文件类型，请选择音频或视频文件。';
 
   @override
   String get noMediaYet => '暂无媒体';
@@ -4010,19 +4010,19 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get settingsSectionAppearance => '外观';
 
   @override
-  String get settingsAppearanceSubtitle => '主题跟随系统设置。';
+  String get settingsAppearanceSubtitle => '主题跟随系统设置';
 
   @override
   String get settingsSectionAbout => '关于';
 
   @override
-  String get settingsAboutSubtitle => 'Enjoy 播放器 — 本地字幕与跟读练习。';
+  String get settingsAboutSubtitle => 'Enjoy 播放器 — 本地字幕与跟读练习';
 
   @override
   String get settingsThemeRowTitle => '主题';
 
   @override
-  String get settingsThemeDarkLocked => '跟随系统外观。';
+  String get settingsThemeDarkLocked => '跟随系统外观';
 
   @override
   String get settingsThemeSystem => '系统';
@@ -4070,7 +4070,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get noTranscript => '暂无字幕稿';
 
   @override
-  String get importSrtOrVtt => '导入 .srt 或 .vtt 文件。';
+  String get importSrtOrVtt => '导入 .srt 或 .vtt 文件';
 
   @override
   String get miniPlayerOpen => '打开播放器';
@@ -4135,10 +4135,10 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get importSubtitleSuccess => '字幕已导入';
 
   @override
-  String get noTranscriptHint => '可添加字幕文件、提取内嵌字幕，或用 AI 生成字幕稿。';
+  String get noTranscriptHint => '可添加字幕文件、提取内嵌字幕，或用 AI 生成。';
 
   @override
-  String get noTranscriptHintRemote => '云端字幕会在可用时自动加载。可在 CC 菜单中刷新。';
+  String get noTranscriptHintRemote => '云端字幕可用时会自动加载。可在 CC 菜单中刷新。';
 
   @override
   String get transcriptEmptyExtract => '提取';
@@ -4207,7 +4207,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get subtitlesAutoTranslateBlockedSignedOut => '请登录后使用自动翻译。';
 
   @override
-  String get subtitlesAutoTranslateBlockedSameLanguage => '母语与主字幕相同时无需自动翻译。';
+  String get subtitlesAutoTranslateBlockedSameLanguage => '母语与主字幕相同，无需自动翻译。';
 
   @override
   String get subtitlesAutoTranslateBlockedNoPrimary => '请先选择主字幕。';
@@ -4217,7 +4217,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get subtitlesExtractNoTracks =>
-      '此文件中无内嵌字幕轨道（仅有视频与音频）。若有单独的 .srt 或 .vtt，请使用导入文件。';
+      '此文件无内嵌字幕轨道（仅含视频和音频）。若有单独的 .srt 或 .vtt 文件，请使用导入。';
 
   @override
   String subtitlesExtractedCount(int count) {
@@ -4246,7 +4246,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get shadowReadingTitle => '跟读';
 
   @override
-  String get shadowReadingHint => '跟读本段并练习口语。录制你的声音并与参考音高对比。';
+  String get shadowReadingHint => '跟读本段练习口语，录制你的声音并与参考音高对比。';
 
   @override
   String get shadowReadingReferenceSnippet => '参考';
@@ -4316,7 +4316,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get settingsSectionRecording => '录音';
 
   @override
-  String get settingsSectionRecordingHint => '跟读录音所使用的麦克风。';
+  String get settingsSectionRecordingHint => '跟读录音所使用的麦克风';
 
   @override
   String get settingsRecordingMicTitle => '麦克风';
@@ -4592,7 +4592,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get authSignInTitle => '欢迎使用 Enjoy';
 
   @override
-  String get authSignInSubtitle => '登录后即可同步媒体库、记录学习进度，并在任意设备继续学习。';
+  String get authSignInSubtitle => '登录后同步资料库与学习进度，在任意设备继续学习。';
 
   @override
   String get authSignInCta => '继续';
@@ -4613,7 +4613,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get authOrDivider => '或';
 
   @override
-  String get authEmailPrompt => '我们将向您的邮箱发送一次性验证码。';
+  String get authEmailPrompt => '我们将向你的邮箱发送一次性验证码。';
 
   @override
   String get authEmailLabel => '邮箱';
@@ -4774,7 +4774,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get profileSectionPractice => '练习';
 
   @override
-  String get profileSectionPracticeHint => '账户同步的练习时长';
+  String get profileSectionPracticeHint => '已同步至账号的练习时长';
 
   @override
   String get profileCreditsUsageTile => '积分使用记录';
@@ -4798,7 +4798,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get profileSignOutConfirmTitle => '退出登录？';
 
   @override
-  String get profileSignOutConfirmMessage => '退出后需要重新登录才能同步和使用 AI 功能。';
+  String get profileSignOutConfirmMessage => '退出后需重新登录才能同步和使用 AI 功能。';
 
   @override
   String get creditsUsageTitle => '积分使用';
@@ -4822,7 +4822,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get creditsUsageError => '无法加载记录';
 
   @override
-  String get creditsUsageErrorDescription => '请检查网络与设置中的 AI API 地址。';
+  String get creditsUsageErrorDescription => '请检查网络连接及设置中的 AI API 地址。';
 
   @override
   String get creditsUsageRetry => '重试';
@@ -4834,7 +4834,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get creditsUsageNoRecordsWithFilters => '请尝试调整或清除筛选条件。';
 
   @override
-  String get creditsUsageNoRecordsDescription => '登录后使用 AI 功能，记录将显示在此处。';
+  String get creditsUsageNoRecordsDescription => '登录后使用 AI 功能，记录会显示在此处。';
 
   @override
   String get creditsUsageTableDate => '日期';
@@ -4960,7 +4960,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get syncScreenRetryFailed => '重试失败项';
 
   @override
-  String get syncScreenSignedOutBody => '使用 Enjoy 账号登录以在设备间同步元数据。';
+  String get syncScreenSignedOutBody => '使用 Enjoy 账号登录，在设备间同步元数据。';
 
   @override
   String get syncScreenGoSignIn => '登录';
@@ -5005,13 +5005,13 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get cloudEmptyAudioTitle => '暂无云端音频';
 
   @override
-  String get cloudEmptyAudioSubtitle => '登录后保存的项目将显示在此处。';
+  String get cloudEmptyAudioSubtitle => '登录后保存的项目会显示在此处。';
 
   @override
   String get cloudEmptyVideoTitle => '暂无云端视频';
 
   @override
-  String get cloudEmptyVideoSubtitle => '登录后保存的项目将显示在此处。';
+  String get cloudEmptyVideoSubtitle => '登录后保存的项目会显示在此处。';
 
   @override
   String get syncSnackSuccess => '同步已成功完成。';
@@ -5052,7 +5052,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get settingsAiApiBaseUrlUseDefault => '使用主 API 地址';
 
   @override
-  String get settingsAiApiBaseUrlCleared => 'AI API 现在跟随主 API 地址。';
+  String get settingsAiApiBaseUrlCleared => 'AI API 现已跟随主 API 地址。';
 
   @override
   String get settingsAccountSignedOut => '未登录';
@@ -5129,7 +5129,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get mediaLocateTitle => '定位媒体文件';
 
   @override
-  String get mediaLocateBody => '此项目是在其他设备上添加的。请在本机选择同一文件。我们会通过安全指纹校验是否与资料库匹配。';
+  String get mediaLocateBody => '此项目在其他设备上添加。请在本机选择同一文件，我们会通过安全指纹校验是否与资料库匹配。';
 
   @override
   String get mediaLocateChooseFile => '选择文件';
@@ -5150,7 +5150,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String libraryDeleteMediaMessage(String title) {
-    return '从本机移除「$title」。此操作无法撤销。';
+    return '将从本机移除「$title」，此操作不可撤销。';
   }
 
   @override
@@ -5315,7 +5315,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get settingsLanguageOptionZhCn => '中文（简体，中国）';
 
   @override
-  String get settingsLearningLanguageSubtitle => '用于发现页推荐和导入时的默认语言。';
+  String get settingsLearningLanguageSubtitle => '用于发现页推荐及导入时的默认语言。';
 
   @override
   String get settingsLanguagePickerTitleLearning => '学习语言';
@@ -5704,7 +5704,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get vocabularyNoWords => '还没有单词';
 
   @override
-  String get vocabularyNoWordsDescription => '在字幕中选中文本并选择「加入生词本」即可开始。';
+  String get vocabularyNoWordsDescription => '在字幕中选中文本，选择「加入生词本」即可开始。';
 
   @override
   String get vocabularyNoDueItems => '当前没有待复习';
@@ -5716,7 +5716,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get vocabularyNoMatches => '没有匹配的单词';
 
   @override
-  String get vocabularyNoMatchesDescription => '试试其他搜索词，或清除状态与语言筛选。';
+  String get vocabularyNoMatchesDescription => '试试其他关键词，或清除状态与语言筛选。';
 
   @override
   String get vocabularyListLoadFailed => '无法加载生词本。';
@@ -5885,14 +5885,14 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get vocabularyOpenInPlayer => '在播放器中打开';
 
   @override
-  String get vocabularyOpenInPlayerDescription => '打开播放器将结束本次复习。已保存的评分不会丢失。';
+  String get vocabularyOpenInPlayerDescription => '打开播放器将结束本次复习，已保存的评分不会丢失。';
 
   @override
   String get vocabularyShadowReading => '跟读';
 
   @override
   String get vocabularyShadowReadingDescription =>
-      '前往播放器进行跟读？这将结束本次复习。已保存的评分不会丢失。';
+      '前往播放器进行跟读？这将结束本次复习，已保存的评分不会丢失。';
 
   @override
   String get vocabularyEchoReading => '回声跟读';
@@ -6053,7 +6053,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get recoverySubtitle =>
-      'Enjoy Player 无法打开本地数据库。最常见的原因是更新不完整。数据仍然在磁盘上;继续操作前你可以先复制错误信息。';
+      'Enjoy Player 无法打开本地数据库，最常见的原因是更新不完整。数据仍在磁盘上；继续操作前可先复制错误信息。';
 
   @override
   String get recoveryOpenLogs => '打开日志文件夹';
@@ -6079,13 +6079,13 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get recoveryResetLibraryConfirmBody =>
-      '这将永久删除你的本地资料库、录音、转写和同步队列。如果已登录,云端资料库会保留。清除前会先在应用支持目录写入一份备份。';
+      '这将永久删除你的本地资料库、录音、转写和同步队列。若已登录，云端资料库会保留。清除前会先在应用支持目录写入一份备份。';
 
   @override
   String get recoveryResetLibraryConfirmAction => '全部清除';
 
   @override
-  String get recoveryResetLibraryBackupError => '备份失败,本地数据库未被清除。错误已记录。';
+  String get recoveryResetLibraryBackupError => '备份失败，本地数据库未被清除。错误已记录。';
 
   @override
   String get recoveryResetLibrarySuccess => '本地资料库已重置，正在重新加载数据……';
@@ -6219,7 +6219,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get craftSameLanguageSwitch => '直接朗读';
 
   @override
-  String get craftOfflineBanner => '当前离线，合成需要联网。';
+  String get craftOfflineBanner => '当前离线，合成需要联网';
 
   @override
   String get craftSignInRequired => '请登录后使用合成';
@@ -6483,7 +6483,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get subscriptionCreditsLimitMessageWithPackages =>
-      'AI 积分已用完。可升级 Pro 或购买积分包继续使用。';
+      'AI 积分已用完。可升级 Pro 或购买积分包以继续使用。';
 
   @override
   String get subscriptionViewPlansAndPackages => '查看方案与积分包';
