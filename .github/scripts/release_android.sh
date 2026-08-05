@@ -81,6 +81,14 @@ if [[ "${RELEASE_SKIP_BUILD}" != true ]]; then
   echo ">>> Prefetch media_kit Android native libs"
   bash "${root}/tool/prefetch_media_kit_android_libs.sh"
 
+  # package:sqlite3 3.x downloads libsqlite3.so from github.com via the
+  # dart_build hook (Dart HttpClient, no retries). Self-hosted Android
+  # runners intermittently time out that connection, which fails
+  # bundleStoreRelease with "Target dart_build failed". Prefetch the four
+  # Android ABIs into the dart_build shared cache so the hook reuses them.
+  echo ">>> Prefetch sqlite3 Android native libs"
+  bash "${root}/tool/prefetch_sqlite3_libs.sh"
+
   release_stop_gradle_daemons "${root}"
 
   if [[ "${BUILD_AAB}" == true ]]; then

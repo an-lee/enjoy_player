@@ -66,7 +66,10 @@ jobs:
           draft: true
           generate_release_notes: true
           fail_on_unmatched_files: true
-          files: build/linux/x64/release/enjoy-player-v*-x86_64.AppImage
+          # AppImage name format is enjoy-player-<semver>-x86_64.AppImage
+          # (see linux/packaging/make_appimage.sh); the version comes from
+          # pubspec.yaml, not the git tag, so it never has a leading 'v'.
+          files: build/linux/x64/release/enjoy-player-*-x86_64.AppImage
 
       - name: Upload binaries to GitHub Release (manual)
         if: github.event_name == 'workflow_dispatch' && inputs.publish_github
@@ -77,4 +80,4 @@ jobs:
           draft: true
           generate_release_notes: true
           fail_on_unmatched_files: true
-          files: build/linux/x64/release/enjoy-player-v*-x86_64.AppImage
+          files: build/linux/x64/release/enjoy-player-*-x86_64.AppImage
