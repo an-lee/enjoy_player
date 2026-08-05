@@ -18,6 +18,7 @@ cd "${root}"
 BUILD_APK=true
 BUILD_AAB=true
 UPLOAD_PLAY=false
+RELEASE_PUBLISH_GITHUB=false
 
 release_parse_common_args "$@"
 for arg in ${RELEASE_EXTRA_ARGS[@]+"${RELEASE_EXTRA_ARGS[@]}"}; do
@@ -25,6 +26,7 @@ for arg in ${RELEASE_EXTRA_ARGS[@]+"${RELEASE_EXTRA_ARGS[@]}"}; do
     --no-apk) BUILD_APK=false ;;
     --no-aab) BUILD_AAB=false ;;
     --play) UPLOAD_PLAY=true ;;
+    --publish-github) RELEASE_PUBLISH_GITHUB=true ;;
     -h | --help)
       sed -n '2,9p' "$0"
       exit 0
@@ -158,13 +160,6 @@ if [[ "${RELEASE_PUBLISH}" == true ]]; then
   echo ">>> Publish Android sideload APKs"
   bash "${root}/.github/scripts/publish_player_release_to_s3.sh" "${publish_args[@]}"
 fi
-
-RELEASE_PUBLISH_GITHUB=false
-for arg in ${RELEASE_EXTRA_ARGS[@]+"${RELEASE_EXTRA_ARGS[@]}"}; do
-  case "${arg}" in
-    --publish-github) RELEASE_PUBLISH_GITHUB=true ;;
-  esac
-done
 
 if [[ "${RELEASE_PUBLISH_GITHUB}" == true ]]; then
   release_publish_github "${root}" android

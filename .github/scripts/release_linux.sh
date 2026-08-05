@@ -15,9 +15,12 @@ source "${lib}"
 root="$(release_repo_root)"
 cd "${root}"
 
+RELEASE_PUBLISH_GITHUB=false
+
 release_parse_common_args "$@"
 for arg in ${RELEASE_EXTRA_ARGS[@]+"${RELEASE_EXTRA_ARGS[@]}"}; do
   case "${arg}" in
+    --publish-github) RELEASE_PUBLISH_GITHUB=true ;;
     -h | --help)
       sed -n '2,8p' "$0"
       exit 0
@@ -66,13 +69,6 @@ if [[ "${RELEASE_PUBLISH}" == true ]]; then
   echo ">>> Publish (${appimage})"
   bash "${root}/.github/scripts/publish_player_release_to_s3.sh" "${publish_args[@]}"
 fi
-
-RELEASE_PUBLISH_GITHUB=false
-for arg in ${RELEASE_EXTRA_ARGS[@]+"${RELEASE_EXTRA_ARGS[@]}"}; do
-  case "${arg}" in
-    --publish-github) RELEASE_PUBLISH_GITHUB=true ;;
-  esac
-done
 
 if [[ "${RELEASE_PUBLISH_GITHUB}" == true ]]; then
   release_publish_github "${root}" linux
