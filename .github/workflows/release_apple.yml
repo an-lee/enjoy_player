@@ -59,10 +59,12 @@ jobs:
           APP_STORE_CONNECT_API_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_API_PRIVATE_KEY }}
         run: |
           args=()
-          if [[ "${{ inputs.notarize_macos }}" == "true" ]]; then
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/v* ]] ||
+             [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.notarize_macos }}" == "true" ]]; then
             args+=(--notarize)
           fi
-          if [[ "${{ inputs.upload_testflight }}" == "true" ]]; then
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/v* ]] ||
+             [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.upload_testflight }}" == "true" ]]; then
             args+=(--testflight)
           fi
           bash .github/scripts/release_apple.sh "${args[@]}"
