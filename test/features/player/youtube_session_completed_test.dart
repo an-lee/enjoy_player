@@ -55,4 +55,57 @@ void main() {
       },
     );
   });
+
+  group('YoutubeSession recovery hint', () {
+    late YoutubeSession session;
+
+    setUp(() {
+      session = YoutubeSession()..resetForOpen('vid');
+    });
+
+    tearDown(() async {
+      await session.closeStreams();
+    });
+
+    test(
+      'scheduleRecoveryHint shows overlay after failed explicit play',
+      () async {
+        session
+          ..loggedFirstPlaying = true
+          ..explicitPlayAttempted = true
+          ..emitBuffering(false)
+          ..emitPlaying(false);
+
+        session.scheduleRecoveryHint();
+        await Future<void>.delayed(const Duration(milliseconds: 1300));
+
+        expect(session.tapToPlayHintActive, isTrue);
+      },
+    );
+
+    test('playing clears the recovery overlay', () async {
+      session
+        ..loggedFirstPlaying = true
+        ..explicitPlayAttempted = true
+        ..emitBuffering(false);
+      session.scheduleRecoveryHint();
+      await Future<void>.delayed(const Duration(milliseconds: 1300));
+      expect(session.tapToPlayHintActive, isTrue);
+
+      session.emitPlaying(true);
+      expect(session.tapToPlayHintActive, isFalse);
+    });
+
+    test('resetForOpen clears explicit play and volume restore state', () {
+      session
+        ..markExplicitPlayAttempt()
+        ..armVolumeRestorePending(baseline: Duration.zero)
+        ..emitPlaying(true);
+      session.resetForOpen('other');
+      expect(session.explicitPlayAttempted, isFalse);
+      expect(session.volumeRestorePending, isFalse);
+      expect(session.playing, isFalse);
+      expect(session.lastPlayingAt, isNull);
+    });
+  });
 }

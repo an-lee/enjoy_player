@@ -801,6 +801,12 @@ abstract class AppLocalizations {
   /// **'Sign out (clear cookies)'**
   String get youtubeLogout;
 
+  /// Overlay when YouTube autoplay needs a user gesture or playback stopped immediately after play
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the video to play'**
+  String get youtubeTapToPlayHint;
+
   /// No description provided for @searchHint.
   ///
   /// In en, this message translates to:

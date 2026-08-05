@@ -17,6 +17,7 @@ import 'package:enjoy_player/features/player/domain/playable_source.dart';
 import 'package:enjoy_player/features/player/domain/player_settings.dart';
 import 'package:enjoy_player/features/player/domain/transport_decisions.dart';
 import 'package:enjoy_player/features/player/presentation/widgets/youtube_video_poster.dart';
+import 'package:enjoy_player/l10n/app_localizations.dart';
 import 'youtube_session.dart';
 import 'youtube_webview_controller.dart';
 import 'youtube_webview_host.dart';
@@ -168,7 +169,11 @@ class YoutubePlayerEngine implements PlayerEngine {
                 const ColoredBox(color: Colors.black),
                 if (shouldMountWebView) buildWebViewHost(),
                 if (_session.tapToPlayHintActive && !showPoster)
-                  const _YoutubeTapToPlayHint(),
+                  _YoutubeTapToPlayHint(
+                    label:
+                        AppLocalizations.of(context)?.youtubeTapToPlayHint ??
+                        'Tap to play',
+                  ),
                 YoutubeVideoPoster(
                   primaryUrl: _session.posterUrl,
                   visible: showPoster,
@@ -208,10 +213,44 @@ class YoutubePlayerEngine implements PlayerEngine {
 
   @override
   Future<void> playOrPause() async {
-    if (_session.playing) {
-      await pause();
-    } else {
-      await play();
+    // Never branch on [_session.playing] alone — DOM can already be paused
+    // while Dart still reports playing (pause confirmation lags ~750 ms).
+    // After end-of-media, force the restart path instead of a DOM toggle.
+    final restart = decideYouTubePlayRestart(
+      playbackCompleted: _session.playbackCompleted,
+    );
+    switch (restart) {
+      case RestartFromBeginning():
+        await play();
+      case ResumePlayback():
+        final controller = _webView.webController;
+        if (controller == null) {
+          _logYoutube.warning(
+            'youtube playOrPause ignored without WebView '
+            'vid=${_session.videoId}',
+          );
+          return;
+        }
+        _webView.onExplicitPlayAttempt();
+        // Clear stale buffering so the transport button stays retryable.
+        if (_session.buffering && !_session.playing) {
+          _session.emitBuffering(false);
+        }
+        _logYoutube.fine(
+          'youtube playOrPause command vid=${_session.videoId} '
+          'sessionPlaying=${_session.playing} '
+          'buffering=${_session.buffering}',
+        );
+        try {
+          await YoutubeWebViewBridge.playOrPause(controller);
+        } on Object catch (error, stackTrace) {
+          _session.emitBuffering(false);
+          _logYoutube.warning(
+            'youtube playOrPause command failed vid=${_session.videoId}',
+            error,
+            stackTrace,
+          );
+        }
     }
   }
 
@@ -225,6 +264,7 @@ class YoutubePlayerEngine implements PlayerEngine {
         _webView.prepareWatchReload(resetFirstPlaying: true);
         _session.emitBuffering(true);
         _session.emitPlaying(false);
+        _webView.onExplicitPlayAttempt();
         await _webView.loadCurrentVideoIfAttached();
       case ResumePlayback():
         final controller = _webView.webController;
@@ -234,13 +274,19 @@ class YoutubePlayerEngine implements PlayerEngine {
           );
           return;
         }
+        _webView.onExplicitPlayAttempt();
+        if (_session.buffering && !_session.playing) {
+          _session.emitBuffering(false);
+        }
         _logYoutube.fine(
           'youtube play command vid=${_session.videoId} '
-          'buffering=${_session.buffering}',
+          'buffering=${_session.buffering} '
+          'explicitPlay=${_session.explicitPlayAttempted}',
         );
         try {
           await YoutubeWebViewBridge.play(controller);
         } on Object catch (error, stackTrace) {
+          _session.emitBuffering(false);
           _logYoutube.warning(
             'youtube play command failed vid=${_session.videoId}',
             error,
@@ -339,11 +385,15 @@ class YoutubePlayerEngine implements PlayerEngine {
 }
 
 class _YoutubeTapToPlayHint extends StatelessWidget {
-  const _YoutubeTapToPlayHint();
+  const _YoutubeTapToPlayHint({required this.label});
+
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    return const IgnorePointer(
+    // IgnorePointer: empty regions must still reach the WebView so a real
+    // user gesture can satisfy platform autoplay policy.
+    return IgnorePointer(
       ignoring: true,
       child: ColoredBox(
         color: Colors.black45,
@@ -351,11 +401,16 @@ class _YoutubeTapToPlayHint extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.play_circle_outline, size: 64, color: Colors.white70),
-              SizedBox(height: 12),
+              const Icon(
+                Icons.play_circle_outline,
+                size: 64,
+                color: Colors.white70,
+              ),
+              const SizedBox(height: 12),
               Text(
-                'Tap to play',
-                style: TextStyle(color: Colors.white70, fontSize: 16),
+                label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white70, fontSize: 16),
               ),
             ],
           ),

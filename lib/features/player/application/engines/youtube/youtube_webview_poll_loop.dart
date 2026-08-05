@@ -13,6 +13,21 @@ import 'package:enjoy_player/features/player/domain/transport_decisions.dart';
 
 typedef YoutubeFirstPlayingFn = void Function();
 typedef YoutubeMediaEndFn = void Function();
+typedef YoutubePlaybackProgressFn = void Function(Duration position);
+
+/// Injectable poll body for unit tests (defaults to [YoutubeStatePoller.poll]).
+typedef YoutubePollFn =
+    Future<void> Function({
+      required bool disposed,
+      required InAppWebViewController? web,
+      required void Function({
+        required Duration position,
+        Duration? newDuration,
+        required bool jsPaused,
+        required bool jsEnded,
+      })
+      onResult,
+    });
 
 final _logPoll = logNamed('YouTubeWebViewPollLoop');
 
@@ -24,7 +39,9 @@ class YoutubeWebViewPollLoop {
     required this.onFirstPlaying,
     this.repeatMode,
     this.onMediaEnd,
-  });
+    this.onPlaybackProgress,
+    YoutubePollFn? pollFn,
+  }) : pollFn = pollFn ?? YoutubeStatePoller.poll;
 
   final YoutubeSession session;
   final InAppWebViewController? Function() webController;
@@ -38,8 +55,15 @@ class YoutubeWebViewPollLoop {
   /// reloads the watch page so playback restarts from the beginning.
   final YoutubeMediaEndFn? onMediaEnd;
 
+  /// Notifies when position advances (volume-restore progress gate).
+  final YoutubePlaybackProgressFn? onPlaybackProgress;
+
+  final YoutubePollFn pollFn;
+
   Timer? _pollTimer;
   Timer? _pollKickTimer;
+
+  bool get isRunning => _pollTimer != null;
 
   void scheduleKick() {
     _pollKickTimer?.cancel();
@@ -66,7 +90,7 @@ class YoutubeWebViewPollLoop {
   }
 
   Future<void> _tick() async {
-    await YoutubeStatePoller.poll(
+    await pollFn(
       disposed: session.disposed,
       web: webController(),
       onResult:
@@ -82,6 +106,9 @@ class YoutubeWebViewPollLoop {
                 newDuration > Duration.zero &&
                 newDuration != session.lastDuration) {
               session.emitDuration(newDuration);
+            }
+            if (!jsPaused && !jsEnded) {
+              onPlaybackProgress?.call(position);
             }
             final transition = decidePollTransition(
               jsEnded: jsEnded,
@@ -102,6 +129,7 @@ class YoutubeWebViewPollLoop {
                   case StopAtEnd():
                     stop();
                     session.emitPlaying(false);
+                    session.emitBuffering(false);
                   case LoopMedia():
                     session.emitPlaying(false);
                     onMediaEnd?.call();
@@ -112,13 +140,28 @@ class YoutubeWebViewPollLoop {
               case PauseStreaking(:final confirmed, :final newStreak):
                 session.pausedPollStreak = newStreak;
                 if (confirmed) {
+                  final immediate = session.isImmediatePause(DateTime.now());
                   _logPoll.fine(
                     'youtube pause confirmed vid=${session.videoId} '
-                    'positionMs=${position.inMilliseconds}',
+                    'positionMs=${position.inMilliseconds} '
+                    'immediate=$immediate '
+                    'explicitPlay=${session.explicitPlayAttempted}',
                   );
+                  if (immediate) {
+                    _logPoll.info(
+                      'youtube immediate pause vid=${session.videoId} '
+                      'positionMs=${position.inMilliseconds}',
+                    );
+                  }
                   session.pausedPollStreak = 0;
                   session.emitPlaying(false);
-                  stop();
+                  session.emitBuffering(false);
+                  if (immediate || session.explicitPlayAttempted) {
+                    session.scheduleRecoveryHint();
+                  }
+                  // Keep polling after pause so a subsequent play attempt can
+                  // detect DOM state even if `playing`/`playRejected` is missed.
+                  // Position updates while paused are cheap; stop only on ended.
                 }
               case PollPlaying():
                 session.pausedPollStreak = 0;

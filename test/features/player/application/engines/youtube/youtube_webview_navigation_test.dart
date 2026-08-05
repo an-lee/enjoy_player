@@ -486,7 +486,43 @@ void main() {
     });
   });
 
+  group('schedulePlaybackNudge vs explicit play', () {
+    test('does not nudge after explicitPlayAttempted', () async {
+      final stub = _Stub();
+      final nav = stub.build();
+      stub.session.explicitPlayAttempted = true;
+      nav.schedulePlaybackNudge();
+      await Future<void>.delayed(
+        YoutubeWebViewNavigation.playbackNudgeDelay +
+            const Duration(milliseconds: 50),
+      );
+      expect(stub.platform.evaluateCalls, 0);
+    });
+  });
+
   group('recoverStalledPlayback', () {
+    testWidgets('defers reload when explicit play is in progress', (
+      tester,
+    ) async {
+      final stub = _Stub();
+      final nav = stub.build();
+      stub.session.explicitPlayAttempted = true;
+      var prepareCalls = 0;
+      var cancelCalls = 0;
+      await nav.recoverStalledPlayback(
+        maxStallRecoveries: 3,
+        stallRecoveryCount: () => 0,
+        setStallRecoveryCount: (_) {},
+        prepareWatchReload: () => prepareCalls++,
+        cancelStallWatchdog: () => cancelCalls++,
+      );
+      expect(prepareCalls, 0);
+      expect(cancelCalls, 1);
+      expect(stub.platform.loadUrlCalls, 0);
+      // Nudge play instead of full reload.
+      expect(stub.platform.evaluateCalls, greaterThanOrEqualTo(1));
+    });
+
     testWidgets('returns when web controller missing', (tester) async {
       final stub = _Stub();
       stub.build(attach: false);

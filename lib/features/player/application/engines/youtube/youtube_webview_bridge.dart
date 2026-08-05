@@ -53,12 +53,8 @@ class YoutubeWebViewBridge {
   static WebUri watchUri(String videoId) =>
       WebUri('https://m.youtube.com/watch?v=$videoId');
 
-  static const String playScript = '''
-    (function(){
-      var p=document.querySelector('.html5-video-player');
-      var v=p?p.querySelector('video'):null;
-      if(!v) v=document.querySelector('video');
-      if(!v) return;
+  /// Shared muted-play body used by [playScript] and [playOrPauseScript].
+  static const String _mutedPlayBody = '''
       v.muted=true;
       var attempt=(window.__enjoyYtPlayAttempt||0)+1;
       window.__enjoyYtPlayAttempt=attempt;
@@ -76,11 +72,44 @@ class YoutubeWebViewBridge {
         var result=v.play();
         if(result&&typeof result.catch==='function') result.catch(rejected);
       }catch(error){rejected(error);}
+  ''';
+
+  static const String playScript =
+      '''
+    (function(){
+      var p=document.querySelector('.html5-video-player');
+      var v=p?p.querySelector('video'):null;
+      if(!v) v=document.querySelector('video');
+      if(!v) return;
+      $_mutedPlayBody
+    })();
+  ''';
+
+  /// Atomic toggle based on the live `<video>` element — never trusts Dart
+  /// [YoutubeSession.playing], which can lag DOM pauses by hundreds of ms.
+  static const String playOrPauseScript =
+      '''
+    (function(){
+      var p=document.querySelector('.html5-video-player');
+      var v=p?p.querySelector('video'):null;
+      if(!v) v=document.querySelector('video');
+      if(!v) return;
+      if(v.paused || v.ended){
+        $_mutedPlayBody
+      } else {
+        window.__enjoyYtPlayAttempt=(window.__enjoyYtPlayAttempt||0)+1;
+        v.pause();
+      }
     })();
   ''';
 
   static Future<void> play(InAppWebViewController? web) async {
     await web?.evaluateJavascript(source: playScript);
+  }
+
+  /// Play when the DOM video is paused/ended; pause when it is playing.
+  static Future<void> playOrPause(InAppWebViewController? web) async {
+    await web?.evaluateJavascript(source: playOrPauseScript);
   }
 
   static Future<void> pause(InAppWebViewController? web) async {

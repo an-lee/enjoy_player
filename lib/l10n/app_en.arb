@@ -141,6 +141,10 @@
   "youtubeLoginClose": "Close",
   "youtubeLoginScreenTitle": "YouTube sign-in",
   "youtubeLogout": "Sign out (clear cookies)",
+  "youtubeTapToPlayHint": "Tap the video to play",
+  "@youtubeTapToPlayHint": {
+    "description": "Overlay when YouTube autoplay needs a user gesture or playback stopped immediately after play"
+  },
   "searchHint": "Search",
   "transportRepeat": "Repeat",
   "transportFullscreen": "Fullscreen",

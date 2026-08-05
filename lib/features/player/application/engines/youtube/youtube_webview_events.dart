@@ -30,15 +30,22 @@ class YoutubeWebViewEvents {
     required this.reapplyVolume,
     required this.seekTo,
     Duration? volumeRestoreDelay,
+    Duration? volumeRestoreFallback,
   }) : volumeRestoreDelay =
            volumeRestoreDelay ??
            (defaultTargetPlatform == TargetPlatform.windows
                ? windowsVolumeRestoreDelay
-               : Duration.zero);
+               : Duration.zero),
+       volumeRestoreFallback =
+           volumeRestoreFallback ?? YoutubeSession.volumeRestoreFallback;
 
+  /// Legacy minimum settle before progress-gated unmute (Windows first play).
+  /// Progress confirmation is preferred; this delay is only a lower bound when
+  /// progress arrives earlier than the platform settle window.
   static const Duration windowsVolumeRestoreDelay = Duration(milliseconds: 400);
 
   final Duration volumeRestoreDelay;
+  final Duration volumeRestoreFallback;
 
   final YoutubeSession session;
   final InAppWebViewController? Function() webController;
@@ -48,20 +55,20 @@ class YoutubeWebViewEvents {
   final YoutubeReapplyVolumeFn reapplyVolume;
   final YoutubeSeekFn seekTo;
 
-  Timer? _volumeRestoreTimer;
+  Timer? _volumeRestoreFallbackTimer;
+  DateTime? _volumeRestoreArmedAt;
 
   dynamic handle(List<dynamic> args) {
     if (args.isEmpty) return null;
     final event = args[0] as String;
     switch (event) {
       case 'play':
-        session.pausedPollStreak = 0;
+        // Optimistic request only — do not touch pause streak (DOM may still
+        // pause before `playing`). Transport waits for authoritative `playing`.
         _logEvents.fine('youtube video play requested vid=${session.videoId}');
         break;
       case 'playing':
-        final restoreDelay = session.loggedFirstPlaying
-            ? Duration.zero
-            : volumeRestoreDelay;
+        final progressGate = !session.loggedFirstPlaying;
         session.pausedPollStreak = 0;
         session.playbackCompleted = false;
         session.emitPlaying(true);
@@ -69,21 +76,33 @@ class YoutubeWebViewEvents {
         session.emitBuffering(false);
         startPolling();
         applyPendingSeek();
-        _scheduleVolumeRestore(restoreDelay);
+        if (progressGate) {
+          _armProgressGatedVolumeRestore();
+        } else {
+          _scheduleImmediateVolumeRestore();
+        }
         _logEvents.fine('youtube video playing vid=${session.videoId}');
         break;
       case 'pause':
-        session.pausedPollStreak = 0;
+        // Do NOT reset [pausedPollStreak] — a DOM pause while Dart still thinks
+        // playing must accumulate toward poll confirmation. Resetting here
+        // previously extended the stale-`playing` window and made the next
+        // transport toggle issue `pause()` instead of `play()`.
         cancelPendingVolumeRestore();
         _logEvents.fine('youtube video paused vid=${session.videoId}');
         break;
       case 'playRejected':
         cancelPendingVolumeRestore();
         session.emitPlaying(false);
+        session.emitBuffering(false);
         final reason = args.length > 1 ? '${args[1]}' : 'unknown';
         _logEvents.warning(
-          'youtube play rejected vid=${session.videoId} reason=$reason',
+          'youtube play rejected vid=${session.videoId} reason=$reason '
+          'explicitPlay=${session.explicitPlayAttempted}',
         );
+        // Keep poll running so a later user retry can still reconcile state.
+        startPolling();
+        session.scheduleRecoveryHint();
         break;
       case 'ended':
         session.pausedPollStreak = 0;
@@ -91,6 +110,7 @@ class YoutubeWebViewEvents {
         session.markCompleted();
         stopPolling();
         session.emitPlaying(false);
+        session.emitBuffering(false);
         unawaited(YoutubeWebViewBridge.pauseVideoElement(webController()));
         break;
       case 'waiting':
@@ -114,6 +134,7 @@ class YoutubeWebViewEvents {
       case 'error':
         cancelPendingVolumeRestore();
         _logEvents.warning('YouTube video element error');
+        session.emitPlaying(false);
         session.emitBuffering(false);
         break;
       default:
@@ -122,29 +143,59 @@ class YoutubeWebViewEvents {
     return null;
   }
 
-  void _scheduleVolumeRestore(Duration delay) {
-    cancelPendingVolumeRestore();
-    if (delay == Duration.zero) {
-      unawaited(_restoreVolume(delay));
-      return;
+  /// Called from the poll loop when `<video>.currentTime` advances.
+  void onPlaybackProgress(Duration position) {
+    if (!session.volumeRestorePending || session.disposed) return;
+    if (!session.playing) return;
+    final armedAt = _volumeRestoreArmedAt;
+    if (armedAt != null) {
+      final elapsed = DateTime.now().difference(armedAt);
+      if (elapsed < volumeRestoreDelay) return;
     }
-    _volumeRestoreTimer = Timer(delay, () {
-      _volumeRestoreTimer = null;
-      if (session.disposed || !session.playing) return;
-      unawaited(_restoreVolume(delay));
+    if (session.noteProgressForVolumeRestore(position)) {
+      unawaited(_restoreVolume(reason: 'progress'));
+    }
+  }
+
+  void _armProgressGatedVolumeRestore() {
+    cancelPendingVolumeRestore();
+    session.armVolumeRestorePending(baseline: session.lastPosition);
+    _volumeRestoreArmedAt = DateTime.now();
+    _logEvents.fine(
+      'youtube volume restore armed vid=${session.videoId} '
+      'fallbackMs=${volumeRestoreFallback.inMilliseconds} '
+      'minDelayMs=${volumeRestoreDelay.inMilliseconds}',
+    );
+    _volumeRestoreFallbackTimer = Timer(volumeRestoreFallback, () {
+      _volumeRestoreFallbackTimer = null;
+      if (session.disposed ||
+          !session.playing ||
+          !session.volumeRestorePending) {
+        return;
+      }
+      unawaited(_restoreVolume(reason: 'fallback'));
     });
   }
 
-  Future<void> _restoreVolume(Duration delay) async {
+  void _scheduleImmediateVolumeRestore() {
+    cancelPendingVolumeRestore();
+    unawaited(_restoreVolume(reason: 'resume'));
+  }
+
+  Future<void> _restoreVolume({required String reason}) async {
+    if (session.disposed || !session.playing) return;
+    session.clearVolumeRestorePending();
+    _volumeRestoreFallbackTimer?.cancel();
+    _volumeRestoreFallbackTimer = null;
+    _volumeRestoreArmedAt = null;
     try {
       await reapplyVolume();
       _logEvents.fine(
-        'youtube volume restored vid=${session.videoId} '
-        'delayMs=${delay.inMilliseconds}',
+        'youtube volume restored vid=${session.videoId} reason=$reason',
       );
     } on Object catch (error, stackTrace) {
       _logEvents.warning(
-        'youtube volume restore failed vid=${session.videoId}',
+        'youtube volume restore failed vid=${session.videoId} reason=$reason',
         error,
         stackTrace,
       );
@@ -152,8 +203,10 @@ class YoutubeWebViewEvents {
   }
 
   void cancelPendingVolumeRestore() {
-    _volumeRestoreTimer?.cancel();
-    _volumeRestoreTimer = null;
+    _volumeRestoreFallbackTimer?.cancel();
+    _volumeRestoreFallbackTimer = null;
+    _volumeRestoreArmedAt = null;
+    session.clearVolumeRestorePending();
   }
 
   void applyPendingSeek() {

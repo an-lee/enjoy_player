@@ -65,5 +65,14 @@ void main() {
         );
       },
     );
+
+    test('playOrPauseScript plays when paused and pauses when playing', () {
+      expect(YoutubeWebViewBridge.playOrPauseScript, contains('v.paused'));
+      expect(YoutubeWebViewBridge.playOrPauseScript, contains('v.ended'));
+      expect(YoutubeWebViewBridge.playOrPauseScript, contains('v.muted=true'));
+      expect(YoutubeWebViewBridge.playOrPauseScript, contains('v.play()'));
+      expect(YoutubeWebViewBridge.playOrPauseScript, contains('v.pause()'));
+      expect(YoutubeWebViewBridge.playOrPauseScript, contains('playRejected'));
+    });
   });
 }

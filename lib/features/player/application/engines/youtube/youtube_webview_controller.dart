@@ -54,6 +54,7 @@ class YoutubeWebViewController {
       onFirstPlaying: onFirstPlayingFromSession,
       repeatMode: repeatMode,
       onMediaEnd: onMediaEnd,
+      onPlaybackProgress: _events.onPlaybackProgress,
     );
     _navigation = YoutubeWebViewNavigation(
       session: session,
@@ -132,6 +133,14 @@ class YoutubeWebViewController {
       _navigation.cancelNudge();
       onLogInitPhase('first_playing');
     }
+  }
+
+  /// Cancels autoplay assist (nudge / stall reload) around an explicit play.
+  void onExplicitPlayAttempt() {
+    session.markExplicitPlayAttempt();
+    _navigation.cancelNudge();
+    _stallWatchdog.cancel();
+    _pollLoop.start();
   }
 
   Future<void> idleAfterClear({bool keepMounted = false}) async {

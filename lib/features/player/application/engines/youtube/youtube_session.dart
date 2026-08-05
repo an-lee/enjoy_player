@@ -1,4 +1,4 @@
-/// Playback state and broadcast streams for [YoutubePlayerEngine].
+﻿/// Playback state and broadcast streams for [YoutubePlayerEngine].
 library;
 
 import 'dart:async';
@@ -38,6 +38,21 @@ class YoutubeSession {
   bool playing = false;
   bool buffering = true;
   bool tapToPlayHintActive = false;
+
+  /// User (or app) requested play; cancels autoplay assist and arms recovery UX.
+  bool explicitPlayAttempted = false;
+
+  /// First-play unmute is deferred until [currentTime] advances (or fallback).
+  bool volumeRestorePending = false;
+  Duration? volumeRestoreBaselinePosition;
+  int progressAdvanceTicks = 0;
+  static const int progressConfirmTicks = 2;
+  static const Duration volumeRestoreFallback = Duration(milliseconds: 1500);
+
+  /// Wall-clock when [emitPlaying(true)] last succeeded — for immediate-pause
+  /// diagnostics (pause confirmed within this window after first playing).
+  DateTime? lastPlayingAt;
+  static const Duration immediatePauseWindow = Duration(seconds: 2);
 
   Timer? _tapToPlayHintTimer;
   static const Duration _tapToPlayHintDelay = Duration(milliseconds: 1200);
@@ -86,6 +101,9 @@ class YoutubeSession {
     awaitingColdInitialNavigation = false;
     nonWatchRecoveryScheduled = false;
     firstBufferingOffReceived = false;
+    explicitPlayAttempted = false;
+    clearVolumeRestorePending();
+    lastPlayingAt = null;
     videoId = newVideoId;
     playbackCompleted = false;
     emitBuffering(true);
@@ -97,6 +115,9 @@ class YoutubeSession {
   void resetForClear({bool keepMounted = false}) {
     _cancelHint();
     tapToPlayHintActive = false;
+    explicitPlayAttempted = false;
+    clearVolumeRestorePending();
+    lastPlayingAt = null;
     videoId = '';
     mountRequested = keepMounted;
     playbackCompleted = false;
@@ -107,6 +128,34 @@ class YoutubeSession {
     emitBuffering(false);
     emitPosition(Duration.zero);
     mountTick.value++;
+  }
+
+  /// Marks an intentional play command (transport / autoplay / recovery).
+  void markExplicitPlayAttempt() {
+    explicitPlayAttempted = true;
+  }
+
+  void clearVolumeRestorePending() {
+    volumeRestorePending = false;
+    volumeRestoreBaselinePosition = null;
+    progressAdvanceTicks = 0;
+  }
+
+  void armVolumeRestorePending({required Duration baseline}) {
+    volumeRestorePending = true;
+    volumeRestoreBaselinePosition = baseline;
+    progressAdvanceTicks = 0;
+  }
+
+  /// Returns true when [position] has advanced enough to safely unmute.
+  bool noteProgressForVolumeRestore(Duration position) {
+    if (!volumeRestorePending) return false;
+    final baseline = volumeRestoreBaselinePosition ?? Duration.zero;
+    if (position > baseline) {
+      progressAdvanceTicks++;
+      volumeRestoreBaselinePosition = position;
+    }
+    return progressAdvanceTicks >= progressConfirmTicks;
   }
 
   void requestMount() {
@@ -139,12 +188,20 @@ class YoutubeSession {
     playing = v;
     playingCtrl.add(v);
     if (v) {
+      lastPlayingAt = DateTime.now();
       _cancelHint();
       if (tapToPlayHintActive) {
         tapToPlayHintActive = false;
         mountTick.value++;
       }
     }
+  }
+
+  /// True when a pause confirmation arrives soon after [emitPlaying(true)].
+  bool isImmediatePause(DateTime now) {
+    final started = lastPlayingAt;
+    if (started == null) return false;
+    return now.difference(started) <= immediatePauseWindow;
   }
 
   void emitBuffering(bool v) {
@@ -168,16 +225,28 @@ class YoutubeSession {
   }
 
   void _scheduleHint() {
-    if (loggedFirstPlaying || disposed) return;
+    if (disposed) return;
+    // Initial open: hint only before first successful playing.
+    // After an explicit play that failed / immediately paused, allow recovery
+    // hint even when [loggedFirstPlaying] is already true.
+    final allowRecovery = explicitPlayAttempted && !playing && !buffering;
+    if (loggedFirstPlaying && !allowRecovery) return;
     _tapToPlayHintTimer?.cancel();
     _tapToPlayHintTimer = Timer(_tapToPlayHintDelay, () {
       _tapToPlayHintTimer = null;
-      if (disposed || loggedFirstPlaying || playing || buffering) return;
+      if (disposed || playing || buffering) return;
+      if (loggedFirstPlaying && !explicitPlayAttempted) return;
       if (!tapToPlayHintActive) {
         tapToPlayHintActive = true;
         mountTick.value++;
       }
     });
+  }
+
+  /// Arms the recovery overlay after play rejection or immediate pause.
+  void scheduleRecoveryHint() {
+    if (disposed || playing) return;
+    _scheduleHint();
   }
 
   void _cancelHint() {

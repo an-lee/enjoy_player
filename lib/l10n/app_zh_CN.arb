@@ -138,6 +138,7 @@
   "youtubeLoginClose": "关闭",
   "youtubeLoginScreenTitle": "YouTube 登录",
   "youtubeLogout": "退出登录（清除 Cookie）",
+  "youtubeTapToPlayHint": "点一下视频即可播放",
   "searchHint": "搜索",
   "transportRepeat": "循环",
   "transportFullscreen": "全屏",

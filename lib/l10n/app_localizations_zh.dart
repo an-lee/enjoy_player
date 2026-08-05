@@ -391,6 +391,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get youtubeLogout => '退出登录（清除 Cookie）';
 
   @override
+  String get youtubeTapToPlayHint => '點一下影片即可播放';
+
+  @override
   String get searchHint => '搜索';
 
   @override
@@ -3948,6 +3951,9 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get youtubeLogout => '退出登录（清除 Cookie）';
+
+  @override
+  String get youtubeTapToPlayHint => '点一下视频即可播放';
 
   @override
   String get searchHint => '搜索';

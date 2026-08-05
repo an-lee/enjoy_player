@@ -1,7 +1,50 @@
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_session.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_webview_poll_loop.dart';
 import 'package:enjoy_player/features/player/domain/player_settings.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+typedef _ResultFn =
+    void Function({
+      required Duration position,
+      Duration? newDuration,
+      required bool jsPaused,
+      required bool jsEnded,
+    });
+
+class _FakePollDriver {
+  _ResultFn? latest;
+  int calls = 0;
+
+  Future<void> poll({
+    required bool disposed,
+    required InAppWebViewController? web,
+    required void Function({
+      required Duration position,
+      Duration? newDuration,
+      required bool jsPaused,
+      required bool jsEnded,
+    })
+    onResult,
+  }) async {
+    calls++;
+    latest = onResult;
+  }
+
+  void emit({
+    Duration position = Duration.zero,
+    Duration? newDuration,
+    required bool jsPaused,
+    bool jsEnded = false,
+  }) {
+    latest?.call(
+      position: position,
+      newDuration: newDuration,
+      jsPaused: jsPaused,
+      jsEnded: jsEnded,
+    );
+  }
+}
 
 void main() {
   group('YoutubeWebViewPollLoop', () {
@@ -24,14 +67,10 @@ void main() {
       );
 
       loop.scheduleKick();
-      // Before 500ms elapse, no tick should have fired (web==null early-returns).
       await Future<void>.delayed(const Duration(milliseconds: 100));
       expect(firstPlayingCalls, 0);
 
-      // stop() must cancel the pending kick.
       loop.stop();
-
-      // After the original 500ms, the kick would have fired had we not stopped.
       await Future<void>.delayed(const Duration(milliseconds: 500));
       expect(firstPlayingCalls, 0);
     });
@@ -46,8 +85,6 @@ void main() {
 
       loop.start();
       loop.start();
-      // No crash; both calls are no-ops on the second invocation.
-
       loop.stop();
       expect(firstPlayingCalls, 0);
     });
@@ -58,7 +95,6 @@ void main() {
         webController: () => null,
         onFirstPlaying: () {},
       );
-      // No-op.
       loop.stop();
       loop.stop();
     });
@@ -73,17 +109,11 @@ void main() {
 
       loop.scheduleKick();
       loop.stop();
-
-      // Past the 500ms boundary the kick would have fired and called start()
-      // — start() spawns a 250ms periodic timer; let the periodic cycle pass.
       await Future<void>.delayed(const Duration(milliseconds: 600));
-      // webController returns null so _tick() exits immediately.
       expect(firstPlayingCalls, 0);
     });
 
     test('repeatMode callback is invoked when media ends (RepeatMode)', () {
-      // We can't drive _tick() without a real web controller, but we can
-      // assert the constructor stores the callback reference without crashing.
       RepeatMode? captured;
       final loop = YoutubeWebViewPollLoop(
         session: session,
@@ -96,12 +126,7 @@ void main() {
         onMediaEnd: () {},
       );
 
-      // The lambda isn't exposed for direct invocation in this test, but we
-      // can verify the constructor accepts the named arguments.
       expect(loop, isNotNull);
-      // captured stays null because we haven't triggered _tick() through
-      // start() + timer fires — but the optional parameter path compiled,
-      // which is the testable contract.
       expect(captured, isNull);
       loop.stop();
     });
@@ -116,13 +141,8 @@ void main() {
 
       session.disposed = true;
       loop.start();
-
-      // Even with elapsed ticks, the onResult callback should still fire (the
-      // disposed flag is checked inside the callback, not start()). But since
-      // webController is null, the tick returns early anyway.
       await Future<void>.delayed(const Duration(milliseconds: 300));
       expect(firstPlayingCalls, 0);
-
       loop.stop();
     });
 
@@ -136,6 +156,80 @@ void main() {
 
       loop.start();
       expect(session.pausedPollStreak, 0);
+      loop.stop();
+    });
+
+    test('confirms pause after streak and keeps polling', () async {
+      final driver = _FakePollDriver();
+      session.emitPlaying(true);
+      session.lastPlayingAt = DateTime.now();
+      session.explicitPlayAttempted = true;
+
+      final loop = YoutubeWebViewPollLoop(
+        session: session,
+        webController: () => null,
+        onFirstPlaying: () {},
+        pollFn: driver.poll,
+      );
+
+      loop.start();
+      // Wait for at least one periodic tick to capture [latest].
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(driver.latest, isNotNull);
+
+      for (var i = 0; i < YoutubeSession.pauseConfirmPollTicks; i++) {
+        driver.emit(position: Duration(milliseconds: i * 10), jsPaused: true);
+      }
+
+      expect(session.playing, isFalse);
+      expect(session.buffering, isFalse);
+      expect(loop.isRunning, isTrue);
+
+      loop.stop();
+    });
+
+    test('PollPlaying clears buffering and reports first playing', () async {
+      final driver = _FakePollDriver();
+      var firstPlaying = 0;
+      session.emitBuffering(true);
+
+      final loop = YoutubeWebViewPollLoop(
+        session: session,
+        webController: () => null,
+        onFirstPlaying: () => firstPlaying++,
+        pollFn: driver.poll,
+      );
+
+      loop.start();
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      driver.emit(position: const Duration(milliseconds: 250), jsPaused: false);
+
+      expect(session.playing, isTrue);
+      expect(session.buffering, isFalse);
+      expect(firstPlaying, 1);
+
+      loop.stop();
+    });
+
+    test('forwards progress while playing for volume restore', () async {
+      final driver = _FakePollDriver();
+      final progress = <Duration>[];
+
+      final loop = YoutubeWebViewPollLoop(
+        session: session,
+        webController: () => null,
+        onFirstPlaying: () {},
+        onPlaybackProgress: progress.add,
+        pollFn: driver.poll,
+      );
+
+      loop.start();
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      driver.emit(position: const Duration(milliseconds: 100), jsPaused: false);
+      driver.emit(position: const Duration(milliseconds: 200), jsPaused: true);
+
+      expect(progress, [const Duration(milliseconds: 100)]);
+
       loop.stop();
     });
   });

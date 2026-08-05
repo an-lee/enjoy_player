@@ -406,6 +406,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get youtubeLogout => 'Sign out (clear cookies)';
 
   @override
+  String get youtubeTapToPlayHint => 'Tap the video to play';
+
+  @override
   String get searchHint => 'Search';
 
   @override

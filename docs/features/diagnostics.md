@@ -52,7 +52,9 @@ If YouTube page load completes (`load_stop`) but playback never reaches `first_p
 
 `youtube playback stalled after load_stop vid=<id>`
 
-With diagnostic logging enabled, YouTube startup also records play/pause commands, authoritative `playing` events, rejected HTML5 `play()` promises, and poll-confirmed pauses. This distinguishes autoplay rejection from a later YouTube pause or a detached WebView.
+The stall path may perform **one** watch-page reload, then nudge `play()` only (see [youtube.md](youtube.md#playback-stall-detection)). Explicit user play cancels this assist.
+
+With diagnostic logging enabled, YouTube startup also records play/pause/`playOrPause` commands, authoritative `playing` events, rejected HTML5 `play()` promises, progress-gated volume restore, poll-confirmed pauses, and `youtube immediate pause` when pause is confirmed within ~2 s of `playing`. This distinguishes autoplay rejection from an unmute/policy pause or a detached WebView.
 
 This surfaces release-only WebView stalls without enabling verbose mode.
 
