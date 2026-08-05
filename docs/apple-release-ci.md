@@ -190,7 +190,7 @@ bash .github/scripts/release.sh --platform apple --publish-only --publish
 | *notarytool* auth failed | Re-check API key ID, Issuer ID, and full `.p8` secret content |
 | *invalidPEMDocument* when registering notary credentials | `APP_STORE_CONNECT_API_PRIVATE_KEY` must be the full PEM with real newlines (including `BEGIN/END PRIVATE KEY`). Re-set with `gh secret set APP_STORE_CONNECT_API_PRIVATE_KEY < AuthKey_XXXX.p8`. Release scripts also normalize literal `\n` sequences. |
 | macOS DYLD / `libz` missing | Run `brew bundle install --file=macos/Brewfile` on runner |
-| Upload skipped | API secrets missing — workflow logs *Skipping TestFlight upload* |
+| TestFlight credentials missing | Set ASC API secrets (CI) or local `~/.config/enjoy-player/asc.env` + `.apple/AuthKey_<KEY_ID>.p8`. `--testflight` fails hard when credentials are absent. |
 | Build Apple jobs stuck **queued** / never start | Workflow `runs-on` labels must match the runner. Org mac runners have `self-hosted` + `macos` (lowercase) — do **not** require a custom `flutter` label unless you add it in GitHub → Settings → Actions → Runners. Agentic `self-hosted`-only jobs can occupy mac runners; cancel long-running agentic jobs if Apple CI is starved. |
 | `exit code 35` during Flutter SDK download | Transient curl/HTTP2 issue — `setup-macos-runner-env` sets `CURL_HTTP_VERSION=1_1`; `setup-flutter` uses `--http1.1` on macOS/Linux downloads. |
 | Xcode *Could not resolve package dependencies* (SPM) | Transient network to SwiftPM/CDN — `build_ios_ci.sh` retries up to 3 times; re-run the workflow. |
@@ -208,6 +208,9 @@ Prefer the shared release script (same as CI):
 bash .github/scripts/verify_macos_release_env.sh
 # macOS direct download only
 bash .github/scripts/release.sh --platform apple --macos-only --notarize
+
+# iOS / TestFlight only
+bash .github/scripts/release.sh --platform apple --ios-only --testflight
 
 # Full Apple release
 bash .github/scripts/release.sh --platform apple --notarize --testflight

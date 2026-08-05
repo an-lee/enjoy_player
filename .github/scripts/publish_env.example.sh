@@ -27,6 +27,15 @@ export CLOUDFLARE_ZONE_ID="<zone id for enjoy.bot>"
 # export GOOGLE_PLAY_TRACK="alpha"
 # export GOOGLE_PLAY_RELEASE_STATUS="draft"
 
+# App Store Connect (local --testflight / --notarize). Prefer gitignored files so
+# the private key is not pasted into this shell env file:
+#   ~/.config/enjoy-player/asc.env   # KEY_ID + ISSUER_ID
+#   .apple/AuthKey_<KEY_ID>.p8       # private key
+# Or export explicitly:
+# export APP_STORE_CONNECT_API_KEY_ID="<10-char key id>"
+# export APP_STORE_CONNECT_ISSUER_ID="<uuid>"
+# export APP_STORE_CONNECT_API_PRIVATE_KEY_PATH="$(git rev-parse --show-toplevel)/.apple/AuthKey_<KEY_ID>.p8"
+
 # WinSparkle signing (required for desktop auto-update appcast).
 # sign_sparkle_enclosure.sh auto-detects a `dsa_priv.pem` at the repo root,
 # so leave SPARKLE_DSA_PRIV_PEM unset when the key lives there. Only set it

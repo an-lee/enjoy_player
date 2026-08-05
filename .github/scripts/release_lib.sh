@@ -299,6 +299,62 @@ release_repo_root() {
   cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd
 }
 
+# True when App Store Connect API key id, issuer, and private key are all set.
+release_asc_env_ready() {
+  [[ -n "${APP_STORE_CONNECT_API_KEY_ID:-}" &&
+    -n "${APP_STORE_CONNECT_ISSUER_ID:-}" &&
+    -n "${APP_STORE_CONNECT_API_PRIVATE_KEY:-}" ]]
+}
+
+# Load App Store Connect API credentials for local TestFlight / notary.
+# Precedence:
+#   1. Already-exported env (CI secrets / shell)
+#   2. ~/.config/enjoy-player/asc.env (KEY_ID + ISSUER_ID; written by CI helpers)
+#   3. Optional APP_STORE_* lines in publish_env.local.sh
+#   4. Private key file: APP_STORE_CONNECT_API_PRIVATE_KEY_PATH, else
+#      ${root}/.apple/AuthKey_<KEY_ID>.p8, else
+#      ~/.appstoreconnect/private_keys/AuthKey_<KEY_ID>.p8
+release_load_asc_env() {
+  local root="$1"
+  local asc_cache="${HOME}/.config/enjoy-player/asc.env"
+  local publish_env="${root}/.github/scripts/publish_env.local.sh"
+  local key_path=""
+
+  if [[ -z "${APP_STORE_CONNECT_API_KEY_ID:-}" || -z "${APP_STORE_CONNECT_ISSUER_ID:-}" ]]; then
+    if [[ -f "${asc_cache}" ]]; then
+      # shellcheck source=/dev/null
+      source "${asc_cache}"
+      echo "Loaded ASC identifiers from ${asc_cache}"
+    fi
+  fi
+
+  # Only pull identifiers from publish_env when asc.env / shell did not set them.
+  # Prefer .apple/AuthKey_*.p8 for the private key (do not require AWS env for TestFlight).
+  if [[ (-z "${APP_STORE_CONNECT_API_KEY_ID:-}" || -z "${APP_STORE_CONNECT_ISSUER_ID:-}") && -f "${publish_env}" ]]; then
+    # shellcheck source=/dev/null
+    source "${publish_env}"
+  fi
+
+  if [[ -z "${APP_STORE_CONNECT_API_PRIVATE_KEY:-}" && -n "${APP_STORE_CONNECT_API_KEY_ID:-}" ]]; then
+    if [[ -n "${APP_STORE_CONNECT_API_PRIVATE_KEY_PATH:-}" && -f "${APP_STORE_CONNECT_API_PRIVATE_KEY_PATH}" ]]; then
+      key_path="${APP_STORE_CONNECT_API_PRIVATE_KEY_PATH}"
+    elif [[ -f "${root}/.apple/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8" ]]; then
+      key_path="${root}/.apple/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
+    elif [[ -f "${HOME}/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8" ]]; then
+      key_path="${HOME}/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
+    fi
+    if [[ -n "${key_path}" ]]; then
+      APP_STORE_CONNECT_API_PRIVATE_KEY="$(cat "${key_path}")"
+      export APP_STORE_CONNECT_API_PRIVATE_KEY
+      echo "Loaded ASC API private key from ${key_path}"
+    fi
+  fi
+
+  if release_asc_env_ready; then
+    export APP_STORE_CONNECT_API_KEY_ID APP_STORE_CONNECT_ISSUER_ID APP_STORE_CONNECT_API_PRIVATE_KEY
+  fi
+}
+
 # Write App Store Connect API .p8 from APP_STORE_CONNECT_API_PRIVATE_KEY.
 # GitHub secrets / JSON pastes often store literal "\n" instead of real newlines,
 # which makes notarytool fail with invalidPEMDocument.

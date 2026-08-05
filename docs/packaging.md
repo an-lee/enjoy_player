@@ -160,7 +160,7 @@ flutter test
       --password "@keychain:AC_PASSWORD"
     ```
   - **API key** (CI / optional locally): set `APP_STORE_CONNECT_API_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID`, and `APP_STORE_CONNECT_API_PRIVATE_KEY` — the release script registers profile `enjoy-notary` automatically when `--notarize` is set
-- **TestFlight upload** (for `--testflight`): same three `APP_STORE_CONNECT_*` env vars
+- **TestFlight upload** (for `--testflight`): same ASC credentials. Locally the script auto-loads `~/.config/enjoy-player/asc.env` (key id + issuer) and `.apple/AuthKey_<KEY_ID>.p8` (gitignored) when those env vars are unset. `--testflight` fails hard if credentials are still missing (no silent skip).
 - **Sparkle auto-update** (before `--publish`): run once on Mac — `dart run auto_updater:generate_keys`, **paste the printed `SUPublicEDKey` into [`macos/Runner/Info.plist`](../macos/Runner/Info.plist)** (private key stays in Keychain), then `bash .github/scripts/verify_sparkle_setup.sh`
 
 ### Android signing
@@ -334,13 +334,19 @@ bash .github/scripts/release.sh --platform apple --macos-only --notarize
 bash .github/scripts/release.sh --platform apple --macos-only --notarize --skip-checks  # iteration
 ```
 
-**Full Apple release** (iOS IPA + TestFlight when API env is set + notarized macOS zip):
+**Full Apple release** (iOS IPA + TestFlight + notarized macOS zip):
 
 ```bash
 bash .github/scripts/release.sh --platform apple --notarize --testflight
 ```
 
-The default `release_apple.sh` path always builds **both** iOS and macOS unless `--macos-only` is passed. macOS builds use `--dart-define=DISTRIBUTION_CHANNEL=direct` (Sparkle auto-update). Expect **15–30+ minutes** when notarization is enabled.
+**iOS / TestFlight only** (skip macOS):
+
+```bash
+bash .github/scripts/release.sh --platform apple --ios-only --testflight --skip-checks
+```
+
+The default `release_apple.sh` path builds **both** iOS and macOS unless `--macos-only` or `--ios-only` is passed. macOS builds use `--dart-define=DISTRIBUTION_CHANNEL=direct` (Sparkle auto-update). Expect **15–30+ minutes** when notarization is enabled.
 
 ---
 
@@ -526,7 +532,11 @@ git-ignored.
   ```bash
   ./macos/scripts/notarize_release.sh "build/macos/Build/Products/Release/Enjoy Player.app" --skip-sign
   ```
-- **TestFlight skipped**: set App Store Connect API env vars or upload IPA manually via Transporter.
+- **TestFlight credentials missing** (local): ensure `~/.config/enjoy-player/asc.env` has `APP_STORE_CONNECT_API_KEY_ID` + `APP_STORE_CONNECT_ISSUER_ID`, and `.apple/AuthKey_<KEY_ID>.p8` exists (or export the three `APP_STORE_CONNECT_*` env vars). With `--testflight`, a missing key is a hard error — not a soft skip.
+- **TestFlight upload only** (IPA already built):
+  ```bash
+  bash .github/scripts/release.sh --platform apple --ios-only --testflight --skip-build --skip-checks
+  ```
 
 ### Publish (R2 / AWS CLI)
 

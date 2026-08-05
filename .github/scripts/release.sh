@@ -58,11 +58,15 @@ Android:
 
 Apple (macOS host):
   --notarize          Notarize macOS .app for direct download
-  --testflight        Upload IPA to TestFlight
+  --testflight        Upload IPA to TestFlight (needs ASC API key)
   --macos-only        Skip iOS IPA build (macOS zip only)
+  --ios-only          Skip macOS build (IPA / TestFlight only)
 
 Env: copy .github/scripts/publish_env.example.ps1 → publish_env.local.ps1
      or publish_env.example.sh → publish_env.local.sh
+Local TestFlight also auto-loads:
+  ~/.config/enjoy-player/asc.env   # APP_STORE_CONNECT_API_KEY_ID + ISSUER_ID
+  .apple/AuthKey_<KEY_ID>.p8       # private key (gitignored)
 EOF
       exit 0
       ;;
