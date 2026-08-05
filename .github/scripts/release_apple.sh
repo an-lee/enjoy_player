@@ -137,16 +137,12 @@ if [[ "${RELEASE_SKIP_BUILD}" != true ]]; then
     flutter build ipa --release --export-options-plist=ios/ExportOptions.export.plist
 
     if [[ "${UPLOAD_TESTFLIGHT}" == true ]]; then
-      KEY_PATH="${RUNNER_TEMP:-/tmp}/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
-      release_write_asc_api_private_key "${KEY_PATH}"
-      # altool discovers AuthKey_<id>.p8 on its private-keys search path.
-      export API_PRIVATE_KEYS_DIR="$(dirname "${KEY_PATH}")"
       IPA="$(ls -1 "${root}/build/ios/ipa/"*.ipa | head -1)"
-      echo ">>> Upload IPA to TestFlight: ${IPA}"
-      xcrun altool --upload-app --type ios --file "${IPA}" \
-        --apiKey "${APP_STORE_CONNECT_API_KEY_ID}" \
-        --apiIssuer "${APP_STORE_CONNECT_ISSUER_ID}"
-      rm -f "${KEY_PATH}"
+      if [[ -z "${IPA}" ]]; then
+        echo "Missing IPA under build/ios/ipa/ — flutter build ipa did not produce one." >&2
+        exit 1
+      fi
+      release_upload_testflight_ipa "${IPA}"
     fi
   fi
 
@@ -173,14 +169,7 @@ else
       echo "Missing IPA under build/ios/ipa/ — build first or drop --skip-build." >&2
       exit 1
     fi
-    KEY_PATH="${RUNNER_TEMP:-/tmp}/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
-    release_write_asc_api_private_key "${KEY_PATH}"
-    export API_PRIVATE_KEYS_DIR="$(dirname "${KEY_PATH}")"
-    echo ">>> Upload existing IPA to TestFlight: ${IPA}"
-    xcrun altool --upload-app --type ios --file "${IPA}" \
-      --apiKey "${APP_STORE_CONNECT_API_KEY_ID}" \
-      --apiIssuer "${APP_STORE_CONNECT_ISSUER_ID}"
-    rm -f "${KEY_PATH}"
+    release_upload_testflight_ipa "${IPA}"
   fi
 
   if [[ "${NOTARIZE}" == true || "${RELEASE_PUBLISH}" == true ]]; then

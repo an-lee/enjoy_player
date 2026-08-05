@@ -367,16 +367,7 @@ release_load_asc_env() {
   fi
 
   if [[ -z "${APP_STORE_CONNECT_API_PRIVATE_KEY:-}" && -n "${APP_STORE_CONNECT_API_KEY_ID:-}" ]]; then
-    if [[ -n "${APP_STORE_CONNECT_API_PRIVATE_KEY_PATH:-}" && -f "${APP_STORE_CONNECT_API_PRIVATE_KEY_PATH}" ]]; then
-      key_path="${APP_STORE_CONNECT_API_PRIVATE_KEY_PATH}"
-    elif [[ -f "${cache_dir}/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8" ]]; then
-      key_path="${cache_dir}/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
-    elif [[ -f "${root}/.apple/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8" ]]; then
-      # Legacy repo-local path; prefer migrating to ~/.config/enjoy-player/.
-      key_path="${root}/.apple/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
-    elif [[ -f "${HOME}/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8" ]]; then
-      key_path="${HOME}/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
-    fi
+    key_path="$(release_resolve_asc_private_key "${root}" "${cache_dir}" "${APP_STORE_CONNECT_API_KEY_ID}")"
     if [[ -n "${key_path}" ]]; then
       APP_STORE_CONNECT_API_PRIVATE_KEY="$(cat "${key_path}")"
       export APP_STORE_CONNECT_API_PRIVATE_KEY
@@ -387,6 +378,58 @@ release_load_asc_env() {
   if release_asc_env_ready; then
     export APP_STORE_CONNECT_API_KEY_ID APP_STORE_CONNECT_ISSUER_ID APP_STORE_CONNECT_API_PRIVATE_KEY
   fi
+}
+
+# Resolve the App Store Connect API private key path with full precedence.
+# Prints the first existing match and the source bucket (on stdout, NUL-separated
+# when the caller asks for both via the second positional mode); returns 1 when
+# no file is found. Buckets mirror release_load_asc_env so the preflight can
+# report canonical / legacy / explicit-path / standard private_keys cases from
+# the same source of truth.
+#
+# Usage:
+#   release_resolve_asc_private_key <root> <cache_dir> <key_id>
+#     -> prints "<bucket>\t<path>" on stdout when found; empty + rc=1 otherwise.
+#
+# Buckets:
+#   explicit  — APP_STORE_CONNECT_API_PRIVATE_KEY_PATH override (if set + readable)
+#   cache     — <cache_dir>/AuthKey_<KEY_ID>.p8  (preferred canonical location)
+#   legacy    — <root>/.apple/AuthKey_<KEY_ID>.p8  (pre-~/.config/enjoy-player)
+#   standard  — ~/.appstoreconnect/private_keys/AuthKey_<KEY_ID>.p8  (Apple CLI default)
+release_resolve_asc_private_key() {
+  local root="$1"
+  local cache_dir="$2"
+  local key_id="$3"
+  local candidate=""
+
+  if [[ -z "${key_id}" ]]; then
+    return 1
+  fi
+
+  if [[ -n "${APP_STORE_CONNECT_API_PRIVATE_KEY_PATH:-}" && -f "${APP_STORE_CONNECT_API_PRIVATE_KEY_PATH}" ]]; then
+    printf 'explicit\t%s\n' "${APP_STORE_CONNECT_API_PRIVATE_KEY_PATH}"
+    return 0
+  fi
+
+  candidate="${cache_dir}/AuthKey_${key_id}.p8"
+  if [[ -f "${candidate}" ]]; then
+    printf 'cache\t%s\n' "${candidate}"
+    return 0
+  fi
+
+  candidate="${root}/.apple/AuthKey_${key_id}.p8"
+  if [[ -f "${candidate}" ]]; then
+    printf 'legacy\t%s\n' "${candidate}"
+    return 0
+  fi
+
+  candidate="${HOME}/.appstoreconnect/private_keys/AuthKey_${key_id}.p8"
+  if [[ -f "${candidate}" ]]; then
+    printf 'standard\t%s\n' "${candidate}"
+    return 0
+  fi
+
+  return 1
 }
 
 # Write App Store Connect API .p8 from APP_STORE_CONNECT_API_PRIVATE_KEY.
@@ -416,6 +459,44 @@ release_write_asc_api_private_key() {
     echo "ASC API private key is not a PEM (missing BEGIN PRIVATE KEY)." >&2
     return 1
   fi
+}
+
+# Upload an iOS IPA to TestFlight via altool using the already-loaded ASC env.
+# Stages the .p8 under ${RUNNER_TEMP:-/tmp}, exports API_PRIVATE_KEYS_DIR for
+# altool's discovery, runs `xcrun altool --upload-app`, and guarantees the
+# temporary key is removed (trap-based) so a failed upload does not leak the
+# credential on disk.
+#
+# Required env (call release_load_asc_env first):
+#   APP_STORE_CONNECT_API_KEY_ID, APP_STORE_CONNECT_ISSUER_ID,
+#   APP_STORE_CONNECT_API_PRIVATE_KEY.
+#
+# Args:
+#   $1 IPA path (must exist; caller validates before invoking).
+release_upload_testflight_ipa() {
+  local ipa="$1"
+  local key_path="${RUNNER_TEMP:-/tmp}/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
+
+  if [[ ! -f "${ipa}" ]]; then
+    echo "release_upload_testflight_ipa: missing IPA: ${ipa}" >&2
+    return 1
+  fi
+  if ! release_asc_env_ready; then
+    echo "release_upload_testflight_ipa: ASC credentials not loaded." >&2
+    return 1
+  fi
+
+  release_write_asc_api_private_key "${key_path}"
+  # altool discovers AuthKey_<id>.p8 on its private-keys search path.
+  export API_PRIVATE_KEYS_DIR="$(dirname "${key_path}")"
+
+  # Ensure the temporary key is removed even if altool fails mid-upload.
+  trap 'rm -f "${key_path}"' RETURN
+
+  echo ">>> Upload IPA to TestFlight: ${ipa}"
+  xcrun altool --upload-app --type ios --file "${ipa}" \
+    --apiKey "${APP_STORE_CONNECT_API_KEY_ID}" \
+    --apiIssuer "${APP_STORE_CONNECT_ISSUER_ID}"
 }
 
 # Stop stale Gradle daemons so the next bundle build picks up gradle.properties

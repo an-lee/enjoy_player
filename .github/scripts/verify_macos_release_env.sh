@@ -96,12 +96,27 @@ fi
 
 if [[ -n "${APP_STORE_CONNECT_API_KEY_ID:-}" ]]; then
   ok "API key id: ${APP_STORE_CONNECT_API_KEY_ID}"
-  preferred_p8="${asc_dir}/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
-  legacy_p8="${root}/.apple/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
-  if [[ -f "${preferred_p8}" ]]; then
-    ok "AuthKey at ${preferred_p8}"
-  elif [[ -f "${legacy_p8}" ]]; then
-    warn "AuthKey still at legacy ${legacy_p8} — move to ${preferred_p8}"
+  # Single source of truth for key location: release_resolve_asc_private_key.
+  # We render its bucket/path into the existing OK/WARN messages so the preflight
+  # agrees with release_load_asc_env about where the .p8 came from.
+  if resolved="$(release_resolve_asc_private_key "${root}" "${asc_dir}" "${APP_STORE_CONNECT_API_KEY_ID}")"; then
+    resolved_bucket="${resolved%%	*}"
+    resolved_path="${resolved#*	}"
+    case "${resolved_bucket}" in
+      cache)
+        ok "AuthKey at ${resolved_path}"
+        ;;
+      legacy)
+        warn "AuthKey still at legacy ${resolved_path} — move to ${asc_dir}/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
+        ;;
+      standard)
+        ok "AuthKey at standard location ${resolved_path}"
+        warn "Move AuthKey to ${asc_dir}/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8 so it survives runner re-imaging"
+        ;;
+      explicit)
+        ok "AuthKey from APP_STORE_CONNECT_API_PRIVATE_KEY_PATH (${resolved_path})"
+        ;;
+    esac
   else
     warn "AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8 not found under ${asc_dir}"
   fi
