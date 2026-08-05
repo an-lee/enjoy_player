@@ -15,19 +15,10 @@ for var in APP_STORE_CONNECT_API_KEY_ID APP_STORE_CONNECT_ISSUER_ID APP_STORE_CO
   fi
 done
 
-KEY_PATH="${RUNNER_TEMP:-/tmp}/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
-release_write_asc_api_private_key "${KEY_PATH}"
-
-# Cache non-secret ASC identifiers before validation so a failed notary login
-# still leaves enough context for local recovery on the self-hosted runner.
-ASC_CACHE_DIR="${HOME}/.config/enjoy-player"
-mkdir -p "${ASC_CACHE_DIR}"
-umask 077
-cat >"${ASC_CACHE_DIR}/asc.env" <<EOF
-APP_STORE_CONNECT_API_KEY_ID=${APP_STORE_CONNECT_API_KEY_ID}
-APP_STORE_CONNECT_ISSUER_ID=${APP_STORE_CONNECT_ISSUER_ID}
-EOF
-chmod 600 "${ASC_CACHE_DIR}/asc.env"
+# Cache identifiers + .p8 under ~/.config/enjoy-player/ before validation so a
+# failed notary login still leaves a complete local secrets layout.
+release_cache_asc_credentials
+KEY_PATH="$(release_asc_config_dir)/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
 
 xcrun notarytool store-credentials "${PROFILE}" \
   --key "${KEY_PATH}" \
@@ -35,4 +26,3 @@ xcrun notarytool store-credentials "${PROFILE}" \
   --issuer "${APP_STORE_CONNECT_ISSUER_ID}"
 
 echo "Registered notary profile: ${PROFILE}"
-rm -f "${KEY_PATH}"

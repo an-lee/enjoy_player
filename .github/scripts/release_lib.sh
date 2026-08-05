@@ -306,17 +306,48 @@ release_asc_env_ready() {
     -n "${APP_STORE_CONNECT_API_PRIVATE_KEY:-}" ]]
 }
 
+# Canonical local ASC secrets directory (shared by local release + self-hosted CI).
+release_asc_config_dir() {
+  echo "${HOME}/.config/enjoy-player"
+}
+
+# Persist ASC identifiers (+ private key when available) under ~/.config/enjoy-player/.
+# Safe to call from CI helpers; never writes into the git worktree.
+release_cache_asc_credentials() {
+  local cache_dir
+  cache_dir="$(release_asc_config_dir)"
+  if [[ -z "${APP_STORE_CONNECT_API_KEY_ID:-}" || -z "${APP_STORE_CONNECT_ISSUER_ID:-}" ]]; then
+    echo "release_cache_asc_credentials: KEY_ID / ISSUER_ID required" >&2
+    return 1
+  fi
+  mkdir -p "${cache_dir}"
+  umask 077
+  cat >"${cache_dir}/asc.env" <<EOF
+APP_STORE_CONNECT_API_KEY_ID=${APP_STORE_CONNECT_API_KEY_ID}
+APP_STORE_CONNECT_ISSUER_ID=${APP_STORE_CONNECT_ISSUER_ID}
+EOF
+  chmod 600 "${cache_dir}/asc.env"
+  if [[ -n "${APP_STORE_CONNECT_API_PRIVATE_KEY:-}" ]]; then
+    release_write_asc_api_private_key \
+      "${cache_dir}/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
+  fi
+}
+
 # Load App Store Connect API credentials for local TestFlight / notary.
 # Precedence:
 #   1. Already-exported env (CI secrets / shell)
-#   2. ~/.config/enjoy-player/asc.env (KEY_ID + ISSUER_ID; written by CI helpers)
-#   3. Optional APP_STORE_* lines in publish_env.local.sh
-#   4. Private key file: APP_STORE_CONNECT_API_PRIVATE_KEY_PATH, else
-#      ${root}/.apple/AuthKey_<KEY_ID>.p8, else
-#      ~/.appstoreconnect/private_keys/AuthKey_<KEY_ID>.p8
+#   2. ~/.config/enjoy-player/asc.env (KEY_ID + ISSUER_ID)
+#   3. Optional APP_STORE_* lines in publish_env.local.sh (identifiers only)
+#   4. Private key file:
+#        APP_STORE_CONNECT_API_PRIVATE_KEY_PATH, else
+#        ~/.config/enjoy-player/AuthKey_<KEY_ID>.p8 (preferred), else
+#        ${root}/.apple/AuthKey_<KEY_ID>.p8 (legacy), else
+#        ~/.appstoreconnect/private_keys/AuthKey_<KEY_ID>.p8
 release_load_asc_env() {
   local root="$1"
-  local asc_cache="${HOME}/.config/enjoy-player/asc.env"
+  local cache_dir
+  cache_dir="$(release_asc_config_dir)"
+  local asc_cache="${cache_dir}/asc.env"
   local publish_env="${root}/.github/scripts/publish_env.local.sh"
   local key_path=""
 
@@ -329,7 +360,7 @@ release_load_asc_env() {
   fi
 
   # Only pull identifiers from publish_env when asc.env / shell did not set them.
-  # Prefer .apple/AuthKey_*.p8 for the private key (do not require AWS env for TestFlight).
+  # Do not require AWS/R2 env for TestFlight.
   if [[ (-z "${APP_STORE_CONNECT_API_KEY_ID:-}" || -z "${APP_STORE_CONNECT_ISSUER_ID:-}") && -f "${publish_env}" ]]; then
     # shellcheck source=/dev/null
     source "${publish_env}"
@@ -338,7 +369,10 @@ release_load_asc_env() {
   if [[ -z "${APP_STORE_CONNECT_API_PRIVATE_KEY:-}" && -n "${APP_STORE_CONNECT_API_KEY_ID:-}" ]]; then
     if [[ -n "${APP_STORE_CONNECT_API_PRIVATE_KEY_PATH:-}" && -f "${APP_STORE_CONNECT_API_PRIVATE_KEY_PATH}" ]]; then
       key_path="${APP_STORE_CONNECT_API_PRIVATE_KEY_PATH}"
+    elif [[ -f "${cache_dir}/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8" ]]; then
+      key_path="${cache_dir}/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
     elif [[ -f "${root}/.apple/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8" ]]; then
+      # Legacy repo-local path; prefer migrating to ~/.config/enjoy-player/.
       key_path="${root}/.apple/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
     elif [[ -f "${HOME}/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8" ]]; then
       key_path="${HOME}/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"

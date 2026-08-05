@@ -33,15 +33,8 @@ for var in APP_STORE_CONNECT_API_KEY_ID APP_STORE_CONNECT_ISSUER_ID APP_STORE_CO
   fi
 done
 
-# Persist identifiers early for local debugging if the API call fails later.
-ASC_CACHE_DIR="${HOME}/.config/enjoy-player"
-mkdir -p "${ASC_CACHE_DIR}"
-umask 077
-cat >"${ASC_CACHE_DIR}/asc.env" <<EOF
-APP_STORE_CONNECT_API_KEY_ID=${APP_STORE_CONNECT_API_KEY_ID}
-APP_STORE_CONNECT_ISSUER_ID=${APP_STORE_CONNECT_ISSUER_ID}
-EOF
-chmod 600 "${ASC_CACHE_DIR}/asc.env"
+# Persist identifiers + .p8 early for local recovery if the API call fails later.
+release_cache_asc_credentials
 
 WORKDIR="${RUNNER_TEMP:-/tmp}/enjoy-ios-distribution-$$"
 mkdir -p "${WORKDIR}"
@@ -51,8 +44,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-KEY_PATH="${WORKDIR}/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
-release_write_asc_api_private_key "${KEY_PATH}"
+KEY_PATH="$(release_asc_config_dir)/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
 
 CSR_KEY="${WORKDIR}/ios_distribution.key"
 CSR_PATH="${WORKDIR}/ios_distribution.csr"

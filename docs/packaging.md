@@ -150,7 +150,19 @@ flutter test
 - **Xcode** + **CocoaPods** + Apple Developer team **`46X685R747`**
 - **Homebrew** + FFmpeg deps: `brew bundle install --file=macos/Brewfile`
 - **App Store Connect app** for bundle ID `ai.enjoy.player` (required for full `--platform apple` runs that build iOS)
-- **Keychain certs**: Apple Distribution (iOS / TestFlight) and Developer ID Application (macOS direct download)
+- **Keychain certs** (OS Keychain, not files in the repo): Apple Distribution (iOS / TestFlight) and Developer ID Application (macOS direct download)
+- **Local Apple secrets** (one directory — shared by local release and the self-hosted Mac runner):
+
+  ```
+  ~/.config/enjoy-player/
+    asc.env                 # APP_STORE_CONNECT_API_KEY_ID + ISSUER_ID
+    AuthKey_<KEY_ID>.p8     # App Store Connect API private key (mode 600)
+  ```
+
+  Do **not** put ASC keys in `publish_env.local.sh` (that file is for R2/Play). Repo `.apple/` is a legacy fallback only — prefer the config dir above. CI also injects the same values as GitHub Actions secrets; helpers cache them into this directory.
+
+  Preflight: `bash .github/scripts/verify_macos_release_env.sh`
+
 - **Notary credentials** (for `--notarize`), either:
   - **Local (Apple ID)**: store an app-specific password in Keychain as `AC_PASSWORD`, then:
     ```bash
@@ -159,8 +171,8 @@ flutter test
       --team-id "46X685R747" \
       --password "@keychain:AC_PASSWORD"
     ```
-  - **API key** (CI / optional locally): set `APP_STORE_CONNECT_API_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID`, and `APP_STORE_CONNECT_API_PRIVATE_KEY` — the release script registers profile `enjoy-notary` automatically when `--notarize` is set
-- **TestFlight upload** (for `--testflight`): same ASC credentials. Locally the script auto-loads `~/.config/enjoy-player/asc.env` (key id + issuer) and `.apple/AuthKey_<KEY_ID>.p8` (gitignored) when those env vars are unset. `--testflight` fails hard if credentials are still missing (no silent skip).
+  - **API key** (CI / local): the three `APP_STORE_CONNECT_*` values (env or `~/.config/enjoy-player/`) — the release script registers profile `enjoy-notary` automatically when `--notarize` is set
+- **TestFlight upload** (for `--testflight`): same ASC credentials. `--testflight` fails hard if credentials are still missing (no silent skip). Build outputs (IPA / zip) stay under `build/` and are ephemeral — not part of credential setup.
 - **Sparkle auto-update** (before `--publish`): run once on Mac — `dart run auto_updater:generate_keys`, **paste the printed `SUPublicEDKey` into [`macos/Runner/Info.plist`](../macos/Runner/Info.plist)** (private key stays in Keychain), then `bash .github/scripts/verify_sparkle_setup.sh`
 
 ### Android signing
@@ -532,7 +544,7 @@ git-ignored.
   ```bash
   ./macos/scripts/notarize_release.sh "build/macos/Build/Products/Release/Enjoy Player.app" --skip-sign
   ```
-- **TestFlight credentials missing** (local): ensure `~/.config/enjoy-player/asc.env` has `APP_STORE_CONNECT_API_KEY_ID` + `APP_STORE_CONNECT_ISSUER_ID`, and `.apple/AuthKey_<KEY_ID>.p8` exists (or export the three `APP_STORE_CONNECT_*` env vars). With `--testflight`, a missing key is a hard error — not a soft skip.
+- **TestFlight credentials missing** (local): put `asc.env` + `AuthKey_<KEY_ID>.p8` under `~/.config/enjoy-player/` (or export the three `APP_STORE_CONNECT_*` env vars), then re-run `bash .github/scripts/verify_macos_release_env.sh`. With `--testflight`, a missing key is a hard error — not a soft skip.
 - **TestFlight upload only** (IPA already built):
   ```bash
   bash .github/scripts/release.sh --platform apple --ios-only --testflight --skip-build --skip-checks

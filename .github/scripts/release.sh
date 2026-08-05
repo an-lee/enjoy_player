@@ -64,9 +64,10 @@ Apple (macOS host):
 
 Env: copy .github/scripts/publish_env.example.ps1 → publish_env.local.ps1
      or publish_env.example.sh → publish_env.local.sh
-Local TestFlight also auto-loads:
-  ~/.config/enjoy-player/asc.env   # APP_STORE_CONNECT_API_KEY_ID + ISSUER_ID
-  .apple/AuthKey_<KEY_ID>.p8       # private key (gitignored)
+Local Apple secrets (TestFlight / notary) live in one place:
+  ~/.config/enjoy-player/asc.env           # KEY_ID + ISSUER_ID
+  ~/.config/enjoy-player/AuthKey_<ID>.p8   # private key
+Preflight: bash .github/scripts/verify_macos_release_env.sh
 EOF
       exit 0
       ;;

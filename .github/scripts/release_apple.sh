@@ -63,8 +63,8 @@ if [[ "${RELEASE_PUBLISH}" == true && "${NOTARIZE}" != true && "${IOS_ONLY}" != 
   NOTARIZE=true
 fi
 
-# Local ASC files (.apple/AuthKey_*.p8 + ~/.config/enjoy-player/asc.env) so
-# --testflight / --notarize work without manually exporting CI secrets.
+# Local ASC files under ~/.config/enjoy-player/ so --testflight / --notarize
+# work without manually exporting CI secrets.
 if [[ "${UPLOAD_TESTFLIGHT}" == true || "${NOTARIZE}" == true || "${MACOS_ONLY}" != true ]]; then
   release_load_asc_env "${root}"
 fi
@@ -76,10 +76,10 @@ fi
 
 if [[ "${UPLOAD_TESTFLIGHT}" == true ]] && ! release_asc_env_ready; then
   echo "TestFlight requested but App Store Connect API credentials are missing." >&2
-  echo "Set APP_STORE_CONNECT_API_KEY_ID, APP_STORE_CONNECT_ISSUER_ID, and either" >&2
-  echo "APP_STORE_CONNECT_API_PRIVATE_KEY or a gitignored key file:" >&2
-  echo "  ~/.config/enjoy-player/asc.env          # KEY_ID + ISSUER_ID" >&2
-  echo "  .apple/AuthKey_<KEY_ID>.p8              # private key" >&2
+  echo "Put both files under ~/.config/enjoy-player/ (or export APP_STORE_CONNECT_*):" >&2
+  echo "  asc.env                    # KEY_ID + ISSUER_ID" >&2
+  echo "  AuthKey_<KEY_ID>.p8        # private key" >&2
+  echo "Run: bash .github/scripts/verify_macos_release_env.sh" >&2
   exit 1
 fi
 
