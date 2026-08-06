@@ -142,11 +142,11 @@ Widget _harness({required AppDatabase db}) {
       deviceGlobalAppDatabaseProvider.overrideWithValue(db),
       appDatabaseProvider.overrideWithValue(db),
     ],
-    child: MaterialApp(
+    child: const MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      locale: const Locale('en'),
-      home: const _TestShowcaseHost(
+      locale: Locale('en'),
+      home: _TestShowcaseHost(
         child: Scaffold(body: Center(child: _HomeTipSurface())),
       ),
     ),

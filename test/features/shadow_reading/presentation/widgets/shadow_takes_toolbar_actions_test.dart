@@ -75,11 +75,13 @@ RecordingRow _row({
   );
 }
 
-class _RecordingPreviewStub extends RecordingPreviewPlayer {
+class _RecordingPreviewStub implements RecordingPreviewPlayback {
   _RecordingPreviewStub();
 
   String? _loaded;
   final _playing = StreamController<bool>.broadcast();
+  final _position = StreamController<Duration>.broadcast();
+  final _duration = StreamController<Duration>.broadcast();
 
   void setLoadedPath(String? p) => _loaded = p;
 
@@ -89,10 +91,24 @@ class _RecordingPreviewStub extends RecordingPreviewPlayer {
   @override
   Stream<bool> get playing => _playing.stream;
 
+  @override
+  Stream<Duration> get position => _position.stream;
+
+  @override
+  Stream<Duration> get duration => _duration.stream;
+
   void emitPlaying(bool v) => _playing.add(v);
 
   @override
   Future<void> play(String path) async {
+    _loaded = path;
+  }
+
+  @override
+  Future<void> seek(Duration position) async {}
+
+  @override
+  Future<void> playClip(String path, Duration start, Duration end) async {
     _loaded = path;
   }
 
@@ -113,6 +129,8 @@ class _RecordingPreviewStub extends RecordingPreviewPlayer {
   @override
   Future<void> dispose() async {
     await _playing.close();
+    await _position.close();
+    await _duration.close();
   }
 }
 

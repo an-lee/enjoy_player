@@ -80,6 +80,7 @@ Future<void> triggerRecordingAssessment({
           context: context,
           assessment: parsed,
           localeTag: pronounceLocale,
+          recordingPath: row.localPath,
         );
       } on Object {
         if (!context.mounted) return;
@@ -101,6 +102,7 @@ Future<void> triggerRecordingAssessment({
         context: context,
         assessment: detail,
         localeTag: pronounceLocale,
+        recordingPath: row.localPath,
       );
     case RecordingAssessmentFailure(:final kind, :final debugMessage):
       AppNotice.error(

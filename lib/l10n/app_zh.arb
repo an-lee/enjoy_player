@@ -1370,6 +1370,12 @@
   "pronounceFailed": "无法播放发音",
   "pronounceCreditsExhausted": "积分不足，无法生成发音",
   "pronounceSignInRequired": "登录后即可收听发音",
+  "assessmentPlayMyRecording": "播放我的录音",
+  "assessmentStopMyRecording": "停止我的录音",
+  "assessmentRecordingUnavailable": "录音文件不可用",
+  "assessmentPlayMyClip": "播放该词的录音片段",
+  "assessmentStopMyClip": "停止该词的录音片段",
+  "assessmentClipUnavailable": "该词没有可用的录音片段",
 
   "subscriptionTierCatalogTitle": "选择你的方案",
   "subscriptionTierCatalogDescription": "所有方案均包含相同的 AI 功能。选择积分额度与计费周期，下一步选择支付方式。",
