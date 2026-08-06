@@ -13,6 +13,8 @@ import 'package:enjoy_player/core/presentation/loading_icon.dart';
 import 'package:enjoy_player/core/riverpod/async_value_x.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
 import 'package:enjoy_player/features/hotkeys/presentation/hotkey_tooltip_label.dart';
+import 'package:enjoy_player/features/onboarding/domain/onboarding_tip_id.dart';
+import 'package:enjoy_player/features/onboarding/presentation/onboarding_target.dart';
 import 'package:enjoy_player/features/shadow_reading/application/recording_assessment_controller.dart';
 import 'package:enjoy_player/features/shadow_reading/presentation/recording_assessment_flow.dart';
 import 'package:enjoy_player/features/shadow_reading/presentation/score_level.dart';
@@ -92,53 +94,62 @@ class RecordingAssessmentButton extends ConsumerWidget {
         ? assessmentScoreColor(scheme, assessmentScoreLevel(score))
         : scheme.onSurfaceVariant;
 
+    void runAssess() {
+      unawaited(
+        triggerRecordingAssessment(
+          context: context,
+          ref: ref,
+          l10n: l10n,
+          row: row,
+        ),
+      );
+    }
+
     // Use [MaterialType.transparency] when there is no score fill. A
     // transparent [MaterialType.canvas] (the default) can drop taps on
     // Android even though the same InkWell works on Windows / desktop.
-    return Tooltip(
-      message: tooltip,
-      child: Semantics(
-        button: true,
-        enabled: canInteract && !isAssessing,
-        label: tooltip,
-        child: SizedBox(
-          width: 44,
-          height: 44,
-          child: Material(
-            color: bg ?? Colors.transparent,
-            type: bg == null ? MaterialType.transparency : MaterialType.canvas,
-            shape: const CircleBorder(),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: !canInteract || isAssessing
-                  ? null
-                  : () => unawaited(
-                      triggerRecordingAssessment(
-                        context: context,
-                        ref: ref,
-                        l10n: l10n,
-                        row: row,
-                      ),
-                    ),
-              child: Center(
-                child: isAssessing
-                    ? LoadingIcon(size: 18, color: scheme.primary)
-                    : score != null
-                    ? Text(
-                        '$score',
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: fg,
-                          fontWeight: FontWeight.w700,
+    return OnboardingTarget(
+      tipId: OnboardingTipId.playerAssess,
+      onTargetAction: canInteract && !isAssessing ? runAssess : null,
+      child: Tooltip(
+        message: tooltip,
+        child: Semantics(
+          button: true,
+          enabled: canInteract && !isAssessing,
+          label: tooltip,
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: Material(
+              color: bg ?? Colors.transparent,
+              type: bg == null
+                  ? MaterialType.transparency
+                  : MaterialType.canvas,
+              shape: const CircleBorder(),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: !canInteract || isAssessing ? null : runAssess,
+                child: Center(
+                  child: isAssessing
+                      ? LoadingIcon(size: 18, color: scheme.primary)
+                      : score != null
+                      ? Text(
+                          '$score',
+                          style: Theme.of(context).textTheme.labelLarge
+                              ?.copyWith(
+                                color: fg,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        )
+                      : Icon(
+                          Icons.auto_awesome_rounded,
+                          size: 20,
+                          color: canInteract
+                              ? scheme.primary
+                              : scheme.onSurfaceVariant,
                         ),
-                      )
-                    : Icon(
-                        Icons.auto_awesome_rounded,
-                        size: 20,
-                        color: canInteract
-                            ? scheme.primary
-                            : scheme.onSurfaceVariant,
-                      ),
+                ),
               ),
             ),
           ),

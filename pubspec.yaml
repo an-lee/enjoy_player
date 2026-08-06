@@ -65,6 +65,7 @@ dependencies:
   qr_flutter: ^4.1.0
   share_plus: ^13.3.0
   skeletonizer: ^2.1.3
+  showcaseview: ^5.1.0
   window_manager: ^0.5.1
   ai_sdk_dart: ^1.2.0
   ai_sdk_openai: ^1.2.0
@@ -104,3 +105,4 @@ flutter:
     - assets/logo-light.svg
     - assets/illustrations/
     - assets/discover/recommended_channels.json
+

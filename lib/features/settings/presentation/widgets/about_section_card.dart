@@ -14,6 +14,7 @@ import 'package:enjoy_player/core/diagnostics/diagnostics_verbose_provider.dart'
 import 'package:enjoy_player/core/notices/app_notice.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_logo.dart';
+import 'package:enjoy_player/features/onboarding/application/onboarding_progress_provider.dart';
 import 'package:enjoy_player/features/settings/presentation/widgets/developer_contact_sheet.dart';
 import 'package:enjoy_player/features/settings/presentation/widgets/settings_row.dart';
 import 'package:enjoy_player/features/update/application/update_controller.dart';
@@ -46,6 +47,34 @@ class _AboutSectionCardState extends ConsumerState<AboutSectionCard> {
         AppLocalizations.of(context)!.playerOpenGenericError,
       );
     }
+  }
+
+  Future<void> _confirmResetProductTips(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.settingsResetProductTipsConfirmTitle),
+        content: Text(l10n.settingsResetProductTipsConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(MaterialLocalizations.of(ctx).cancelButtonLabel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.settingsResetProductTipsConfirmAction),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    await ref.read(onboardingProgressProvider.notifier).resetAll();
+    if (!context.mounted) return;
+    AppNotice.success(context, l10n.settingsResetProductTipsDone);
   }
 
   @override
@@ -179,6 +208,19 @@ class _AboutSectionCardState extends ConsumerState<AboutSectionCard> {
                             )
                           : null,
                       onTap: () => runManualUpdateCheck(context, ref),
+                      responsive: false,
+                    ),
+                    Divider(
+                      height: 1,
+                      indent: t.space16,
+                      endIndent: t.space16,
+                      color: cs.outlineVariant.withValues(alpha: 0.18),
+                    ),
+                    SettingsRow(
+                      leadingIcon: Icons.lightbulb_outline_rounded,
+                      title: l10n.settingsResetProductTipsTitle,
+                      subtitle: l10n.settingsResetProductTipsSubtitle,
+                      onTap: () => _confirmResetProductTips(context, ref),
                       responsive: false,
                     ),
                     Divider(

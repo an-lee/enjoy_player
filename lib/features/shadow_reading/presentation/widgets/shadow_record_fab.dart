@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
+import 'package:enjoy_player/features/onboarding/domain/onboarding_tip_id.dart';
+import 'package:enjoy_player/features/onboarding/presentation/onboarding_target.dart';
 
 /// Record FAB with a circular countdown ring + over-target pulse animation.
 ///
@@ -42,58 +44,64 @@ class ShadowRecordFab extends StatelessWidget {
     final trackAlpha = showProgressArc ? 0.38 : 0.18;
     final iconSize = _fabInner <= 44 ? 22.0 : (_fabInner <= 56 ? 24.0 : 28.0);
 
-    return AnimatedScale(
-      scale: scale,
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeOutCubic,
-      child: SizedBox(
-        width: ringOuterHitSize,
-        height: ringOuterHitSize,
-        child: Stack(
-          alignment: Alignment.center,
-          clipBehavior: Clip.none,
-          children: [
-            CustomPaint(
-              size: const Size(ringOuterHitSize, ringOuterHitSize),
-              painter: ShadowRecordRingPainter(
-                progress: ringProgress,
-                overTarget: overTarget,
-                trackColor: scheme.outlineVariant.withValues(alpha: trackAlpha),
-                fillColor: overTarget ? scheme.error : scheme.primary,
-                showProgressArc: showProgressArc,
-              ),
-            ),
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: echoActive ? onTap : null,
-                child: AnimatedContainer(
-                  duration: tok.motionFast,
-                  width: _fabInner,
-                  height: _fabInner,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: recording ? tok.echoActive : scheme.primary,
-                    boxShadow: [
-                      BoxShadow(
-                        color: (recording ? tok.echoActive : scheme.primary)
-                            .withValues(alpha: 0.35),
-                        blurRadius: recording ? 22 : 12,
-                        spreadRadius: recording ? 2 : 0,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+    return OnboardingTarget(
+      tipId: OnboardingTipId.playerRecord,
+      onTargetAction: echoActive ? onTap : null,
+      child: AnimatedScale(
+        scale: scale,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
+        child: SizedBox(
+          width: ringOuterHitSize,
+          height: ringOuterHitSize,
+          child: Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
+            children: [
+              CustomPaint(
+                size: const Size(ringOuterHitSize, ringOuterHitSize),
+                painter: ShadowRecordRingPainter(
+                  progress: ringProgress,
+                  overTarget: overTarget,
+                  trackColor: scheme.outlineVariant.withValues(
+                    alpha: trackAlpha,
                   ),
-                  child: Icon(
-                    recording ? Icons.stop_rounded : Icons.mic_rounded,
-                    color: recording ? Colors.white : scheme.onPrimary,
-                    size: iconSize,
+                  fillColor: overTarget ? scheme.error : scheme.primary,
+                  showProgressArc: showProgressArc,
+                ),
+              ),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: echoActive ? onTap : null,
+                  child: AnimatedContainer(
+                    duration: tok.motionFast,
+                    width: _fabInner,
+                    height: _fabInner,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: recording ? tok.echoActive : scheme.primary,
+                      boxShadow: [
+                        BoxShadow(
+                          color: (recording ? tok.echoActive : scheme.primary)
+                              .withValues(alpha: 0.35),
+                          blurRadius: recording ? 22 : 12,
+                          spreadRadius: recording ? 2 : 0,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      recording ? Icons.stop_rounded : Icons.mic_rounded,
+                      color: recording ? Colors.white : scheme.onPrimary,
+                      size: iconSize,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

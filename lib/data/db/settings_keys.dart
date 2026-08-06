@@ -70,6 +70,17 @@ abstract final class SettingsKeys {
   static String asrLongFormAttempt(String mediaId) =>
       'asr.long_form.attempt.$mediaId';
 
+  /// JSON map of global onboarding tip id → completed|skipped.
+  static const String onboardingTipProgressV1 = 'onboarding.tip_progress_v1';
+
+  /// Per-media empty-transcript tip resolution (`completed`|`skipped`).
+  static String onboardingEmptyTranscript(String mediaId) =>
+      'onboarding.empty_transcript.$mediaId';
+
+  /// Prefix for [onboardingEmptyTranscript] keys.
+  static const String onboardingEmptyTranscriptPrefix =
+      'onboarding.empty_transcript.';
+
   static const _staticKeys = {
     apiBaseUrl,
     apiAiBaseUrl,
@@ -91,6 +102,7 @@ abstract final class SettingsKeys {
     hotkeysCustomBindings,
     aiModalityConfigsV1,
     youtubeClientProfilesV1,
+    onboardingTipProgressV1,
   };
 
   /// Whether [key] is a known static or dynamic settings key.
@@ -99,6 +111,7 @@ abstract final class SettingsKeys {
     if (key.startsWith('sync.cursor.recording.')) return true;
     if (key.startsWith('sync.last_pull_at.recording.')) return true;
     if (key.startsWith('asr.long_form.attempt.')) return true;
+    if (key.startsWith(onboardingEmptyTranscriptPrefix)) return true;
     return false;
   }
 }

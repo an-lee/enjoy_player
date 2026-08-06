@@ -6929,6 +6929,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You have {usd} in legacy balance. The transfer-to-credits flow is rolling out to the desktop app in a future update. Until then, manage your balance on the web app.'**
   String subscriptionBalanceToCreditsComingSoonMessage(String usd);
+
+  /// No description provided for @onboardingTipSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get onboardingTipSkip;
+
+  /// No description provided for @onboardingTipHomeImportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import media'**
+  String get onboardingTipHomeImportTitle;
+
+  /// No description provided for @onboardingTipHomeImportBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Bring in a local file or YouTube video to practice with.'**
+  String get onboardingTipHomeImportBody;
+
+  /// No description provided for @onboardingTipHomeCraftTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Craft'**
+  String get onboardingTipHomeCraftTitle;
+
+  /// No description provided for @onboardingTipHomeCraftBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Create practice audio from text when you do not have a video yet.'**
+  String get onboardingTipHomeCraftBody;
+
+  /// No description provided for @onboardingTipEmptyTranscriptLocalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a transcript'**
+  String get onboardingTipEmptyTranscriptLocalTitle;
+
+  /// No description provided for @onboardingTipEmptyTranscriptLocalBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Extract subtitles from the file or import a subtitle file so you can practice line by line.'**
+  String get onboardingTipEmptyTranscriptLocalBody;
+
+  /// No description provided for @onboardingTipEmptyTranscriptYoutubeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetch transcript'**
+  String get onboardingTipEmptyTranscriptYoutubeTitle;
+
+  /// No description provided for @onboardingTipEmptyTranscriptYoutubeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull captions for this YouTube video from the cloud to unlock practice.'**
+  String get onboardingTipEmptyTranscriptYoutubeBody;
+
+  /// No description provided for @onboardingTipEchoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Echo mode'**
+  String get onboardingTipEchoTitle;
+
+  /// No description provided for @onboardingTipEchoBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on Echo to shadow each line and practice speaking along with the audio.'**
+  String get onboardingTipEchoBody;
+
+  /// No description provided for @onboardingTipRecordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Record yourself'**
+  String get onboardingTipRecordTitle;
+
+  /// No description provided for @onboardingTipRecordBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Record your voice on a line, then compare it with the original.'**
+  String get onboardingTipRecordBody;
+
+  /// No description provided for @onboardingTipAssessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Assess pronunciation'**
+  String get onboardingTipAssessTitle;
+
+  /// No description provided for @onboardingTipAssessBody.
+  ///
+  /// In en, this message translates to:
+  /// **'After you record, check pronunciation feedback for that take.'**
+  String get onboardingTipAssessBody;
+
+  /// No description provided for @settingsResetProductTipsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset product tips'**
+  String get settingsResetProductTipsTitle;
+
+  /// No description provided for @settingsResetProductTipsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Home and Player tips again as if you were new.'**
+  String get settingsResetProductTipsSubtitle;
+
+  /// No description provided for @settingsResetProductTipsConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset product tips?'**
+  String get settingsResetProductTipsConfirmTitle;
+
+  /// No description provided for @settingsResetProductTipsConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Tips for Craft, Import, transcripts, and practice will show again. Your library and account stay unchanged.'**
+  String get settingsResetProductTipsConfirmBody;
+
+  /// No description provided for @settingsResetProductTipsConfirmAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset tips'**
+  String get settingsResetProductTipsConfirmAction;
+
+  /// No description provided for @settingsResetProductTipsDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Product tips reset'**
+  String get settingsResetProductTipsDone;
+
+  /// No description provided for @transcriptEmptyFetchYoutube.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetch transcript'**
+  String get transcriptEmptyFetchYoutube;
 }
 
 class _AppLocalizationsDelegate

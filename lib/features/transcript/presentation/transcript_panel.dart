@@ -15,6 +15,8 @@ import 'package:enjoy_player/features/auth/application/auth_controller.dart';
 import 'package:enjoy_player/features/auth/domain/auth_state.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
+import 'package:enjoy_player/features/onboarding/application/onboarding_controller.dart';
+import 'package:enjoy_player/features/onboarding/domain/tip_eligibility.dart';
 import 'package:enjoy_player/features/player/application/player_controller.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_fetch_controller.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_lines_provider.dart';
@@ -26,11 +28,61 @@ import 'package:enjoy_player/features/transcript/presentation/transcript_empty_s
 import 'package:enjoy_player/features/transcript/presentation/transcript_embedded_extract.dart';
 import 'package:enjoy_player/features/transcript/presentation/transcript_scrollable_list.dart';
 import 'package:enjoy_player/core/theme/widgets/skeleton.dart';
+import 'package:go_router/go_router.dart';
 
-class TranscriptPanel extends ConsumerWidget {
+class TranscriptPanel extends ConsumerStatefulWidget {
   const TranscriptPanel({required this.mediaId, super.key});
 
   final String mediaId;
+
+  @override
+  ConsumerState<TranscriptPanel> createState() => _TranscriptPanelState();
+}
+
+class _TranscriptPanelState extends ConsumerState<TranscriptPanel> {
+  String get mediaId => widget.mediaId;
+
+  @override
+  void initState() {
+    super.initState();
+    // Safe when provider is already cached empty; no-ops while still loading.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeStartTips());
+  }
+
+  void _maybeStartTips() {
+    if (!mounted) return;
+    final lines = ref
+        .read(transcriptLinesForMediaProvider(mediaId))
+        .asData
+        ?.value;
+    // Wait until transcript query resolves — starting while loading races the
+    // empty-state Showcase mount and silently completes the tip.
+    if (lines == null) return;
+    final videoRow = ref.read(videoRowForMediaProvider(mediaId)).asData?.value;
+    final isYoutube = videoRow?.provider == 'youtube';
+    final path = GoRouterState.of(context).uri.path;
+    final ctrl = ref.read(onboardingControllerProvider.notifier);
+    if (lines.isNotEmpty) {
+      unawaited(ctrl.onTranscriptAvailable(mediaId));
+      return;
+    }
+    final fetchState = ref.read(transcriptFetchStatusProvider(mediaId));
+    // Loading/error empty UIs do not mount tip targets.
+    if (fetchState.status == TranscriptFetchStatus.loading ||
+        fetchState.status == TranscriptFetchStatus.error) {
+      return;
+    }
+    unawaited(
+      ctrl.tryStartEmptyTranscript(
+        TriggerContext(
+          routePath: path,
+          mediaId: mediaId,
+          isYoutube: isYoutube,
+          hasTranscript: false,
+        ),
+      ),
+    );
+  }
 
   Future<void> _import(BuildContext context, WidgetRef ref) async {
     final pick = await FilePicker.pickFiles(
@@ -64,7 +116,7 @@ class TranscriptPanel extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final linesAsync = ref.watch(transcriptLinesForMediaProvider(mediaId));
     final fetchState = ref.watch(transcriptFetchStatusProvider(mediaId));
@@ -81,6 +133,19 @@ class TranscriptPanel extends ConsumerWidget {
     final showExtractButton = dexieTargetType == 'Video' && showLocalActions;
 
     final signedIn = ref.watch(authCtrlProvider).valueOrNull is AuthSignedIn;
+
+    ref.listen(transcriptLinesForMediaProvider(mediaId), (prev, next) {
+      final lines = next.asData?.value;
+      if (lines != null && lines.isNotEmpty) {
+        unawaited(
+          ref
+              .read(onboardingControllerProvider.notifier)
+              .onTranscriptAvailable(mediaId),
+        );
+      } else if (lines != null && lines.isEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _maybeStartTips());
+      }
+    });
 
     // Layout parents size this panel; Expanded here is invalid under DecoratedBox.
     return linesAsync.when(
@@ -153,9 +218,15 @@ class TranscriptPanel extends ConsumerWidget {
             onGenerate: showLocalActions
                 ? () => launchAsrGeneration(context, ref, mediaId: mediaId)
                 : null,
+            onFetchYoutube: isYoutube
+                ? () => ref
+                      .read(transcriptFetchCtrlProvider(mediaId).notifier)
+                      .refreshFromCloud(signedIn: signedIn)
+                : null,
             showImportButton: showLocalActions,
             showExtractButton: showExtractButton,
             showGenerateButton: showLocalActions,
+            showFetchYoutubeButton: isYoutube,
           );
         }
         return TranscriptScrollableList(mediaId: mediaId, lines: lines);

@@ -36,4 +36,19 @@ class SettingsDao extends DatabaseAccessor<AppDatabase>
     _assertKnownKey(key);
     return (delete(settingsKv)..where((t) => t.key.equals(key))).go();
   }
+
+  /// Deletes all rows whose key starts with [prefix].
+  ///
+  /// Only allowlisted prefixes are accepted (onboarding empty-transcript keys).
+  Future<int> deleteKeysWithPrefix(String prefix) async {
+    if (prefix != SettingsKeys.onboardingEmptyTranscriptPrefix) {
+      final message = 'Refusing deleteKeysWithPrefix for: $prefix';
+      assert(() {
+        throw StateError(message);
+      }());
+      _log.warning(message);
+      return 0;
+    }
+    return (delete(settingsKv)..where((t) => t.key.like('$prefix%'))).go();
+  }
 }
