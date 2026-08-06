@@ -67,8 +67,7 @@ class OnboardingProgress extends _$OnboardingProgress {
       SettingsKeys.onboardingTipProgressV1,
     );
     final fromDb = TipProgressSnapshot.decodeGlobalJson(raw);
-    final memory =
-        state.asData?.value.global ?? const <String, TipStatus>{};
+    final memory = state.asData?.value.global ?? const <String, TipStatus>{};
     final nextGlobal = <String, TipStatus>{
       ...fromDb,
       ...memory,

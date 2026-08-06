@@ -265,6 +265,17 @@ class OnboardingController extends _$OnboardingController {
       }
     }
 
+    // Skip/dismiss of a Home tip ends the whole Home sequence (T022).
+    if (!treatedComplete &&
+        tip.sequenceId == OnboardingSequenceId.homeEntries) {
+      for (final homeTip in kHomeEntriesOrder) {
+        if (!progress.statusOfGlobal(homeTip).isResolved) {
+          await progress.markGlobal(homeTip, TipStatus.skipped);
+        }
+      }
+      return;
+    }
+
     if (!chainNext || !treatedComplete) return;
 
     // Chain next home / practice tip in the same visit.

@@ -59,7 +59,7 @@
 
 ### Tests for User Story 1
 
-- [ ] T018 [P] [US1] Widget test Home tip trigger + skip persistence in `test/features/onboarding/presentation/home_onboarding_test.dart` (fake progress; assert sequence order Import then Craft)
+- [x] T018 [P] [US1] Widget test Home tip trigger + skip persistence in `test/features/onboarding/presentation/home_onboarding_test.dart` (fake progress; assert sequence order Import then Craft)
 
 ### Implementation for User Story 1
 
@@ -81,7 +81,7 @@
 ### Tests for User Story 2
 
 - [x] T023 [P] [US2] Unit tests per-media empty-transcript progress + auto-complete-on-transcript in `test/features/onboarding/application/empty_transcript_progress_test.dart`
-- [ ] T024 [P] [US2] Widget/unit coverage for YouTube empty Fetch CTA visibility in `test/features/transcript/presentation/transcript_empty_state_test.dart` (or new onboarding-focused test under `test/features/onboarding/`)
+- [x] T024 [P] [US2] Widget/unit coverage for YouTube empty Fetch CTA visibility in `test/features/transcript/presentation/transcript_empty_state_test.dart` (or new onboarding-focused test under `test/features/onboarding/`)
 
 ### Implementation for User Story 2
 
@@ -105,6 +105,7 @@
 
 - [x] T030 [P] [US3] Unit tests practice-chain eligibility ordering + same-visit next tip in `test/features/onboarding/domain/practice_chain_eligibility_test.dart`
 
+
 ### Implementation for User Story 3
 
 - [x] T031 [US3] Wrap echo toggle with `OnboardingTarget` (`player.echo`) in `lib/features/player/presentation/widgets/global_transport_bar.dart`
@@ -126,7 +127,7 @@
 
 ### Tests for User Story 4
 
-- [ ] T037 [P] [US4] Widget test About reset row confirm/cancel in `test/features/settings/presentation/reset_product_tips_test.dart` (or under `test/features/onboarding/presentation/`)
+- [x] T037 [P] [US4] Widget test About reset row confirm/cancel in `test/features/settings/presentation/reset_product_tips_test.dart` (or under `test/features/onboarding/presentation/`)
 
 ### Implementation for User Story 4
 
