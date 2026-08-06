@@ -6753,6 +6753,42 @@ abstract class AppLocalizations {
   /// **'Sign in to hear pronunciation'**
   String get pronounceSignInRequired;
 
+  /// Tooltip for playing the full assessment take from the result dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Play my recording'**
+  String get assessmentPlayMyRecording;
+
+  /// Tooltip while the assessment take is playing.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop my recording'**
+  String get assessmentStopMyRecording;
+
+  /// Tooltip when the take path is missing or the file cannot be read.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording file is unavailable'**
+  String get assessmentRecordingUnavailable;
+
+  /// Tooltip for playing the timed word clip from the learner take.
+  ///
+  /// In en, this message translates to:
+  /// **'Play my recording of this word'**
+  String get assessmentPlayMyClip;
+
+  /// Tooltip while the word clip is playing.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop my recording of this word'**
+  String get assessmentStopMyClip;
+
+  /// Tooltip when word timing is missing, omitted, or zero duration.
+  ///
+  /// In en, this message translates to:
+  /// **'No recording clip for this word'**
+  String get assessmentClipUnavailable;
+
   /// No description provided for @subscriptionTierCatalogTitle.
   ///
   /// In en, this message translates to:

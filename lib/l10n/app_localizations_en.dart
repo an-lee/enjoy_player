@@ -3657,6 +3657,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pronounceSignInRequired => 'Sign in to hear pronunciation';
 
   @override
+  String get assessmentPlayMyRecording => 'Play my recording';
+
+  @override
+  String get assessmentStopMyRecording => 'Stop my recording';
+
+  @override
+  String get assessmentRecordingUnavailable => 'Recording file is unavailable';
+
+  @override
+  String get assessmentPlayMyClip => 'Play my recording of this word';
+
+  @override
+  String get assessmentStopMyClip => 'Stop my recording of this word';
+
+  @override
+  String get assessmentClipUnavailable => 'No recording clip for this word';
+
+  @override
   String get subscriptionTierCatalogTitle => 'Choose your plan';
 
   @override

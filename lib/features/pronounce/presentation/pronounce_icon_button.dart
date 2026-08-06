@@ -21,6 +21,7 @@ class PronounceIconButton extends ConsumerWidget {
     required this.surfaceId,
     this.compact = false,
     this.enabled = true,
+    this.beforePlay,
   });
 
   final String text;
@@ -28,6 +29,9 @@ class PronounceIconButton extends ConsumerWidget {
   final PronounceSurfaceId surfaceId;
   final bool compact;
   final bool enabled;
+
+  /// Optional hook before model playback starts (e.g. stop take preview).
+  final Future<void> Function()? beforePlay;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -103,6 +107,10 @@ class PronounceIconButton extends ConsumerWidget {
                 pronouncePlaybackControllerProvider.notifier,
               );
               try {
+                // Stop competing take/clip audio only when starting model play.
+                if (!isPlaying && !isLoading) {
+                  await beforePlay?.call();
+                }
                 await notifier.play(target);
               } on AuthFailure {
                 if (!context.mounted) return;

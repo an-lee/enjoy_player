@@ -2,6 +2,7 @@
 library;
 
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:azure_speech/azure_speech.dart';
@@ -9,24 +10,35 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:enjoy_player/core/application/app_language_catalog.dart';
+import 'package:enjoy_player/core/audio/recording_preview_player.dart';
+import 'package:enjoy_player/core/audio/recording_preview_player_provider.dart';
+import 'package:enjoy_player/core/interaction/enjoy_tappable.dart';
+import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_modal.dart';
 import 'package:enjoy_player/core/theme/widgets/sheet_drag_handle.dart';
 import 'package:enjoy_player/features/pronounce/application/pronounce_playback_controller.dart';
 import 'package:enjoy_player/features/pronounce/domain/pronounce_target.dart';
 import 'package:enjoy_player/features/pronounce/presentation/pronounce_icon_button.dart';
+import 'package:enjoy_player/features/shadow_reading/domain/assessment_word_timing.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
 import 'score_level.dart';
+
+final _log = logNamed('assessmentResult');
 
 /// Shows pronunciation assessment: [Dialog] when wide, modal bottom sheet when narrow.
 ///
 /// Uses Enjoy modals (root navigator by default) so the result clears the
 /// permanent player surface host on YouTube (ADR-0065).
+///
+/// Pass [recordingPath] (typically [RecordingRow.localPath]) to enable take
+/// replay, karaoke highlight, and per-word clips.
 Future<void> showAssessmentResultDialog({
   required BuildContext context,
   required AzurePronunciationAssessmentResult assessment,
   String? localeTag,
+  String? recordingPath,
 }) {
   final l10n = AppLocalizations.of(context)!;
   final nBest = assessment.nBest.isEmpty ? null : assessment.nBest.first;
@@ -53,6 +65,7 @@ Future<void> showAssessmentResultDialog({
       builder: (ctx) => AssessmentResultDialog(
         assessment: assessment,
         localeTag: resolvedLocale,
+        recordingPath: recordingPath,
       ),
     );
   }
@@ -63,6 +76,7 @@ Future<void> showAssessmentResultDialog({
     builder: (ctx) => AssessmentResultSheet(
       assessment: assessment,
       localeTag: resolvedLocale,
+      recordingPath: recordingPath,
     ),
   );
 }
@@ -71,11 +85,13 @@ class AssessmentResultDialog extends ConsumerStatefulWidget {
   const AssessmentResultDialog({
     required this.assessment,
     required this.localeTag,
+    this.recordingPath,
     super.key,
   });
 
   final AzurePronunciationAssessmentResult assessment;
   final String localeTag;
+  final String? recordingPath;
 
   @override
   ConsumerState<AssessmentResultDialog> createState() =>
@@ -84,24 +100,8 @@ class AssessmentResultDialog extends ConsumerStatefulWidget {
 
 class _AssessmentResultDialogState
     extends ConsumerState<AssessmentResultDialog> {
-  AzureWordAssessment? _selected;
-  PronouncePlaybackController? _pronounce;
-
-  @override
-  void dispose() {
-    unawaited(_pronounce?.stop() ?? Future<void>.value());
-    super.dispose();
-  }
-
-  void _stopPronounce() {
-    final ctrl = ref.read(pronouncePlaybackControllerProvider.notifier);
-    _pronounce = ctrl;
-    unawaited(ctrl.stop());
-  }
-
   @override
   Widget build(BuildContext context) {
-    _pronounce ??= ref.read(pronouncePlaybackControllerProvider.notifier);
     final l10n = AppLocalizations.of(context)!;
     final scheme = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
@@ -161,17 +161,11 @@ class _AssessmentResultDialogState
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-                child: _AssessmentResultInner(
+                child: _AssessmentResultBody(
                   nBest: nBest,
                   localeTag: widget.localeTag,
+                  recordingPath: widget.recordingPath,
                   layoutCompact: false,
-                  selected: _selected,
-                  onToggleWord: (w) {
-                    _stopPronounce();
-                    setState(() {
-                      _selected = identical(_selected, w) ? null : w;
-                    });
-                  },
                 ),
               ),
             ),
@@ -186,11 +180,13 @@ class AssessmentResultSheet extends ConsumerStatefulWidget {
   const AssessmentResultSheet({
     required this.assessment,
     required this.localeTag,
+    this.recordingPath,
     super.key,
   });
 
   final AzurePronunciationAssessmentResult assessment;
   final String localeTag;
+  final String? recordingPath;
 
   @override
   ConsumerState<AssessmentResultSheet> createState() =>
@@ -198,24 +194,8 @@ class AssessmentResultSheet extends ConsumerStatefulWidget {
 }
 
 class _AssessmentResultSheetState extends ConsumerState<AssessmentResultSheet> {
-  AzureWordAssessment? _selected;
-  PronouncePlaybackController? _pronounce;
-
-  @override
-  void dispose() {
-    unawaited(_pronounce?.stop() ?? Future<void>.value());
-    super.dispose();
-  }
-
-  void _stopPronounce() {
-    final ctrl = ref.read(pronouncePlaybackControllerProvider.notifier);
-    _pronounce = ctrl;
-    unawaited(ctrl.stop());
-  }
-
   @override
   Widget build(BuildContext context) {
-    _pronounce ??= ref.read(pronouncePlaybackControllerProvider.notifier);
     final l10n = AppLocalizations.of(context)!;
     final scheme = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
@@ -282,17 +262,11 @@ class _AssessmentResultSheetState extends ConsumerState<AssessmentResultSheet> {
                   bottomInset,
                 ),
                 children: [
-                  _AssessmentResultInner(
+                  _AssessmentResultBody(
                     nBest: nBest,
                     localeTag: widget.localeTag,
+                    recordingPath: widget.recordingPath,
                     layoutCompact: true,
-                    selected: _selected,
-                    onToggleWord: (w) {
-                      _stopPronounce();
-                      setState(() {
-                        _selected = identical(_selected, w) ? null : w;
-                      });
-                    },
                   ),
                 ],
               ),
@@ -304,35 +278,248 @@ class _AssessmentResultSheetState extends ConsumerState<AssessmentResultSheet> {
   }
 }
 
-class _AssessmentResultInner extends StatelessWidget {
-  const _AssessmentResultInner({
+enum _TakePlayMode { idle, fullTake, wordClip }
+
+/// Owns selection, take/clip playback, karaoke highlight, and audio mutex.
+class _AssessmentResultBody extends ConsumerStatefulWidget {
+  const _AssessmentResultBody({
     required this.nBest,
     required this.localeTag,
+    required this.recordingPath,
     required this.layoutCompact,
-    required this.selected,
-    required this.onToggleWord,
   });
 
   final AzureNBestResult nBest;
   final String localeTag;
+  final String? recordingPath;
   final bool layoutCompact;
-  final AzureWordAssessment? selected;
-  final ValueChanged<AzureWordAssessment> onToggleWord;
+
+  @override
+  ConsumerState<_AssessmentResultBody> createState() =>
+      _AssessmentResultBodyState();
+}
+
+class _AssessmentResultBodyState extends ConsumerState<_AssessmentResultBody> {
+  AzureWordAssessment? _selected;
+  PronouncePlaybackController? _pronounce;
+  RecordingPreviewPlayback? _preview;
+  _TakePlayMode _mode = _TakePlayMode.idle;
+  int? _karaokeWordIndex;
+  bool _recordingPlayable = false;
+
+  StreamSubscription<Duration>? _positionSub;
+  StreamSubscription<bool>? _playingSub;
+
+  @override
+  void initState() {
+    super.initState();
+    final path = widget.recordingPath?.trim();
+    _recordingPlayable =
+        path != null && path.isNotEmpty && File(path).existsSync();
+  }
+
+  @override
+  void dispose() {
+    // Cancel subscriptions without awaiting (dispose must stay synchronous).
+    unawaited(_positionSub?.cancel() ?? Future<void>.value());
+    unawaited(_playingSub?.cancel() ?? Future<void>.value());
+    _positionSub = null;
+    _playingSub = null;
+    final preview = _preview;
+    if (preview != null) {
+      unawaited(
+        preview.stop().catchError((Object e, StackTrace st) {
+          _log.fine('preview stop on dispose failed', e, st);
+        }),
+      );
+    }
+    final pronounce = _pronounce;
+    if (pronounce != null) {
+      unawaited(
+        pronounce.stop().catchError((Object e, StackTrace st) {
+          _log.fine('pronounce stop on dispose failed', e, st);
+        }),
+      );
+    }
+    super.dispose();
+  }
+
+  Future<void> _cancelPreviewSubs() async {
+    await _positionSub?.cancel();
+    _positionSub = null;
+    await _playingSub?.cancel();
+    _playingSub = null;
+  }
+
+  void _stopPronounce() {
+    try {
+      final ctrl = ref.read(pronouncePlaybackControllerProvider.notifier);
+      _pronounce = ctrl;
+      unawaited(
+        ctrl.stop().catchError((Object e, StackTrace st) {
+          _log.fine('pronounce stop failed', e, st);
+        }),
+      );
+    } on Object catch (e, st) {
+      _log.fine('pronounce stop skipped', e, st);
+    }
+  }
+
+  Future<void> _stopPreviewPlayback({bool clearKaraoke = true}) async {
+    await _cancelPreviewSubs();
+    final preview = _preview;
+    if (preview != null) {
+      try {
+        await preview.stop();
+      } on Object catch (e, st) {
+        _log.warning('preview stop failed', e, st);
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _mode = _TakePlayMode.idle;
+      if (clearKaraoke) _karaokeWordIndex = null;
+    });
+  }
+
+  void _listenPlayingEnded(RecordingPreviewPlayback preview) {
+    unawaited(_playingSub?.cancel());
+    _playingSub = preview.playing.listen((playing) {
+      if (!mounted) return;
+      if (!playing && _mode != _TakePlayMode.idle) {
+        setState(() {
+          _mode = _TakePlayMode.idle;
+          _karaokeWordIndex = null;
+        });
+        unawaited(_cancelPreviewSubs());
+      }
+    });
+  }
+
+  Future<void> _toggleFullTake() async {
+    final path = widget.recordingPath?.trim();
+    final preview = _preview;
+    if (path == null ||
+        path.isEmpty ||
+        !_recordingPlayable ||
+        preview == null) {
+      return;
+    }
+
+    if (_mode == _TakePlayMode.fullTake) {
+      await _stopPreviewPlayback();
+      return;
+    }
+
+    _stopPronounce();
+    await _cancelPreviewSubs();
+    try {
+      await preview.play(path);
+    } on Object catch (e, st) {
+      _log.warning('full take play failed', e, st);
+      if (!mounted) return;
+      setState(() {
+        _mode = _TakePlayMode.idle;
+        _karaokeWordIndex = null;
+        _recordingPlayable = File(path).existsSync();
+      });
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      _mode = _TakePlayMode.fullTake;
+      _karaokeWordIndex = activeWordIndex(widget.nBest.words, 0);
+    });
+    _positionSub = preview.position.listen((pos) {
+      if (!mounted || _mode != _TakePlayMode.fullTake) return;
+      final next = activeWordIndex(widget.nBest.words, pos.inMilliseconds);
+      if (next != _karaokeWordIndex) {
+        setState(() => _karaokeWordIndex = next);
+      }
+    });
+    _listenPlayingEnded(preview);
+  }
+
+  Future<void> _toggleWordClip(AzureWordAssessment word) async {
+    final path = widget.recordingPath?.trim();
+    final bounds = wordClipBounds(word);
+    final preview = _preview;
+    if (path == null ||
+        path.isEmpty ||
+        !_recordingPlayable ||
+        bounds == null ||
+        preview == null) {
+      return;
+    }
+
+    if (_mode == _TakePlayMode.wordClip) {
+      await _stopPreviewPlayback();
+      return;
+    }
+
+    _stopPronounce();
+    await _cancelPreviewSubs();
+    try {
+      await preview.playClip(path, bounds.start, bounds.end);
+    } on Object catch (e, st) {
+      _log.warning('word clip play failed', e, st);
+      if (!mounted) return;
+      setState(() {
+        _mode = _TakePlayMode.idle;
+        _karaokeWordIndex = null;
+      });
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      _mode = _TakePlayMode.wordClip;
+      _karaokeWordIndex = null;
+    });
+    _listenPlayingEnded(preview);
+  }
+
+  void _onToggleWord(AzureWordAssessment w) {
+    // Stop take/clip immediately (spec: chip select ends full-take karaoke).
+    _stopPronounce();
+    final preview = _preview;
+    if (preview != null) {
+      unawaited(
+        preview.stop().catchError((Object e, StackTrace st) {
+          _log.fine('preview stop on chip select failed', e, st);
+        }),
+      );
+    }
+    unawaited(_cancelPreviewSubs());
+    setState(() {
+      _mode = _TakePlayMode.idle;
+      _selected = identical(_selected, w) ? null : w;
+      _karaokeWordIndex = null;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    _pronounce ??= ref.read(pronouncePlaybackControllerProvider.notifier);
+    _preview ??= ref.read(recordingPreviewPlayerProvider);
     final l10n = AppLocalizations.of(context)!;
     final scheme = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    final scores = nBest.pronunciationAssessment;
-    final words = nBest.words;
+    final scores = widget.nBest.pronunciationAssessment;
+    final words = widget.nBest.words;
 
     final overall = scores.pronScore.round();
     final accuracy = scores.accuracyScore.round();
     final completeness = scores.completenessScore.round();
     final fluency = scores.fluencyScore.round();
     final prosody = scores.prosodyScore?.round();
+
+    final takePlaying = _mode == _TakePlayMode.fullTake;
+    final takeTooltip = !_recordingPlayable
+        ? l10n.assessmentRecordingUnavailable
+        : takePlaying
+        ? l10n.assessmentStopMyRecording
+        : l10n.assessmentPlayMyRecording;
 
     final scoreBars = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -365,17 +552,37 @@ class _AssessmentResultInner extends StatelessWidget {
       ],
     );
 
+    final takeControl = EnjoyTappableIcon(
+      tooltip: takeTooltip,
+      semanticLabel: takeTooltip,
+      iconSize: 22,
+      icon: takePlaying ? Icons.stop_rounded : Icons.play_arrow_rounded,
+      color: _recordingPlayable
+          ? scheme.primary
+          : scheme.onSurface.withValues(alpha: 0.38),
+      style: IconButton.styleFrom(
+        minimumSize: const Size(44, 44),
+        fixedSize: const Size(44, 44),
+      ),
+      onPressed: _recordingPlayable
+          ? () {
+              unawaited(_toggleFullTake());
+            }
+          : null,
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (layoutCompact) ...[
+        if (widget.layoutCompact) ...[
           Center(
             child: _OverallScoreRing(
               score: overall,
               label: l10n.assessmentOverallScore,
               scheme: scheme,
               tt: tt,
+              trailing: takeControl,
             ),
           ),
           const SizedBox(height: 24),
@@ -389,6 +596,7 @@ class _AssessmentResultInner extends StatelessWidget {
                 label: l10n.assessmentOverallScore,
                 scheme: scheme,
                 tt: tt,
+                trailing: takeControl,
               ),
               const SizedBox(width: 24),
               Expanded(child: scoreBars),
@@ -401,23 +609,28 @@ class _AssessmentResultInner extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: [
-            for (final w in words)
+            for (var i = 0; i < words.length; i++)
               _WordChip(
-                word: w,
-                selected: identical(selected, w),
+                word: words[i],
+                selected: identical(_selected, words[i]),
+                karaokeCurrent: _karaokeWordIndex == i,
                 scheme: scheme,
-                onTap: () => onToggleWord(w),
+                onTap: () => _onToggleWord(words[i]),
               ),
           ],
         ),
-        if (selected != null) ...[
+        if (_selected != null) ...[
           const SizedBox(height: 16),
           _SelectedWordPanel(
-            word: selected!,
-            localeTag: localeTag,
+            word: _selected!,
+            localeTag: widget.localeTag,
             l10n: l10n,
             scheme: scheme,
             tt: tt,
+            recordingPlayable: _recordingPlayable,
+            clipPlaying: _mode == _TakePlayMode.wordClip,
+            onToggleClip: () => unawaited(_toggleWordClip(_selected!)),
+            beforeModelPronounce: () => _stopPreviewPlayback(),
           ),
         ],
       ],
@@ -431,12 +644,14 @@ class _OverallScoreRing extends StatelessWidget {
     required this.label,
     required this.scheme,
     required this.tt,
+    this.trailing,
   });
 
   final int score;
   final String label;
   final ColorScheme scheme;
   final TextTheme tt;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -473,6 +688,7 @@ class _OverallScoreRing extends StatelessWidget {
             ],
           ),
         ),
+        if (trailing != null) ...[const SizedBox(height: 4), trailing!],
       ],
     );
   }
@@ -529,12 +745,14 @@ class _WordChip extends StatelessWidget {
   const _WordChip({
     required this.word,
     required this.selected,
+    required this.karaokeCurrent,
     required this.scheme,
     required this.onTap,
   });
 
   final AzureWordAssessment word;
   final bool selected;
+  final bool karaokeCurrent;
   final ColorScheme scheme;
   final VoidCallback onTap;
 
@@ -549,8 +767,17 @@ class _WordChip extends StatelessWidget {
       score,
     );
 
+    final highlightBorder = karaokeCurrent
+        ? scheme.tertiary
+        : selected
+        ? (border ?? scheme.primary)
+        : Colors.transparent;
+    final highlightWidth = karaokeCurrent || selected ? 2.0 : 0.0;
+
     return Material(
-      color: bg ?? scheme.surfaceContainerHighest,
+      color: karaokeCurrent
+          ? scheme.tertiaryContainer.withValues(alpha: 0.55)
+          : (bg ?? scheme.surfaceContainerHighest),
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
         onTap: onTap,
@@ -559,16 +786,13 @@ class _WordChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: selected ? (border ?? scheme.primary) : Colors.transparent,
-              width: selected ? 2 : 0,
-            ),
+            border: Border.all(color: highlightBorder, width: highlightWidth),
           ),
           child: Text(
             word.word,
             style: TextStyle(
               fontWeight: FontWeight.w600,
-              color: fg,
+              color: karaokeCurrent ? scheme.onTertiaryContainer : fg,
               decoration: err == 'Insertion'
                   ? TextDecoration.lineThrough
                   : null,
@@ -630,6 +854,10 @@ class _SelectedWordPanel extends StatelessWidget {
     required this.l10n,
     required this.scheme,
     required this.tt,
+    required this.recordingPlayable,
+    required this.clipPlaying,
+    required this.onToggleClip,
+    required this.beforeModelPronounce,
   });
 
   final AzureWordAssessment word;
@@ -637,12 +865,24 @@ class _SelectedWordPanel extends StatelessWidget {
   final AppLocalizations l10n;
   final ColorScheme scheme;
   final TextTheme tt;
+  final bool recordingPlayable;
+  final bool clipPlaying;
+  final VoidCallback onToggleClip;
+  final Future<void> Function() beforeModelPronounce;
 
   @override
   Widget build(BuildContext context) {
     final pa = word.pronunciationAssessment;
     final err = pa.errorType;
     final acc = pa.accuracyScore;
+    final clipUsable = recordingPlayable && isWordClipUsable(word);
+    final clipTooltip = !recordingPlayable
+        ? l10n.assessmentRecordingUnavailable
+        : !isWordClipUsable(word)
+        ? l10n.assessmentClipUnavailable
+        : clipPlaying
+        ? l10n.assessmentStopMyClip
+        : l10n.assessmentPlayMyClip;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -670,6 +910,23 @@ class _SelectedWordPanel extends StatelessWidget {
                   localeTag: localeTag,
                   surfaceId: PronounceSurfaceId.assessment,
                   compact: true,
+                  beforePlay: beforeModelPronounce,
+                ),
+                EnjoyTappableIcon(
+                  tooltip: clipTooltip,
+                  semanticLabel: clipTooltip,
+                  iconSize: 20,
+                  icon: clipPlaying
+                      ? Icons.stop_rounded
+                      : Icons.record_voice_over_rounded,
+                  color: clipUsable
+                      ? scheme.onSurfaceVariant
+                      : scheme.onSurface.withValues(alpha: 0.38),
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(40, 40),
+                    fixedSize: const Size(40, 40),
+                  ),
+                  onPressed: clipUsable ? onToggleClip : null,
                 ),
                 if (err != 'None')
                   Text(

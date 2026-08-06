@@ -1747,6 +1747,30 @@
   "pronounceFailed": "Couldn't play pronunciation",
   "pronounceCreditsExhausted": "Not enough credits to generate pronunciation",
   "pronounceSignInRequired": "Sign in to hear pronunciation",
+  "assessmentPlayMyRecording": "Play my recording",
+  "@assessmentPlayMyRecording": {
+    "description": "Tooltip for playing the full assessment take from the result dialog."
+  },
+  "assessmentStopMyRecording": "Stop my recording",
+  "@assessmentStopMyRecording": {
+    "description": "Tooltip while the assessment take is playing."
+  },
+  "assessmentRecordingUnavailable": "Recording file is unavailable",
+  "@assessmentRecordingUnavailable": {
+    "description": "Tooltip when the take path is missing or the file cannot be read."
+  },
+  "assessmentPlayMyClip": "Play my recording of this word",
+  "@assessmentPlayMyClip": {
+    "description": "Tooltip for playing the timed word clip from the learner take."
+  },
+  "assessmentStopMyClip": "Stop my recording of this word",
+  "@assessmentStopMyClip": {
+    "description": "Tooltip while the word clip is playing."
+  },
+  "assessmentClipUnavailable": "No recording clip for this word",
+  "@assessmentClipUnavailable": {
+    "description": "Tooltip when word timing is missing, omitted, or zero duration."
+  },
 
   "subscriptionTierCatalogTitle": "Choose your plan",
   "subscriptionTierCatalogDescription": "All tiers include the same AI features. Choose a credit allowance and billing cycle, then pick how you pay.",

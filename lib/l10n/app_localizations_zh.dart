@@ -3500,6 +3500,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get pronounceSignInRequired => '登录后即可收听发音';
 
   @override
+  String get assessmentPlayMyRecording => '播放我的录音';
+
+  @override
+  String get assessmentStopMyRecording => '停止我的录音';
+
+  @override
+  String get assessmentRecordingUnavailable => '录音文件不可用';
+
+  @override
+  String get assessmentPlayMyClip => '播放该词的录音片段';
+
+  @override
+  String get assessmentStopMyClip => '停止该词的录音片段';
+
+  @override
+  String get assessmentClipUnavailable => '该词没有可用的录音片段';
+
+  @override
   String get subscriptionTierCatalogTitle => '选择你的方案';
 
   @override
@@ -6585,6 +6603,24 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get pronounceSignInRequired => '登录后即可收听发音';
+
+  @override
+  String get assessmentPlayMyRecording => '播放我的录音';
+
+  @override
+  String get assessmentStopMyRecording => '停止我的录音';
+
+  @override
+  String get assessmentRecordingUnavailable => '录音文件不可用';
+
+  @override
+  String get assessmentPlayMyClip => '播放该词的录音片段';
+
+  @override
+  String get assessmentStopMyClip => '停止该词的录音片段';
+
+  @override
+  String get assessmentClipUnavailable => '该词没有可用的录音片段';
 
   @override
   String get onboardingTipSkip => '跳过';
