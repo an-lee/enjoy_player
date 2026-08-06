@@ -10,6 +10,7 @@ import 'package:enjoy_player/core/player/player_surface_overlay_coordinator.dart
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/widgets/app_background.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_bottom_nav.dart';
+import 'package:enjoy_player/features/onboarding/presentation/onboarding_showcase_host.dart';
 import 'package:enjoy_player/features/subscription/presentation/tier_reconcile_host.dart';
 import 'package:enjoy_player/features/sync/application/sync_controller.dart';
 import 'package:enjoy_player/features/discover/application/discover_providers.dart';
@@ -77,138 +78,142 @@ class _RootShellState extends ConsumerState<RootShell> {
     // family as `/player/` nav hiding (specs/033-immersive-flashcard-review).
     final onReview = path.startsWith('/vocabulary/review');
 
-    return TierReconcileHost(
-      child: AppBackground(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final tokens = EnjoyThemeTokens.of(context);
-            final useSidebar =
-                constraints.maxWidth >= tokens.breakpointRail &&
-                !onPlayer &&
-                !onReview;
+    return OnboardingShowcaseHost(
+      child: TierReconcileHost(
+        child: AppBackground(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final tokens = EnjoyThemeTokens.of(context);
+              final useSidebar =
+                  constraints.maxWidth >= tokens.breakpointRail &&
+                  !onPlayer &&
+                  !onReview;
 
-            final bottomNav = (!useSidebar && !onPlayer && !onReview)
-                ? EnjoyBottomNav(
-                    selectedIndex: _navIndexForPath(path),
-                    onDestinationSelected: (i) => _goNavIndex(context, i),
-                    destinations: [
-                      EnjoyBottomNavDestination(
-                        icon: Icons.home_outlined,
-                        selectedIcon: Icons.home_rounded,
-                        label: l10n.homeTitle,
-                      ),
-                      EnjoyBottomNavDestination(
-                        icon: Icons.explore_outlined,
-                        selectedIcon: Icons.explore_rounded,
-                        label: l10n.discoverTitle,
-                      ),
-                      EnjoyBottomNavDestination(
-                        icon: Icons.collections_bookmark_outlined,
-                        selectedIcon: Icons.collections_bookmark_rounded,
-                        label: l10n.libraryTitle,
-                      ),
-                      EnjoyBottomNavDestination(
-                        icon: Icons.person_outlined,
-                        selectedIcon: Icons.person_rounded,
-                        label: l10n.profileTitle,
-                        showBadge: updateBadge,
-                        semanticsLabel: updateBadge
-                            ? '${l10n.profileTitle}, ${l10n.updateAvailableBadgeSemantics}'
-                            : null,
-                      ),
-                    ],
-                  )
-                : null;
+              final bottomNav = (!useSidebar && !onPlayer && !onReview)
+                  ? EnjoyBottomNav(
+                      selectedIndex: _navIndexForPath(path),
+                      onDestinationSelected: (i) => _goNavIndex(context, i),
+                      destinations: [
+                        EnjoyBottomNavDestination(
+                          icon: Icons.home_outlined,
+                          selectedIcon: Icons.home_rounded,
+                          label: l10n.homeTitle,
+                        ),
+                        EnjoyBottomNavDestination(
+                          icon: Icons.explore_outlined,
+                          selectedIcon: Icons.explore_rounded,
+                          label: l10n.discoverTitle,
+                        ),
+                        EnjoyBottomNavDestination(
+                          icon: Icons.collections_bookmark_outlined,
+                          selectedIcon: Icons.collections_bookmark_rounded,
+                          label: l10n.libraryTitle,
+                        ),
+                        EnjoyBottomNavDestination(
+                          icon: Icons.person_outlined,
+                          selectedIcon: Icons.person_rounded,
+                          label: l10n.profileTitle,
+                          showBadge: updateBadge,
+                          semanticsLabel: updateBadge
+                              ? '${l10n.profileTitle}, ${l10n.updateAvailableBadgeSemantics}'
+                              : null,
+                        ),
+                      ],
+                    )
+                  : null;
 
-            /// `/player/...` nests a [Scaffold] inside the route. Keeping transport in a
-            /// [Column] + [Expanded] sibling can yield **zero** body height on some mobile
-            /// frames (nested scaffold / safe-area constraint propagation), which pins the
-            /// bar under the status bar and hides video + transcript. [Scaffold] reserves
-            /// space via [bottomNavigationBar] instead.
-            final playerWithTransport = sessionActive && onPlayer;
+              /// `/player/...` nests a [Scaffold] inside the route. Keeping transport in a
+              /// [Column] + [Expanded] sibling can yield **zero** body height on some mobile
+              /// frames (nested scaffold / safe-area constraint propagation), which pins the
+              /// bar under the status bar and hides video + transcript. [Scaffold] reserves
+              /// space via [bottomNavigationBar] instead.
+              final playerWithTransport = sessionActive && onPlayer;
 
-            final showMiniTransport =
-                sessionActive &&
-                !playerWithTransport &&
-                !suppressTransportForVocabularyPractice &&
-                !onReview;
+              final showMiniTransport =
+                  sessionActive &&
+                  !playerWithTransport &&
+                  !suppressTransportForVocabularyPractice &&
+                  !onReview;
 
-            final pageColumn = Column(
-              children: [
-                Expanded(child: widget.child),
-                if (showMiniTransport) const GlobalTransportBar(),
-                ?bottomNav,
-              ],
-            );
+              final pageColumn = Column(
+                children: [
+                  Expanded(child: widget.child),
+                  if (showMiniTransport) const GlobalTransportBar(),
+                  ?bottomNav,
+                ],
+              );
 
-            final bottomClearance =
-                (showMiniTransport ? kRootShellTransportSnackClearance : 0.0) +
-                (!useSidebar && !onPlayer && !onReview
-                    ? rootShellBottomNavClearance(context)
-                    : 0.0);
+              final bottomClearance =
+                  (showMiniTransport
+                      ? kRootShellTransportSnackClearance
+                      : 0.0) +
+                  (!useSidebar && !onPlayer && !onReview
+                      ? rootShellBottomNavClearance(context)
+                      : 0.0);
 
-            Widget mobileShellScaffold() {
-              if (playerWithTransport) {
-                return Scaffold(
-                  body: SafeArea(
-                    bottom: false,
-                    child: SizedBox.expand(child: widget.child),
-                  ),
-                  bottomNavigationBar: const SafeArea(
-                    top: false,
-                    left: false,
-                    right: false,
-                    child: GlobalTransportBar(),
-                  ),
-                );
+              Widget mobileShellScaffold() {
+                if (playerWithTransport) {
+                  return Scaffold(
+                    body: SafeArea(
+                      bottom: false,
+                      child: SizedBox.expand(child: widget.child),
+                    ),
+                    bottomNavigationBar: const SafeArea(
+                      top: false,
+                      left: false,
+                      right: false,
+                      child: GlobalTransportBar(),
+                    ),
+                  );
+                }
+                return Scaffold(body: SafeArea(child: pageColumn));
               }
-              return Scaffold(body: SafeArea(child: pageColumn));
-            }
 
-            final shell = useSidebar
-                ? RootShellBottomInset(
-                    bottomClearance: bottomClearance,
-                    child: Scaffold(
-                      body: SafeArea(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Semantics(
-                              container: true,
-                              label: l10n.navMainLabel,
-                              child: const AppSidebar(),
-                            ),
-                            Expanded(child: pageColumn),
-                          ],
+              final shell = useSidebar
+                  ? RootShellBottomInset(
+                      bottomClearance: bottomClearance,
+                      child: Scaffold(
+                        body: SafeArea(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Semantics(
+                                container: true,
+                                label: l10n.navMainLabel,
+                                child: const AppSidebar(),
+                              ),
+                              Expanded(child: pageColumn),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  )
-                : RootShellBottomInset(
-                    bottomClearance: bottomClearance,
-                    child: mobileShellScaffold(),
-                  );
+                    )
+                  : RootShellBottomInset(
+                      bottomClearance: bottomClearance,
+                      child: mobileShellScaffold(),
+                    );
 
-            // Permanent video/WebView surface — follows PlayerSurfaceTarget.
-            // Park while `/youtube/login` is open: that route pushes above the
-            // player page (target stays attached) but this host paints above
-            // the whole shell, so an unparked stage covers the login WebView.
-            // Also park for dialogs/sheets/snackbars (ADR-0066) so native
-            // platform views cannot cover Flutter overlays (esp. WebView2).
-            final parkForYoutubeLogin = path.startsWith('/youtube/login');
-            final parkForOverlay = ref.watch(
-              playerSurfaceShouldParkForOverlayProvider,
-            );
-            return Stack(
-              fit: StackFit.expand,
-              children: [
-                shell,
-                PlayerSurfaceHost(
-                  forcePark: parkForYoutubeLogin || parkForOverlay,
-                ),
-              ],
-            );
-          },
+              // Permanent video/WebView surface — follows PlayerSurfaceTarget.
+              // Park while `/youtube/login` is open: that route pushes above the
+              // player page (target stays attached) but this host paints above
+              // the whole shell, so an unparked stage covers the login WebView.
+              // Also park for dialogs/sheets/snackbars (ADR-0066) so native
+              // platform views cannot cover Flutter overlays (esp. WebView2).
+              final parkForYoutubeLogin = path.startsWith('/youtube/login');
+              final parkForOverlay = ref.watch(
+                playerSurfaceShouldParkForOverlayProvider,
+              );
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  shell,
+                  PlayerSurfaceHost(
+                    forcePark: parkForYoutubeLogin || parkForOverlay,
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );

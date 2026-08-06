@@ -1806,5 +1806,28 @@
     "placeholders": {
       "usd": {"type": "String"}
     }
-  }
+  },
+
+  "onboardingTipSkip": "Skip",
+  "onboardingTipHomeImportTitle": "Import media",
+  "onboardingTipHomeImportBody": "Bring in a local file or YouTube video to practice with.",
+  "onboardingTipHomeCraftTitle": "Craft",
+  "onboardingTipHomeCraftBody": "Create practice audio from text when you do not have a video yet.",
+  "onboardingTipEmptyTranscriptLocalTitle": "Add a transcript",
+  "onboardingTipEmptyTranscriptLocalBody": "Extract subtitles from the file or import a subtitle file so you can practice line by line.",
+  "onboardingTipEmptyTranscriptYoutubeTitle": "Fetch transcript",
+  "onboardingTipEmptyTranscriptYoutubeBody": "Pull captions for this YouTube video from the cloud to unlock practice.",
+  "onboardingTipEchoTitle": "Echo mode",
+  "onboardingTipEchoBody": "Turn on Echo to shadow each line and practice speaking along with the audio.",
+  "onboardingTipRecordTitle": "Record yourself",
+  "onboardingTipRecordBody": "Record your voice on a line, then compare it with the original.",
+  "onboardingTipAssessTitle": "Assess pronunciation",
+  "onboardingTipAssessBody": "After you record, check pronunciation feedback for that take.",
+  "settingsResetProductTipsTitle": "Reset product tips",
+  "settingsResetProductTipsSubtitle": "Show Home and Player tips again as if you were new.",
+  "settingsResetProductTipsConfirmTitle": "Reset product tips?",
+  "settingsResetProductTipsConfirmBody": "Tips for Craft, Import, transcripts, and practice will show again. Your library and account stay unchanged.",
+  "settingsResetProductTipsConfirmAction": "Reset tips",
+  "settingsResetProductTipsDone": "Product tips reset",
+  "transcriptEmptyFetchYoutube": "Fetch transcript"
 }

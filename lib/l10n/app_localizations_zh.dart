@@ -3603,6 +3603,74 @@ class AppLocalizationsZh extends AppLocalizations {
   String subscriptionBalanceToCreditsComingSoonMessage(String usd) {
     return '你有 $usd 的历史余额。余额转积分功能将在后续桌面端更新中上线。在此之前，请先在网页端管理你的余额。';
   }
+
+  @override
+  String get onboardingTipSkip => '跳过';
+
+  @override
+  String get onboardingTipHomeImportTitle => '导入媒体';
+
+  @override
+  String get onboardingTipHomeImportBody => '导入本地文件或 YouTube 视频，开始跟读练习。';
+
+  @override
+  String get onboardingTipHomeCraftTitle => 'Craft';
+
+  @override
+  String get onboardingTipHomeCraftBody => '还没有视频时，可以用文字生成练习音频。';
+
+  @override
+  String get onboardingTipEmptyTranscriptLocalTitle => '添加字幕';
+
+  @override
+  String get onboardingTipEmptyTranscriptLocalBody => '从文件提取字幕，或导入字幕文件，即可按句练习。';
+
+  @override
+  String get onboardingTipEmptyTranscriptYoutubeTitle => '获取字幕';
+
+  @override
+  String get onboardingTipEmptyTranscriptYoutubeBody =>
+      '从云端拉取此 YouTube 视频的字幕，解锁练习功能。';
+
+  @override
+  String get onboardingTipEchoTitle => 'Echo 跟读';
+
+  @override
+  String get onboardingTipEchoBody => '打开 Echo，即可逐句跟读并对照原音练习。';
+
+  @override
+  String get onboardingTipRecordTitle => '录下你的声音';
+
+  @override
+  String get onboardingTipRecordBody => '在句子上录音，再与原音对比。';
+
+  @override
+  String get onboardingTipAssessTitle => '发音评估';
+
+  @override
+  String get onboardingTipAssessBody => '录音后可查看该条发音反馈。';
+
+  @override
+  String get settingsResetProductTipsTitle => '重置产品提示';
+
+  @override
+  String get settingsResetProductTipsSubtitle => '重新显示首页与播放器的新手提示。';
+
+  @override
+  String get settingsResetProductTipsConfirmTitle => '重置产品提示？';
+
+  @override
+  String get settingsResetProductTipsConfirmBody =>
+      'Craft、导入、字幕与练习相关提示会再次出现。媒体库与账号不受影响。';
+
+  @override
+  String get settingsResetProductTipsConfirmAction => '重置提示';
+
+  @override
+  String get settingsResetProductTipsDone => '已重置产品提示';
+
+  @override
+  String get transcriptEmptyFetchYoutube => '获取字幕';
 }
 
 /// The translations for Chinese, as used in China (`zh_CN`).
@@ -6517,4 +6585,72 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get pronounceSignInRequired => '登录后即可收听发音';
+
+  @override
+  String get onboardingTipSkip => '跳过';
+
+  @override
+  String get onboardingTipHomeImportTitle => '导入媒体';
+
+  @override
+  String get onboardingTipHomeImportBody => '导入本地文件或 YouTube 视频，开始跟读练习。';
+
+  @override
+  String get onboardingTipHomeCraftTitle => 'Craft';
+
+  @override
+  String get onboardingTipHomeCraftBody => '还没有视频时，可以用文字生成练习音频。';
+
+  @override
+  String get onboardingTipEmptyTranscriptLocalTitle => '添加字幕';
+
+  @override
+  String get onboardingTipEmptyTranscriptLocalBody => '从文件提取字幕，或导入字幕文件，即可按句练习。';
+
+  @override
+  String get onboardingTipEmptyTranscriptYoutubeTitle => '获取字幕';
+
+  @override
+  String get onboardingTipEmptyTranscriptYoutubeBody =>
+      '从云端拉取此 YouTube 视频的字幕，解锁练习功能。';
+
+  @override
+  String get onboardingTipEchoTitle => 'Echo 跟读';
+
+  @override
+  String get onboardingTipEchoBody => '打开 Echo，即可逐句跟读并对照原音练习。';
+
+  @override
+  String get onboardingTipRecordTitle => '录下你的声音';
+
+  @override
+  String get onboardingTipRecordBody => '在句子上录音，再与原音对比。';
+
+  @override
+  String get onboardingTipAssessTitle => '发音评估';
+
+  @override
+  String get onboardingTipAssessBody => '录音后可查看该条发音反馈。';
+
+  @override
+  String get settingsResetProductTipsTitle => '重置产品提示';
+
+  @override
+  String get settingsResetProductTipsSubtitle => '重新显示首页与播放器的新手提示。';
+
+  @override
+  String get settingsResetProductTipsConfirmTitle => '重置产品提示？';
+
+  @override
+  String get settingsResetProductTipsConfirmBody =>
+      'Craft、导入、字幕与练习相关提示会再次出现。媒体库与账号不受影响。';
+
+  @override
+  String get settingsResetProductTipsConfirmAction => '重置提示';
+
+  @override
+  String get settingsResetProductTipsDone => '已重置产品提示';
+
+  @override
+  String get transcriptEmptyFetchYoutube => '获取字幕';
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:showcaseview/showcaseview.dart';
 
 import 'package:enjoy_player/features/transcript/presentation/transcript_empty_state.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
@@ -15,6 +16,22 @@ Widget _wrap(Widget child) {
 }
 
 void main() {
+  setUp(() {
+    ShowcaseView.register(
+      enableAutoScroll: false,
+      disableMovingAnimation: true,
+      disableScaleAnimation: true,
+    );
+  });
+
+  tearDown(() {
+    try {
+      ShowcaseView.get().unregister();
+    } on Object {
+      // Already unregistered.
+    }
+  });
+
   testWidgets('shows AI transcript CTA when enabled', (tester) async {
     await tester.pumpWidget(
       _wrap(

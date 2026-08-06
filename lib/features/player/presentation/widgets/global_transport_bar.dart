@@ -1,8 +1,6 @@
 /// Full-width bottom transport: progress, times, play controls, artwork/meta, tools.
 library;
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -17,6 +15,10 @@ import 'package:enjoy_player/core/theme/widgets/glass_surface.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_modal.dart';
 import 'package:enjoy_player/core/theme/widgets/sheet_drag_handle.dart';
 import 'package:enjoy_player/features/hotkeys/presentation/hotkey_tooltip_label.dart';
+import 'package:enjoy_player/features/onboarding/application/onboarding_controller.dart';
+import 'package:enjoy_player/features/onboarding/domain/onboarding_tip_id.dart';
+import 'package:enjoy_player/features/onboarding/domain/tip_eligibility.dart';
+import 'package:enjoy_player/features/onboarding/presentation/onboarding_target.dart';
 import 'package:enjoy_player/features/player/application/echo_mode_provider.dart';
 import 'package:enjoy_player/features/player/application/player_controller.dart';
 import 'package:enjoy_player/features/player/application/player_interactions.dart';
@@ -164,6 +166,38 @@ class GlobalTransportBar extends ConsumerStatefulWidget {
 }
 
 class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
+  /// Avoids scheduling practice tips on every rebuild for the same UI state.
+  String? _practiceScheduleKey;
+
+  void _schedulePracticeTips({
+    required String mediaId,
+    required bool hasTranscript,
+    required bool echoActive,
+  }) {
+    if (!hasTranscript || mediaId.isEmpty) return;
+    final key = '$mediaId|echo=$echoActive';
+    if (_practiceScheduleKey == key) return;
+    _practiceScheduleKey = key;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final path = GoRouterState.of(context).uri.path;
+      unawaited(
+        ref
+            .read(onboardingControllerProvider.notifier)
+            .tryStartPracticeChain(
+              TriggerContext(
+                routePath: path,
+                mediaId: mediaId,
+                hasTranscript: true,
+                echoActive: echoActive,
+                recordUiReady: echoActive,
+                assessUiReady: echoActive,
+              ),
+            ),
+      );
+    });
+  }
+
   void _openPlaybackRateSheet() {
     final t = EnjoyThemeTokens.of(context);
     unawaited(
@@ -338,18 +372,48 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
 
     final primaryTransport = <Widget>[playRing, ...transcriptControls];
 
-    final echoButton = _TransportToggleButton(
-      tooltip: ttEcho,
-      isActive: echo.active,
-      activeColor: t.echoActive,
-      onPressed: echo.active || hasTranscriptLines
-          ? Haptics.wrapTap(
-              context,
-              () => ref.read(playerInteractionsProvider.notifier).toggleEcho(),
-            )
-          : null,
-      icon: const Icon(Icons.mic_none_rounded),
+    void echoToggle() =>
+        ref.read(playerInteractionsProvider.notifier).toggleEcho();
+    final echoButton = OnboardingTarget(
+      tipId: OnboardingTipId.playerEcho,
+      onTargetAction: echo.active || hasTranscriptLines ? echoToggle : null,
+      child: _TransportToggleButton(
+        tooltip: ttEcho,
+        isActive: echo.active,
+        activeColor: t.echoActive,
+        onPressed: echo.active || hasTranscriptLines
+            ? Haptics.wrapTap(context, echoToggle)
+            : null,
+        icon: const Icon(Icons.mic_none_rounded),
+      ),
     );
+
+    ref.listen(transcriptHasLinesForMediaProvider(mediaId ?? ''), (prev, next) {
+      final hasLines = next.asData?.value ?? false;
+      final id = mediaId ?? chrome.mediaId;
+      if (!hasLines || id.isEmpty) return;
+      _schedulePracticeTips(
+        mediaId: id,
+        hasTranscript: true,
+        echoActive: ref.read(echoModeProvider).active,
+      );
+    });
+    ref.listen(echoModeProvider, (prev, next) {
+      final id = mediaId ?? chrome.mediaId;
+      if (id.isEmpty || !hasTranscriptLines) return;
+      _schedulePracticeTips(
+        mediaId: id,
+        hasTranscript: true,
+        echoActive: next.active,
+      );
+    });
+    if (hasTranscriptLines && chrome.mediaId.isNotEmpty) {
+      _schedulePracticeTips(
+        mediaId: chrome.mediaId,
+        hasTranscript: true,
+        echoActive: echo.active,
+      );
+    }
 
     final blurButton = _TransportToggleButton(
       tooltip: ttBlur,

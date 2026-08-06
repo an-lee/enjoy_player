@@ -22,6 +22,10 @@ import 'package:enjoy_player/features/auth/application/auth_controller.dart';
 import 'package:enjoy_player/features/auth/domain/auth_state.dart';
 import 'package:enjoy_player/features/community/presentation/community_activity_card.dart';
 import 'package:enjoy_player/features/library/presentation/todays_goal_card.dart';
+import 'package:enjoy_player/features/onboarding/application/onboarding_controller.dart';
+import 'package:enjoy_player/features/onboarding/domain/onboarding_tip_id.dart';
+import 'package:enjoy_player/features/onboarding/domain/tip_eligibility.dart';
+import 'package:enjoy_player/features/onboarding/presentation/onboarding_target.dart';
 import 'package:enjoy_player/features/player/application/player_controller.dart';
 import 'package:enjoy_player/features/player/application/youtube_warm.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
@@ -30,11 +34,32 @@ import '../application/library_media_provider.dart';
 import '../domain/media.dart';
 import 'library_actions.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final path = GoRouterState.of(context).uri.path;
+      unawaited(
+        ref
+            .read(onboardingControllerProvider.notifier)
+            .tryStartHomeEntries(
+              TriggerContext(routePath: path.isEmpty ? '/' : path),
+            ),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final mediaAsync = ref.watch(libraryHomeRecentsProvider);
     final l10n = AppLocalizations.of(context)!;
     final t = EnjoyThemeTokens.of(context);
@@ -241,29 +266,47 @@ class _HomeLoadingScrollView extends ConsumerWidget {
 
 /// Home header trailing actions — Craft entry + Import — shared by the
 /// loaded and loading scroll views so both stay in sync.
-class _HomeHeaderActions extends StatelessWidget {
+class _HomeHeaderActions extends ConsumerWidget {
   const _HomeHeaderActions({required this.onCraft, required this.onImport});
 
   final VoidCallback onCraft;
   final VoidCallback onImport;
 
+  void _act(WidgetRef ref, OnboardingTipId tip, VoidCallback action) {
+    // Persist even if the showcase overlay did not receive the tap (button
+    // under the hole) or dismiss raced ahead of onTargetClick.
+    unawaited(
+      ref.read(onboardingControllerProvider.notifier).onTargetActed(tip),
+    );
+    action();
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final t = EnjoyThemeTokens.of(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        OutlinedButton.icon(
-          onPressed: onCraft,
-          icon: const Icon(Icons.auto_awesome_outlined, size: 18),
-          label: Text(l10n.homeCraftAction),
+        OnboardingTarget(
+          tipId: OnboardingTipId.homeCraft,
+          onTargetAction: onCraft,
+          child: OutlinedButton.icon(
+            // Direct taps (overlay hole miss) still resolve the tip.
+            onPressed: () => _act(ref, OnboardingTipId.homeCraft, onCraft),
+            icon: const Icon(Icons.auto_awesome_outlined, size: 18),
+            label: Text(l10n.homeCraftAction),
+          ),
         ),
         SizedBox(width: t.space8),
-        FilledButton.icon(
-          onPressed: onImport,
-          icon: const Icon(Icons.add_rounded, size: 18),
-          label: Text(l10n.actionImport),
+        OnboardingTarget(
+          tipId: OnboardingTipId.homeImport,
+          onTargetAction: onImport,
+          child: FilledButton.icon(
+            onPressed: () => _act(ref, OnboardingTipId.homeImport, onImport),
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: Text(l10n.actionImport),
+          ),
         ),
       ],
     );

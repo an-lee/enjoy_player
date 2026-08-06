@@ -3766,4 +3766,79 @@ class AppLocalizationsEn extends AppLocalizations {
   String subscriptionBalanceToCreditsComingSoonMessage(String usd) {
     return 'You have $usd in legacy balance. The transfer-to-credits flow is rolling out to the desktop app in a future update. Until then, manage your balance on the web app.';
   }
+
+  @override
+  String get onboardingTipSkip => 'Skip';
+
+  @override
+  String get onboardingTipHomeImportTitle => 'Import media';
+
+  @override
+  String get onboardingTipHomeImportBody =>
+      'Bring in a local file or YouTube video to practice with.';
+
+  @override
+  String get onboardingTipHomeCraftTitle => 'Craft';
+
+  @override
+  String get onboardingTipHomeCraftBody =>
+      'Create practice audio from text when you do not have a video yet.';
+
+  @override
+  String get onboardingTipEmptyTranscriptLocalTitle => 'Add a transcript';
+
+  @override
+  String get onboardingTipEmptyTranscriptLocalBody =>
+      'Extract subtitles from the file or import a subtitle file so you can practice line by line.';
+
+  @override
+  String get onboardingTipEmptyTranscriptYoutubeTitle => 'Fetch transcript';
+
+  @override
+  String get onboardingTipEmptyTranscriptYoutubeBody =>
+      'Pull captions for this YouTube video from the cloud to unlock practice.';
+
+  @override
+  String get onboardingTipEchoTitle => 'Echo mode';
+
+  @override
+  String get onboardingTipEchoBody =>
+      'Turn on Echo to shadow each line and practice speaking along with the audio.';
+
+  @override
+  String get onboardingTipRecordTitle => 'Record yourself';
+
+  @override
+  String get onboardingTipRecordBody =>
+      'Record your voice on a line, then compare it with the original.';
+
+  @override
+  String get onboardingTipAssessTitle => 'Assess pronunciation';
+
+  @override
+  String get onboardingTipAssessBody =>
+      'After you record, check pronunciation feedback for that take.';
+
+  @override
+  String get settingsResetProductTipsTitle => 'Reset product tips';
+
+  @override
+  String get settingsResetProductTipsSubtitle =>
+      'Show Home and Player tips again as if you were new.';
+
+  @override
+  String get settingsResetProductTipsConfirmTitle => 'Reset product tips?';
+
+  @override
+  String get settingsResetProductTipsConfirmBody =>
+      'Tips for Craft, Import, transcripts, and practice will show again. Your library and account stay unchanged.';
+
+  @override
+  String get settingsResetProductTipsConfirmAction => 'Reset tips';
+
+  @override
+  String get settingsResetProductTipsDone => 'Product tips reset';
+
+  @override
+  String get transcriptEmptyFetchYoutube => 'Fetch transcript';
 }
