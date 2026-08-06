@@ -182,16 +182,18 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
       if (!mounted) return;
       final path = GoRouterState.of(context).uri.path;
       unawaited(
-        ref.read(onboardingControllerProvider.notifier).tryStartPracticeChain(
-          TriggerContext(
-            routePath: path,
-            mediaId: mediaId,
-            hasTranscript: true,
-            echoActive: echoActive,
-            recordUiReady: echoActive,
-            assessUiReady: echoActive,
-          ),
-        ),
+        ref
+            .read(onboardingControllerProvider.notifier)
+            .tryStartPracticeChain(
+              TriggerContext(
+                routePath: path,
+                mediaId: mediaId,
+                hasTranscript: true,
+                echoActive: echoActive,
+                recordUiReady: echoActive,
+                assessUiReady: echoActive,
+              ),
+            ),
       );
     });
   }

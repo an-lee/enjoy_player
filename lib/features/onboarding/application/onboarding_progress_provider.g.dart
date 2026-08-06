@@ -34,7 +34,7 @@ final class OnboardingProgressProvider
 }
 
 String _$onboardingProgressHash() =>
-    r'c8f9ea7d9390417822b4a5a86876303ed1d5dea8';
+    r'3966c83c22310284d84e462ed419672dae94679e';
 
 abstract class _$OnboardingProgress
     extends $AsyncNotifier<TipProgressSnapshot> {
