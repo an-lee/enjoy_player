@@ -74,3 +74,4 @@ Wire stop-before-pronounce either in the result’s wrap around `PronounceIconBu
 1. Seek precision on short words on some desktop backends — accept Azure interval; disable if duration rounds to 0 ms.
 2. Position stream frequency may skip tiny words — highlight may jump; still acceptable for SC-002 subjective sync.
 3. Widget tests may need fakes for `RecordingPreviewPlayer` if native media_kit is heavy in CI.
+4. **Clip start must use `Media(start:, end:)`** — post-`open` `seek()` is often ignored by media_kit, which manifests as “plays from 0, stops at word end”.

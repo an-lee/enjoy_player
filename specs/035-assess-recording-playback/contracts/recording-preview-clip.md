@@ -23,7 +23,7 @@ Extend the **existing** shadow take preview player. Do **not** construct another
 | Operation | Contract |
 |-----------|----------|
 | Seek | `seek(Duration position)` — seek within currently loaded (or just-opened) media. |
-| Play clip | Given `path`, `start`, `end` (`Duration`): open path if needed, seek to `start`, play, and **stop** when `position >= end` (or natural end if sooner). |
+| Play clip | Given `path`, `start`, `end` (`Duration`): open with media_kit `Media(start:, end:)` so playback begins at `start` (do **not** rely on seek-immediately-after-open), play, and **stop** when `position >= end` / media end. |
 | Invalid clip | If `end <= start`, or file missing → fail fast / no hang; caller disables control. |
 | Concurrent calls | Newer play/clip/stop cancels prior clip end-watcher; no stacked audible streams from this player. |
 
