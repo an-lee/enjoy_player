@@ -61,13 +61,24 @@ class OnboardingProgress extends _$OnboardingProgress {
   Future<void> markGlobal(OnboardingTipId tip, TipStatus status) async {
     if (status == TipStatus.pending) return;
     final db = ref.read(appDatabaseProvider);
-    final current = state.asData?.value ?? const TipProgressSnapshot();
-    final nextGlobal = Map<String, TipStatus>.from(current.global)
-      ..[tip.id] = status;
+    // Re-read from DB so concurrent tip updates (e.g. import + craft) cannot
+    // clobber each other with a stale in-memory snapshot.
+    final raw = await db.settingsDao.getValue(
+      SettingsKeys.onboardingTipProgressV1,
+    );
+    final fromDb = TipProgressSnapshot.decodeGlobalJson(raw);
+    final memory =
+        state.asData?.value.global ?? const <String, TipStatus>{};
+    final nextGlobal = <String, TipStatus>{
+      ...fromDb,
+      ...memory,
+      tip.id: status,
+    };
     await db.settingsDao.setValue(
       SettingsKeys.onboardingTipProgressV1,
       TipProgressSnapshot.encodeGlobalJson(nextGlobal),
     );
+    final current = state.asData?.value ?? const TipProgressSnapshot();
     state = AsyncData(current.copyWith(global: nextGlobal));
     _log.fine('markGlobal ${tip.id}=${status.storageValue}');
   }

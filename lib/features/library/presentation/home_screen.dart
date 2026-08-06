@@ -266,14 +266,23 @@ class _HomeLoadingScrollView extends ConsumerWidget {
 
 /// Home header trailing actions — Craft entry + Import — shared by the
 /// loaded and loading scroll views so both stay in sync.
-class _HomeHeaderActions extends StatelessWidget {
+class _HomeHeaderActions extends ConsumerWidget {
   const _HomeHeaderActions({required this.onCraft, required this.onImport});
 
   final VoidCallback onCraft;
   final VoidCallback onImport;
 
+  void _act(WidgetRef ref, OnboardingTipId tip, VoidCallback action) {
+    // Persist even if the showcase overlay did not receive the tap (button
+    // under the hole) or dismiss raced ahead of onTargetClick.
+    unawaited(
+      ref.read(onboardingControllerProvider.notifier).onTargetActed(tip),
+    );
+    action();
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final t = EnjoyThemeTokens.of(context);
     return Row(
@@ -283,7 +292,8 @@ class _HomeHeaderActions extends StatelessWidget {
           tipId: OnboardingTipId.homeCraft,
           onTargetAction: onCraft,
           child: OutlinedButton.icon(
-            onPressed: onCraft,
+            // Direct taps (overlay hole miss) still resolve the tip.
+            onPressed: () => _act(ref, OnboardingTipId.homeCraft, onCraft),
             icon: const Icon(Icons.auto_awesome_outlined, size: 18),
             label: Text(l10n.homeCraftAction),
           ),
@@ -293,7 +303,7 @@ class _HomeHeaderActions extends StatelessWidget {
           tipId: OnboardingTipId.homeImport,
           onTargetAction: onImport,
           child: FilledButton.icon(
-            onPressed: onImport,
+            onPressed: () => _act(ref, OnboardingTipId.homeImport, onImport),
             icon: const Icon(Icons.add_rounded, size: 18),
             label: Text(l10n.actionImport),
           ),

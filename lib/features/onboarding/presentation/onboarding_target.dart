@@ -44,9 +44,9 @@ class OnboardingTarget extends ConsumerWidget {
       overlayColor: OnboardingTooltipTheme.overlayColor(context),
       disposeOnTap: true,
       onTargetClick: () {
-        unawaited(
-          ref.read(onboardingControllerProvider.notifier).onTargetActed(tipId),
-        );
+        // Flags must be set before showcaseview's dismiss finalize microtask.
+        final ctrl = ref.read(onboardingControllerProvider.notifier);
+        unawaited(ctrl.onTargetActed(tipId));
         onTargetAction?.call();
       },
       child: child,

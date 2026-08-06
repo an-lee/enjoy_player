@@ -192,22 +192,36 @@ class OnboardingController extends _$OnboardingController {
   }
 
   void onShowcaseDismissed(GlobalKey? key) {
-    unawaited(_finalizeActive(completed: false, chainNext: false));
+    // showcaseview disposeOnTap calls dismiss() *before* onTargetClick.
+    // Defer so onTargetActed can set _completedByTarget first.
+    scheduleMicrotask(() {
+      unawaited(
+        _finalizeActive(
+          completed: _completedByTarget,
+          chainNext: _completedByTarget,
+        ),
+      );
+    });
   }
 
+  /// Marks [tip] completed (learn-by-doing). Safe to call from the real control
+  /// even when the showcase overlay did not receive the tap.
   Future<void> onTargetActed(OnboardingTipId tip) async {
-    // disposeOnTap dismisses; onDismiss will also fire — prefer completed.
     _completedByTarget = true;
     _presented = true;
+    await _persistCompleted(tip);
+  }
+
+  Future<void> _persistCompleted(OnboardingTipId tip) async {
     final progress = ref.read(onboardingProgressProvider.notifier);
     if (tip.isPerMedia) {
       final mediaId = _activeMediaId;
       if (mediaId != null) {
         await progress.markEmptyTranscript(mediaId, TipStatus.completed);
       }
-    } else {
-      await progress.markGlobal(tip, TipStatus.completed);
+      return;
     }
+    await progress.markGlobal(tip, TipStatus.completed);
   }
 
   Future<void> _finalizeActive({
