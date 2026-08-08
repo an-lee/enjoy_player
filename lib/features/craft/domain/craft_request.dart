@@ -1,6 +1,8 @@
 /// Craft request value object and normalization helper.
 library;
 
+import 'package:enjoy_player/core/utils/text_normalization.dart';
+
 import 'craft_mode.dart';
 
 /// Normalizes text for hashing and synthesis: NFC-normalize, collapse
@@ -10,7 +12,7 @@ String normalizeCraftText(String input) {
   // platforms is already NFC; explicit normalization is deferred to a
   // future enhancement (Dart core does not expose ICU normalization).
   // Collapse whitespace runs and trim.
-  final collapsed = input.replaceAll(RegExp(r'\s+'), ' ').trim();
+  final collapsed = collapseWhitespace(input);
   return collapsed;
 }
 

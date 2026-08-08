@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:azure_speech/azure_speech.dart';
 import 'package:enjoy_player/core/logging/log.dart';
+import 'package:enjoy_player/core/utils/text_normalization.dart';
 import 'package:enjoy_player/features/ai/data/azure_assessment_staging_path.dart';
 import 'package:enjoy_player/features/ai/data/azure_assessment_wav_normalizer.dart';
 import 'package:enjoy_player/features/ai/data/azure_language_mapper.dart';
@@ -170,11 +171,7 @@ Future<AzureSpeechAssessmentOutcome> _assessPath({
 }
 
 String cleanAssessmentReferenceText(String referenceText) {
-  return referenceText
-      .trim()
-      .replaceAll(RegExp(r'[\r\n]+'), ' ')
-      .replaceAll(RegExp(r'\s+'), ' ')
-      .trim();
+  return collapseWhitespace(referenceText);
 }
 
 /// Returns `(path, shouldDeleteAfter)`.

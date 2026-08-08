@@ -4,6 +4,8 @@
 /// other tags while keeping inner text. No Flutter imports — safe for tests and data layer.
 library;
 
+import 'package:enjoy_player/core/utils/text_normalization.dart';
+
 /// One contiguous substring with resolved inline style (stacked tags flattened).
 class SubtitleTextSegment {
   const SubtitleTextSegment(
@@ -59,7 +61,7 @@ final tagStripRegExp = RegExp(r'<[^>]*>');
 ///
 /// Exposed for reuse across transcript / lookup consumers so the same pattern
 /// is not recompiled per call site.
-final whitespaceSplitRegExp = RegExp(r'\s+');
+final whitespaceSplitRegExp = whitespaceRunRegExp;
 
 final _parseCache = <String, List<SubtitleTextSegment>>{};
 const _maxParseCacheSize = 256;
