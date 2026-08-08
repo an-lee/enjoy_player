@@ -15,9 +15,9 @@ models:
       models:
         deepseek-v4-flash:
           cost:
-            input: 0.14
-            output: 0.28
-            cache_read: 0.0028
+            input: 1.4e-7
+            output: 2.8e-7
+            cache_read: 2.8e-9
 network:
   allowed:
     - defaults
