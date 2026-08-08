@@ -39,7 +39,7 @@ const translations = {
     'download.ios.title': 'iOS',
     'download.ios.subtitle': 'iOS 14.0+',
     'download.ios.btn': 'Join TestFlight',
-    'download.ios.note': 'App Store and TestFlight releases coming soon.',
+    'download.ios.note': 'TestFlight public beta is live. App Store release coming soon.',
     
     'download.comingSoon': 'Coming soon',
     
@@ -91,7 +91,7 @@ const translations = {
     'download.ios.title': 'iOS',
     'download.ios.subtitle': 'iOS 14.0+',
     'download.ios.btn': '加入 TestFlight',
-    'download.ios.note': 'App Store 与 TestFlight 版本即将推出。',
+    'download.ios.note': 'TestFlight 公开测试已上线，App Store 版本即将推出。',
     
     'download.comingSoon': '即将推出',
     
