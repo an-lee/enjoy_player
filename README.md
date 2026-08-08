@@ -1,3 +1,7 @@
+<p align="right">
+  <b>English</b> · <a href="README.zh-CN.md">简体中文</a>
+</p>
+
 <p align="center">
   <img src="assets/store/feature-graphic.png" alt="Enjoy Player — Practice languages with media you love" width="900">
 </p>
@@ -10,13 +14,9 @@
   Interactive transcripts, echo shadow-reading, pronunciation scoring and an SRS vocabulary book — on every device you own.
 </p>
 
-<p align="right">
-  <b>English</b> · <a href="README.zh-CN.md">简体中文</a>
-</p>
-
 <p align="center">
-  <a href="https://get.enjoy.bot"><img alt="Download" src="https://img.shields.io/badge/Download-get.enjoy.bot-7B6FF0?style=for-the-badge"></a>
-  <a href="https://github.com/an-lee/enjoy_player/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/an-lee/enjoy_player?style=for-the-badge"></a>
+  <a href="https://player.enjoy.bot"><img alt="Download" src="https://img.shields.io/badge/Download-player.enjoy.bot-7B6FF0?style=for-the-badge"></a>
+  <a href="https://github.com/baizhiheizi/enjoy_player/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/baizhiheizi/enjoy_player?style=for-the-badge"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0-A42E2E?style=for-the-badge"></a>
 </p>
 
@@ -79,7 +79,7 @@
 ## Built for every screen
 
 | Platform | What's native |
-|----------|---------------|
+| ---------- | --------------- |
 | **Windows** | Windows 10 / 11 · x64 · FFmpeg embedded for subtitles and pitch analysis |
 | **macOS** | macOS 10.15+ · Universal binary · Hardened runtime · Notarized |
 | **Linux** | Ubuntu 22.04 LTS · x86_64 · AppImage |
@@ -94,17 +94,17 @@ Flutter web is intentionally not supported.
 
 The download page picks the right installer for your OS automatically:
 
-**[get.enjoy.bot](https://get.enjoy.bot)**
+**[player.enjoy.bot](https://player.enjoy.bot)**
 
 | | |
-|---|---|
-| Windows | [Download .exe](https://dl.enjoy.bot/player/) |
-| macOS | [Download .dmg](https://dl.enjoy.bot/player/) |
-| Linux | [Download .AppImage](https://dl.enjoy.bot/player/) |
-| Android | [APK (direct)](https://dl.enjoy.bot/player/) · [Join Play beta](https://play.google.com/) |
-| iOS | [Join TestFlight beta](https://testflight.apple.com/) |
+| --- | --- |
+| Windows | [Download .exe](https://player.enjoy.bot) |
+| macOS | [Download .dmg](https://player.enjoy.bot) |
+| Linux | [Download .AppImage](https://player.enjoy.bot) |
+| Android | [APK (direct)](https://player.enjoy.bot) · [Join Play beta](https://play.google.com/) |
+| iOS | [Join TestFlight beta](https://testflight.apple.com/join/6x7kkr3e) |
 
-Source, releases and changelog: **[github.com/an-lee/enjoy_player](https://github.com/an-lee/enjoy_player)**
+Source, releases and changelog: **[github.com/baizhiheizi/enjoy_player](https://github.com/baizhiheizi/enjoy_player)**
 
 ---
 

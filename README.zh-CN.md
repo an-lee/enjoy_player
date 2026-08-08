@@ -15,8 +15,8 @@
 </p>
 
 <p align="center">
-  <a href="https://get.enjoy.bot"><img alt="下载" src="https://img.shields.io/badge/下载-get.enjoy.bot-7B6FF0?style=for-the-badge"></a>
-  <a href="https://github.com/an-lee/enjoy_player/releases/latest"><img alt="最新版本" src="https://img.shields.io/github/v/release/an-lee/enjoy_player?style=for-the-badge"></a>
+  <a href="https://player.enjoy.bot"><img alt="下载" src="https://img.shields.io/badge/下载-player.enjoy.bot-7B6FF0?style=for-the-badge"></a>
+  <a href="https://github.com/baizhiheizi/enjoy_player/releases/latest"><img alt="最新版本" src="https://img.shields.io/github/v/release/baizhiheizi/enjoy_player?style=for-the-badge"></a>
   <a href="LICENSE"><img alt="许可证" src="https://img.shields.io/badge/许可证-AGPL--3.0-A42E2E?style=for-the-badge"></a>
 </p>
 
@@ -94,17 +94,17 @@
 
 下载页会自动为你推荐适合当前系统的安装包：
 
-**[get.enjoy.bot](https://get.enjoy.bot)**
+**[player.enjoy.bot](https://player.enjoy.bot)**
 
 | | |
 |---|---|
-| Windows | [下载 .exe](https://dl.enjoy.bot/player/) |
-| macOS | [下载 .dmg](https://dl.enjoy.bot/player/) |
-| Linux | [下载 .AppImage](https://dl.enjoy.bot/player/) |
-| Android | [APK 直装](https://dl.enjoy.bot/player/) · [加入 Play Beta](https://play.google.com/) |
-| iOS | [加入 TestFlight 公测](https://testflight.apple.com/) |
+| Windows | [下载 .exe](https://player.enjoy.bot) |
+| macOS | [下载 .dmg](https://player.enjoy.bot) |
+| Linux | [下载 .AppImage](https://player.enjoy.bot) |
+| Android | [APK 直装](https://player.enjoy.bot) · [加入 Play Beta](https://play.google.com/) |
+| iOS | [加入 TestFlight 公测](https://testflight.apple.com/join/6x7kkr3e) |
 
-源码、版本与更新日志：**[github.com/an-lee/enjoy_player](https://github.com/an-lee/enjoy_player)**
+源码、版本与更新日志：**[github.com/baizhiheizi/enjoy_player](https://github.com/baizhiheizi/enjoy_player)**
 
 ---
 
