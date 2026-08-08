@@ -1,91 +1,135 @@
-# Enjoy Player
+<p align="center">
+  <img src="assets/store/feature-graphic.png" alt="Enjoy Player — Practice languages with media you love" width="900">
+</p>
 
-Cross-platform **language-learning player** (Android, iOS, Windows, macOS, Linux) built with Flutter. **Flutter web is not supported.**
+<h1 align="center">Enjoy Player</h1>
 
-## Prerequisites
+<p align="center">
+  <strong>Practice languages with media you love.</strong>
+  <br>
+  Interactive transcripts, echo shadow-reading, pronunciation scoring and an SRS vocabulary book — on every device you own.
+</p>
 
-- Flutter SDK (stable, 3.x)
-- Dart SDK ^3.12 (matches `pubspec.yaml` and `.github/flutter-version`)
-- **Apple (iOS + macOS)**: **Xcode**, **CocoaPods**, Apple Developer Program access for team **`46X685R747`**. See [packaging.md](docs/packaging.md#one-time-setup) for signing, TestFlight, and notarization.
-- **macOS desktop builds**: [Homebrew](https://brew.sh) plus FFmpeg kit deps — `brew bundle install --file=macos/Brewfile` (see [packaging.md](docs/packaging.md#troubleshooting)). Without this, `flutter run -d macos` can fail at launch with a missing `libz.1.dylib` / DYLD error.
-- **Windows desktop builds**: [NuGet CLI](https://learn.microsoft.com/en-us/nuget/install-nuget-client-tools?tabs=windows#nugetexe-cli) on your `PATH` (`nuget` / `nuget.exe`). Required by [`flutter_inappwebview`](https://inappwebview.dev/docs/intro#setup-windows) to pull WebView2 native dependencies during CMake/MSBuild. After installing, open a **new** terminal and run `nuget` to verify.
-  - NuGet must have **at least one package source** (normally `nuget.org`). If `nuget sources list` is empty or MSBuild fails with `primarySources` / "Feeds used:" and then an error, add it once:  
-    `nuget sources Add -Name "nuget.org" -Source "https://api.nuget.org/v3/index.json"`
-  - **FFmpeg** (embedded subtitles, duration probe, echo PCM): run `pwsh windows/scripts/fetch_ffmpeg.ps1` before release builds — see [windows/ffmpeg/README.md](windows/ffmpeg/README.md).
-- **Linux desktop builds**: Install the Flutter Linux build packages (clang, cmake, ninja-build, GTK 3, libsqlite3):
-  ```bash
-  sudo apt-get install -y clang cmake curl git ninja-build pkg-config xz-utils zip \
-    libgtk-3-dev liblzma-dev libsqlite3-dev ffmpeg
-  ```
-  The Linux build uses the system `ffmpeg` (no separate fetch script). The CI workflow reuses `.github/scripts/ensure_linux_tooling.sh` for the same packages. See [docs/features/linux-platform.md](docs/features/linux-platform.md) for the full Linux support story.
+<p align="right">
+  <b>English</b> · <a href="README.zh-CN.md">简体中文</a>
+</p>
 
-## Setup
+<p align="center">
+  <a href="https://get.enjoy.bot"><img alt="Download" src="https://img.shields.io/badge/Download-get.enjoy.bot-7B6FF0?style=for-the-badge"></a>
+  <a href="https://github.com/an-lee/enjoy_player/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/an-lee/enjoy_player?style=for-the-badge"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0-A42E2E?style=for-the-badge"></a>
+</p>
+
+---
+
+## See it in action
+
+<table>
+  <tr>
+    <td align="center" width="25%"><img src="assets/store/android_phone_screenshot_1.jpg" alt="Home — daily goal, community activity and recent media" width="240"></td>
+    <td align="center" width="25%"><img src="assets/store/android_phone_screenshot_2.jpg" alt="Player with interactive transcript and echo mode" width="240"></td>
+    <td align="center" width="25%"><img src="assets/store/android_phone_screenshot_3.jpg" alt="Pronunciation assessment with overall score and per-dimension scoring" width="240"></td>
+    <td align="center" width="25%"><img src="assets/store/android_phone_screenshot_4.jpg" alt="Dictionary lookup with contextual translation and vocabulary flashcards" width="240"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Stay motivated</b><br><sub>Daily goal · Community · Recents</sub></td>
+    <td align="center"><b>Follow every word</b><br><sub>Tap-to-seek · Echo mode</sub></td>
+    <td align="center"><b>Speak like a native</b><br><sub>Azure pronunciation scoring</sub></td>
+    <td align="center"><b>Build vocabulary</b><br><sub>Look up · Save · Review with SRS</sub></td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="assets/store/macos_screenshot_1.png" alt="Enjoy Player on macOS — full-window player with transcript sidebar" width="900">
+</p>
+
+<p align="center"><sub><b>One experience, every screen.</b> Native on Windows, macOS, Linux, Android and iOS — phone, tablet and desktop.</sub></p>
+
+---
+
+## Why Enjoy Player
+
+**Learn with content you actually enjoy.** Bring your own MP4s and audio files, or paste any YouTube URL — TED talks, Netflix shows, podcasts, anime. The transcript follows your media, not the other way around.
+
+**Speak from day one.** Echo mode listens to a single line, records you reading it back, then scores your pronunciation on accuracy, fluency, completeness and prosody. You don't need a language partner to practise.
+
+**Vocabulary that actually sticks.** Highlight any word in the transcript and get an instant translation, dictionary definition and an LLM-powered explanation of what the phrase means in this scene. One tap saves it to a spaced-repetition deck that reviews on the schedule your brain needs.
+
+**One app, every device.** Native builds for Windows, macOS, Linux, Android and iOS. Library, progress, vocabulary and settings follow you everywhere, with optional cloud sync.
+
+**Stay in the game.** A daily practice goal, a community of learners practising alongside you, and progress stats that show you're getting better — one cue at a time.
+
+---
+
+## Core features
+
+- **Interactive transcripts** — Auto-synced subtitles from `.srt` / `.vtt` imports, AI transcription or YouTube captions. Tap any line to jump; tap any word to look it up.
+- **Echo mode (shadow reading)** — Listen, record, replay. The player pauses at the end of your echo segment and rewinds, so you can drill the same line again without breaking flow.
+- **Pronunciation assessment** — Native Azure speech scoring per take: overall score plus accuracy / completeness / fluency / prosody, with per-word detail and replay.
+- **Dictionary & contextual translation** — Highlight text in the transcript → translation, dictionary entry, and an LLM-generated "what does this phrase mean here?" explanation.
+- **Spaced-repetition vocabulary** — 3-button flashcards (Don't know / Know / Know well) on a 3-rating SM-2 schedule, with multi-context per word and Anki CSV export (Pro).
+- **YouTube playback** — Paste a URL and play. Enjoy caches captions, fetches metadata and renders the transcript alongside — no ads, no autoplay surprises.
+- **Pitch contour analysis** — Compare your recorded take's intonation against the original line on a YIN-pitch chart. See exactly where your tone drifts.
+- **Practice poster** — Turn a shadow-reading take into a branded 9:16 poster (cover frame, hero line, stats) and share it to WeChat, X or anywhere.
+- **AI auto-translate** — Per-line translations on demand, cached locally, refreshed automatically when the source text changes.
+- **Cross-device sync** — Library, progress, vocabulary and settings sync across every device signed in to your Enjoy account.
+
+---
+
+## Built for every screen
+
+| Platform | What's native |
+|----------|---------------|
+| **Windows** | Windows 10 / 11 · x64 · FFmpeg embedded for subtitles and pitch analysis |
+| **macOS** | macOS 10.15+ · Universal binary · Hardened runtime · Notarized |
+| **Linux** | Ubuntu 22.04 LTS · x86_64 · AppImage |
+| **Android** | Android 8.0+ · Phone & tablet · Play Store and direct APK sideload |
+| **iOS** | iOS 14.0+ · iPhone & iPad · TestFlight public beta |
+
+Flutter web is intentionally not supported.
+
+---
+
+## Get it now
+
+The download page picks the right installer for your OS automatically:
+
+**[get.enjoy.bot](https://get.enjoy.bot)**
+
+| | |
+|---|---|
+| Windows | [Download .exe](https://dl.enjoy.bot/player/) |
+| macOS | [Download .dmg](https://dl.enjoy.bot/player/) |
+| Linux | [Download .AppImage](https://dl.enjoy.bot/player/) |
+| Android | [APK (direct)](https://dl.enjoy.bot/player/) · [Join Play beta](https://play.google.com/) |
+| iOS | [Join TestFlight beta](https://testflight.apple.com/) |
+
+Source, releases and changelog: **[github.com/an-lee/enjoy_player](https://github.com/an-lee/enjoy_player)**
+
+---
+
+## Open source & built with care
+
+- **Player** — [media_kit](https://pub.dev/packages/media_kit) on a single shared engine ([ADR-0003](docs/decisions/0003-player-engine.md))
+- **State** — [Riverpod 3](https://pub.dev/packages/flutter_riverpod) + `riverpod_annotation`
+- **Storage** — [Drift](https://pub.dev/packages/drift) (SQLite) for every persisted byte
+- **Speech** — Azure pronunciation assessment + native FFmpeg pitch analysis
+- **Architecture** — See [docs/architecture.md](docs/architecture.md); decisions in [docs/decisions/](docs/decisions/)
+
+---
+
+## Build from source
 
 ```bash
 flutter pub get
-dart run build_runner build   # after changing Drift / Riverpod annotations
-```
-
-### App icon & logo assets
-
-The in-app logo uses [`assets/logo-light.svg`](assets/logo-light.svg). Launcher icons are generated from a raster export:
-
-```bash
-npm install --prefix tool
-node tool/svg_to_png.mjs           # writes assets/logo.png from the SVG
-dart run flutter_launcher_icons    # uses flutter_launcher_icons.yaml
-```
-
-## Run
-
-```bash
+dart run build_runner build   # after Drift / Riverpod annotation changes
 flutter run
 ```
 
-**Android** builds use `store` / `direct` [product flavors](docs/decisions/0023-app-update-distribution.md). Plain `flutter run` uses the default `store` flavor. To test sideload/OTA behavior locally:
+Platform toolchain notes: macOS needs Xcode + CocoaPods + `brew bundle install --file=macos/Brewfile`; Windows needs the NuGet CLI on `PATH` for `flutter_inappwebview`; Linux needs `clang cmake ninja-build libgtk-3-dev libsqlite3-dev ffmpeg`. Full prerequisites and CI gates: [AGENTS.md](AGENTS.md).
 
-```bash
-flutter run --flavor direct --dart-define=DISTRIBUTION_CHANNEL=direct
-```
-
-If install fails with `INSTALL_FAILED_VERSION_DOWNGRADE`, uninstall the existing release build from the device first. On some OEMs (e.g. Xiaomi), enable **Install via USB** in Developer options when you see `INSTALL_FAILED_USER_RESTRICTED`.
-
-## Test / analyze
-
-Before pushing Dart changes, run the same cheap gates as CI (format + codegen drift):
-
-```bash
-bash .github/scripts/validate_ci_gates.sh
-# or auto-fix + regenerate:
-bash .github/scripts/validate_ci_gates.sh --fix
-```
-
-Then analyze / test:
-
-```bash
-flutter analyze
-flutter test
-```
-
-Install git hooks once per clone (`git config core.hooksPath .githooks`) so pre-push runs format + codegen checks.
-
-## Docs
-
-| Doc | Purpose |
-|-----|---------|
-| [.specify/memory/constitution.md](.specify/memory/constitution.md) | Quality, testing, UX, performance, and governance principles |
-| [AGENTS.md](AGENTS.md) | Rules for contributors & AI agents |
-| [docs/architecture.md](docs/architecture.md) | Structure & flows |
-| [docs/decisions/](docs/decisions/) | Architecture Decision Records |
-| [docs/features/](docs/features/) | Feature specs |
-| [docs/features/linux-platform.md](docs/features/linux-platform.md) | Linux install, format, and support matrix |
-
-## Tech highlights
-
-- **Player**: [media_kit](https://pub.dev/packages/media_kit) (+ `media_kit_video`, `media_kit_libs_video`)
-- **State**: [Riverpod 3](https://pub.dev/packages/flutter_riverpod) + `riverpod_annotation`
-- **DB**: [Drift](https://pub.dev/packages/drift) + `drift_flutter`
+---
 
 ## License
 
-Private / unpublished (`publish_to: 'none'`).
+Released under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0). You can read it, fork it, build on it, and even run a modified copy — as long as anyone you serve over the network gets the corresponding source. See [LICENSE](LICENSE) for the full text.
