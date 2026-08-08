@@ -20,6 +20,7 @@ import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/core/notices/app_notice.dart';
 import 'package:enjoy_player/core/riverpod/async_value_x.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
+import 'package:enjoy_player/core/utils/text_normalization.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
 import 'package:enjoy_player/data/db/app_database_provider.dart';
 import 'package:enjoy_player/features/hotkeys/presentation/hotkey_tooltip_label.dart';
@@ -40,7 +41,7 @@ import 'widgets/shadow_takes_toolbar_actions.dart';
 final _log = logNamed('ShadowReadingPanel');
 
 String _shortSaveError(Object e) {
-  final s = e.toString().replaceAll(RegExp(r'\s+'), ' ').trim();
+  final s = collapseWhitespace(e.toString());
   if (s.length <= 180) return s;
   return '${s.substring(0, 177)}…';
 }

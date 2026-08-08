@@ -3,6 +3,7 @@ library;
 
 import 'dart:math' as math;
 
+import 'package:enjoy_player/core/utils/text_normalization.dart';
 import 'package:enjoy_player/data/subtitle/subtitle_markup_parser.dart';
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
 import 'package:enjoy_player/features/lookup/application/sentence_boundaries.dart';
@@ -22,10 +23,7 @@ typedef VocabularyContextSpan = ({
 const int kVocabularyContextLineRadius = 3;
 
 String plainCueText(String raw) {
-  return raw
-      .replaceAll(tagStripRegExp, '')
-      .replaceAll(whitespaceSplitRegExp, ' ')
-      .trim();
+  return collapseWhitespace(raw.replaceAll(tagStripRegExp, ''));
 }
 
 ({int startArrayIndex, int endArrayIndex}) expandContextLines(

@@ -12,6 +12,7 @@ import 'package:enjoy_player/core/application/app_preferences_provider.dart';
 import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/core/notices/app_notice.dart';
 import 'package:enjoy_player/core/riverpod/async_value_x.dart';
+import 'package:enjoy_player/core/utils/text_normalization.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
 import 'package:enjoy_player/features/shadow_reading/application/recording_assessment_controller.dart';
 import 'package:enjoy_player/features/shadow_reading/presentation/assessment_result_dialog.dart';
@@ -32,7 +33,9 @@ String recordingAssessmentFailureMessage(
     RecordingAssessmentFailureKind.unsupportedLanguage =>
       l10n.assessmentUnavailableLanguage,
     RecordingAssessmentFailureKind.serviceError => l10n.assessmentRunFailed(() {
-      final raw = debugMessage?.replaceAll(RegExp(r'\s+'), ' ').trim();
+      final raw = debugMessage == null
+          ? null
+          : collapseWhitespace(debugMessage);
       if (raw == null || raw.isEmpty) return '—';
       if (raw.length > 120) return '${raw.substring(0, 117)}…';
       return raw;

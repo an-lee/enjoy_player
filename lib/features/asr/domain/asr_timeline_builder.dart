@@ -20,6 +20,7 @@
 /// produces byte-equal `timelineJson` for the same input).
 library;
 
+import 'package:enjoy_player/core/utils/text_normalization.dart';
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
 import 'package:enjoy_player/features/ai/domain/models/asr_result.dart';
 
@@ -173,7 +174,7 @@ List<TranscriptLine> _distributePlainText({
   required int mediaDurationMs,
   required int maxLineChars,
 }) {
-  final raw = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+  final raw = collapseWhitespace(text);
   if (raw.isEmpty) return const <TranscriptLine>[];
   if (mediaDurationMs <= 0) {
     return <TranscriptLine>[

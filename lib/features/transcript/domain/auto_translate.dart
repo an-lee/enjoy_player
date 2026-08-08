@@ -8,6 +8,7 @@ import 'package:meta/meta.dart';
 
 import 'package:enjoy_player/core/application/app_language_catalog.dart';
 import 'package:enjoy_player/core/ids/enjoy_ids.dart';
+import 'package:enjoy_player/core/utils/text_normalization.dart';
 import 'package:enjoy_player/data/subtitle/subtitle_markup_parser.dart';
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
 
@@ -197,7 +198,7 @@ List<TranscriptLine> buildAutoTranslateSkeleton(
 String normalizeAutoTranslateSourceText(String raw) {
   final plain = plainTextFromSubtitleMarkup(raw).trim();
   if (plain.isEmpty) return '';
-  return plain.replaceAll(whitespaceSplitRegExp, ' ');
+  return collapseWhitespace(plain);
 }
 
 /// Content key for a primary cue + language pair (truncated SHA-256 hex).
