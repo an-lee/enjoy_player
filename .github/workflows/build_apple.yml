@@ -14,6 +14,7 @@ on:
       - ".github/actions/setup-flutter/**"
       - ".github/actions/setup-macos-runner-env/**"
       - ".github/scripts/ensure_ios_ci_toolchain.sh"
+      - ".github/scripts/apple_spm_hygiene.sh"
       - ".github/scripts/build_ios_ci.sh"
       - ".github/scripts/build_macos_ci.sh"
       - ".github/workflows/build_apple.yml"

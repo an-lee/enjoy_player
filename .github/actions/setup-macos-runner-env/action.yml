@@ -1,5 +1,5 @@
 name: Setup macOS runner env
-description: Homebrew PATH, UTF-8 locale, and curl HTTP/1.1 for self-hosted macOS runners.
+description: Homebrew PATH, UTF-8 locale, curl HTTP/1.1, and SwiftPM-safe git env for self-hosted macOS runners.
 
 runs:
   using: composite
@@ -13,3 +13,10 @@ runs:
     - name: Configure curl for flaky HTTP/2 SDK downloads
       shell: bash
       run: echo "CURL_HTTP_VERSION=1_1" >> "$GITHUB_ENV"
+
+    # Copilot / other tools may inject GIT_CONFIG_*=safe.bareRepository=explicit
+    # into the process environment. That breaks SwiftPM bare caches and Flutter
+    # surfaces it as "xcodebuild encountered an error (74)".
+    - name: Neutralize git config env that breaks SwiftPM
+      shell: bash
+      run: echo "GIT_CONFIG_COUNT=0" >> "$GITHUB_ENV"

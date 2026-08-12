@@ -130,11 +130,19 @@ if [[ "${RELEASE_SKIP_BUILD}" != true ]]; then
     (cd "${root}/macos" && pod install)
   fi
 
+  # shellcheck source=apple_spm_hygiene.sh
+  source "${root}/.github/scripts/apple_spm_hygiene.sh"
+  apple_sanitize_git_env_for_spm
+
   if [[ "${MACOS_ONLY}" != true ]]; then
     (cd "${root}/ios" && pod install)
 
     echo ">>> Build iOS IPA"
-    flutter build ipa --release --export-options-plist=ios/ExportOptions.export.plist
+    build_ios_ipa() {
+      apple_retry_spm_command "${root}" \
+        flutter build ipa --release --export-options-plist=ios/ExportOptions.export.plist
+    }
+    apple_with_spm_host_lock build_ios_ipa
 
     if [[ "${UPLOAD_TESTFLIGHT}" == true ]]; then
       IPA="$(ls -1 "${root}/build/ios/ipa/"*.ipa | head -1)"

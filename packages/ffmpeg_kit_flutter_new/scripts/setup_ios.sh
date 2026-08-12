@@ -1,11 +1,14 @@
 #!/bin/bash
+set -euo pipefail
 
-# Download and unzip iOS framework
+# Download and unzip iOS framework.
+# CocoaPods prepare_command runs this with cwd = packages/.../ios/.
 IOS_URL="https://github.com/sk3llo/ffmpeg_kit_flutter/releases/download/8.0.0-full-gpl/ffmpeg-kit-ios-full-gpl-8.0.0.zip"
 mkdir -p Frameworks
-curl -L $IOS_URL -o frameworks.zip
+curl -fsSL --http1.1 --retry 5 --retry-delay 5 --retry-all-errors \
+  -o frameworks.zip "${IOS_URL}"
 unzip -o frameworks.zip -d Frameworks
-rm frameworks.zip
+rm -f frameworks.zip
 
 # Delete bitcode from all frameworks
 xcrun bitcode_strip -r Frameworks/ffmpegkit.framework/ffmpegkit -o Frameworks/ffmpegkit.framework/ffmpegkit

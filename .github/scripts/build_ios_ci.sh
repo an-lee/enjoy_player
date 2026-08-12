@@ -12,44 +12,37 @@ set -euo pipefail
 
 configuration="${1:?Usage: $0 Debug|Release}"
 
+root="$(cd "$(dirname "$0")/../.." && pwd)"
+cd "${root}"
+
+# shellcheck source=apple_spm_hygiene.sh
+source "${root}/.github/scripts/apple_spm_hygiene.sh"
+apple_sanitize_git_env_for_spm
+
 case "${configuration}" in
-  Debug)
-    flutter build ios --debug --config-only --no-codesign
-    ;;
-  Release)
-    flutter build ios --release --config-only --no-codesign
-    ;;
+  Debug | Release) ;;
   *)
     echo "Unsupported configuration: ${configuration}" >&2
     exit 1
     ;;
 esac
 
-xcodebuild_with_retry() {
-  local attempt output status
-  for attempt in 1 2 3; do
-    if output="$(xcodebuild \
-      -workspace ios/Runner.xcworkspace \
-      -scheme Runner \
-      -configuration "${configuration}" \
-      -sdk iphoneos \
-      -destination 'generic/platform=iOS' \
-      -derivedDataPath build/ios/DerivedData \
-      CODE_SIGNING_ALLOWED=NO \
-      build 2>&1)"; then
-      echo "${output}"
-      return 0
-    fi
-    status=$?
-    echo "${output}" >&2
-    if [[ "${attempt}" -lt 3 ]] \
-      && echo "${output}" | grep -qE 'Could not resolve package dependencies|Couldn.t fetch updates from remote repositories'; then
-      echo "xcodebuild SPM resolve failed (attempt ${attempt}/3); retrying in 15s…" >&2
-      sleep 15
-      continue
-    fi
-    return "${status}"
-  done
+config_flag="$(echo "${configuration}" | tr '[:upper:]' '[:lower:]')"
+
+build_with_retry() {
+  apple_retry_spm_command "${root}" \
+    flutter build ios --"${config_flag}" --config-only --no-codesign
+
+  apple_retry_spm_command "${root}" \
+    xcodebuild \
+    -workspace ios/Runner.xcworkspace \
+    -scheme Runner \
+    -configuration "${configuration}" \
+    -sdk iphoneos \
+    -destination 'generic/platform=iOS' \
+    -derivedDataPath build/ios/DerivedData \
+    CODE_SIGNING_ALLOWED=NO \
+    build
 }
 
-xcodebuild_with_retry
+apple_with_spm_host_lock build_with_retry

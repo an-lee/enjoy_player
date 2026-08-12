@@ -9,7 +9,8 @@ Shared workflow pieces:
 | Path | Purpose |
 |------|---------|
 | [`.github/actions/setup-flutter`](../.github/actions/setup-flutter) | Install/pin Flutter from [`.github/flutter-version`](../.github/flutter-version). Installs into a persistent, version-keyed directory on the runner's local disk and **skips the download entirely** when that version is already present — no `subosito/flutter-action` cache, no GitHub cache API. Reinstalls if the cached tree is missing `bin/flutter` or a working `.git` (required by `flutter --version`). |
-| [`.github/actions/setup-macos-runner-env`](../.github/actions/setup-macos-runner-env) | Homebrew PATH, UTF-8 locale, curl HTTP/1.1 |
+| [`.github/actions/setup-macos-runner-env`](../.github/actions/setup-macos-runner-env) | Homebrew PATH, UTF-8 locale, curl HTTP/1.1, `GIT_CONFIG_COUNT=0` (SwiftPM-safe) |
+| [`.github/scripts/apple_spm_hygiene.sh`](../.github/scripts/apple_spm_hygiene.sh) | Host lock + SPM cache clear + retry helpers for Apple CI/release |
 | [`.github/scripts/ensure_linux_tooling.sh`](../.github/scripts/ensure_linux_tooling.sh) | Install apt packages only when missing. On the shared gh-sr agentic pool these are now normally baked into the container image (see below), so this is usually a fast no-op. |
 | [`.github/scripts/ensure_nuget_feed.ps1`](../.github/scripts/ensure_nuget_feed.ps1) | Ensure NuGet.org feed on Windows |
 | [`.github/workflows/shared/runtime.md`](../.github/workflows/shared/runtime.md) | gh-aw shared Flutter pre-agent setup + `dart` network for agentic workflows |
