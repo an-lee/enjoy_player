@@ -138,7 +138,7 @@ Per-call voice selection is v1 scope; the provider-default voice is used for ini
 | Synthesize | `ttsServiceProvider` → `EnjoyTtsCapability` → Azure Speech SDK (worker token) | `ttsServiceProvider` → BYOK TTS (OpenAI `/audio/speech` or Azure Speech subscription key) |
 
 **Azure Speech SDK wiring** (`lib/features/craft/data/craft_tts_service_synthesizer.dart`):
-1. Fetch a short-lived Azure token via `AzureTokenCache.getToken(purpose: 'tts')` (worker endpoint `POST /azure/tokens`, 9-min TTL).
+1. Fetch a short-lived Azure token via `AzureTokenCache.getToken(purpose: 'tts', textLength: text.length)` (worker endpoint `POST /azure/tokens`, 9-min TTL). The TTS body sends `usage.tts.textLength` (character count) — not a duration estimate — to match the worker `azureTokenBodySchema` Zod validator and the web `@enjoy/ai` contract.
 2. Call `AzureSpeech.instance.synthesize(text, voice, locale)` through the native plugin ([`packages/azure_speech`](../../packages/azure_speech/)).
 3. The native SDK returns a WAV byte buffer; saved to the app's audio directory.
 

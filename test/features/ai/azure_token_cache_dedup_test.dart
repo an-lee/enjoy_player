@@ -9,12 +9,14 @@ class _FakeAzureTokenApi extends AzureTokenApi {
 
   final Future<Map<String, dynamic>> Function() handler;
   int callCount = 0;
+  final List<Map<String, dynamic>?> lastUsages = <Map<String, dynamic>?>[];
 
   @override
   Future<Map<String, dynamic>> generateToken({
     Map<String, dynamic>? usage,
   }) async {
     callCount += 1;
+    lastUsages.add(usage == null ? null : Map<String, dynamic>.of(usage));
     return handler();
   }
 }
@@ -139,5 +141,50 @@ void main() {
         throwsA(isA<StateError>()),
       );
     });
+
+    test('assessment purpose sends usage.assessment.durationSeconds', () async {
+      final api = _FakeAzureTokenApi(
+        () async => <String, dynamic>{'token': 'tok', 'region': 'westus'},
+      );
+      final cache = AzureTokenCache(api: api);
+
+      await cache.getToken(durationSeconds: 30);
+
+      expect(api.lastUsages, hasLength(1));
+      final usage = api.lastUsages.single!;
+      expect(usage['purpose'], 'assessment');
+      expect(usage['assessment'], isA<Map<String, dynamic>>());
+      expect((usage['assessment'] as Map)['durationSeconds'], 30);
+      expect(usage.containsKey('tts'), isFalse);
+    });
+
+    test(
+      'tts purpose sends usage.tts.textLength (not durationSeconds)',
+      () async {
+        final api = _FakeAzureTokenApi(
+          () async => <String, dynamic>{'token': 'tok', 'region': 'westus'},
+        );
+        final cache = AzureTokenCache(api: api);
+
+        // Pass a nonsense durationSeconds to prove it is NOT forwarded for TTS.
+        await cache.getToken(
+          purpose: 'tts',
+          textLength: 42,
+          durationSeconds: 9999,
+        );
+
+        expect(api.lastUsages, hasLength(1));
+        final usage = api.lastUsages.single!;
+        expect(usage['purpose'], 'tts');
+        expect(usage['tts'], isA<Map<String, dynamic>>());
+        expect((usage['tts'] as Map)['textLength'], 42);
+        expect(
+          (usage['tts'] as Map).containsKey('durationSeconds'),
+          isFalse,
+          reason: 'TTS payload must not contain durationSeconds (issue #544).',
+        );
+        expect(usage.containsKey('assessment'), isFalse);
+      },
+    );
   });
 }

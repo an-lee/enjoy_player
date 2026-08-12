@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:azure_speech/azure_speech.dart';
 import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/data/api/api_exception.dart';
@@ -45,19 +43,19 @@ final class EnjoyTtsCapability implements TtsCapability {
       );
     }
 
-    // Estimate duration for worker cost attribution: ~150 words per minute,
-    // ~5 chars per word → ~750 chars per minute → ~12.5 chars per second.
-    final estimatedSeconds = max(1, (text.length / 12.5).ceil());
+    // The worker-side cost signal for TTS is the character count of the
+    // text to synthesize (mirrors the web `@enjoy/ai` `textLength` field,
+    // and the `azureTokenBodySchema` Zod validator on the worker).
+    final textLength = text.length;
 
     log.info(
-      'Synthesizing ${text.length} chars in $azureLanguage'
-      '${request.voice != null ? ' voice=${request.voice}' : ''}'
-      ' (~${estimatedSeconds}s estimated)',
+      'Synthesizing $textLength chars in $azureLanguage'
+      '${request.voice != null ? ' voice=${request.voice}' : ''}',
     );
 
     final token = await _tokenCache.getToken(
-      durationSeconds: estimatedSeconds,
       purpose: 'tts',
+      textLength: textLength,
     );
 
     try {

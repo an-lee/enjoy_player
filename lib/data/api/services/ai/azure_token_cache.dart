@@ -33,14 +33,24 @@ final class AzureTokenCache {
   /// the call budget. The completer is cleared once the fetch settles.
   Future<({String token, String region})>? _inFlight;
 
-  /// [durationSeconds] is forwarded for worker-side cost estimation.
+  /// Forwards the worker-side cost signal that matches [purpose].
   ///
-  /// [purpose] controls the worker-side token usage tag. Defaults to
-  /// `'assessment'` for back-compat with the assessment flow; pass `'tts'`
-  /// for Enjoy TTS synthesis (Craft from text).
+  /// The worker `POST /azure/tokens` schema (Zod) requires different
+  /// payload shapes per purpose:
+  ///
+  /// * `'assessment'` — `usage.assessment.durationSeconds` (int ≥ 0).
+  /// * `'tts'` — `usage.tts.textLength` (int ≥ 0, character count of the
+  ///   text to synthesize). Mirrors the web `@enjoy/ai` contract
+  ///   (`tts: { textLength: params.text.length }`).
+  ///
+  /// Pass the matching field for [purpose]; the other is ignored.
+  /// [purpose] defaults to `'assessment'` for back-compat with the
+  /// assessment flow; pass `'tts'` for Enjoy TTS synthesis (Craft from
+  /// text).
   Future<({String token, String region})> getToken({
-    required int durationSeconds,
     String purpose = 'assessment',
+    int? durationSeconds,
+    int? textLength,
   }) async {
     final now = DateTime.now();
     final at = _fetchedAt;
@@ -65,7 +75,7 @@ final class AzureTokenCache {
                     'durationSeconds': durationSeconds,
                   },
                 if (purpose == 'tts')
-                  'tts': <String, dynamic>{'durationSeconds': durationSeconds},
+                  'tts': <String, dynamic>{'textLength': textLength},
               },
             );
 
