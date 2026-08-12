@@ -367,11 +367,15 @@ release_load_asc_env() {
   fi
 
   if [[ -z "${APP_STORE_CONNECT_API_PRIVATE_KEY:-}" && -n "${APP_STORE_CONNECT_API_KEY_ID:-}" ]]; then
-    key_path="$(release_resolve_asc_private_key "${root}" "${cache_dir}" "${APP_STORE_CONNECT_API_KEY_ID}")"
-    if [[ -n "${key_path}" ]]; then
-      APP_STORE_CONNECT_API_PRIVATE_KEY="$(cat "${key_path}")"
-      export APP_STORE_CONNECT_API_PRIVATE_KEY
-      echo "Loaded ASC API private key from ${key_path}"
+    local resolved=""
+    if resolved="$(release_resolve_asc_private_key "${root}" "${cache_dir}" "${APP_STORE_CONNECT_API_KEY_ID}")"; then
+      # release_resolve_asc_private_key prints "<bucket>\t<path>".
+      key_path="${resolved#*$'\t'}"
+      if [[ -n "${key_path}" && -f "${key_path}" ]]; then
+        APP_STORE_CONNECT_API_PRIVATE_KEY="$(cat "${key_path}")"
+        export APP_STORE_CONNECT_API_PRIVATE_KEY
+        echo "Loaded ASC API private key from ${key_path}"
+      fi
     fi
   fi
 
