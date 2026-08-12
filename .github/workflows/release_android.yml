@@ -68,12 +68,19 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           # Base64 avoids GHA multiline env mangling of the SA private_key.
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}
+          # Tag pushes have no workflow inputs (null). Treat null/true as build;
+          # only workflow_dispatch with build_apk=false skips sideload APKs.
+          # Publish + GitHub Release upload both require EnjoyPlayer-v*-*.apk.
+          INPUT_BUILD_APK: ${{ inputs.build_apk != false }}
+          # Same for Play: tag pushes and default-true manual runs upload the AAB.
+          INPUT_UPLOAD_PLAY: ${{ inputs.upload_play != false }}
         run: |
           args=()
-          if [[ "${{ inputs.build_apk }}" != "true" ]]; then
+          # Only skip when explicitly false (empty/null must still build).
+          if [[ "${INPUT_BUILD_APK}" == "false" ]]; then
             args+=(--no-apk)
           fi
-          if [[ "${{ inputs.upload_play }}" == "true" ]]; then
+          if [[ "${INPUT_UPLOAD_PLAY}" == "true" ]]; then
             args+=(--play)
           fi
           bash .github/scripts/release_android.sh "${args[@]}"

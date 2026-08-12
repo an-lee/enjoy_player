@@ -15,7 +15,10 @@ The workflow runs on your **self-hosted Linux runner** (`runs-on: [self-hosted, 
 
 **Triggers**
 
-- **Manual only**: GitHub → Actions → **Release Android** → **Run workflow**. There is no tag-push trigger — releases are always started explicitly.
+- **Tag push**: `v*.*.*` (e.g. `v0.8.1`) — builds AAB + per-ABI APKs, uploads Play alpha draft, publishes sideload feeds to dl.enjoy.bot, and attaches binaries to a draft GitHub Release.
+- **Manual**: GitHub → Actions → **Release Android** → **Run workflow**. Toggle APK / Play / publish / GitHub Release as needed.
+
+On tag pushes, workflow `inputs.*` are null. The build step treats null like the defaults (`build_apk` / `upload_play` = true) — same pattern as [release_windows.yml](../.github/workflows/release_windows.yml). Only an explicit `false` on a manual run skips those steps.
 
 Smoke builds (debug keystore) stay in [`android_apk_smoke.yml`](../.github/workflows/android_apk_smoke.yml).
 
@@ -94,10 +97,10 @@ sdkmanager "platforms;android-35" "build-tools;35.0.0"
 ## Step 4 — Run a release
 
 1. Bump `version:` in `pubspec.yaml` if needed.
-2. GitHub → **Actions** → **Release Android** → **Run workflow**.
-3. Toggle **Also build release APK**, **Upload store AAB to Google Play**, and **Publish** as needed.
+2. Either push a `vX.Y.Z` tag, or GitHub → **Actions** → **Release Android** → **Run workflow**.
+3. For manual runs, toggle **Also build release APK**, **Upload store AAB to Google Play**, and **Publish** as needed (tag pushes enable APK + Play + publish automatically).
 4. When Play upload is enabled and the service-account secret is set, confirm a **draft** release on the **alpha** (closed testing) track in Play Console.
-5. Collect outputs from the runner workspace, or check dl.enjoy.bot when **Publish** was enabled:
+5. Collect outputs from the runner workspace, the draft GitHub Release, or dl.enjoy.bot when publish ran:
    - `build/app/outputs/bundle/release/EnjoyPlayer-vX.Y.Z.aab`
    - `build/app/outputs/flutter-apk/EnjoyPlayer-vX.Y.Z-*.apk` (when APK step ran)
 
