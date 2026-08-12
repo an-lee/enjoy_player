@@ -9,6 +9,7 @@ import 'package:enjoy_player/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:uuid/uuid.dart';
 
 const _kAssessmentJson = '''
@@ -48,6 +49,12 @@ const _kAssessmentJson = '''
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  try {
+    MediaKit.ensureInitialized();
+  } on Object catch (e) {
+    test('(skipped) media_kit native library not available', () {}, skip: '$e');
+    return;
+  }
 
   final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF1144AA));
 

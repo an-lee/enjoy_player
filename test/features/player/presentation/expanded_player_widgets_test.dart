@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 class _SignedInAuthCtrl extends AuthCtrl {
   @override
@@ -22,9 +23,19 @@ class _SignedInAuthCtrl extends AuthCtrl {
 }
 
 Widget _wrap({required ProviderContainer container, required Widget child}) {
+  final router = GoRouter(
+    initialLocation: '/',
+    routes: [
+      GoRoute(
+        path: '/',
+        builder: (context, state) => Scaffold(body: child),
+      ),
+    ],
+  );
   return UncontrolledProviderScope(
     container: container,
-    child: MaterialApp(
+    child: MaterialApp.router(
+      routerConfig: router,
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
@@ -35,7 +46,6 @@ Widget _wrap({required ProviderContainer container, required Widget child}) {
         data: MediaQuery.of(context).copyWith(disableAnimations: true),
         child: child ?? const SizedBox.shrink(),
       ),
-      home: Scaffold(body: child),
     ),
   );
 }

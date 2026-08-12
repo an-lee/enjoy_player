@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:media_kit/media_kit.dart';
 
 const _kBaseJson = '''
 {
@@ -137,6 +138,14 @@ AssessmentResultDialog _dialog(String json) =>
 late final AppLocalizations l10n;
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  try {
+    MediaKit.ensureInitialized();
+  } on Object catch (e) {
+    test('(skipped) media_kit native library not available', () {}, skip: '$e');
+    return;
+  }
+
   setUpAll(() async {
     l10n = await AppLocalizations.delegate.load(const Locale('en'));
   });

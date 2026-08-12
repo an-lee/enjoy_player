@@ -34,6 +34,15 @@ class OnboardingTarget extends ConsumerWidget {
     final (title, description) = _copyFor(l10n, tipId);
     final key = OnboardingKeys.keyFor(tipId);
 
+    // ShowcaseView throws when no scope is registered (see ShowcaseService
+    // getScope). OnboardingShowcaseHost owns the registration lifecycle in the
+    // app shell, but feature tests that pump widgets containing OnboardingTarget
+    // without mounting that host must still render. Skip the Showcase wrapper
+    // in that case so the child renders unchanged.
+    if (!_isShowcaseViewRegistered) {
+      return child;
+    }
+
     return Showcase(
       key: key,
       title: title,
@@ -51,6 +60,15 @@ class OnboardingTarget extends ConsumerWidget {
       },
       child: child,
     );
+  }
+
+  bool get _isShowcaseViewRegistered {
+    try {
+      ShowcaseView.get();
+      return true;
+    } on Object {
+      return false;
+    }
   }
 
   static (String, String) _copyFor(AppLocalizations l10n, OnboardingTipId tip) {

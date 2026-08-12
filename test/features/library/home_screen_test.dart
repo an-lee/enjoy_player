@@ -23,22 +23,6 @@ class _SignedInAuthCtrl extends AuthCtrl {
   );
 }
 
-Widget _themedHome({List<Override> overrides = const []}) {
-  final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF7B61FF));
-  return ProviderScope(
-    overrides: overrides,
-    child: MaterialApp(
-      theme: ThemeData(
-        colorScheme: scheme,
-        extensions: [EnjoyThemeTokens.build(scheme)],
-      ),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: const HomeScreen(),
-    ),
-  );
-}
-
 Widget _themedHomeWithRouter(
   GoRouter router, {
   List<Override> overrides = const [],
@@ -65,8 +49,15 @@ void main() {
     testWidgets(
       "shows Today's Goal + Community cards even when recents is empty",
       (tester) async {
+        final router = GoRouter(
+          initialLocation: '/',
+          routes: [
+            GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
+          ],
+        );
         await tester.pumpWidget(
-          _themedHome(
+          _themedHomeWithRouter(
+            router,
             overrides: [
               authCtrlProvider.overrideWith(_SignedInAuthCtrl.new),
               libraryHomeRecentsProvider.overrideWith(

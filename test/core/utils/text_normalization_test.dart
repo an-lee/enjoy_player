@@ -1,5 +1,5 @@
 import 'package:enjoy_player/core/utils/text_normalization.dart';
-import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_test/flutter_test.dart' hide collapseWhitespace;
 
 void main() {
   group('collapseWhitespace', () {

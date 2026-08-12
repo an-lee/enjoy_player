@@ -17,21 +17,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 /// Sentinel value for [VideoRow.createdAt]/[updatedAt] (UTC midnight 2024-01-01).
 final DateTime _epoch = DateTime.utc(2024);
 
 Widget _wrap({required ProviderContainer container, required Widget child}) {
+  final router = GoRouter(
+    initialLocation: '/',
+    routes: [
+      GoRoute(
+        path: '/',
+        builder: (context, state) => Scaffold(body: child),
+      ),
+    ],
+  );
   return UncontrolledProviderScope(
     container: container,
-    child: MaterialApp(
+    child: MaterialApp.router(
+      routerConfig: router,
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(body: child),
     ),
   );
 }
