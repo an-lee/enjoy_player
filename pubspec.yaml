@@ -1,7 +1,7 @@
 name: enjoy_player
 description: Cross-platform audio/video player for language learning with transcripts and shadow reading.
 publish_to: 'none'
-version: 0.8.0+9
+version: 0.8.1+10
 
 environment:
   sdk: ^3.12.0

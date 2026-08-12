@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-08-12
+
+### Added
+
+- **Assessment take replay** with karaoke-highlight transcript and word-clip playback for reviewing recorded takes.
+- **Post-sign-in onboarding tips** highlight Craft, Import, and other key surfaces via showcaseview.
+- **iOS TestFlight public beta invite** on the landing page.
+
+### Changed
+
+- **Whitespace normalization** shared across transcript and onboarding flows via a single helper.
+- **Image network cache** swaps remaining `Image.network` for `CachedNetworkImageProvider` for steadier scrolling.
+
+### Fixed
+
+- **Azure TTS usage** reports `usage.tts.textLength` instead of `durationSeconds` so usage metering matches character volume (issue #544).
+- **Word-clip playback** starts at the word offset instead of zero so replayed clips match the on-screen word.
+- **Onboarding tips** persist the Home tip when Craft/Import is tapped from the showcase prompt.
+
 ## [0.8.0] - 2026-08-05
 
 ### Added
