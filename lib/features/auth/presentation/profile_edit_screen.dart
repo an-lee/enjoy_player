@@ -3,6 +3,7 @@ library;
 
 import 'dart:typed_data';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -193,7 +194,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
           if (_pendingAvatarBytes != null) {
             avatarImage = MemoryImage(_pendingAvatarBytes!);
           } else if (remoteAvatar != null && remoteAvatar.isNotEmpty) {
-            avatarImage = NetworkImage(remoteAvatar);
+            avatarImage = CachedNetworkImageProvider(remoteAvatar);
           }
 
           return SingleChildScrollView(

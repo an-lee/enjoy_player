@@ -1,6 +1,7 @@
 /// Profile gradient hero card (avatar, name, Enjoy ID, Pro upgrade CTA).
 library;
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -51,7 +52,7 @@ class ProfileHeroCard extends ConsumerWidget {
               CircleAvatar(
                 radius: 32,
                 backgroundImage: p.avatarUrl != null && p.avatarUrl!.isNotEmpty
-                    ? NetworkImage(rasterAvatarUrl(p.avatarUrl!)!)
+                    ? CachedNetworkImageProvider(rasterAvatarUrl(p.avatarUrl!)!)
                     : null,
                 child: p.avatarUrl == null || p.avatarUrl!.isEmpty
                     ? Icon(Icons.person_rounded, size: 36, color: cs.primary)
