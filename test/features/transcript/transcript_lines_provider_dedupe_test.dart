@@ -128,6 +128,22 @@ void main() {
       expect(base, isNot(equals(start)));
       expect(base, isNot(equals(dur)));
     });
+
+    test('identical line fields with different timeline words are not ==', () {
+      const a = TranscriptLine(
+        text: 'hi',
+        startMs: 0,
+        durationMs: 100,
+        timeline: [TranscriptWord(text: 'hi')],
+      );
+      const b = TranscriptLine(
+        text: 'hi',
+        startMs: 0,
+        durationMs: 100,
+        timeline: [TranscriptWord(text: 'HI')],
+      );
+      expect(a, isNot(equals(b)));
+    });
   });
 
   group('transcriptLinesForMediaProvider dedupe', () {
