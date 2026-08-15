@@ -54,7 +54,7 @@ We mitigate by:
 
 ### Local-path packages
 
-The two path: deps in `pubspec.yaml` are deliberately in-tree and are
+The three path: deps in `pubspec.yaml` are deliberately in-tree and are
 tracked by `bash .github/scripts/check_no_new_path_deps.sh` in CI
 (see `ci.yml`). New path: deps must be added to the script's
 `ALLOWLIST` and to this ADR, or converted to a `git:` ref / pub.dev
@@ -66,6 +66,7 @@ Current allowlist:
 |------|--------|-----------|
 | `packages/azure_speech` | First-party Flutter plugin wrapping Microsoft Azure Cognitive Services Speech SDK for pronunciation assessment (Android / iOS / macOS / Windows). Forked from a private internal fork to control the small subset of API surface we need. | Track upstream `microsoft/cognitive-services-speech-sdk` releases; re-evaluate at next major. |
 | `packages/ffmpeg_kit_flutter_new` | Vendored from `sk3llo/ffmpeg_kit_flutter` because the upstream `arthenica/ffmpeg-kit` was archived in 2025. We need Android / iOS / macOS bindings. Windows is **not** implemented by this plugin — see packaging.md. | Watch the new community fork; re-evaluate when a Windows-capable plugin emerges. |
+| `packages/forced_alignment` | First-party on-device alignment engine (16 kHz PCM in, Echogarden-shaped word/phone timings out). UI-free; not invoked by Craft/transcript/player in the slice that introduced it (ADR-0071). | Re-evaluate when eSpeak-NG waveform FFI lands in pub.dev `espeak` or this package's wrap. |
 
 ### `azure_speech` SDK constraint
 

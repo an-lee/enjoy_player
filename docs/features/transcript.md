@@ -220,6 +220,15 @@ Coverage lives under
 - `transcript_blur_long_list_perf_test.dart` — 10 000-line smoke
   under `ImageFiltered`; per-frame budget assertion.
 
+## Alignment engine (unused)
+
+`packages/forced_alignment` can map known text + 16 kHz extractable PCM to
+word/phone timings (Echogarden-shaped result, flatten adapter for enjoy-web
+`WordTiming` / `PhoneTiming`). **No product flow calls it yet** — Craft still
+saves synthesis line timings; the panel stays line-level; there is no Settings
+toggle. Mapping onto nested cues is a later slice (issue #540). See
+[ADR-0071](../decisions/0071-on-device-alignment-engine.md).
+
 ## Future
 
 - Multiple languages, editing timelines, export — parity with web `TranscriptDisplay`.
