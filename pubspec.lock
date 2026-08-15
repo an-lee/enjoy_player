@@ -519,6 +519,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.2.1"
+  fft_nullsafety:
+    dependency: transitive
+    description:
+      name: fft_nullsafety
+      sha256: "4386d4ab1b7075a6f581841b38149580e5d769be9d6ab3d7b201775a1e9102f8"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.1"
   file:
     dependency: transitive
     description:
@@ -739,6 +747,13 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  forced_alignment:
+    dependency: "direct main"
+    description:
+      path: "packages/forced_alignment"
+      relative: true
+    source: path
+    version: "0.1.0"
   freezed:
     dependency: "direct dev"
     description:
@@ -931,6 +946,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.0"
+  js:
+    dependency: transitive
+    description:
+      name: js
+      sha256: f2c445dce49627136094980615a031419f7f3eb393237e4ecd97ac15dea343f3
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.6.7"
+  js_interop:
+    dependency: transitive
+    description:
+      name: js_interop
+      sha256: "7ec859c296958ccea34dc770504bd3ff4ae52fdd9e7eeb2bacc7081ad476a1f5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.1"
   json_annotation:
     dependency: "direct main"
     description:
@@ -1011,6 +1042,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.13.0"
+  mcfcc_nsn:
+    dependency: transitive
+    description:
+      name: mcfcc_nsn
+      sha256: b57c6f7654c2822b9853fefb71cb10de4280868b78bc1d6679596769f67dc082
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
   media_kit:
     dependency: "direct main"
     description:
@@ -1099,6 +1138,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.6.4"
+  my_complex_nullsafety:
+    dependency: transitive
+    description:
+      name: my_complex_nullsafety
+      sha256: e4e5549c59c1d60c8d4befc522cb9135f2378ba2a44c539e67e6ac94aaabb748
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.2"
   native_toolchain_c:
     dependency: transitive
     description:
@@ -1760,6 +1807,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.6.17"
+  tuple:
+    dependency: transitive
+    description:
+      name: tuple
+      sha256: a97ce2013f240b2f3807bcbaf218765b6f301c3eff91092bcfa23a039e7dd151
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.2"
   typed_data:
     dependency: transitive
     description:

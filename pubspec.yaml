@@ -20,6 +20,8 @@ dependencies:
   async: ^2.13.0
   azure_speech:
     path: packages/azure_speech
+  forced_alignment:
+    path: packages/forced_alignment
   drift: ^2.31.0
   drift_flutter: ^0.3.1
   # Pre-release dep (single-publisher supply chain) — pinned exactly so a

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Fails CI when a new local-path package is added to pubspec.yaml.
-# Existing path: packages (azure_speech, ffmpeg_kit_flutter_new) are
-# allowlisted in docs/decisions/0029-supply-chain-risk.md and tracked
-# via this script's allowlist array.
+# Existing path: packages (azure_speech, ffmpeg_kit_flutter_new,
+# forced_alignment) are allowlisted in docs/decisions/0029-supply-chain-risk.md
+# and tracked via this script's allowlist array.
 #
 # Usage: bash .github/scripts/check_no_new_path_deps.sh
 
@@ -11,6 +11,7 @@ set -euo pipefail
 ALLOWLIST=(
   "packages/azure_speech"
   "packages/ffmpeg_kit_flutter_new"
+  "packages/forced_alignment"
 )
 
 if [ ! -f pubspec.yaml ]; then
