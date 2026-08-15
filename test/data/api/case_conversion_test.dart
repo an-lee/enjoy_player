@@ -97,6 +97,15 @@ void main() {
         'created_at': '2026-06-25T08:00:00Z',
       });
     });
+
+    test('preserves non-ASCII key characters unchanged', () {
+      // Non-ASCII keys (e.g. localized metadata) are not in the API contract
+      // but the helper must not corrupt them — lock in the original
+      // Unicode-aware behaviour.
+      final result = convertKeysToSnake({'caféName': 1, 'naïve': 2});
+      expect(result['caféName'], 1);
+      expect(result['naïve'], 2);
+    });
   });
 
   group('convertKeysToCamel', () {
