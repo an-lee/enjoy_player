@@ -2547,7 +2547,9 @@ class TranscriptRow extends DataClass implements Insertable<TranscriptRow> {
   /// Weapp `TranscriptSource`: `official` | `auto` | `ai` | `user`.
   final String source;
 
-  /// JSON array of `TranscriptLine` (ms-based), same shape as weapp `timeline`.
+  /// JSON array of `TranscriptLine` (ms-based), same shape as enjoy web
+  /// `timeline` (`{text, start, duration}` plus optional nested `timeline` /
+  /// `phones` per ADR-0070).
   final String timelineJson;
   final String? referenceId;
   final String label;
