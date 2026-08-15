@@ -93,3 +93,4 @@ Trade-offs, follow-up work, risks.
 | [0067](0067-github-release-publishing.md) | GitHub Release publishing — per-platform workflows keep building, idempotent draft uploads, coordinator finalizes notes |
 | [0068](0068-shadow-toolbar-share-button.md) | Share practice poster moved from transcript overlay into shadow-reading toolbar's leading slot; visibility narrows to echo mode + recordings |
 | [0069](0069-feature-onboarding-showcaseview.md) | Feature onboarding tips — Enjoy-owned catalog/progress + showcaseview overlays |
+| [0070](0070-nested-transcript-timeline.md) | Additive nested word/phone spans on stored transcript cues, matching enjoy web `timeline`/`phones` (line identity unchanged; no UI yet) |

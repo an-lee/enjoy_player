@@ -272,6 +272,24 @@ void main() {
       expect(id, startsWith('2000:5000:'));
       expect(id.length, greaterThan('2000:5000:'.length));
     });
+
+    test('is unchanged when nested words are added', () {
+      const flat = TranscriptLine(
+        text: 'Hello world',
+        startMs: 2000,
+        durationMs: 3000,
+      );
+      const nested = TranscriptLine(
+        text: 'Hello world',
+        startMs: 2000,
+        durationMs: 3000,
+        timeline: [
+          TranscriptWord(text: 'Hello'),
+          TranscriptWord(text: 'world'),
+        ],
+      );
+      expect(cueIdFor(nested), cueIdFor(flat));
+    });
   });
 
   group('CraftFailure subclasses', () {

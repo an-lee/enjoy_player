@@ -21,7 +21,9 @@ class Transcripts extends Table with SyncMetadataColumns {
   /// Weapp `TranscriptSource`: `official` | `auto` | `ai` | `user`.
   TextColumn get source => text()();
 
-  /// JSON array of `TranscriptLine` (ms-based), same shape as weapp `timeline`.
+  /// JSON array of `TranscriptLine` (ms-based), same shape as enjoy web
+  /// `timeline` (`{text, start, duration}` plus optional nested `timeline` /
+  /// `phones` per ADR-0070).
   TextColumn get timelineJson => text()();
   TextColumn get referenceId => text().nullable()();
   TextColumn get label => text().withDefault(const Constant(''))();
