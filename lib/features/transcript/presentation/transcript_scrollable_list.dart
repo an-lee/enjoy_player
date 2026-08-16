@@ -543,6 +543,7 @@ class _TranscriptScrollableListState
                 final selectable = isActive;
                 Widget tile = TranscriptLineTile(
                   line: line,
+                  lineIndex: lineIndex,
                   mediaId: widget.mediaId,
                   secondaryText: secondaryText,
                   isActive: isActive,

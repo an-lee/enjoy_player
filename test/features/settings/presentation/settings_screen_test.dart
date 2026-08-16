@@ -220,6 +220,14 @@ void main() {
           findsOneWidget,
         );
         expect(find.text(l10n.settingsTranscriptKaraokeTitle), findsOneWidget);
+        expect(
+          find.text(l10n.settingsTranscriptIpaOverlayTitle),
+          findsOneWidget,
+        );
+        expect(
+          find.text(l10n.settingsTranscriptWordPracticeTitle),
+          findsOneWidget,
+        );
 
         expect(find.text(l10n.settingsApiBaseUrl), findsOneWidget);
         expect(find.text(l10n.appTitle), findsWidgets);

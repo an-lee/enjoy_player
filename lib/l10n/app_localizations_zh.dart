@@ -975,6 +975,31 @@ class AppLocalizationsZh extends AppLocalizations {
       '开启后，若该句已有词级时间，播放时高亮正在说的词。关闭（默认）仍按整句高亮。';
 
   @override
+  String get settingsTranscriptIpaOverlayTitle => '显示音标（IPA）';
+
+  @override
+  String get settingsTranscriptIpaOverlaySubtitle =>
+      '开启后，在已有音标的词上方显示存储的读音。关闭（默认）仍只显示字幕文本。';
+
+  @override
+  String get settingsTranscriptWordPracticeTitle => '单词练习';
+
+  @override
+  String get settingsTranscriptWordPracticeSubtitle =>
+      '开启后，点按时长词可跳到该词。当前行可循环或查看音标。关闭（默认）仍按整句点击。';
+
+  @override
+  String get transcriptWordLoopTooltip => '循环此词';
+
+  @override
+  String get transcriptWordInspectTooltip => '查看读音';
+
+  @override
+  String transcriptWordInspectTitle(String word) {
+    return '读音：$word';
+  }
+
+  @override
   String get settingsRecordingMicTitle => '麦克风';
 
   @override
@@ -4449,6 +4474,31 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   @override
   String get settingsTranscriptKaraokeSubtitle =>
       '开启后，若该句已有词级时间，播放时高亮正在说的词。关闭（默认）仍按整句高亮。';
+
+  @override
+  String get settingsTranscriptIpaOverlayTitle => '显示音标（IPA）';
+
+  @override
+  String get settingsTranscriptIpaOverlaySubtitle =>
+      '开启后，在已有音标的词上方显示存储的读音。关闭（默认）仍只显示字幕文本。';
+
+  @override
+  String get settingsTranscriptWordPracticeTitle => '单词练习';
+
+  @override
+  String get settingsTranscriptWordPracticeSubtitle =>
+      '开启后，点按时长词可跳到该词。当前行可循环或查看音标。关闭（默认）仍按整句点击。';
+
+  @override
+  String get transcriptWordLoopTooltip => '循环此词';
+
+  @override
+  String get transcriptWordInspectTooltip => '查看读音';
+
+  @override
+  String transcriptWordInspectTitle(String word) {
+    return '读音：$word';
+  }
 
   @override
   String get settingsRecordingMicTitle => '麦克风';

@@ -9,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../helpers/transcript_settings_overrides.dart';
+
 class _BlurMode extends TranscriptBlurMode {
   _BlurMode(this._initial);
   final bool _initial;
@@ -39,6 +41,7 @@ void main() {
             karaokeHighlightSettingsProvider.overrideWith(
               _KaraokeHighlightOff.new,
             ),
+            ...transcriptWordPracticeOffOverrides(),
           ],
           child: MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -107,6 +110,7 @@ void main() {
           overrides: [
             transcriptBlurModeProvider.overrideWith(() => _BlurMode(true)),
             karaokeWordIndexProvider('m1').overrideWithValue(0),
+            ...transcriptWordPracticeOffOverrides(),
           ],
           child: MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -133,6 +137,69 @@ void main() {
         find.byType(TranscriptBlurText).first,
       );
       expect(blur.revealed, isFalse);
+    },
+  );
+
+  testWidgets(
+    'IPA overlay on does not auto-reveal a blurred cue or leak IPA text',
+    (tester) async {
+      const line = TranscriptLine(
+        text: 'Hello world',
+        startMs: 0,
+        durationMs: 2000,
+        timeline: [
+          TranscriptWord(
+            text: 'Hello',
+            startMs: 0,
+            durationMs: 800,
+            phones: [
+              TranscriptPhone(
+                phone: 'hɛˈloʊ',
+                text: 'hɛˈloʊ',
+                startTime: 0,
+                endTime: 0.4,
+              ),
+            ],
+          ),
+          TranscriptWord(text: 'world', startMs: 800, durationMs: 800),
+        ],
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            transcriptBlurModeProvider.overrideWith(() => _BlurMode(true)),
+            karaokeHighlightSettingsProvider.overrideWith(
+              _KaraokeHighlightOff.new,
+            ),
+            ...transcriptIpaOverlayOnOverrides(),
+          ],
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: TranscriptLineTile(
+                key: const ValueKey('cue-0'),
+                line: line,
+                mediaId: 'm1',
+                secondaryText: '你好世界',
+                isActive: true,
+                inEcho: false,
+                groupedInEcho: false,
+                selectable: false,
+                onTap: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final blur = tester.widget<TranscriptBlurText>(
+        find.byType(TranscriptBlurText).first,
+      );
+      expect(blur.revealed, isFalse);
+      expect(find.text('hɛˈloʊ'), findsNothing);
     },
   );
 }

@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../helpers/transcript_settings_overrides.dart';
+
 void main() {
   Widget harness({
     required TranscriptLine line,
@@ -17,6 +19,7 @@ void main() {
     return ProviderScope(
       overrides: [
         transcriptBlurModeProvider.overrideWith(() => _BlurMode(blurActive)),
+        ...transcriptWordPracticeOffOverrides(),
       ],
       child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -81,6 +84,7 @@ void main() {
       ProviderScope(
         overrides: [
           transcriptBlurModeProvider.overrideWith(() => _BlurMode(true)),
+          ...transcriptWordPracticeOffOverrides(),
         ],
         child: MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,

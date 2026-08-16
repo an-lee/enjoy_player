@@ -9,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../helpers/transcript_settings_overrides.dart';
+
 class _KaraokeHighlightOff extends KaraokeHighlightSettings {
   @override
   Future<bool> build() async => false;
@@ -37,6 +39,7 @@ void main() {
           karaokeHighlightSettingsProvider.overrideWith(
             _KaraokeHighlightOff.new,
           ),
+          ...transcriptWordPracticeOffOverrides(),
         ],
         child: MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -87,6 +90,7 @@ void main() {
           karaokeHighlightSettingsProvider.overrideWith(
             _KaraokeHighlightOff.new,
           ),
+          ...transcriptWordPracticeOffOverrides(),
         ],
         child: MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -140,6 +144,7 @@ void main() {
             karaokeHighlightSettingsProvider.overrideWith(
               _KaraokeHighlightOff.new,
             ),
+            ...transcriptWordPracticeOffOverrides(),
           ],
           child: MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -201,6 +206,7 @@ void main() {
             karaokeHighlightSettingsProvider.overrideWith(
               _KaraokeHighlightOff.new,
             ),
+            ...transcriptWordPracticeOffOverrides(),
           ],
           child: MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,

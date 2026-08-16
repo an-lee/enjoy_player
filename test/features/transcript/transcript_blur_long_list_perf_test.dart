@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../helpers/transcript_settings_overrides.dart';
+
 class _BlurMode extends TranscriptBlurMode {
   _BlurMode(this._initial);
   final bool _initial;
@@ -34,6 +36,7 @@ void main() {
         ProviderScope(
           overrides: [
             transcriptBlurModeProvider.overrideWith(() => _BlurMode(true)),
+            ...transcriptWordPracticeOffOverrides(),
           ],
           child: MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,

@@ -8,11 +8,14 @@ import 'package:enjoy_player/features/transcript/application/transcript_blur_mod
 import 'package:enjoy_player/features/transcript/presentation/transcript_line_tile.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
+import '../../helpers/transcript_settings_overrides.dart';
+
 Widget transcriptTileHarness(Widget child) {
   return ProviderScope(
     overrides: [
       transcriptBlurModeProvider.overrideWith(() => _BlurMode(false)),
       karaokeHighlightSettingsProvider.overrideWith(_KaraokeHighlightOff.new),
+      ...transcriptWordPracticeOffOverrides(),
     ],
     child: MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,

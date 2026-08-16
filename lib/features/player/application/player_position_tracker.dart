@@ -11,9 +11,11 @@ import 'package:enjoy_player/data/db/app_database_provider.dart';
 import 'package:enjoy_player/features/library/domain/media.dart';
 import 'package:enjoy_player/features/player/application/echo_enforcer.dart';
 import 'package:enjoy_player/features/player/application/player_engine.dart';
+import 'package:enjoy_player/features/player/application/word_loop_enforcer.dart';
 import 'package:enjoy_player/features/player/application/position_buckets.dart';
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_lines_provider.dart';
+import 'package:enjoy_player/features/transcript/application/word_practice_session.dart';
 import 'playback_session_persister.dart';
 
 final _positionLog = logNamed('PlayerPositionTracker');
@@ -49,12 +51,19 @@ class PlayerPositionTracker {
     },
   );
 
+  late final WordLoopEnforcer _wordLoopEnforcer = WordLoopEnforcer(
+    ref: ref,
+    getEngine: getEngine,
+    getSession: getSession,
+  );
+
   /// The single-flight echo enforcement coordinator. [PlayerController.seekTo]
   /// routes the proactive seek clamp through here so it serializes against the
   /// reactive per-tick path.
   EchoEnforcer get echoEnforcer => _echoEnforcer;
 
   int? _subscribedGeneration;
+  String? _subscribedMediaId;
 
   StreamSubscription<Duration>? _positionSub;
   StreamSubscription<Duration>? _durationSub;
@@ -70,6 +79,14 @@ class PlayerPositionTracker {
     // pending pause-and-rewind can't seek a stale engine or block the next
     // media's enforcement.
     _echoEnforcer.reset();
+    _wordLoopEnforcer.reset();
+    final mediaId = _subscribedMediaId;
+    _subscribedMediaId = null;
+    if (mediaId != null &&
+        ref.mounted &&
+        ref.exists(wordPracticeSessionProvider(mediaId))) {
+      ref.read(wordPracticeSessionProvider(mediaId).notifier).clearAll();
+    }
   }
 
   void subscribe({
@@ -81,6 +98,7 @@ class PlayerPositionTracker {
     required AudioRow? audio,
   }) {
     _subscribedGeneration = openGeneration;
+    _subscribedMediaId = mediaId;
     _lastPositionEmitBucket = null;
 
     const positionBucketMs = kPositionBucketSessionEmitMs;
@@ -94,14 +112,17 @@ class PlayerPositionTracker {
         // end. Single-flight inside the enforcer drops concurrent ticks.
         // Guarded so a single engine error cannot surface as an uncaught async
         // exception and stall enforcement for the rest of the session (M7).
-        unawaited(
-          _echoEnforcer.enforceTick(seconds).catchError((
-            Object e,
-            StackTrace st,
-          ) {
-            _positionLog.warning('echo enforcement tick failed', e, st);
-          }),
-        );
+        unawaited(() async {
+          try {
+            final skipEcho = await _wordLoopEnforcer.enforceTick(
+              pos.inMilliseconds,
+            );
+            if (skipEcho) return;
+            await _echoEnforcer.enforceTick(seconds);
+          } catch (e, st) {
+            _positionLog.warning('loop/echo enforcement tick failed', e, st);
+          }
+        }());
 
         // Heavy session emit + persistence stays on the 400 ms bucket (or fires
         // immediately on a detected seek) so the recorded clip window lines up.

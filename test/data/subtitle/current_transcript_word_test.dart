@@ -143,4 +143,66 @@ void main() {
       expect(wordHighlightRange('Hello', words, 9), isNull);
     });
   });
+
+  group('wordIndexAtPlainOffset', () {
+    const words = [
+      TranscriptWord(text: 'Hello', startMs: 0, durationMs: 500),
+      TranscriptWord(text: 'world', startMs: 500, durationMs: 500),
+    ];
+
+    test('hits timed tokens inside sequential ranges', () {
+      const plain = 'Hello world';
+      expect(wordIndexAtPlainOffset(plain, words, 0), 0);
+      expect(wordIndexAtPlainOffset(plain, words, 4), 0);
+      expect(wordIndexAtPlainOffset(plain, words, 6), 1);
+      expect(wordIndexAtPlainOffset(plain, words, 10), 1);
+    });
+
+    test('space, gap, and untimed offsets return null', () {
+      const plain = 'Hello world';
+      expect(wordIndexAtPlainOffset(plain, words, 5), isNull);
+      expect(wordIndexAtPlainOffset(plain, const [], 0), isNull);
+      expect(wordIndexAtPlainOffset(plain, null, 0), isNull);
+    });
+  });
+
+  group('wordMediaWindowMs', () {
+    test('uses line start plus relative word ms', () {
+      final line = _line(
+        text: 'Hello world',
+        startMs: 1000,
+        durationMs: 2000,
+        timeline: const [
+          TranscriptWord(text: 'Hello', startMs: 0, durationMs: 500),
+          TranscriptWord(text: 'world', startMs: 500, durationMs: 500),
+        ],
+      );
+      expect(wordMediaWindowMs(line, 0), (startMs: 1000, endMs: 1500));
+      expect(wordMediaWindowMs(line, 1), (startMs: 1500, endMs: 2000));
+    });
+
+    test('out-of-line window is not a target', () {
+      final line = _line(
+        text: 'Hello',
+        startMs: 1000,
+        durationMs: 500,
+        timeline: const [
+          TranscriptWord(text: 'Hello', startMs: 800, durationMs: 100),
+        ],
+      );
+      expect(wordMediaWindowMs(line, 0), isNull);
+    });
+
+    test('empty text or non-positive duration is not a target', () {
+      final line = _line(
+        text: 'Hello world',
+        timeline: const [
+          TranscriptWord(text: '   ', startMs: 0, durationMs: 500),
+          TranscriptWord(text: 'world', startMs: 500, durationMs: 0),
+        ],
+      );
+      expect(wordMediaWindowMs(line, 0), isNull);
+      expect(wordMediaWindowMs(line, 1), isNull);
+    });
+  });
 }

@@ -9,6 +9,8 @@ import 'package:enjoy_player/features/transcript/application/transcript_blur_mod
 import 'package:enjoy_player/features/transcript/presentation/transcript_line_tile.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
+import '../../helpers/transcript_settings_overrides.dart';
+
 class _BlurMode extends TranscriptBlurMode {
   _BlurMode(this._initial);
   final bool _initial;
@@ -21,6 +23,7 @@ Widget transcriptTileHarness({required Widget child}) {
   return ProviderScope(
     overrides: [
       transcriptBlurModeProvider.overrideWith(() => _BlurMode(false)),
+      ...transcriptWordPracticeOffOverrides(),
     ],
     child: MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,

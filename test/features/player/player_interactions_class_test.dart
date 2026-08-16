@@ -12,6 +12,7 @@ import 'package:enjoy_player/features/player/application/player_interactions.dar
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_blur_mode_provider.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_repository_provider.dart';
+import 'package:enjoy_player/features/transcript/application/word_practice_session.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -127,6 +128,7 @@ void main() {
     container = ProviderContainer(
       overrides: [
         appDatabaseProvider.overrideWithValue(db),
+        deviceGlobalAppDatabaseProvider.overrideWithValue(db),
         playerEngineTestDoubleProvider.overrideWithValue(fake),
         transcriptRepositoryProvider.overrideWithValue(
           TranscriptRepository(db),
@@ -602,6 +604,81 @@ void main() {
         startTimeSeconds: -1,
         endTimeSeconds: -1,
       ),
+    );
+  });
+
+  test('seekToWord lands on the word start, not the line start', () async {
+    await insertAudioRow(mediaId);
+    await seedTranscript();
+    setUpSession(currentTime: 0.5);
+    const nested = TranscriptLine(
+      text: 'Hello world',
+      startMs: 1000,
+      durationMs: 2000,
+      timeline: [
+        TranscriptWord(text: 'Hello', startMs: 0, durationMs: 500),
+        TranscriptWord(text: 'world', startMs: 500, durationMs: 500),
+      ],
+    );
+
+    final n = container.read(playerInteractionsProvider.notifier);
+    await n.seekToWord(nested, 0, 1);
+    expect(fake.seekCalls, [const Duration(milliseconds: 1500)]);
+    expect(fake.playCallCount, 1);
+  });
+
+  test(
+    'seekToWord with echo on retargets echo to the line but lands on word',
+    () async {
+      await insertAudioRow(mediaId);
+      await seedTranscript();
+      setUpSession(currentTime: 0.5);
+      const nested = TranscriptLine(
+        text: 'Hello world',
+        startMs: 1000,
+        durationMs: 2000,
+        timeline: [
+          TranscriptWord(text: 'Hello', startMs: 0, durationMs: 500),
+          TranscriptWord(text: 'world', startMs: 500, durationMs: 500),
+        ],
+      );
+      container
+          .read(echoModeProvider.notifier)
+          .activate(
+            startLineIndex: 2,
+            endLineIndex: 2,
+            startTimeSeconds: 4,
+            endTimeSeconds: 6,
+          );
+
+      final n = container.read(playerInteractionsProvider.notifier);
+      await n.seekToWord(nested, 0, 1);
+      final echo = container.read(echoModeProvider);
+      expect(echo.startLineIndex, 0);
+      expect(echo.endLineIndex, 0);
+      expect(echo.startTimeSeconds, nested.startSeconds);
+      expect(echo.endTimeSeconds, nested.endSeconds);
+      expect(fake.seekCalls, [const Duration(milliseconds: 1500)]);
+    },
+  );
+
+  test('seekToProgressFraction clears the ephemeral word loop', () async {
+    await insertAudioRow(mediaId);
+    setUpSession(currentTime: 0.5);
+    container
+        .read(wordPracticeSessionProvider(mediaId).notifier)
+        .startLoop(lineIndex: 0, wordIndex: 0, startMs: 1000, endMs: 1500);
+    expect(
+      container.read(wordPracticeSessionProvider(mediaId)).isLooping,
+      isTrue,
+    );
+
+    await container
+        .read(playerInteractionsProvider.notifier)
+        .seekToProgressFraction(0.5);
+    expect(
+      container.read(wordPracticeSessionProvider(mediaId)).isLooping,
+      isFalse,
     );
   });
 }

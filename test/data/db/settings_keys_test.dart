@@ -55,6 +55,11 @@ void main() {
       );
     });
 
+    test('transcript IPA overlay and word practice keys', () {
+      expect(SettingsKeys.transcriptIpaOverlay, 'transcript.ipaOverlay');
+      expect(SettingsKeys.transcriptWordPractice, 'transcript.wordPractice');
+    });
+
     test('diagnostics / hotkeys / ai / youtube keys', () {
       expect(
         SettingsKeys.diagnosticsVerboseEnabled,
@@ -121,6 +126,8 @@ void main() {
         SettingsKeys.diagnosticsVerboseEnabled,
         SettingsKeys.transcriptTimelineEnrichment,
         SettingsKeys.transcriptKaraokeHighlight,
+        SettingsKeys.transcriptIpaOverlay,
+        SettingsKeys.transcriptWordPractice,
         SettingsKeys.playerPreferencesV1,
         SettingsKeys.hotkeysCustomBindings,
         SettingsKeys.aiModalityConfigsV1,

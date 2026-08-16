@@ -63,6 +63,13 @@ abstract final class SettingsKeys {
   static const String transcriptKaraokeHighlight =
       'transcript.karaokeHighlight';
 
+  /// When `true`, show stored pronunciation spelling with each primary-line
+  /// word that has phone pieces. Missing value ≡ off.
+  static const String transcriptIpaOverlay = 'transcript.ipaOverlay';
+
+  /// When `true`, allow seek/loop/inspect of stored timed words. Missing ≡ off.
+  static const String transcriptWordPractice = 'transcript.wordPractice';
+
   /// JSON blob: volume, rate, repeat, split width ([PlayerPreferencesCtrl]).
   static const String playerPreferencesV1 = 'player_preferences_v1';
 
@@ -110,6 +117,8 @@ abstract final class SettingsKeys {
     diagnosticsVerboseEnabled,
     transcriptTimelineEnrichment,
     transcriptKaraokeHighlight,
+    transcriptIpaOverlay,
+    transcriptWordPractice,
     playerPreferencesV1,
     hotkeysCustomBindings,
     aiModalityConfigsV1,
