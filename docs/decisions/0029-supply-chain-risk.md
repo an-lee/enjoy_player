@@ -66,7 +66,7 @@ Current allowlist:
 |------|--------|-----------|
 | `packages/azure_speech` | First-party Flutter plugin wrapping Microsoft Azure Cognitive Services Speech SDK for pronunciation assessment (Android / iOS / macOS / Windows). Forked from a private internal fork to control the small subset of API surface we need. | Track upstream `microsoft/cognitive-services-speech-sdk` releases; re-evaluate at next major. |
 | `packages/ffmpeg_kit_flutter_new` | Vendored from `sk3llo/ffmpeg_kit_flutter` because the upstream `arthenica/ffmpeg-kit` was archived in 2025. We need Android / iOS / macOS bindings. Windows is **not** implemented by this plugin — see packaging.md. | Watch the new community fork; re-evaluate when a Windows-capable plugin emerges. |
-| `packages/forced_alignment` | First-party on-device alignment engine (16 kHz PCM in, Echogarden-shaped word/phone timings out). UI-free; not invoked by Craft/transcript/player in the slice that introduced it (ADR-0071). | Re-evaluate when eSpeak-NG waveform FFI lands in pub.dev `espeak` or this package's wrap. |
+| `packages/forced_alignment` | First-party on-device alignment engine (16 kHz PCM in, Echogarden-shaped word/phone timings out). UI-free; not invoked by Craft/transcript/player (ADR-0071). Production spoken reference is a thin eSpeak-NG `espeak_Synth` FFI wrap in this package (ADR-0072), not pub.dev `espeak`. | Re-evaluate if upstream `espeak` grows waveform synth; keep fail-closed when native lib/data is missing. |
 
 ### `azure_speech` SDK constraint
 

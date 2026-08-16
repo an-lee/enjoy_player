@@ -2,12 +2,14 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forced_alignment/forced_alignment.dart';
-import 'package:forced_alignment/src/synth/espeak_reference.dart';
+
+import 'helpers/duration_model_synthesizer.dart';
+import 'helpers/fake_spoken_synthesizer.dart';
 
 void main() {
   test('blank text is blankText, not empty success', () async {
-    final pcm = const DurationModelSynthesizer()
-        .synthesize(text: 'hello', language: 'en-US', durationSeconds: 2)
+    final pcm = const FakeSpokenSynthesizer()
+        .synthesize(text: 'hello', language: 'en-US')
         .pcm;
     final outcome = await align(
       sourcePcm16k: pcm,
@@ -22,8 +24,8 @@ void main() {
   });
 
   test('unsupported language does not fall back to en-US', () async {
-    final pcm = const DurationModelSynthesizer()
-        .synthesize(text: 'hello', language: 'en-US', durationSeconds: 2)
+    final pcm = const FakeSpokenSynthesizer()
+        .synthesize(text: 'hello', language: 'en-US')
         .pcm;
     final outcome = await align(
       sourcePcm16k: pcm,
@@ -49,8 +51,8 @@ void main() {
   });
 
   test('punctuation-only success may have an empty word list', () async {
-    final pcm = const DurationModelSynthesizer()
-        .synthesize(text: '...', language: 'en-US', durationSeconds: 2)
+    final pcm = const FakeSpokenSynthesizer()
+        .synthesize(text: '...', language: 'en-US')
         .pcm;
     final outcome = await align(
       sourcePcm16k: pcm,
@@ -59,5 +61,14 @@ void main() {
     );
     expect(outcome, isA<AlignmentSuccess>());
     expect((outcome as AlignmentSuccess).result.wordTimeline, isEmpty);
+  });
+
+  test('production factory is eSpeak-NG, not DurationModelSynthesizer', () {
+    expect(productionSynthesizerIsEspeakNg(), isTrue);
+    expect(createProductionSynthesizer(), isA<EspeakNgSynthesizer>());
+    expect(
+      createProductionSynthesizer(),
+      isNot(isA<DurationModelSynthesizer>()),
+    );
   });
 }

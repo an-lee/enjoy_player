@@ -1,7 +1,8 @@
 name: forced_alignment
 description: >
   On-device forced alignment: known text + 16 kHz mono PCM to word/phone
-  timings (eSpeak-style reference + MFCC + windowed DTW).
+  timings. Production success requires a spoken eSpeak-NG reference
+  (waveform + word/phone events) compared via MFCC + windowed DTW.
 version: 0.1.0
 publish_to: "none"
 
@@ -12,8 +13,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  ffi: ^2.1.4
   logging: ^1.3.0
   mcfcc_nsn: ^1.0.0
+  meta: ^1.16.0
 
 dev_dependencies:
   flutter_lints: ^6.0.0

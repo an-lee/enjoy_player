@@ -7,6 +7,7 @@ import 'package:logging/logging.dart';
 import 'alignment_pipeline.dart';
 import 'failures.dart';
 import 'request.dart';
+import 'synth/spoken_reference.dart';
 import 'types.dart';
 
 final _log = Logger('forced_alignment');
@@ -26,6 +27,7 @@ final class AlignIsolateJob {
     required this.language,
     required this.granularity,
     this.timeOffset = 0,
+    this.reference,
   });
 
   final Float32List sourcePcm;
@@ -33,10 +35,17 @@ final class AlignIsolateJob {
   final String language;
   final AlignmentGranularity granularity;
   final double timeOffset;
+
+  /// Prebuilt spoken reference. Production synth runs on [EspeakSynthHost]
+  /// before this job; DTW isolates must not call eSpeak-NG.
+  final ReferenceAudio? reference;
 }
 
 /// DSP entry used by [Isolate.spawn]. Top-level so it is sendable.
 void _alignIsolateMain(_AlignIsolateBox box) {
+  final cancelIn = ReceivePort();
+  cancelIn.listen((_) {});
+  box.reply.send(cancelIn.sendPort);
   try {
     final job = box.job;
     final result = runAlignPipeline(
@@ -45,6 +54,7 @@ void _alignIsolateMain(_AlignIsolateBox box) {
       language: job.language,
       granularity: job.granularity,
       timeOffset: job.timeOffset,
+      reference: job.reference,
     );
     box.reply.send(result);
   } catch (e, st) {
@@ -55,6 +65,8 @@ void _alignIsolateMain(_AlignIsolateBox box) {
         message: e.toString(),
       ),
     );
+  } finally {
+    cancelIn.close();
   }
 }
 
@@ -66,7 +78,7 @@ final class _AlignIsolateBox {
 }
 
 /// Runs [runAlignPipeline] off the calling isolate. Kills the worker on
-/// cancel or timeout.
+/// cancel or timeout. Does not initialize eSpeak-NG.
 Future<Object> runAlignJobInIsolate({
   required AlignIsolateJob job,
   AlignmentCancelToken? cancel,
@@ -97,11 +109,17 @@ Future<Object> runAlignJobInIsolate({
   }
 
   final done = Completer<Object>();
+  SendPort? cancelToChild;
   receive.listen((message) {
+    if (message is SendPort) {
+      cancelToChild = message;
+      return;
+    }
     if (!done.isCompleted) done.complete(message as Object);
   });
 
   cancel?.onCancel(() {
+    cancelToChild?.send(true);
     kill();
     if (!done.isCompleted) {
       done.completeError(const IsolateCancelled());
@@ -111,6 +129,7 @@ Future<Object> runAlignJobInIsolate({
   try {
     return await done.future.timeout(timeout);
   } on TimeoutException {
+    cancelToChild?.send(true);
     kill();
     if (cancel?.isCancelled ?? false) {
       throw const IsolateCancelled();

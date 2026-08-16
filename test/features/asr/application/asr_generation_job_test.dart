@@ -92,17 +92,20 @@ void main() {
 
   test('AsrGenerationPhase declares all expected values', () {
     const phases = AsrGenerationPhase.values;
-    expect(phases, containsAll(<AsrGenerationPhase>[
-      AsrGenerationPhase.idle,
-      AsrGenerationPhase.extracting,
-      AsrGenerationPhase.uploading,
-      AsrGenerationPhase.recognizing,
-      AsrGenerationPhase.polling,
-      AsrGenerationPhase.persisting,
-      AsrGenerationPhase.success,
-      AsrGenerationPhase.error,
-      AsrGenerationPhase.cancelled,
-    ]));
+    expect(
+      phases,
+      containsAll(<AsrGenerationPhase>[
+        AsrGenerationPhase.idle,
+        AsrGenerationPhase.extracting,
+        AsrGenerationPhase.uploading,
+        AsrGenerationPhase.recognizing,
+        AsrGenerationPhase.polling,
+        AsrGenerationPhase.persisting,
+        AsrGenerationPhase.success,
+        AsrGenerationPhase.error,
+        AsrGenerationPhase.cancelled,
+      ]),
+    );
     expect(phases.length, 9);
   });
 }
