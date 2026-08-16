@@ -95,3 +95,4 @@ Trade-offs, follow-up work, risks.
 | [0069](0069-feature-onboarding-showcaseview.md) | Feature onboarding tips — Enjoy-owned catalog/progress + showcaseview overlays |
 | [0070](0070-nested-transcript-timeline.md) | Additive nested word/phone spans on stored transcript cues, matching enjoy web `timeline`/`phones` (line identity unchanged; no UI yet) |
 | [0071](0071-on-device-alignment-engine.md) | On-device alignment engine (`packages/forced_alignment`) — Echogarden result interface, unused by product flows |
+| [0072](0072-spoken-alignment-reference.md) | Spoken alignment reference — eSpeak-NG `espeak_Synth` FFI, fail-closed, unused by product (supplements 0071) |

@@ -31,7 +31,9 @@ String _snakeToCamelToken(String input) {
     final p = parts[i];
     if (p.isEmpty) continue;
     final firstCode = p.codeUnitAt(0);
-    b.writeCharCode(firstCode >= 0x61 && firstCode <= 0x7A ? firstCode - 0x20 : firstCode);
+    b.writeCharCode(
+      firstCode >= 0x61 && firstCode <= 0x7A ? firstCode - 0x20 : firstCode,
+    );
     if (p.length > 1) {
       b.write(p.substring(1));
     }

@@ -9,6 +9,13 @@ export 'src/language_map.dart'
     show kSupportedAlignmentLanguageTags, isSupportedAlignmentLanguage;
 export 'src/outcome.dart';
 export 'src/request.dart';
-export 'src/synth/espeak_reference.dart' show espeakFfiIsAvailable;
+export 'src/synth/espeak_ng_synthesizer.dart'
+    show
+        EspeakNgSynthesizer,
+        createProductionSynthesizer,
+        debugSetEspeakFfiAvailable,
+        espeakFfiIsAvailable,
+        productionSynthesizerIsEspeakNg;
+export 'src/synth/spoken_reference.dart';
 export 'src/types.dart';
 export 'src/web_timings.dart';

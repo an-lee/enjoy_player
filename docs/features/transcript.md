@@ -224,10 +224,14 @@ Coverage lives under
 
 `packages/forced_alignment` can map known text + 16 kHz extractable PCM to
 word/phone timings (Echogarden-shaped result, flatten adapter for enjoy-web
-`WordTiming` / `PhoneTiming`). **No product flow calls it yet** — Craft still
-saves synthesis line timings; the panel stays line-level; there is no Settings
-toggle. Mapping onto nested cues is a later slice (issue #540). See
-[ADR-0071](../decisions/0071-on-device-alignment-engine.md).
+`WordTiming` / `PhoneTiming`). Production success requires a same-language
+**spoken** eSpeak-NG reference (waveform + word/phone events), not a
+duration-model tone stand-in. Missing voice → `spokenReferenceUnavailable`.
+**No product flow calls it yet** — Craft still saves synthesis line timings;
+the panel stays line-level; there is no Settings toggle or “reference voice”
+control; learners never hear the reference. Mapping onto nested cues is a
+later slice (issue #540). See [ADR-0071](../decisions/0071-on-device-alignment-engine.md)
+and [ADR-0072](../decisions/0072-spoken-alignment-reference.md).
 
 ## Future
 

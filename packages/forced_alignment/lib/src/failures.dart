@@ -7,6 +7,7 @@ enum AlignmentFailureReason {
   wholeClipTooLong,
   cancelled,
   timedOut,
+  spokenReferenceUnavailable,
   internal,
 }
 

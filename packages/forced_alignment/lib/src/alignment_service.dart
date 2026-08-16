@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:logging/logging.dart';
+import 'package:meta/meta.dart';
 
 import 'alignment_isolate.dart';
 import 'constants.dart';
@@ -9,6 +10,9 @@ import 'failures.dart';
 import 'language_map.dart';
 import 'outcome.dart';
 import 'request.dart';
+import 'synth/espeak_ng_synthesizer.dart';
+import 'synth/espeak_synth_host.dart';
+import 'synth/spoken_reference.dart';
 import 'types.dart';
 
 final _log = Logger('forced_alignment');
@@ -101,7 +105,33 @@ Future<AlignmentOutcome> _runJob({
   }
 }
 
+Future<ReferenceAudio?> _prebuildReference({
+  required String transcript,
+  required String language,
+  SpokenReferenceSynthesizer? synthesizer,
+  AlignmentCancelToken? cancel,
+}) async {
+  if (tokenizeWords(transcript).isEmpty) return null;
+  if (synthesizer != null) {
+    return synthesizer.synthesize(text: transcript, language: language);
+  }
+  return EspeakSynthHost.synthesize(
+    text: transcript,
+    language: language,
+    cancel: cancel,
+  );
+}
+
+AlignmentFailed? _mapSynthError(Object error) {
+  if (error is SpokenReferenceException) {
+    return AlignmentFailed(error.toFailure());
+  }
+  return null;
+}
+
 /// Whole-clip alignment. Source PCM must be 16 kHz mono Float32.
+///
+/// Omit [synthesizer] for production eSpeak-NG (fail-closed if unavailable).
 Future<AlignmentOutcome> align({
   required Float32List sourcePcm16k,
   required String transcript,
@@ -109,17 +139,46 @@ Future<AlignmentOutcome> align({
   AlignmentGranularity granularity = AlignmentGranularity.medium,
   Duration? timeout,
   AlignmentCancelToken? cancel,
+  @visibleForTesting SpokenReferenceSynthesizer? synthesizer,
 }) async {
   final langFail = _validateLanguage(language);
   if (langFail != null) return langFail;
   final fail = _validateWholeClip(sourcePcm16k, transcript);
   if (fail != null) return fail;
+  if (synthesizer == null &&
+      tokenizeWords(transcript).isNotEmpty &&
+      !espeakFfiIsAvailable()) {
+    return const AlignmentFailed(
+      AlignmentFailure(
+        reason: AlignmentFailureReason.spokenReferenceUnavailable,
+        message: 'eSpeak-NG library or data unavailable',
+      ),
+    );
+  }
+  late final ReferenceAudio? reference;
+  try {
+    reference = await _prebuildReference(
+      transcript: transcript,
+      language: language,
+      synthesizer: synthesizer,
+      cancel: cancel,
+    );
+  } catch (e) {
+    return _mapSynthError(e) ??
+        AlignmentFailed(
+          AlignmentFailure(
+            reason: AlignmentFailureReason.internal,
+            message: e.toString(),
+          ),
+        );
+  }
   return _runJob(
     job: AlignIsolateJob(
       sourcePcm: sourcePcm16k,
       transcript: transcript,
       language: language,
       granularity: granularity,
+      reference: reference,
     ),
     timeout: timeout ?? kDefaultWholeClipTimeout,
     cancel: cancel,
@@ -134,6 +193,7 @@ Future<AlignmentOutcome> alignSegments({
   AlignmentGranularity granularity = AlignmentGranularity.medium,
   Duration? timeout,
   AlignmentCancelToken? cancel,
+  @visibleForTesting SpokenReferenceSynthesizer? synthesizer,
 }) async {
   final langFail = _validateLanguage(language);
   if (langFail != null) return langFail;
@@ -180,6 +240,44 @@ Future<AlignmentOutcome> alignSegments({
       continue;
     }
     final slice = Float32List.sublistView(sourcePcm16k, startSample, endSample);
+    if (synthesizer == null &&
+        tokenizeWords(text).isNotEmpty &&
+        !espeakFfiIsAvailable()) {
+      return const AlignmentFailed(
+        AlignmentFailure(
+          reason: AlignmentFailureReason.spokenReferenceUnavailable,
+          message: 'eSpeak-NG library or data unavailable',
+        ),
+      );
+    }
+    late final ReferenceAudio? reference;
+    try {
+      reference = await _prebuildReference(
+        transcript: text,
+        language: language,
+        synthesizer: synthesizer,
+        cancel: cancel,
+      );
+    } catch (e) {
+      final mapped = _mapSynthError(e);
+      if (mapped != null) {
+        if (mapped.failure.reason ==
+                AlignmentFailureReason.spokenReferenceUnavailable ||
+            mapped.failure.reason == AlignmentFailureReason.cancelled ||
+            mapped.failure.reason ==
+                AlignmentFailureReason.unsupportedLanguage) {
+          return mapped;
+        }
+        lastCueFailure = mapped.failure.reason;
+        continue;
+      }
+      return AlignmentFailed(
+        AlignmentFailure(
+          reason: AlignmentFailureReason.internal,
+          message: e.toString(),
+        ),
+      );
+    }
     final outcome = await _runJob(
       job: AlignIsolateJob(
         sourcePcm: Float32List.fromList(slice),
@@ -187,6 +285,7 @@ Future<AlignmentOutcome> alignSegments({
         language: language,
         granularity: granularity,
         timeOffset: segment.startTime,
+        reference: reference,
       ),
       timeout: cueTimeout,
       cancel: cancel,
@@ -209,7 +308,9 @@ Future<AlignmentOutcome> alignSegments({
         if (failure.reason == AlignmentFailureReason.cancelled ||
             failure.reason == AlignmentFailureReason.timedOut ||
             failure.reason == AlignmentFailureReason.unsupportedLanguage ||
-            failure.reason == AlignmentFailureReason.audioUnavailable) {
+            failure.reason == AlignmentFailureReason.audioUnavailable ||
+            failure.reason ==
+                AlignmentFailureReason.spokenReferenceUnavailable) {
           return outcome;
         }
         lastCueFailure = failure.reason;
