@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:enjoy_player/data/subtitle/current_transcript_word.dart';
 import 'package:enjoy_player/data/subtitle/subtitle_markup_parser.dart';
 
 /// Plain text as rendered by [transcriptMarkupToTextSpan] (for selection indices).
@@ -28,42 +29,94 @@ String formatTranscriptTimestampMs(int startMs) {
 }
 
 /// Builds a [TextSpan] tree from SSA/HTML-like subtitle markup.
+///
+/// [highlightRange] is UTF-16 offsets into [transcriptPlainForSelection]
+/// (concatenated visible text). [highlightFill] is painted behind that
+/// substring when both are set.
 TextSpan transcriptMarkupToTextSpan(
   String raw,
   TextStyle baseStyle, {
   required Color defaultColor,
   bool emphasize = false,
+  WordTextRange? highlightRange,
+  Color? highlightFill,
 }) {
   final segments = parseSubtitleMarkup(raw);
   if (segments.isEmpty) {
     final plain = raw.replaceAll(tagStripRegExp, '').trim();
     final text = plain.isEmpty ? raw : plain;
     return TextSpan(
-      text: text,
-      style: _cueStyle(
-        baseStyle,
-        defaultColor: defaultColor,
-        emphasize: emphasize,
+      children: _spansForPlainChunk(
+        text,
+        0,
+        _cueStyle(baseStyle, defaultColor: defaultColor, emphasize: emphasize),
+        highlightRange,
+        highlightFill,
       ),
     );
   }
 
-  return TextSpan(
-    children: segments.map((seg) {
-      final fg = seg.colorArgb != null ? Color(seg.colorArgb!) : defaultColor;
-      return TextSpan(
-        text: seg.text,
-        style: _cueStyle(
-          baseStyle,
-          defaultColor: fg,
-          emphasize: emphasize,
-          bold: seg.bold,
-          italic: seg.italic,
-          underline: seg.underline,
-        ),
-      );
-    }).toList(),
+  var offset = 0;
+  final children = <InlineSpan>[];
+  for (final seg in segments) {
+    final fg = seg.colorArgb != null ? Color(seg.colorArgb!) : defaultColor;
+    final style = _cueStyle(
+      baseStyle,
+      defaultColor: fg,
+      emphasize: emphasize,
+      bold: seg.bold,
+      italic: seg.italic,
+      underline: seg.underline,
+    );
+    children.addAll(
+      _spansForPlainChunk(
+        seg.text,
+        offset,
+        style,
+        highlightRange,
+        highlightFill,
+      ),
+    );
+    offset += seg.text.length;
+  }
+  return TextSpan(children: children);
+}
+
+List<InlineSpan> _spansForPlainChunk(
+  String text,
+  int chunkStart,
+  TextStyle style,
+  WordTextRange? highlightRange,
+  Color? highlightFill,
+) {
+  if (text.isEmpty) return const [];
+  final range = highlightRange;
+  final fill = highlightFill;
+  if (range == null || fill == null || !range.isValid) {
+    return [TextSpan(text: text, style: style)];
+  }
+  final chunkEnd = chunkStart + text.length;
+  final hiStart = range.start.clamp(chunkStart, chunkEnd).toInt();
+  final hiEnd = range.end.clamp(chunkStart, chunkEnd).toInt();
+  if (hiEnd <= hiStart) {
+    return [TextSpan(text: text, style: style)];
+  }
+  final localStart = hiStart - chunkStart;
+  final localEnd = hiEnd - chunkStart;
+  final out = <InlineSpan>[];
+  if (localStart > 0) {
+    out.add(TextSpan(text: text.substring(0, localStart), style: style));
+  }
+  out.add(
+    TextSpan(
+      text: text.substring(localStart, localEnd),
+      style: style.copyWith(backgroundColor: fill),
+    ),
   );
+  if (localEnd < text.length) {
+    out.add(TextSpan(text: text.substring(localEnd), style: style));
+  }
+  return out;
 }
 
 TextStyle _cueStyle(

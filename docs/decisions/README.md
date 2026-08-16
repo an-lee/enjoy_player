@@ -97,3 +97,4 @@ Trade-offs, follow-up work, risks.
 | [0071](0071-on-device-alignment-engine.md) | On-device alignment engine (`packages/forced_alignment`) — Echogarden result interface, unused by product flows |
 | [0072](0072-spoken-alignment-reference.md) | Spoken alignment reference — eSpeak-NG `espeak_Synth` FFI, fail-closed, unused by product (supplements 0071) |
 | [0073](0073-craft-timeline-enrichment.md) | Craft timeline enrichment — opt-in Craft save is the first product caller of `alignSegments` (default off, fail-closed) |
+| [0074](0074-karaoke-word-highlight.md) | Karaoke word highlight — opt-in in-place current-word highlight from stored timings (default off; independent of Craft enrichment) |

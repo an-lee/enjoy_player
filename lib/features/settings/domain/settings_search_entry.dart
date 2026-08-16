@@ -127,6 +127,10 @@ const List<SettingsEntryDescriptor> kSettingsRegistry = [
     sectionId: SettingsSectionIds.transcript,
     rowId: 'timelineEnrichment',
   ),
+  SettingsEntryDescriptor(
+    sectionId: SettingsSectionIds.transcript,
+    rowId: 'karaokeHighlight',
+  ),
   SettingsEntryDescriptor(sectionId: SettingsSectionIds.keyboardShortcuts),
   SettingsEntryDescriptor(
     sectionId: SettingsSectionIds.keyboardShortcuts,

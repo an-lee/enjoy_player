@@ -19,6 +19,11 @@ const int kPositionBucketDisplayMs = 400;
 
 const int kPositionBucketScrubberMs = 50;
 
+/// Karaoke current-word highlight. Finer than [kPositionBucketDisplayMs] so
+/// short words are not skipped; must not replace the 400 ms display bucket
+/// (Windows accessibility flood — flutter/flutter#182444).
+const int kPositionBucketKaraokeMs = 50;
+
 /// A position jump larger than this between two ticks is treated as a user /
 /// programmatic seek (not linear playback) and forces an immediate echo
 /// re-evaluation + session emit regardless of the [kPositionBucketSessionEmitMs]

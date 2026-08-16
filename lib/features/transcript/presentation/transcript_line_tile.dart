@@ -10,7 +10,9 @@ import 'package:enjoy_player/core/interaction/mouse_tracker_safe.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/typography.dart';
 import 'package:enjoy_player/core/transcript/transcript_density.dart';
+import 'package:enjoy_player/data/subtitle/current_transcript_word.dart';
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
+import 'package:enjoy_player/features/transcript/application/karaoke_word_index_provider.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_blur_mode_provider.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_cue_reveal_provider.dart';
 import 'package:enjoy_player/features/transcript/application/tap_reveal_hold_provider.dart';
@@ -126,6 +128,21 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
 
     final primaryPlain = transcriptPlainForSelection(widget.line.text);
 
+    WordTextRange? karaokeRange;
+    if (widget.isActive) {
+      final wordIndex = ref.watch(karaokeWordIndexProvider(widget.mediaId));
+      if (wordIndex != null) {
+        karaokeRange = wordHighlightRange(
+          primaryPlain,
+          widget.line.timeline,
+          wordIndex,
+        );
+      }
+    }
+    final karaokeFill = karaokeRange == null
+        ? null
+        : scheme.primary.withValues(alpha: 0.28);
+
     final blurEnabled = ref.watch(transcriptBlurModeProvider);
     final cueId = cueIdFor(widget.line);
     final providerRevealed = ref.watch(
@@ -154,25 +171,21 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
           '$semanticsLabel. ${l10n.transcriptLineRecordingCount(recordingCount)}';
     }
 
+    final primarySpan = transcriptMarkupToTextSpan(
+      widget.line.text,
+      baseBody,
+      defaultColor: defaultFg,
+      emphasize: widget.isActive,
+      highlightRange: karaokeRange,
+      highlightFill: karaokeFill,
+    );
     final primaryWidget = widget.selectable
         ? TranscriptSelectableRichText(
-            span: transcriptMarkupToTextSpan(
-              widget.line.text,
-              baseBody,
-              defaultColor: defaultFg,
-              emphasize: widget.isActive,
-            ),
+            span: primarySpan,
             onTap: _revealHoldOnly,
             onLookupRequested: widget.onLookupRequested,
           )
-        : Text.rich(
-            transcriptMarkupToTextSpan(
-              widget.line.text,
-              baseBody,
-              defaultColor: defaultFg,
-              emphasize: widget.isActive,
-            ),
-          );
+        : Text.rich(primarySpan);
 
     Widget? secondaryWidget;
     if (widget.secondaryText != null) {

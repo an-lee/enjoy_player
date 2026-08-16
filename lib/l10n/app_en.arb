@@ -577,6 +577,14 @@
   "@settingsTranscriptEnrichmentSubtitle": {
     "description": "Settings switch subtitle explaining Craft timeline enrichment."
   },
+  "settingsTranscriptKaraokeTitle": "Highlight current word",
+  "@settingsTranscriptKaraokeTitle": {
+    "description": "Settings switch title for opt-in karaoke word highlight in the transcript panel."
+  },
+  "settingsTranscriptKaraokeSubtitle": "When on, highlight the spoken word if the cue already has word timings. Off (default) keeps line-level highlighting.",
+  "@settingsTranscriptKaraokeSubtitle": {
+    "description": "Settings switch subtitle explaining karaoke word highlight."
+  },
   "settingsRecordingMicTitle": "Microphone",
   "@settingsRecordingMicTitle": {
     "description": "Title of the microphone picker tile in settings."

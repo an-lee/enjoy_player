@@ -67,4 +67,17 @@ void main() {
     final settings = File('lib/data/db/settings_keys.dart').readAsStringSync();
     expect(settings.contains('transcript.timelineEnrichment'), isTrue);
   });
+
+  test('transcript.karaokeHighlight settings key is allowlisted', () {
+    expect(
+      SettingsKeys.transcriptKaraokeHighlight,
+      'transcript.karaokeHighlight',
+    );
+    expect(
+      SettingsKeys.isKnown(SettingsKeys.transcriptKaraokeHighlight),
+      isTrue,
+    );
+    final settings = File('lib/data/db/settings_keys.dart').readAsStringSync();
+    expect(settings.contains('transcript.karaokeHighlight'), isTrue);
+  });
 }
