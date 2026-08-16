@@ -215,6 +215,11 @@ void main() {
         );
         expect(find.text(l10n.settingsAiProvidersTileTitle), findsOneWidget);
 
+        expect(
+          find.text(l10n.settingsTranscriptEnrichmentTitle),
+          findsOneWidget,
+        );
+
         expect(find.text(l10n.settingsApiBaseUrl), findsOneWidget);
         expect(find.text(l10n.appTitle), findsWidgets);
         expect(tester.takeException(), isNull);

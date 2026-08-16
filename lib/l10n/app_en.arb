@@ -561,6 +561,22 @@
   "@settingsSectionRecordingHint": {
     "description": "Subtitle under the recording section header."
   },
+  "settingsSectionTranscript": "Transcript",
+  "@settingsSectionTranscript": {
+    "description": "Header for the transcript settings section."
+  },
+  "settingsSectionTranscriptHint": "Options for practice transcript timing.",
+  "@settingsSectionTranscriptHint": {
+    "description": "Subtitle under the transcript section header."
+  },
+  "settingsTranscriptEnrichmentTitle": "Enrich Craft word timings",
+  "@settingsTranscriptEnrichmentTitle": {
+    "description": "Settings switch title for opt-in Craft timeline enrichment."
+  },
+  "settingsTranscriptEnrichmentSubtitle": "When on, Craft save stores word and phone times from on-device alignment. Off (default) keeps today’s synthesis line timings.",
+  "@settingsTranscriptEnrichmentSubtitle": {
+    "description": "Settings switch subtitle explaining Craft timeline enrichment."
+  },
   "settingsRecordingMicTitle": "Microphone",
   "@settingsRecordingMicTitle": {
     "description": "Title of the microphone picker tile in settings."

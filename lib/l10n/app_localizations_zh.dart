@@ -955,6 +955,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsSectionRecordingHint => '跟读录音所使用的麦克风。';
 
   @override
+  String get settingsSectionTranscript => '字幕';
+
+  @override
+  String get settingsSectionTranscriptHint => '练习字幕时间轴选项。';
+
+  @override
+  String get settingsTranscriptEnrichmentTitle => '对齐词级时间轴';
+
+  @override
+  String get settingsTranscriptEnrichmentSubtitle =>
+      '开启后，保存 Craft 条目时用本地对齐补上词和音素时间。关闭（默认）保持现在的合成行时间轴。';
+
+  @override
   String get settingsRecordingMicTitle => '麦克风';
 
   @override
@@ -4409,6 +4422,19 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get settingsSectionRecordingHint => '跟读录音所使用的麦克风';
+
+  @override
+  String get settingsSectionTranscript => '字幕';
+
+  @override
+  String get settingsSectionTranscriptHint => '练习字幕时间轴选项。';
+
+  @override
+  String get settingsTranscriptEnrichmentTitle => '对齐词级时间轴';
+
+  @override
+  String get settingsTranscriptEnrichmentSubtitle =>
+      '开启后，保存 Craft 条目时用本地对齐补上词和音素时间。关闭（默认）保持现在的合成行时间轴。';
 
   @override
   String get settingsRecordingMicTitle => '麦克风';

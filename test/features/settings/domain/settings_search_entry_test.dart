@@ -59,4 +59,24 @@ void main() {
       expect(filterSettingsEntries('nonexistent-xyz', entries), isEmpty);
     });
   });
+
+  group('kSettingsRegistry', () {
+    test('includes Transcript section and timelineEnrichment row', () {
+      expect(
+        kSettingsRegistry.any(
+          (d) =>
+              d.sectionId == SettingsSectionIds.transcript && d.rowId == null,
+        ),
+        isTrue,
+      );
+      expect(
+        kSettingsRegistry.any(
+          (d) =>
+              d.sectionId == SettingsSectionIds.transcript &&
+              d.rowId == 'timelineEnrichment',
+        ),
+        isTrue,
+      );
+    });
+  });
 }
