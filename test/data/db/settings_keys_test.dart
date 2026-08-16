@@ -41,6 +41,13 @@ void main() {
       expect(SettingsKeys.updateSnoozeVersion, 'update.snooze_version');
     });
 
+    test('transcript timeline enrichment key', () {
+      expect(
+        SettingsKeys.transcriptTimelineEnrichment,
+        'transcript.timelineEnrichment',
+      );
+    });
+
     test('diagnostics / hotkeys / ai / youtube keys', () {
       expect(
         SettingsKeys.diagnosticsVerboseEnabled,
@@ -105,6 +112,7 @@ void main() {
         SettingsKeys.updateSnoozeUntil,
         SettingsKeys.updateSnoozeVersion,
         SettingsKeys.diagnosticsVerboseEnabled,
+        SettingsKeys.transcriptTimelineEnrichment,
         SettingsKeys.playerPreferencesV1,
         SettingsKeys.hotkeysCustomBindings,
         SettingsKeys.aiModalityConfigsV1,

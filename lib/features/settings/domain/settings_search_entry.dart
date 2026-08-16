@@ -15,6 +15,7 @@ abstract final class SettingsSectionIds {
   static const appearanceLanguage = 'appearanceLanguage';
   static const aiProviders = 'aiProviders';
   static const recording = 'recording';
+  static const transcript = 'transcript';
   static const keyboardShortcuts = 'keyboardShortcuts';
   static const developer = 'developer';
   static const about = 'about';
@@ -120,6 +121,11 @@ const List<SettingsEntryDescriptor> kSettingsRegistry = [
   SettingsEntryDescriptor(
     sectionId: SettingsSectionIds.recording,
     rowId: 'micPicker',
+  ),
+  SettingsEntryDescriptor(sectionId: SettingsSectionIds.transcript),
+  SettingsEntryDescriptor(
+    sectionId: SettingsSectionIds.transcript,
+    rowId: 'timelineEnrichment',
   ),
   SettingsEntryDescriptor(sectionId: SettingsSectionIds.keyboardShortcuts),
   SettingsEntryDescriptor(

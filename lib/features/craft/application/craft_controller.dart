@@ -16,6 +16,7 @@ import 'package:enjoy_player/features/auth/domain/auth_state.dart';
 import 'package:enjoy_player/features/craft/data/craft_asr_service_transcriber.dart';
 import 'package:enjoy_player/features/craft/data/craft_translation_service_translator.dart';
 import 'package:enjoy_player/features/craft/data/craft_tts_service_synthesizer.dart';
+import 'package:enjoy_player/features/craft/application/craft_timeline_enricher.dart';
 import 'package:enjoy_player/features/craft/domain/azure_voice.dart';
 import 'package:enjoy_player/features/craft/domain/craft_failure.dart';
 import 'package:enjoy_player/features/craft/domain/craft_job_state.dart';
@@ -224,11 +225,11 @@ class CraftController extends Notifier<CraftJobState> {
 
       // Solid word timings → timed AI transcript. Otherwise blank (null):
       // no fabricated duration estimates; learner generates via STT in player.
-      final timelineJson = buildCraftPrimaryTimelineJson(
+      final timelineJson030 = buildCraftPrimaryTimelineJson(
         state.previewWordBoundaries,
         language: state.synthLanguage,
       );
-      final wroteSolid = timelineJson != null;
+      final wroteSolid = timelineJson030 != null;
 
       // Determine if this is a translate-then-synthesize or direct synthesize.
       final hasSourceLang =
@@ -252,6 +253,7 @@ class CraftController extends Notifier<CraftJobState> {
       // identical text.
       final editingId = state.editingMediaId;
       if (editingId != null) {
+        final timelineJson = await _enrichTimeline(timelineJson030);
         final mediaId = await repo.updateCraftedFromText(
           mediaId: editingId,
           audioBytes: state.previewAudioBytes!,
@@ -286,6 +288,7 @@ class CraftController extends Notifier<CraftJobState> {
         );
       }
 
+      final timelineJson = await _enrichTimeline(timelineJson030);
       final mediaId = await repo.importCraftedFromText(
         audioBytes: state.previewAudioBytes!,
         audioFormat: state.previewFormat ?? 'wav',
@@ -312,6 +315,16 @@ class CraftController extends Notifier<CraftJobState> {
       );
       return null;
     }
+  }
+
+  Future<String?> _enrichTimeline(String? timelineJson) {
+    return ref
+        .read(craftTimelineEnricherProvider)
+        .enrich(
+          timelineJson: timelineJson,
+          audioBytes: state.previewAudioBytes!,
+          language: state.synthLanguage,
+        );
   }
 
   void clearResult() {

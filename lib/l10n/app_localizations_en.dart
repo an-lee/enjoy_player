@@ -1000,6 +1000,20 @@ class AppLocalizationsEn extends AppLocalizations {
       'Microphone used for shadow-reading takes.';
 
   @override
+  String get settingsSectionTranscript => 'Transcript';
+
+  @override
+  String get settingsSectionTranscriptHint =>
+      'Options for practice transcript timing.';
+
+  @override
+  String get settingsTranscriptEnrichmentTitle => 'Enrich Craft word timings';
+
+  @override
+  String get settingsTranscriptEnrichmentSubtitle =>
+      'When on, Craft save stores word and phone times from on-device alignment. Off (default) keeps today’s synthesis line timings.';
+
+  @override
   String get settingsRecordingMicTitle => 'Microphone';
 
   @override

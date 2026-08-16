@@ -302,6 +302,22 @@
   "@settingsSectionRecordingHint": {
     "description": "Subtitle under the recording section header."
   },
+  "settingsSectionTranscript": "字幕",
+  "@settingsSectionTranscript": {
+    "description": "Header for the transcript settings section."
+  },
+  "settingsSectionTranscriptHint": "练习字幕时间轴选项。",
+  "@settingsSectionTranscriptHint": {
+    "description": "Subtitle under the transcript section header."
+  },
+  "settingsTranscriptEnrichmentTitle": "对齐词级时间轴",
+  "@settingsTranscriptEnrichmentTitle": {
+    "description": "Settings switch title for opt-in Craft timeline enrichment."
+  },
+  "settingsTranscriptEnrichmentSubtitle": "开启后，保存 Craft 条目时用本地对齐补上词和音素时间。关闭（默认）保持现在的合成行时间轴。",
+  "@settingsTranscriptEnrichmentSubtitle": {
+    "description": "Settings switch subtitle explaining Craft timeline enrichment."
+  },
   "settingsRecordingMicTitle": "麦克风",
   "@settingsRecordingMicTitle": {
     "description": "Title of the microphone picker tile in settings."

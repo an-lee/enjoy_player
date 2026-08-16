@@ -14,6 +14,7 @@ import 'package:enjoy_player/features/auth/application/auth_controller.dart';
 import 'package:enjoy_player/features/auth/domain/auth_state.dart';
 import 'package:enjoy_player/features/auth/domain/user_profile.dart';
 import 'package:enjoy_player/features/craft/application/craft_controller.dart';
+import 'package:enjoy_player/features/craft/application/craft_timeline_enricher.dart';
 import 'package:enjoy_player/features/craft/domain/craft_failure.dart';
 import 'package:enjoy_player/features/craft/domain/craft_job_state.dart';
 import 'package:enjoy_player/features/craft/domain/craft_synthesizer.dart';
@@ -25,6 +26,7 @@ import 'package:enjoy_player/features/craft/domain/craft_stage.dart';
 import 'package:enjoy_player/features/library/application/library_repository_provider.dart';
 import 'package:enjoy_player/features/library/data/library_repository.dart';
 import 'package:enjoy_player/features/library/domain/craft_edit_source.dart';
+import 'package:forced_alignment/forced_alignment.dart';
 
 // === Fakes ===
 
@@ -289,6 +291,9 @@ void main() {
         craftSynthesizerProvider.overrideWithValue(synthesizer),
         craftTranscriberProvider.overrideWithValue(transcriber),
         mediaLibraryRepositoryProvider.overrideWithValue(repo),
+        craftTimelineEnricherProvider.overrideWithValue(
+          CraftTimelineEnricher(enabled: false),
+        ),
         if (profile == null)
           authCtrlProvider.overrideWith(_SignedOutAuthCtrl.new)
         else
@@ -777,6 +782,9 @@ void main() {
           craftTranslatorProvider.overrideWithValue(translator),
           craftSynthesizerProvider.overrideWithValue(synthesizer),
           mediaLibraryRepositoryProvider.overrideWithValue(repo),
+          craftTimelineEnricherProvider.overrideWithValue(
+            CraftTimelineEnricher(enabled: false),
+          ),
           authCtrlProvider.overrideWith(() => auth),
         ],
       );
@@ -850,6 +858,7 @@ void main() {
       final timeline = jsonDecode(repo.lastImportTimelineJson!) as List;
       expect(timeline, isNotEmpty);
       expect(timeline.first['text'], 'Hello world.');
+      expect(timeline.first.containsKey('timeline'), isFalse);
     });
 
     test(
@@ -867,6 +876,141 @@ void main() {
         expect(result?.mediaId, 'media-new');
         expect(result?.wroteSolidTranscript, isFalse);
         expect(repo.importCalls, 1);
+        expect(repo.lastImportTimelineJson, isNull);
+      },
+    );
+
+    test(
+      'opt-in enrichment persists nested spans and leaves audio unchanged',
+      () async {
+        synthesizer = _FakeSynthesizer(
+          wordBoundaries: const [
+            CraftWordBoundary(text: 'Hello', audioOffsetMs: 0, durationMs: 300),
+            CraftWordBoundary(
+              text: 'world.',
+              audioOffsetMs: 300,
+              durationMs: 400,
+            ),
+          ],
+        );
+        repo.importResultId = 'media-123';
+        final originalAudio = synthesizer.audioBytes;
+        final enricher = CraftTimelineEnricher(
+          enabled: true,
+          decodePcm: (_) async => Float32List(16000),
+          alignSegmentsFn:
+              ({
+                required sourcePcm16k,
+                required language,
+                required segments,
+                required granularity,
+              }) async {
+                expect(language, 'en-US');
+                return AlignmentSuccess(
+                  AlignmentResult(
+                    timeline: [
+                      for (final s in segments)
+                        TimelineEntry(
+                          type: TimelineEntryType.segment,
+                          text: s.text,
+                          startTime: s.startTime,
+                          endTime: s.endTime,
+                          id: s.id,
+                          timeline: [
+                            TimelineEntry(
+                              type: TimelineEntryType.word,
+                              text: 'Hello',
+                              startTime: s.startTime,
+                              endTime: s.endTime,
+                              timeline: [
+                                TimelineEntry(
+                                  type: TimelineEntryType.phone,
+                                  text: 'h',
+                                  startTime: s.startTime,
+                                  endTime: s.endTime,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                    ],
+                    wordTimeline: const [],
+                    transcript: 'Hello',
+                    language: language,
+                    durationSeconds: 1,
+                  ),
+                );
+              },
+        );
+        final c = ProviderContainer(
+          overrides: [
+            craftTranslatorProvider.overrideWithValue(translator),
+            craftSynthesizerProvider.overrideWithValue(synthesizer),
+            craftTranscriberProvider.overrideWithValue(transcriber),
+            mediaLibraryRepositoryProvider.overrideWithValue(repo),
+            craftTimelineEnricherProvider.overrideWithValue(enricher),
+            authCtrlProvider.overrideWith(() => _SignedInAuthCtrl(_profile)),
+          ],
+        );
+        addTearDown(c.dispose);
+        await c.read(authCtrlProvider.future);
+        final n = notifierOf(c);
+        n.setScreenMode(CraftScreenMode.advanced);
+        n.setSelectedVoice('en-US-JennyNeural');
+        n.setSynthText('Hello world.');
+        await n.synthesize();
+
+        final result = await n.saveToLibrary();
+        expect(result?.wroteSolidTranscript, isTrue);
+        expect(repo.importCalls, 1);
+        expect(repo.lastImportAudioBytes, originalAudio);
+        final timeline = jsonDecode(repo.lastImportTimelineJson!) as List;
+        expect(timeline.first['text'], 'Hello world.');
+        expect(timeline.first['timeline'], isNotEmpty);
+        expect(
+          (timeline.first['timeline'] as List).first['phones'],
+          isNotEmpty,
+        );
+      },
+    );
+
+    test(
+      'dedupe skip does not rewrite the existing item when enrichment is on',
+      () async {
+        repo.existingId = 'media-existing';
+        final enricher = CraftTimelineEnricher(
+          enabled: true,
+          decodePcm: (_) async => Float32List(16000),
+          alignSegmentsFn:
+              ({
+                required sourcePcm16k,
+                required language,
+                required segments,
+                required granularity,
+              }) async {
+                fail('dedupe must not call alignSegments');
+              },
+        );
+        final c = ProviderContainer(
+          overrides: [
+            craftTranslatorProvider.overrideWithValue(translator),
+            craftSynthesizerProvider.overrideWithValue(synthesizer),
+            craftTranscriberProvider.overrideWithValue(transcriber),
+            mediaLibraryRepositoryProvider.overrideWithValue(repo),
+            craftTimelineEnricherProvider.overrideWithValue(enricher),
+            authCtrlProvider.overrideWith(() => _SignedInAuthCtrl(_profile)),
+          ],
+        );
+        addTearDown(c.dispose);
+        await c.read(authCtrlProvider.future);
+        final n = notifierOf(c);
+        n.setSynthText('long enough text');
+        await n.synthesize();
+
+        final result = await n.saveToLibrary();
+        expect(result?.wasDedupe, isTrue);
+        expect(repo.importCalls, 0);
+        expect(repo.updateCalls, 0);
         expect(repo.lastImportTimelineJson, isNull);
       },
     );

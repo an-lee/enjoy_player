@@ -1893,6 +1893,30 @@ abstract class AppLocalizations {
   /// **'Microphone used for shadow-reading takes.'**
   String get settingsSectionRecordingHint;
 
+  /// Header for the transcript settings section.
+  ///
+  /// In en, this message translates to:
+  /// **'Transcript'**
+  String get settingsSectionTranscript;
+
+  /// Subtitle under the transcript section header.
+  ///
+  /// In en, this message translates to:
+  /// **'Options for practice transcript timing.'**
+  String get settingsSectionTranscriptHint;
+
+  /// Settings switch title for opt-in Craft timeline enrichment.
+  ///
+  /// In en, this message translates to:
+  /// **'Enrich Craft word timings'**
+  String get settingsTranscriptEnrichmentTitle;
+
+  /// Settings switch subtitle explaining Craft timeline enrichment.
+  ///
+  /// In en, this message translates to:
+  /// **'When on, Craft save stores word and phone times from on-device alignment. Off (default) keeps today’s synthesis line timings.'**
+  String get settingsTranscriptEnrichmentSubtitle;
+
   /// Title of the microphone picker tile in settings.
   ///
   /// In en, this message translates to:

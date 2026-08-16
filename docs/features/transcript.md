@@ -5,7 +5,7 @@
 - Primary transcript = `echo_sessions.transcript_id` for the latest session on `(targetType, targetId)` (same id as library media row).
 - **Track list stream** ([`TranscriptRepository.watchTracks`](../../lib/features/transcript/data/transcript_repository.dart)) exposes `List<TranscriptTrack>` per media id and is consumed through `allTranscriptsForMediaProvider`. Each `TranscriptTrack` defines **value equality** across its 7 fields (`id`, `targetType`, `targetId`, `language`, `source`, `label`, `trackIndex`), and the stream applies [`StreamDistinctExt.distinctBy`](../conventions.md#stream-dedupe-long-live-streams) with an element-wise list comparator so identical Drift re-emissions (e.g. an `echo_sessions` bump that doesn't change the resolved track list) never reach Riverpod listeners. Always-mounted consumers like `TransportCcButton` (the transport-bar CC indicator) only rebuild on real track changes — see `test/features/transcript/transcript_tracks_dedupe_test.dart` (9 pinning tests for skip-on-no-op and re-emit-on-real-change).
 - Import `.srt` / `.vtt` via `SubtitleParserFacade` storing JSON in `transcripts.timeline_json`. Imports use `source: user` and a user-chosen BCP-47 **language** (one row per `(target, source, language)` via deterministic id).
-- **Nested word/phone spans (storage only)** ([ADR-0070](../decisions/0070-nested-transcript-timeline.md)): a cue MAY include optional `timeline` (word spans) and each word MAY include `phones` (IPA + seconds), matching enjoy web `TranscriptLine` / `TranscriptWord`. Existing producers still write line-only `{text, start, duration}`. The transcript panel, current-line tracking, echo, lookup, and auto-translate ignore nested spans and keep using line text and line times. There is no Settings toggle in this slice. Karaoke / IPA overlay / Craft alignment land in later specs.
+- **Nested word/phone spans (storage only)** ([ADR-0070](../decisions/0070-nested-transcript-timeline.md), [ADR-0073](../decisions/0073-craft-timeline-enrichment.md)): a cue MAY include optional `timeline` (word spans) and each word MAY include `phones` (IPA + seconds), matching enjoy web `TranscriptLine` / `TranscriptWord`. Import, YouTube captions, and ASR still write line-only `{text, start, duration}`. Craft save may persist nested JSON when **Settings → Transcript → Enrich Craft word timings** is on and alignment succeeds; off or failure keeps today’s synthesis line timings (or a blank transcript). The transcript panel, current-line tracking, echo, lookup, and auto-translate ignore nested spans and keep using line text and line times. There is no karaoke / IPA overlay / per-word tap in this slice.
 - Tap line → seek + optional echo region update (via `PlayerInteractions`) **except** on the **active** cue and cues inside the **echo window**, where the row is **selectable** for dictionary lookup (no tap-to-seek on those rows). See [dictionary-lookup](dictionary-lookup.md).
 - **Track / import entry**: Use the player **CC** control (opens subtitle sheet). While cloud fetch runs and no tracks exist yet, the CC icon shows a **spinner**; when tracks exist, a **badge** appears. The transcript panel shows **Fetching subtitles…** during load, **friendly error + Retry** on failure, and the confirmed empty state only after resolution completes. Manual **Extract** / **Add subtitle** / **Refresh from cloud** actions show inline spinners (picker and empty state).
 - Subtitle track picker: **narrow** viewports use a draggable **Enjoy** bottom sheet; at **≥ `breakpointRail` (900px)** the same UI opens as a **centered dialog** (max width 560) for mouse-first layouts. The sheet body no longer nests an extra **SafeArea** (the modal already applies safe-area padding). **Loading** differs by presentation: the narrow sheet uses the shared scrollable `SkeletonTranscript`, while the wide dialog uses a bounded column of four `Skeleton.*` rows so it remains valid inside the dialog's `SingleChildScrollView`. **Error** / **empty** states: errors show **friendly** title + hint strings plus **Retry** (raw exception text is not surfaced in the primary message). Each track row is a **compact single-line tile**: leading radio, title, compact provider + language `MetaChip` pills on the same baseline, and a trailing delete `IconButton`; unselected rows are borderless with a 1px bottom divider, selected rows show a tinted card so many captions fit the picker viewport. Each track shows **provider** (`official` / `auto` / `ai` / `user`) and language. **Deleting** any transcript clears `echo_sessions` primary/secondary references when that track was selected, reassigns primary using **source priority** (`official` → `auto` → `ai` → `user`, then `createdAt`), and clears secondary if it would duplicate the new primary.
@@ -220,17 +220,19 @@ Coverage lives under
 - `transcript_blur_long_list_perf_test.dart` — 10 000-line smoke
   under `ImageFiltered`; per-frame budget assertion.
 
-## Alignment engine (unused)
+## Alignment engine (Craft save caller)
 
-`packages/forced_alignment` can map known text + 16 kHz extractable PCM to
+`packages/forced_alignment` maps known text + 16 kHz extractable PCM to
 word/phone timings (Echogarden-shaped result, flatten adapter for enjoy-web
 `WordTiming` / `PhoneTiming`). Production success requires a same-language
 **spoken** eSpeak-NG reference (waveform + word/phone events), not a
 duration-model tone stand-in. Missing voice → `spokenReferenceUnavailable`.
-**No product flow calls it yet** — Craft still saves synthesis line timings;
-the panel stays line-level; there is no Settings toggle or “reference voice”
-control; learners never hear the reference. Mapping onto nested cues is a
-later slice (issue #540). See [ADR-0071](../decisions/0071-on-device-alignment-engine.md)
+**Craft save** is the first product caller ([ADR-0073](../decisions/0073-craft-timeline-enrichment.md)):
+when **Settings → Transcript → Enrich Craft word timings** is on, a real
+(non-dedupe) Craft write may attach nested spans onto spec 030 lines via
+`alignSegments`. The panel stays line-level; there is no karaoke in this
+slice; learners never hear the reference. Import / YouTube / ASR remain
+line-only writers. See [ADR-0071](../decisions/0071-on-device-alignment-engine.md)
 and [ADR-0072](../decisions/0072-spoken-alignment-reference.md).
 
 ## Future

@@ -55,6 +55,18 @@ _Localized _localize(SettingsEntryDescriptor d, AppLocalizations l10n) {
       return _Localized(l10n.settingsSectionRecording, [
         l10n.settingsSectionRecordingHint,
       ]);
+    case SettingsSectionIds.transcript:
+      if (d.rowId == 'timelineEnrichment') {
+        return _Localized(l10n.settingsTranscriptEnrichmentTitle, [
+          'enrichment',
+          'alignment',
+          'timeline',
+          l10n.settingsTranscriptEnrichmentSubtitle,
+        ]);
+      }
+      return _Localized(l10n.settingsSectionTranscript, [
+        l10n.settingsSectionTranscriptHint,
+      ]);
     case SettingsSectionIds.keyboardShortcuts:
       switch (d.rowId) {
         case 'openCheatsheet':
