@@ -71,6 +71,7 @@ void main() {
         final container = ProviderContainer(
           overrides: [
             appDatabaseProvider.overrideWithValue(db),
+            deviceGlobalAppDatabaseProvider.overrideWithValue(db),
             authCtrlProvider.overrideWith(_SignedInAuthCtrl.new),
             transcriptLinesForMediaProvider(
               'm1',
@@ -107,6 +108,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           appDatabaseProvider.overrideWithValue(db),
+          deviceGlobalAppDatabaseProvider.overrideWithValue(db),
           authCtrlProvider.overrideWith(_SignedInAuthCtrl.new),
           transcriptLinesForMediaProvider(
             'm1',
@@ -148,6 +150,7 @@ void main() {
         final container = ProviderContainer(
           overrides: [
             appDatabaseProvider.overrideWithValue(db),
+            deviceGlobalAppDatabaseProvider.overrideWithValue(db),
             authCtrlProvider.overrideWith(_SignedInAuthCtrl.new),
             transcriptLinesForMediaProvider(
               'm1',
@@ -192,6 +195,7 @@ void main() {
         final container = ProviderContainer(
           overrides: [
             appDatabaseProvider.overrideWithValue(db),
+            deviceGlobalAppDatabaseProvider.overrideWithValue(db),
             authCtrlProvider.overrideWith(_SignedInAuthCtrl.new),
             transcriptLinesForMediaProvider(
               'm1',
@@ -239,6 +243,7 @@ void main() {
         final container = ProviderContainer(
           overrides: [
             appDatabaseProvider.overrideWithValue(db),
+            deviceGlobalAppDatabaseProvider.overrideWithValue(db),
             authCtrlProvider.overrideWith(_SignedInAuthCtrl.new),
             transcriptLinesForMediaProvider(
               'm1',
@@ -293,6 +298,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           appDatabaseProvider.overrideWithValue(db),
+          deviceGlobalAppDatabaseProvider.overrideWithValue(db),
           authCtrlProvider.overrideWith(_SignedInAuthCtrl.new),
           transcriptLinesForMediaProvider(
             'm1',

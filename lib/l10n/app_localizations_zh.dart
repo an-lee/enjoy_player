@@ -968,6 +968,13 @@ class AppLocalizationsZh extends AppLocalizations {
       '开启后，保存 Craft 条目时用本地对齐补上词和音素时间。关闭（默认）保持现在的合成行时间轴。';
 
   @override
+  String get settingsTranscriptKaraokeTitle => '高亮当前词';
+
+  @override
+  String get settingsTranscriptKaraokeSubtitle =>
+      '开启后，若该句已有词级时间，播放时高亮正在说的词。关闭（默认）仍按整句高亮。';
+
+  @override
   String get settingsRecordingMicTitle => '麦克风';
 
   @override
@@ -4435,6 +4442,13 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   @override
   String get settingsTranscriptEnrichmentSubtitle =>
       '开启后，保存 Craft 条目时用本地对齐补上词和音素时间。关闭（默认）保持现在的合成行时间轴。';
+
+  @override
+  String get settingsTranscriptKaraokeTitle => '高亮当前词';
+
+  @override
+  String get settingsTranscriptKaraokeSubtitle =>
+      '开启后，若该句已有词级时间，播放时高亮正在说的词。关闭（默认）仍按整句高亮。';
 
   @override
   String get settingsRecordingMicTitle => '麦克风';

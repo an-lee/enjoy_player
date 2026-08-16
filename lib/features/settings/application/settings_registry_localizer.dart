@@ -64,6 +64,14 @@ _Localized _localize(SettingsEntryDescriptor d, AppLocalizations l10n) {
           l10n.settingsTranscriptEnrichmentSubtitle,
         ]);
       }
+      if (d.rowId == 'karaokeHighlight') {
+        return _Localized(l10n.settingsTranscriptKaraokeTitle, [
+          'karaoke',
+          'word highlight',
+          'timings',
+          l10n.settingsTranscriptKaraokeSubtitle,
+        ]);
+      }
       return _Localized(l10n.settingsSectionTranscript, [
         l10n.settingsSectionTranscriptHint,
       ]);

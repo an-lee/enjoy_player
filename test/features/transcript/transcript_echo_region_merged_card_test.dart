@@ -1,5 +1,6 @@
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
 import 'package:enjoy_player/features/player/application/echo_mode_provider.dart';
+import 'package:enjoy_player/features/settings/application/karaoke_highlight_settings.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_line_recording_counts_provider.dart';
 import 'package:enjoy_player/features/transcript/presentation/transcript_echo_region_merged_card.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
@@ -7,6 +8,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class _KaraokeHighlightOff extends KaraokeHighlightSettings {
+  @override
+  Future<bool> build() async => false;
+}
 
 void main() {
   testWidgets('echo card lays out inside a scrollable', (tester) async {
@@ -28,6 +34,9 @@ void main() {
           transcriptLineRecordingCountsProvider(
             'media-1',
           ).overrideWithValue(const {}),
+          karaokeHighlightSettingsProvider.overrideWith(
+            _KaraokeHighlightOff.new,
+          ),
         ],
         child: MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -75,6 +84,9 @@ void main() {
           transcriptLineRecordingCountsProvider(
             'media-1',
           ).overrideWithValue({0: 2}),
+          karaokeHighlightSettingsProvider.overrideWith(
+            _KaraokeHighlightOff.new,
+          ),
         ],
         child: MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -125,6 +137,9 @@ void main() {
             transcriptLineRecordingCountsProvider(
               'media-1',
             ).overrideWithValue(const {}),
+            karaokeHighlightSettingsProvider.overrideWith(
+              _KaraokeHighlightOff.new,
+            ),
           ],
           child: MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -183,6 +198,9 @@ void main() {
             transcriptLineRecordingCountsProvider(
               'media-1',
             ).overrideWithValue(const {}),
+            karaokeHighlightSettingsProvider.overrideWith(
+              _KaraokeHighlightOff.new,
+            ),
           ],
           child: MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,

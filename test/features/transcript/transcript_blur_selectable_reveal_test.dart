@@ -1,4 +1,5 @@
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
+import 'package:enjoy_player/features/settings/application/karaoke_highlight_settings.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_blur_mode_provider.dart';
 import 'package:enjoy_player/features/transcript/presentation/transcript_blur_text.dart';
 import 'package:enjoy_player/features/transcript/presentation/transcript_line_tile.dart';
@@ -16,12 +17,18 @@ class _BlurMode extends TranscriptBlurMode {
   bool build() => _initial;
 }
 
+class _KaraokeHighlightOff extends KaraokeHighlightSettings {
+  @override
+  Future<bool> build() async => false;
+}
+
 void main() {
   Widget harness({required bool blurActive}) {
     const line = TranscriptLine(text: 'Echo cue', startMs: 0, durationMs: 2000);
     return ProviderScope(
       overrides: [
         transcriptBlurModeProvider.overrideWith(() => _BlurMode(blurActive)),
+        karaokeHighlightSettingsProvider.overrideWith(_KaraokeHighlightOff.new),
       ],
       child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,

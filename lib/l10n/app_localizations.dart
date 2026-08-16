@@ -1917,6 +1917,18 @@ abstract class AppLocalizations {
   /// **'When on, Craft save stores word and phone times from on-device alignment. Off (default) keeps today’s synthesis line timings.'**
   String get settingsTranscriptEnrichmentSubtitle;
 
+  /// Settings switch title for opt-in karaoke word highlight in the transcript panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlight current word'**
+  String get settingsTranscriptKaraokeTitle;
+
+  /// Settings switch subtitle explaining karaoke word highlight.
+  ///
+  /// In en, this message translates to:
+  /// **'When on, highlight the spoken word if the cue already has word timings. Off (default) keeps line-level highlighting.'**
+  String get settingsTranscriptKaraokeSubtitle;
+
   /// Title of the microphone picker tile in settings.
   ///
   /// In en, this message translates to:
