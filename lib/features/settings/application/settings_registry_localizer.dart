@@ -72,6 +72,20 @@ _Localized _localize(SettingsEntryDescriptor d, AppLocalizations l10n) {
           l10n.settingsTranscriptKaraokeSubtitle,
         ]);
       }
+      if (d.rowId == 'ipaOverlay') {
+        return _Localized(l10n.settingsTranscriptIpaOverlayTitle, [
+          'IPA',
+          'pronunciation',
+          l10n.settingsTranscriptIpaOverlaySubtitle,
+        ]);
+      }
+      if (d.rowId == 'wordPractice') {
+        return _Localized(l10n.settingsTranscriptWordPracticeTitle, [
+          'word tap',
+          'word loop',
+          l10n.settingsTranscriptWordPracticeSubtitle,
+        ]);
+      }
       return _Localized(l10n.settingsSectionTranscript, [
         l10n.settingsSectionTranscriptHint,
       ]);

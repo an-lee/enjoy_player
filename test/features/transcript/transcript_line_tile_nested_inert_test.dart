@@ -9,6 +9,8 @@ import 'package:enjoy_player/features/transcript/presentation/transcript_line_ti
 import 'package:enjoy_player/features/transcript/presentation/transcript_markup.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
+import '../../helpers/transcript_settings_overrides.dart';
+
 class _BlurMode extends TranscriptBlurMode {
   _BlurMode(this._initial);
   final bool _initial;
@@ -21,6 +23,7 @@ Widget _harness(Widget child) {
   return ProviderScope(
     overrides: [
       transcriptBlurModeProvider.overrideWith(() => _BlurMode(false)),
+      ...transcriptWordPracticeOffOverrides(),
     ],
     child: MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -138,6 +141,7 @@ void main() {
         overrides: [
           transcriptBlurModeProvider.overrideWith(() => _BlurMode(false)),
           karaokeWordIndexProvider('test').overrideWithValue(null),
+          ...transcriptWordPracticeOffOverrides(),
         ],
         child: MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,

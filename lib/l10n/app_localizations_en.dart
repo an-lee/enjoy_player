@@ -1021,6 +1021,31 @@ class AppLocalizationsEn extends AppLocalizations {
       'When on, highlight the spoken word if the cue already has word timings. Off (default) keeps line-level highlighting.';
 
   @override
+  String get settingsTranscriptIpaOverlayTitle => 'Show pronunciation (IPA)';
+
+  @override
+  String get settingsTranscriptIpaOverlaySubtitle =>
+      'When on, show stored pronunciation above words that already have phone labels. Off (default) keeps the line as transcript text only.';
+
+  @override
+  String get settingsTranscriptWordPracticeTitle => 'Word-level practice';
+
+  @override
+  String get settingsTranscriptWordPracticeSubtitle =>
+      'When on, tap a timed word to hear it. Loop and inspect are available on the current line. Off (default) keeps line-level taps.';
+
+  @override
+  String get transcriptWordLoopTooltip => 'Loop this word';
+
+  @override
+  String get transcriptWordInspectTooltip => 'Inspect pronunciation';
+
+  @override
+  String transcriptWordInspectTitle(String word) {
+    return 'Pronunciation: $word';
+  }
+
+  @override
   String get settingsRecordingMicTitle => 'Microphone';
 
   @override

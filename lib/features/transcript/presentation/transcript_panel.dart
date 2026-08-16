@@ -18,7 +18,9 @@ import 'package:enjoy_player/l10n/app_localizations.dart';
 import 'package:enjoy_player/features/onboarding/application/onboarding_controller.dart';
 import 'package:enjoy_player/features/onboarding/domain/tip_eligibility.dart';
 import 'package:enjoy_player/features/player/application/player_controller.dart';
+import 'package:enjoy_player/features/settings/application/ipa_overlay_settings.dart';
 import 'package:enjoy_player/features/settings/application/karaoke_highlight_settings.dart';
+import 'package:enjoy_player/features/settings/application/word_practice_settings.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_fetch_controller.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_lines_provider.dart';
 import 'package:enjoy_player/features/transcript/domain/transcript_fetch_status.dart';
@@ -122,6 +124,8 @@ class _TranscriptPanelState extends ConsumerState<TranscriptPanel> {
     // Start the SettingsDao read during skeleton/empty so a persisted on is
     // resolved before (or as) the list mounts — not frozen off until then.
     ref.watch(karaokeHighlightSettingsProvider);
+    ref.watch(ipaOverlaySettingsProvider);
+    ref.watch(wordPracticeSettingsProvider);
     final linesAsync = ref.watch(transcriptLinesForMediaProvider(mediaId));
     final fetchState = ref.watch(transcriptFetchStatusProvider(mediaId));
 

@@ -1,7 +1,10 @@
 /// Single transcript cue row with timestamp, markup, and tap target.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:enjoy_player/core/interaction/enjoy_tappable.dart';
@@ -12,6 +15,11 @@ import 'package:enjoy_player/core/theme/typography.dart';
 import 'package:enjoy_player/core/transcript/transcript_density.dart';
 import 'package:enjoy_player/data/subtitle/current_transcript_word.dart';
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
+import 'package:enjoy_player/data/subtitle/transcript_word_ipa.dart';
+import 'package:enjoy_player/features/player/application/player_interactions.dart';
+import 'package:enjoy_player/features/settings/application/ipa_overlay_settings.dart';
+import 'package:enjoy_player/features/settings/application/word_practice_settings.dart';
+import 'package:enjoy_player/features/transcript/application/active_cue_word_index_provider.dart';
 import 'package:enjoy_player/features/transcript/application/karaoke_word_index_provider.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_blur_mode_provider.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_cue_reveal_provider.dart';
@@ -21,6 +29,8 @@ import 'package:enjoy_player/features/transcript/presentation/transcript_blur_te
 import 'package:enjoy_player/features/transcript/presentation/transcript_line_recording_badge.dart';
 import 'package:enjoy_player/features/transcript/presentation/transcript_line_selection_toolbar.dart';
 import 'package:enjoy_player/features/transcript/presentation/transcript_markup.dart';
+import 'package:enjoy_player/features/transcript/presentation/transcript_word_ipa_layer.dart';
+import 'package:enjoy_player/features/transcript/presentation/word_phone_inspect_sheet.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
 class TranscriptLineTile extends ConsumerStatefulWidget {
@@ -31,6 +41,7 @@ class TranscriptLineTile extends ConsumerStatefulWidget {
     required this.isActive,
     required this.inEcho,
     required this.onTap,
+    this.lineIndex = 0,
     this.groupedInEcho = false,
     this.selectable = false,
     this.recordingCount,
@@ -44,6 +55,9 @@ class TranscriptLineTile extends ConsumerStatefulWidget {
   final String? secondaryText;
   final bool isActive;
   final bool inEcho;
+
+  /// Index of [line] in the primary track (word seek / loop).
+  final int lineIndex;
 
   /// Echo cues rendered inside the echo-region transcript shell: flat rows.
   final bool groupedInEcho;
@@ -70,6 +84,8 @@ class TranscriptLineTile extends ConsumerStatefulWidget {
 
 class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
   final _hover = ValueNotifier<bool>(false);
+  final _primaryTextKey = GlobalKey();
+  Offset? _tapGlobal;
 
   @override
   void dispose() {
@@ -78,6 +94,7 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
   }
 
   void _handleTap(BuildContext context) {
+    if (_trySeekWord()) return;
     Haptics.selection(context);
     if (ref.read(transcriptBlurModeProvider)) {
       ref
@@ -101,6 +118,48 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
           cueId: cueIdFor(widget.line),
           holdSeconds: kTapRevealHoldSeconds,
         );
+  }
+
+  bool _cueRevealedForPractice() {
+    if (!ref.read(transcriptBlurModeProvider)) return true;
+    if (_hover.value) return true;
+    return ref.read(
+      transcriptCueRevealProvider(widget.mediaId, cueIdFor(widget.line)),
+    );
+  }
+
+  bool _trySeekWord() {
+    if (widget.selectable) return false;
+    if (ref.read(wordPracticeSettingsProvider).value != true) return false;
+    // Hidden blur geometry must not be a word-seek hit target (spec 006).
+    if (!_cueRevealedForPractice()) return false;
+    final global = _tapGlobal;
+    if (global == null) return false;
+    final box = _primaryTextKey.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return false;
+    final local = box.globalToLocal(global);
+    if (!(Offset.zero & box.size).contains(local)) return false;
+    var utfOffset = 0;
+    if (box is RenderParagraph) {
+      utfOffset = box.getPositionForOffset(local).offset;
+    } else {
+      return false;
+    }
+    final plain = transcriptPlainForSelection(widget.line.text);
+    final index = wordIndexAtPlainOffset(
+      plain,
+      widget.line.timeline,
+      utfOffset,
+    );
+    if (index == null) return false;
+    if (wordMediaWindowMs(widget.line, index) == null) return false;
+    Haptics.selection(context);
+    unawaited(
+      ref
+          .read(playerInteractionsProvider.notifier)
+          .seekToWord(widget.line, widget.lineIndex, index),
+    );
+    return true;
   }
 
   String _snippet(String plain) {
@@ -179,13 +238,31 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
       highlightRange: karaokeRange,
       highlightFill: karaokeFill,
     );
-    final primaryWidget = widget.selectable
+    final overlayOn = ref.watch(ipaOverlaySettingsProvider).value == true;
+    final practiceOn = ref.watch(wordPracticeSettingsProvider).value == true;
+    int? practiceWordIndex;
+    // Selectable echo rows that are the current playback cue can loop/inspect.
+    if (practiceOn && widget.selectable && widget.isActive) {
+      practiceWordIndex = ref.watch(activeCueWordIndexProvider(widget.mediaId));
+    }
+
+    Widget primaryOrthography = widget.selectable
         ? TranscriptSelectableRichText(
             span: primarySpan,
             onTap: _revealHoldOnly,
             onLookupRequested: widget.onLookupRequested,
           )
-        : Text.rich(primarySpan);
+        : Text.rich(primarySpan, key: _primaryTextKey);
+
+    List<String> inspectPieces = const [];
+    if (practiceWordIndex != null) {
+      final words = widget.line.timeline;
+      if (words != null &&
+          practiceWordIndex >= 0 &&
+          practiceWordIndex < words.length) {
+        inspectPieces = wordIpaPieces(words[practiceWordIndex]);
+      }
+    }
 
     Widget? secondaryWidget;
     if (widget.secondaryText != null) {
@@ -236,6 +313,26 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
 
         final isRevealed = !blurEnabled || hover || providerRevealed;
 
+        Widget primaryWidget = primaryOrthography;
+        if (overlayOn &&
+            isRevealed &&
+            widget.line.timeline != null &&
+            widget.line.timeline!.isNotEmpty) {
+          final ipaStyle = baseBody.copyWith(
+            fontSize: (baseBody.fontSize ?? 16) * 0.7,
+            height: 1.1,
+            color: scheme.onSurfaceVariant,
+            fontWeight: FontWeight.w400,
+          );
+          primaryWidget = TranscriptWordIpaLayer(
+            plain: primaryPlain,
+            words: widget.line.timeline,
+            wordStyle: baseBody,
+            ipaStyle: ipaStyle,
+            child: primaryOrthography,
+          );
+        }
+
         final blurredPrimary = TranscriptBlurText(
           revealed: isRevealed,
           child: primaryWidget,
@@ -256,6 +353,50 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
                 children: [
                   Text(timestampText, style: timestampStyle),
                   const Spacer(),
+                  if (isRevealed && practiceWordIndex != null) ...[
+                    EnjoyTappableIcon(
+                      icon: Icons.repeat_one,
+                      tooltip:
+                          l10n?.transcriptWordLoopTooltip ?? 'Loop this word',
+                      iconSize: 18,
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () {
+                        unawaited(
+                          ref
+                              .read(playerInteractionsProvider.notifier)
+                              .toggleWordLoop(
+                                widget.line,
+                                widget.lineIndex,
+                                practiceWordIndex!,
+                              ),
+                        );
+                      },
+                    ),
+                    if (inspectPieces.isNotEmpty)
+                      EnjoyTappableIcon(
+                        icon: Icons.record_voice_over_outlined,
+                        tooltip:
+                            l10n?.transcriptWordInspectTooltip ??
+                            'Inspect pronunciation',
+                        iconSize: 18,
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () {
+                          final words = widget.line.timeline;
+                          final idx = practiceWordIndex!;
+                          final wordText =
+                              (words != null && idx >= 0 && idx < words.length)
+                              ? words[idx].text
+                              : '';
+                          unawaited(
+                            showWordPhoneInspectSheet(
+                              context: context,
+                              wordText: wordText,
+                              pieces: inspectPieces,
+                            ),
+                          );
+                        },
+                      ),
+                  ],
                   TranscriptLineRecordingBadge(count: widget.recordingCount),
                 ],
               ),
@@ -344,6 +485,7 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
             child: Material(
               color: bg ?? Colors.transparent,
               child: InkWell(
+                onTapDown: (d) => _tapGlobal = d.globalPosition,
                 onTap: () => _handleTap(context),
                 highlightColor: scheme.onSurface.withValues(alpha: 0.04),
                 splashColor: scheme.primary.withValues(alpha: 0.06),
@@ -368,6 +510,7 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
               ),
               child: InkWell(
                 borderRadius: BorderRadius.circular(tok.radiusSm),
+                onTapDown: (d) => _tapGlobal = d.globalPosition,
                 onTap: () => _handleTap(context),
                 hoverColor: Colors.transparent,
                 highlightColor: scheme.primary.withValues(alpha: 0.06),

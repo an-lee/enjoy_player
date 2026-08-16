@@ -3,9 +3,11 @@ library;
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../data/subtitle/current_transcript_word.dart';
 import '../../../data/subtitle/transcript_line.dart';
 import '../../transcript/application/transcript_blur_mode_provider.dart';
 import '../../transcript/application/transcript_repository_provider.dart';
+import '../../transcript/application/word_practice_session.dart';
 import '../domain/transport_decisions.dart';
 import 'echo_mode_provider.dart';
 import 'playback_session_persister.dart';
@@ -138,7 +140,15 @@ class PlayerInteractions extends _$PlayerInteractions {
     await ref.read(playerControllerProvider.notifier).play();
   }
 
+  void _clearWordLoop() {
+    final mediaId = ref.read(playerControllerProvider)?.mediaId;
+    if (mediaId == null) return;
+    if (!ref.exists(wordPracticeSessionProvider(mediaId))) return;
+    ref.read(wordPracticeSessionProvider(mediaId).notifier).clearLoop();
+  }
+
   Future<void> _seekLine(TranscriptLine line, int index) async {
+    _clearWordLoop();
     final echo = ref.read(echoModeProvider);
     if (echo.active) {
       ref
@@ -255,6 +265,7 @@ class PlayerInteractions extends _$PlayerInteractions {
     );
     switch (decision) {
       case ProgressSeekValid(:final timeSeconds):
+        _clearWordLoop();
         await ref
             .read(playerControllerProvider.notifier)
             .seekToSeconds(timeSeconds);
@@ -264,5 +275,77 @@ class PlayerInteractions extends _$PlayerInteractions {
 
   Future<void> seekToLine(TranscriptLine line, int index) async {
     await _seekLine(line, index);
+  }
+
+  /// Seek to a timed word's media start. Echo already on retargets echo to
+  /// [line] (same as line tap) but lands on the word, not the line start.
+  Future<void> seekToWord(
+    TranscriptLine line,
+    int lineIndex,
+    int wordIndex, {
+    bool keepLoop = false,
+  }) async {
+    final window = wordMediaWindowMs(line, wordIndex);
+    if (window == null) {
+      await _seekLine(line, lineIndex);
+      return;
+    }
+    final session = ref.read(playerControllerProvider);
+    if (session == null) return;
+    final mediaId = session.mediaId;
+    final practice = ref.read(wordPracticeSessionProvider(mediaId).notifier);
+    if (!keepLoop) practice.clearLoop();
+    practice.chooseWord(lineIndex: lineIndex, wordIndex: wordIndex);
+    final seconds = window.startMs / 1000.0;
+    final echo = ref.read(echoModeProvider);
+    if (echo.active) {
+      ref
+          .read(echoModeProvider.notifier)
+          .activate(
+            startLineIndex: lineIndex,
+            endLineIndex: lineIndex,
+            startTimeSeconds: line.startSeconds,
+            endTimeSeconds: line.endSeconds,
+          );
+      await ref
+          .read(playerControllerProvider.notifier)
+          .seekToSeconds(
+            seconds,
+            echoWindowForSeekClamp: (
+              start: line.startSeconds,
+              end: line.endSeconds,
+            ),
+          );
+    } else {
+      await ref.read(playerControllerProvider.notifier).seekToSeconds(seconds);
+    }
+    await ref.read(playerControllerProvider.notifier).play();
+  }
+
+  Future<void> toggleWordLoop(
+    TranscriptLine line,
+    int lineIndex,
+    int wordIndex,
+  ) async {
+    final session = ref.read(playerControllerProvider);
+    if (session == null) return;
+    final mediaId = session.mediaId;
+    final window = wordMediaWindowMs(line, wordIndex);
+    if (window == null) return;
+    final current = ref.read(wordPracticeSessionProvider(mediaId));
+    final notifier = ref.read(wordPracticeSessionProvider(mediaId).notifier);
+    if (current.isLooping &&
+        current.loopLineIndex == lineIndex &&
+        current.loopWordIndex == wordIndex) {
+      notifier.clearLoop();
+      return;
+    }
+    notifier.startLoop(
+      lineIndex: lineIndex,
+      wordIndex: wordIndex,
+      startMs: window.startMs,
+      endMs: window.endMs,
+    );
+    await seekToWord(line, lineIndex, wordIndex, keepLoop: true);
   }
 }

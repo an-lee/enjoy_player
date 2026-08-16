@@ -326,6 +326,40 @@
   "@settingsTranscriptKaraokeSubtitle": {
     "description": "Settings switch subtitle explaining karaoke word highlight."
   },
+  "settingsTranscriptIpaOverlayTitle": "显示音标（IPA）",
+  "@settingsTranscriptIpaOverlayTitle": {
+    "description": "Settings switch title for opt-in stored IPA overlay on transcript words."
+  },
+  "settingsTranscriptIpaOverlaySubtitle": "开启后，在已有音标的词上方显示存储的读音。关闭（默认）仍只显示字幕文本。",
+  "@settingsTranscriptIpaOverlaySubtitle": {
+    "description": "Settings switch subtitle explaining stored IPA overlay."
+  },
+  "settingsTranscriptWordPracticeTitle": "单词练习",
+  "@settingsTranscriptWordPracticeTitle": {
+    "description": "Settings switch title for opt-in word tap, loop, and inspect."
+  },
+  "settingsTranscriptWordPracticeSubtitle": "开启后，点按时长词可跳到该词。当前行可循环或查看音标。关闭（默认）仍按整句点击。",
+  "@settingsTranscriptWordPracticeSubtitle": {
+    "description": "Settings switch subtitle explaining word-level practice."
+  },
+  "transcriptWordLoopTooltip": "循环此词",
+  "@transcriptWordLoopTooltip": {
+    "description": "Tooltip for looping the current timed word's media window."
+  },
+  "transcriptWordInspectTooltip": "查看读音",
+  "@transcriptWordInspectTooltip": {
+    "description": "Tooltip for listing stored phone labels of the current word."
+  },
+  "transcriptWordInspectTitle": "读音：{word}",
+  "@transcriptWordInspectTitle": {
+    "description": "Title of the on-demand stored-phone inspect sheet.",
+    "placeholders": {
+      "word": {
+        "type": "String",
+        "example": "Hello"
+      }
+    }
+  },
   "settingsRecordingMicTitle": "麦克风",
   "@settingsRecordingMicTitle": {
     "description": "Title of the microphone picker tile in settings."

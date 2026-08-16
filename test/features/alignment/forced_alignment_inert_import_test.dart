@@ -80,4 +80,14 @@ void main() {
     final settings = File('lib/data/db/settings_keys.dart').readAsStringSync();
     expect(settings.contains('transcript.karaokeHighlight'), isTrue);
   });
+
+  test('transcript IPA overlay and word practice keys are allowlisted', () {
+    expect(SettingsKeys.transcriptIpaOverlay, 'transcript.ipaOverlay');
+    expect(SettingsKeys.transcriptWordPractice, 'transcript.wordPractice');
+    expect(SettingsKeys.isKnown(SettingsKeys.transcriptIpaOverlay), isTrue);
+    expect(SettingsKeys.isKnown(SettingsKeys.transcriptWordPractice), isTrue);
+    final settings = File('lib/data/db/settings_keys.dart').readAsStringSync();
+    expect(settings.contains('transcript.ipaOverlay'), isTrue);
+    expect(settings.contains('transcript.wordPractice'), isTrue);
+  });
 }
