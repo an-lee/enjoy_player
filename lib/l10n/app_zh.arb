@@ -397,6 +397,14 @@
   "@settingsTranscriptEnrichmentSubtitle": {
     "description": "Settings switch subtitle explaining Craft timeline enrichment."
   },
+  "settingsTranscriptKaraokeTitle": "高亮当前词",
+  "@settingsTranscriptKaraokeTitle": {
+    "description": "Settings switch title for opt-in karaoke word highlight in the transcript panel."
+  },
+  "settingsTranscriptKaraokeSubtitle": "开启后，若该句已有词级时间，播放时高亮正在说的词。关闭（默认）仍按整句高亮。",
+  "@settingsTranscriptKaraokeSubtitle": {
+    "description": "Settings switch subtitle explaining karaoke word highlight."
+  },
   "settingsRecordingMicTitle": "麦克风",
   "@settingsRecordingMicTitle": {
     "description": "Title of the microphone picker tile in settings."

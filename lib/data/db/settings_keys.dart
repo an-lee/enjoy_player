@@ -58,6 +58,11 @@ abstract final class SettingsKeys {
   static const String transcriptTimelineEnrichment =
       'transcript.timelineEnrichment';
 
+  /// When `true`, the transcript panel highlights the current word if the cue
+  /// already has stored word timings. Missing value ≡ off.
+  static const String transcriptKaraokeHighlight =
+      'transcript.karaokeHighlight';
+
   /// JSON blob: volume, rate, repeat, split width ([PlayerPreferencesCtrl]).
   static const String playerPreferencesV1 = 'player_preferences_v1';
 
@@ -104,6 +109,7 @@ abstract final class SettingsKeys {
     updateSnoozeVersion,
     diagnosticsVerboseEnabled,
     transcriptTimelineEnrichment,
+    transcriptKaraokeHighlight,
     playerPreferencesV1,
     hotkeysCustomBindings,
     aiModalityConfigsV1,

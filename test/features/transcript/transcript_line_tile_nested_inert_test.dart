@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
+import 'package:enjoy_player/features/transcript/application/karaoke_word_index_provider.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_blur_mode_provider.dart';
 import 'package:enjoy_player/features/transcript/presentation/transcript_line_tile.dart';
 import 'package:enjoy_player/features/transcript/presentation/transcript_markup.dart';
@@ -95,4 +96,87 @@ void main() {
       }
     },
   );
+
+  testWidgets('karaoke off: nested cue tap still fires as a line tap', (
+    tester,
+  ) async {
+    var taps = 0;
+    const nested = TranscriptLine(
+      text: 'Hello world',
+      startMs: 0,
+      durationMs: 2000,
+      timeline: [
+        TranscriptWord(text: 'Hello', startMs: 0, durationMs: 800),
+        TranscriptWord(text: 'world', startMs: 800, durationMs: 800),
+      ],
+    );
+    await tester.pumpWidget(
+      _harness(
+        TranscriptLineTile(
+          line: nested,
+          mediaId: 'test',
+          secondaryText: null,
+          isActive: false,
+          inEcho: false,
+          groupedInEcho: false,
+          selectable: false,
+          onTap: () => taps++,
+        ),
+      ),
+    );
+    await tester.tap(find.byType(InkWell));
+    expect(taps, 1);
+    expect(find.text('Hello world'), findsOneWidget);
+    expect(find.text('həˈloʊ'), findsNothing);
+  });
+
+  testWidgets('karaoke off: active nested cue has no in-place word highlight', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          transcriptBlurModeProvider.overrideWith(() => _BlurMode(false)),
+          karaokeWordIndexProvider('test').overrideWithValue(null),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: TranscriptLineTile(
+              line: const TranscriptLine(
+                text: 'Hello world',
+                startMs: 0,
+                durationMs: 2000,
+                timeline: [
+                  TranscriptWord(text: 'Hello', startMs: 0, durationMs: 800),
+                  TranscriptWord(text: 'world', startMs: 800, durationMs: 800),
+                ],
+              ),
+              mediaId: 'test',
+              secondaryText: null,
+              isActive: true,
+              inEcho: false,
+              selectable: false,
+              onTap: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final richTexts = tester.widgetList<RichText>(find.byType(RichText));
+    for (final rt in richTexts) {
+      expect(_spanHasBackground(rt.text), isFalse);
+    }
+    expect(find.byType(Chip), findsNothing);
+  });
+}
+
+bool _spanHasBackground(InlineSpan span) {
+  if (span is TextSpan) {
+    if (span.style?.backgroundColor != null) return true;
+    return span.children?.any(_spanHasBackground) ?? false;
+  }
+  return false;
 }

@@ -1014,6 +1014,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'When on, Craft save stores word and phone times from on-device alignment. Off (default) keeps today’s synthesis line timings.';
 
   @override
+  String get settingsTranscriptKaraokeTitle => 'Highlight current word';
+
+  @override
+  String get settingsTranscriptKaraokeSubtitle =>
+      'When on, highlight the spoken word if the cue already has word timings. Off (default) keeps line-level highlighting.';
+
+  @override
   String get settingsRecordingMicTitle => 'Microphone';
 
   @override

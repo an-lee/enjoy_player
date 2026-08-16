@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
+import 'package:enjoy_player/features/settings/application/karaoke_highlight_settings.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_blur_mode_provider.dart';
 import 'package:enjoy_player/features/transcript/presentation/transcript_line_tile.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
@@ -11,6 +12,7 @@ Widget transcriptTileHarness(Widget child) {
   return ProviderScope(
     overrides: [
       transcriptBlurModeProvider.overrideWith(() => _BlurMode(false)),
+      karaokeHighlightSettingsProvider.overrideWith(_KaraokeHighlightOff.new),
     ],
     child: MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -26,6 +28,11 @@ class _BlurMode extends TranscriptBlurMode {
 
   @override
   bool build() => _initial;
+}
+
+class _KaraokeHighlightOff extends KaraokeHighlightSettings {
+  @override
+  Future<bool> build() async => false;
 }
 
 void main() {

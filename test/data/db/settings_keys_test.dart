@@ -48,6 +48,13 @@ void main() {
       );
     });
 
+    test('transcript karaoke highlight key', () {
+      expect(
+        SettingsKeys.transcriptKaraokeHighlight,
+        'transcript.karaokeHighlight',
+      );
+    });
+
     test('diagnostics / hotkeys / ai / youtube keys', () {
       expect(
         SettingsKeys.diagnosticsVerboseEnabled,
@@ -113,6 +120,7 @@ void main() {
         SettingsKeys.updateSnoozeVersion,
         SettingsKeys.diagnosticsVerboseEnabled,
         SettingsKeys.transcriptTimelineEnrichment,
+        SettingsKeys.transcriptKaraokeHighlight,
         SettingsKeys.playerPreferencesV1,
         SettingsKeys.hotkeysCustomBindings,
         SettingsKeys.aiModalityConfigsV1,

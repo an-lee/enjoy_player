@@ -61,22 +61,33 @@ void main() {
   });
 
   group('kSettingsRegistry', () {
-    test('includes Transcript section and timelineEnrichment row', () {
-      expect(
-        kSettingsRegistry.any(
-          (d) =>
-              d.sectionId == SettingsSectionIds.transcript && d.rowId == null,
-        ),
-        isTrue,
-      );
-      expect(
-        kSettingsRegistry.any(
-          (d) =>
-              d.sectionId == SettingsSectionIds.transcript &&
-              d.rowId == 'timelineEnrichment',
-        ),
-        isTrue,
-      );
-    });
+    test(
+      'includes Transcript section, timelineEnrichment, and karaokeHighlight',
+      () {
+        expect(
+          kSettingsRegistry.any(
+            (d) =>
+                d.sectionId == SettingsSectionIds.transcript && d.rowId == null,
+          ),
+          isTrue,
+        );
+        expect(
+          kSettingsRegistry.any(
+            (d) =>
+                d.sectionId == SettingsSectionIds.transcript &&
+                d.rowId == 'timelineEnrichment',
+          ),
+          isTrue,
+        );
+        expect(
+          kSettingsRegistry.any(
+            (d) =>
+                d.sectionId == SettingsSectionIds.transcript &&
+                d.rowId == 'karaokeHighlight',
+          ),
+          isTrue,
+        );
+      },
+    );
   });
 }
