@@ -338,9 +338,45 @@
   "@transcriptDisplaySettingsTitle": {
     "description": "Section title for karaoke and IPA toggles in the subtitle track picker."
   },
-  "transcriptIpaUnavailableHint": "需先有 Craft 对齐后的音标。",
+  "transcriptIpaUnavailableHint": "请先生成音标。",
   "@transcriptIpaUnavailableHint": {
     "description": "Hint when IPA toggle is unavailable because the transcript has no phones."
+  },
+  "transcriptKaraokeUnavailableHint": "请先生成逐词时间。",
+  "@transcriptKaraokeUnavailableHint": {
+    "description": "Hint when karaoke is off because the primary track has no timed words."
+  },
+  "transcriptKaraokeUnavailableRemoteHint": "卡拉 OK 高亮需要本地文件的逐词时间。",
+  "@transcriptKaraokeUnavailableRemoteHint": {
+    "description": "Hint when karaoke stays off for YouTube or other non-extractable media."
+  },
+  "transcriptEnrichOwnedTitle": "生成逐词时间和对齐音标",
+  "@transcriptEnrichOwnedTitle": {
+    "description": "CC-sheet tile title to align words + IPA from this item's local audio."
+  },
+  "transcriptEnrichOwnedSubtitle": "使用本条目的音频，播放不受影响。",
+  "@transcriptEnrichOwnedSubtitle": {
+    "description": "CC-sheet tile subtitle for owned-media transcript enrichment."
+  },
+  "transcriptEnrichYoutubeTitle": "生成音标",
+  "@transcriptEnrichYoutubeTitle": {
+    "description": "CC-sheet tile title to phonemize YouTube captions without downloading video."
+  },
+  "transcriptEnrichYoutubeSubtitle": "卡拉 OK 高亮仍不可用，不会下载视频。",
+  "@transcriptEnrichYoutubeSubtitle": {
+    "description": "CC-sheet tile subtitle for YouTube IPA-only enrichment."
+  },
+  "transcriptEnrichCancel": "取消生成",
+  "@transcriptEnrichCancel": {
+    "description": "Busy enrich tile title that cancels an in-flight run."
+  },
+  "transcriptEnrichRetry": "重新生成",
+  "@transcriptEnrichRetry": {
+    "description": "Enrich tile title after a failed run."
+  },
+  "transcriptEnrichFailed": "无法生成。点按重试。",
+  "@transcriptEnrichFailed": {
+    "description": "Inline error on the enrich tile after failure or cancel."
   },
   "settingsRecordingMicTitle": "麦克风",
   "@settingsRecordingMicTitle": {

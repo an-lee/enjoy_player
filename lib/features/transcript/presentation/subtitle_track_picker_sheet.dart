@@ -16,6 +16,7 @@ import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_modal.dart';
 import 'package:enjoy_player/core/theme/widgets/sheet_drag_handle.dart';
 import 'package:enjoy_player/core/theme/widgets/skeleton.dart';
+import 'package:enjoy_player/data/subtitle/transcript_display_readiness.dart';
 import 'package:enjoy_player/features/auth/application/auth_controller.dart';
 import 'package:enjoy_player/features/auth/domain/auth_state.dart';
 import 'package:enjoy_player/features/auth/presentation/widgets/auth_required_callout.dart';
@@ -32,14 +33,13 @@ import 'transcript_embedded_extract.dart';
 import '../../player/application/player_controller.dart';
 import '../application/active_transcript_provider.dart';
 import '../application/all_transcripts_provider.dart';
+import '../application/transcript_display_readiness_provider.dart';
 import '../application/transcript_fetch_controller.dart';
-import '../application/transcript_lines_provider.dart';
 import '../application/transcript_repository_provider.dart';
 import '../application/video_row_for_media_provider.dart';
 import '../domain/transcript_fetch_status.dart';
 import '../domain/transcript_track.dart';
 import 'transcript_display_settings_sheet.dart';
-import 'transcript_word_ipa_layer.dart';
 
 enum SubtitleTrackPickerPresentation { sheet, dialog }
 
@@ -272,7 +272,7 @@ class _SubtitleTrackPickerSheetState
     required String targetLanguage,
     required AutoTranslateUiState autoTranslateState,
     required bool signedIn,
-    required bool hasPhones,
+    required TranscriptDisplayReadiness readiness,
   }) {
     final theme = Theme.of(context);
     final translationTracks = tracks
@@ -455,7 +455,8 @@ class _SubtitleTrackPickerSheetState
       ),
       SizedBox(height: t.space16),
       TranscriptDisplaySettingsSection(
-        hasPhones: hasPhones,
+        mediaId: widget.mediaId,
+        readiness: readiness,
         horizontalPadding: sheetHorizontalPadding(t),
       ),
       SizedBox(height: t.space16),
@@ -546,7 +547,7 @@ class _SubtitleTrackPickerSheetState
     required String targetLanguage,
     required AutoTranslateUiState autoTranslateState,
     required bool signedIn,
-    required bool hasPhones,
+    required TranscriptDisplayReadiness readiness,
   }) {
     final cs = Theme.of(context).colorScheme;
 
@@ -566,7 +567,7 @@ class _SubtitleTrackPickerSheetState
         targetLanguage: targetLanguage,
         autoTranslateState: autoTranslateState,
         signedIn: signedIn,
-        hasPhones: hasPhones,
+        readiness: readiness,
       );
 
       if (isDialog) {
@@ -711,13 +712,8 @@ class _SubtitleTrackPickerSheetState
             ?.effectiveNativeLanguage ??
         '';
     final signedIn = ref.watch(authCtrlProvider).valueOrNull is AuthSignedIn;
-    final linesAsync = ref.watch(
-      transcriptLinesForMediaProvider(widget.mediaId),
-    );
-    final hasPhones = linesAsync.maybeWhen(
-      data: (lines) =>
-          lines.any((line) => transcriptWordsHavePhones(line.timeline)),
-      orElse: () => false,
+    final readiness = ref.watch(
+      transcriptDisplayReadinessForMediaProvider(widget.mediaId),
     );
 
     Widget columnBody(ScrollController sc) {
@@ -745,7 +741,7 @@ class _SubtitleTrackPickerSheetState
         targetLanguage: targetLanguage,
         autoTranslateState: autoTranslateState,
         signedIn: signedIn,
-        hasPhones: hasPhones,
+        readiness: readiness,
       );
 
       if (isDialog) {

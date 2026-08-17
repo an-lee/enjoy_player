@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:enjoy_player/core/theme/colors.dart';
 import 'package:enjoy_player/data/subtitle/ipa_mapping.dart';
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
 import 'package:enjoy_player/features/settings/application/karaoke_highlight_settings.dart';
@@ -78,6 +79,22 @@ const _mixedEmptyPhones = TranscriptLine(
   ],
 );
 
+const _untimedIpa = TranscriptLine(
+  text: 'Hello world',
+  startMs: 0,
+  durationMs: 2000,
+  timeline: [
+    TranscriptWord(
+      text: 'Hello',
+      phones: [TranscriptPhone(phone: 'hɛˈloʊ', text: 'hɛˈloʊ')],
+    ),
+    TranscriptWord(
+      text: 'world',
+      phones: [TranscriptPhone(phone: 'wɝld', text: 'wɝld')],
+    ),
+  ],
+);
+
 const _lineOnly = TranscriptLine(
   text: 'Hello world',
   startMs: 0,
@@ -146,6 +163,9 @@ void main() {
       expect(find.text('Hello'), findsWidgets);
       expect(find.byType(Chip), findsNothing);
 
+      final ipaText = tester.widget<Text>(find.text(helloIpa).first);
+      expect(ipaText.style?.color, AppColors.echoActive);
+
       await tester.tap(find.byType(InkWell).first);
       expect(taps, 1);
 
@@ -202,4 +222,29 @@ void main() {
     expect(find.text(worldIpa), findsOneWidget);
     expect(find.byType(Chip), findsNothing);
   });
+
+  testWidgets(
+    'untimed IPA labels still render; missing word windows do not seek',
+    (tester) async {
+      await tester.pumpWidget(
+        _harness(
+          extraOverrides: transcriptIpaOverlayOnOverrides(),
+          child: TranscriptLineTile(
+            line: _untimedIpa,
+            mediaId: 'test',
+            secondaryText: null,
+            isActive: false,
+            inEcho: false,
+            selectable: false,
+            onTap: () {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TranscriptAlignedWords), findsOneWidget);
+      expect(find.text(helloIpa), findsOneWidget);
+      expect(find.text(worldIpa), findsOneWidget);
+    },
+  );
 }

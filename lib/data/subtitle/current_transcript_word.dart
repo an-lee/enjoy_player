@@ -28,9 +28,9 @@ int? currentWordIndex(TranscriptLine line, int positionMs) {
   int? last;
   for (var i = 0; i < words.length; i++) {
     final word = words[i];
-    if (word.text.trim().isEmpty || word.durationMs <= 0) continue;
-    final start = lineStart + word.startMs;
-    final end = start + word.durationMs;
+    if (word.text.trim().isEmpty || !_isTimedWord(word)) continue;
+    final start = lineStart + (word.startMs ?? 0);
+    final end = start + word.durationMs!;
     if (end <= lineStart || start >= lineEnd) continue;
     if (positionMs >= start && positionMs < end) {
       last = i;
@@ -116,11 +116,16 @@ int? wordIndexAtPlainOffset(
   final words = line.timeline;
   if (words == null || wordIndex < 0 || wordIndex >= words.length) return null;
   final word = words[wordIndex];
-  if (word.text.trim().isEmpty || word.durationMs <= 0) return null;
+  if (word.text.trim().isEmpty || !_isTimedWord(word)) return null;
   final lineStart = line.startMs;
   final lineEnd = line.startMs + line.durationMs;
-  final start = lineStart + word.startMs;
-  final end = start + word.durationMs;
+  final start = lineStart + (word.startMs ?? 0);
+  final end = start + word.durationMs!;
   if (end <= lineStart || start >= lineEnd) return null;
   return (startMs: start, endMs: end);
+}
+
+bool _isTimedWord(TranscriptWord word) {
+  final duration = word.durationMs;
+  return duration != null && duration > 0;
 }

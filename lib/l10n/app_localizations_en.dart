@@ -1031,8 +1031,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transcriptDisplaySettingsTitle => 'Transcript display';
 
   @override
-  String get transcriptIpaUnavailableHint =>
-      'Needs Craft-aligned phones first.';
+  String get transcriptIpaUnavailableHint => 'Generate pronunciation first.';
+
+  @override
+  String get transcriptKaraokeUnavailableHint => 'Generate word timings first.';
+
+  @override
+  String get transcriptKaraokeUnavailableRemoteHint =>
+      'Karaoke needs word timings from a local file.';
+
+  @override
+  String get transcriptEnrichOwnedTitle =>
+      'Generate word timings and pronunciation';
+
+  @override
+  String get transcriptEnrichOwnedSubtitle =>
+      'Uses this item\'s audio. Playback stays available.';
+
+  @override
+  String get transcriptEnrichYoutubeTitle => 'Generate pronunciation';
+
+  @override
+  String get transcriptEnrichYoutubeSubtitle =>
+      'Karaoke stays unavailable. The video is not downloaded.';
+
+  @override
+  String get transcriptEnrichCancel => 'Cancel generation';
+
+  @override
+  String get transcriptEnrichRetry => 'Try generating again';
+
+  @override
+  String get transcriptEnrichFailed => 'Couldn\'t generate. Tap to try again.';
 
   @override
   String get settingsRecordingMicTitle => 'Microphone';

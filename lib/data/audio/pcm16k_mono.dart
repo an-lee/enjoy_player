@@ -30,6 +30,72 @@ Future<Float32List> decodeToPcm16kMono(Uint8List bytes) async {
   return _ffmpegFallback(bytes);
 }
 
+/// Decode a local media [pathOrUri] to 16 kHz mono Float32.
+Future<Float32List> decodeFileToPcm16kMono(String pathOrUri) async {
+  final input = FfmpegMediaProbe.mediaInputForFfmpeg(pathOrUri);
+  final file = File(input);
+  if (!file.existsSync()) {
+    throw Pcm16kDecodeException('file does not exist: $input');
+  }
+  return decodeToPcm16kMono(await file.readAsBytes());
+}
+
+/// Decode a time window of a local media file to 16 kHz mono Float32.
+Future<Float32List> decodeFileWindowToPcm16kMono({
+  required String pathOrUri,
+  required double startSeconds,
+  required double durationSeconds,
+}) async {
+  final input = FfmpegMediaProbe.mediaInputForFfmpeg(pathOrUri);
+  if (!File(input).existsSync()) {
+    throw Pcm16kDecodeException('file does not exist: $input');
+  }
+  final ffmpeg = await FfmpegMediaProbe.resolveFfmpegExecutable();
+  if (ffmpeg == null) {
+    throw const Pcm16kDecodeException('ffmpeg unavailable');
+  }
+  final start = startSeconds < 0 ? 0.0 : startSeconds;
+  final duration = durationSeconds <= 0 ? 0.05 : durationSeconds;
+  final dir = await Directory.systemTemp.createTemp('enjoy_pcm16k_win_');
+  try {
+    final output = File('${dir.path}${Platform.pathSeparator}out.wav');
+    final result = await Process.run(ffmpeg, [
+      '-hide_banner',
+      '-nostdin',
+      '-y',
+      '-ss',
+      start.toStringAsFixed(3),
+      '-t',
+      duration.toStringAsFixed(3),
+      '-i',
+      input,
+      '-ar',
+      '$kAlignmentSampleRate',
+      '-ac',
+      '1',
+      '-c:a',
+      'pcm_s16le',
+      output.path,
+    ]);
+    if (result.exitCode != 0 || !output.existsSync()) {
+      throw Pcm16kDecodeException(
+        'ffmpeg window extract failed (exit ${result.exitCode})',
+      );
+    }
+    final decoded = decodePcmWavTo16kMono(
+      Uint8List.fromList(await output.readAsBytes()),
+    );
+    if (decoded == null || decoded.isEmpty) {
+      throw const Pcm16kDecodeException('ffmpeg window output was not PCM WAV');
+    }
+    return decoded;
+  } finally {
+    try {
+      await dir.delete(recursive: true);
+    } on Object catch (_) {}
+  }
+}
+
 /// In-process RIFF WAVE decode + mix-to-mono + resample. Returns null when
 /// the payload is not a supported PCM/float WAV.
 Float32List? decodePcmWavTo16kMono(Uint8List bytes) {

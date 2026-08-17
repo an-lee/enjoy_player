@@ -14,7 +14,7 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:cross_file/cross_file.dart';
-import 'package:drift/drift.dart' show InsertMode;
+import 'package:drift/drift.dart' show InsertMode, Value;
 import 'package:flutter/foundation.dart' hide listEquals;
 import 'package:logging/logging.dart';
 import 'package:media_kit/media_kit.dart' as mk;
@@ -591,6 +591,28 @@ class TranscriptRepository {
 
   Future<TranscriptRow?> transcriptRowById(String transcriptId) =>
       _db.transcriptDao.getById(transcriptId);
+
+  /// Replaces [timelineJson] on an existing primary row in place.
+  ///
+  /// Preserves id, source, language, label, and target. Returns false when
+  /// the row is missing.
+  Future<bool> replaceTimeline({
+    required String transcriptId,
+    required List<TranscriptLine> lines,
+  }) async {
+    final existing = await _db.transcriptDao.getById(transcriptId);
+    if (existing == null) return false;
+    final timelineJson = jsonEncode(lines.map((e) => e.toJson()).toList());
+    await _db.transcriptDao.upsert(
+      existing.copyWith(
+        timelineJson: timelineJson,
+        updatedAt: DateTime.now(),
+        syncStatus: const Value('local'),
+      ),
+    );
+    _linesCache.remove(transcriptId);
+    return true;
+  }
 
   /// Picks the next primary transcript for [targetId] after delete:
   /// [official] > [auto] > [ai] > [user], then earliest [createdAt].

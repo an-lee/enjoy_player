@@ -18,8 +18,8 @@ class TranscriptPhone {
   const TranscriptPhone({
     required this.phone,
     required this.text,
-    required this.startTime,
-    required this.endTime,
+    this.startTime,
+    this.endTime,
     this.wordIndex,
   });
 
@@ -29,11 +29,11 @@ class TranscriptPhone {
   /// Display text; often the same as [phone].
   final String text;
 
-  /// Start time in seconds.
-  final double startTime;
+  /// Start time in seconds on the media timeline. Null when untimed (IPA-only).
+  final double? startTime;
 
-  /// End time in seconds.
-  final double endTime;
+  /// End time in seconds. Null when untimed.
+  final double? endTime;
 
   /// Index of the parent word in the line's [TranscriptLine.timeline].
   final int? wordIndex;
@@ -53,12 +53,11 @@ class TranscriptPhone {
   int get hashCode => Object.hash(phone, text, startTime, endTime, wordIndex);
 
   Map<String, dynamic> toJson() {
-    final map = <String, dynamic>{
-      'phone': phone,
-      'text': text,
-      'startTime': startTime,
-      'endTime': endTime,
-    };
+    final map = <String, dynamic>{'phone': phone, 'text': text};
+    final start = startTime;
+    if (start != null) map['startTime'] = start;
+    final end = endTime;
+    if (end != null) map['endTime'] = end;
     final index = wordIndex;
     if (index != null) map['wordIndex'] = index;
     return map;
@@ -71,8 +70,8 @@ class TranscriptPhone {
     return TranscriptPhone(
       phone: phone,
       text: _nonEmptyString(json['text']) ?? phone,
-      startTime: numOrNull(json['startTime'])?.toDouble() ?? 0,
-      endTime: numOrNull(json['endTime'])?.toDouble() ?? 0,
+      startTime: numOrNull(json['startTime'])?.toDouble(),
+      endTime: numOrNull(json['endTime'])?.toDouble(),
       wordIndex: intFromJson(json['wordIndex']),
     );
   }
@@ -86,14 +85,18 @@ class TranscriptPhone {
 class TranscriptWord {
   const TranscriptWord({
     required this.text,
-    this.startMs = 0,
-    this.durationMs = 0,
+    this.startMs,
+    this.durationMs,
     this.phones,
   });
 
   final String text;
-  final int startMs;
-  final int durationMs;
+
+  /// Milliseconds relative to the parent line. Null when untimed.
+  final int? startMs;
+
+  /// Duration in milliseconds. Null or `≤ 0` ⇒ not a karaoke / tap-IPA target.
+  final int? durationMs;
   final List<TranscriptPhone>? phones;
 
   @override
@@ -115,11 +118,11 @@ class TranscriptWord {
   );
 
   Map<String, dynamic> toJson() {
-    final map = <String, dynamic>{
-      'text': text,
-      'start': startMs,
-      'duration': durationMs,
-    };
+    final map = <String, dynamic>{'text': text};
+    final start = startMs;
+    if (start != null) map['start'] = start;
+    final duration = durationMs;
+    if (duration != null) map['duration'] = duration;
     final nested = phones;
     if (nested != null && nested.isNotEmpty) {
       map['phones'] = nested.map((p) => p.toJson()).toList();
@@ -133,8 +136,8 @@ class TranscriptWord {
     if (rawText is! String || rawText.isEmpty) return null;
     return TranscriptWord(
       text: rawText,
-      startMs: intFromJson(json['start']) ?? 0,
-      durationMs: intFromJson(json['duration']) ?? 0,
+      startMs: intFromJson(json['start']),
+      durationMs: intFromJson(json['duration']),
       phones: _phonesFromJson(json['phones']),
     );
   }

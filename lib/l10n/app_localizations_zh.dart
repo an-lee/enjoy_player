@@ -983,7 +983,34 @@ class AppLocalizationsZh extends AppLocalizations {
   String get transcriptDisplaySettingsTitle => '字幕显示';
 
   @override
-  String get transcriptIpaUnavailableHint => '需先有 Craft 对齐后的音标。';
+  String get transcriptIpaUnavailableHint => '请先生成音标。';
+
+  @override
+  String get transcriptKaraokeUnavailableHint => '请先生成逐词时间。';
+
+  @override
+  String get transcriptKaraokeUnavailableRemoteHint => '卡拉 OK 高亮需要本地文件的逐词时间。';
+
+  @override
+  String get transcriptEnrichOwnedTitle => '生成逐词时间和对齐音标';
+
+  @override
+  String get transcriptEnrichOwnedSubtitle => '使用本条目的音频，播放不受影响。';
+
+  @override
+  String get transcriptEnrichYoutubeTitle => '生成音标';
+
+  @override
+  String get transcriptEnrichYoutubeSubtitle => '卡拉 OK 高亮仍不可用，不会下载视频。';
+
+  @override
+  String get transcriptEnrichCancel => '取消生成';
+
+  @override
+  String get transcriptEnrichRetry => '重新生成';
+
+  @override
+  String get transcriptEnrichFailed => '无法生成。点按重试。';
 
   @override
   String get settingsRecordingMicTitle => '麦克风';
@@ -4470,7 +4497,34 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get transcriptDisplaySettingsTitle => '字幕显示';
 
   @override
-  String get transcriptIpaUnavailableHint => '需先有 Craft 对齐后的音标。';
+  String get transcriptIpaUnavailableHint => '请先生成音标。';
+
+  @override
+  String get transcriptKaraokeUnavailableHint => '请先生成逐词时间。';
+
+  @override
+  String get transcriptKaraokeUnavailableRemoteHint => '卡拉 OK 高亮需要本地文件的逐词时间。';
+
+  @override
+  String get transcriptEnrichOwnedTitle => '生成逐词时间和对齐音标';
+
+  @override
+  String get transcriptEnrichOwnedSubtitle => '使用本条目的音频，播放不受影响。';
+
+  @override
+  String get transcriptEnrichYoutubeTitle => '生成音标';
+
+  @override
+  String get transcriptEnrichYoutubeSubtitle => '卡拉 OK 高亮仍不可用，不会下载视频。';
+
+  @override
+  String get transcriptEnrichCancel => '取消生成';
+
+  @override
+  String get transcriptEnrichRetry => '重新生成';
+
+  @override
+  String get transcriptEnrichFailed => '无法生成。点按重试。';
 
   @override
   String get settingsRecordingMicTitle => '麦克风';

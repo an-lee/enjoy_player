@@ -7,9 +7,9 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forced_alignment/forced_alignment.dart';
 
-import 'package:enjoy_player/core/application/app_language_catalog.dart';
 import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/data/audio/pcm16k_mono.dart';
+import 'package:enjoy_player/data/subtitle/alignment_language.dart';
 import 'package:enjoy_player/data/subtitle/attach_alignment_to_lines.dart';
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
 
@@ -23,20 +23,11 @@ typedef AlignSegmentsFn =
       required AlignmentGranularity granularity,
     });
 
-/// Maps a Craft synth language (`en`, `en-GB`, `ja`) onto an alignment
-/// catalog tag. Returns null when the language is not in the focus map —
-/// callers must fail closed, not swap to English.
-String? alignmentLanguageForCraft(String language) {
-  final trimmed = language.trim();
-  if (trimmed.isEmpty) return null;
-  if (isSupportedAlignmentLanguage(trimmed)) return trimmed;
-  final focus = canonicalFocusLanguageTag(trimmed);
-  if (!isSupportedAlignmentLanguage(focus)) return null;
-  if (primaryLanguageSubtag(trimmed) != primaryLanguageSubtag(focus)) {
-    return null;
-  }
-  return focus;
-}
+/// Maps a Craft synth language onto an alignment catalog tag.
+///
+/// Delegates to [alignmentLanguageForTranscript].
+String? alignmentLanguageForCraft(String language) =>
+    alignmentLanguageForTranscript(language);
 
 /// Extract + [alignSegments] + [attachAlignmentToLines] for Craft save.
 ///

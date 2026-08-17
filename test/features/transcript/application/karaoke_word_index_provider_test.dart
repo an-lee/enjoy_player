@@ -9,6 +9,7 @@ import 'package:enjoy_player/data/subtitle/transcript_line.dart';
 import 'package:enjoy_player/features/settings/application/karaoke_highlight_settings.dart';
 import 'package:enjoy_player/features/transcript/application/karaoke_position_provider.dart';
 import 'package:enjoy_player/features/transcript/application/karaoke_word_index_provider.dart';
+import 'package:enjoy_player/features/transcript/application/transcript_display_readiness_provider.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_lines_provider.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_playback_highlight_provider.dart';
 
@@ -48,6 +49,7 @@ void main() {
         karaokePositionProvider.overrideWith(
           (ref) => Stream.value(const Duration(milliseconds: 1100)),
         ),
+        canTrustWordTimesProvider('m1').overrideWith((ref) async => true),
       ],
     );
     addTearDown(container.dispose);
@@ -57,6 +59,7 @@ void main() {
       container.listen(karaokePositionProvider, (_, _) {}),
       container.listen(transcriptLinesForMediaProvider('m1'), (_, _) {}),
       container.listen(transcriptPlaybackHighlightProvider('m1'), (_, _) {}),
+      container.listen(canTrustWordTimesProvider('m1'), (_, _) {}),
       container.listen(karaokeWordIndexProvider('m1'), (_, _) {}),
     ];
     addTearDown(() {
@@ -68,6 +71,10 @@ void main() {
     expect(container.read(karaokeWordIndexProvider('m1')), isNull);
     expect(
       await container.read(karaokeHighlightSettingsProvider.future),
+      isTrue,
+    );
+    expect(
+      await container.read(canTrustWordTimesProvider('m1').future),
       isTrue,
     );
     expect(container.read(karaokeHighlightSettingsProvider).value, isTrue);

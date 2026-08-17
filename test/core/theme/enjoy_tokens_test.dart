@@ -1,3 +1,4 @@
+import 'package:enjoy_player/core/theme/colors.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -40,6 +41,8 @@ void main() {
       expect(tokens.motionExit, const Duration(milliseconds: 160));
       expect(tokens.motionMedium, const Duration(milliseconds: 220));
 
+      expect(tokens.echoActive, AppColors.echoActive);
+      expect(tokens.blurActive, AppColors.blurActive);
       expect(tokens.ccBadge, scheme.primary);
       expect(tokens.contentMaxWidth, 720);
       expect(tokens.formMaxWidth, 680);

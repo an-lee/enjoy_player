@@ -131,7 +131,7 @@ void main() {
       expect(world.containsKey('ipa'), isFalse);
 
       final period = (json['timeline'] as List)[2] as Map<String, dynamic>;
-      expect(period, {'text': '.', 'start': 0, 'duration': 0});
+      expect(period, {'text': '.'});
 
       expect(TranscriptLine.fromJson(json), line);
     });
@@ -270,6 +270,60 @@ void main() {
       expect(line.durationMs, 500);
       expect(line.timeline!.single.startMs, 0);
       expect(line.timeline!.single.durationMs, 9999);
+    });
+  });
+
+  group('optional word and phone clocks', () {
+    test('untimed words omit start/duration; missing clocks parse as null', () {
+      const word = TranscriptWord(text: 'hello');
+      expect(word.toJson(), {'text': 'hello'});
+      final parsed = TranscriptWord.fromJson({'text': 'hello'});
+      expect(parsed, isNotNull);
+      expect(parsed!.startMs, isNull);
+      expect(parsed.durationMs, isNull);
+    });
+
+    test('untimed phones omit startTime/endTime', () {
+      const phone = TranscriptPhone(phone: 'h', text: 'h', wordIndex: 0);
+      expect(phone.toJson(), {'phone': 'h', 'text': 'h', 'wordIndex': 0});
+      final parsed = TranscriptPhone.fromJson({'phone': 'h', 'text': 'h'});
+      expect(parsed, isNotNull);
+      expect(parsed!.startTime, isNull);
+      expect(parsed.endTime, isNull);
+    });
+
+    test('explicit duration 0 stays untimed for matching', () {
+      const word = TranscriptWord(text: 'hi', startMs: 0, durationMs: 0);
+      expect(word.toJson(), {'text': 'hi', 'start': 0, 'duration': 0});
+      expect(TranscriptWord.fromJson(word.toJson())!.durationMs, 0);
+    });
+
+    test('timed Craft fixtures still round-trip numbers', () {
+      const word = TranscriptWord(
+        text: 'Hello',
+        startMs: 0,
+        durationMs: 500,
+        phones: [
+          TranscriptPhone(
+            phone: 'h',
+            text: 'h',
+            startTime: 0,
+            endTime: 0.08,
+            wordIndex: 0,
+          ),
+        ],
+      );
+      final json = word.toJson();
+      expect(json['start'], 0);
+      expect(json['duration'], 500);
+      expect((json['phones'] as List).first, {
+        'phone': 'h',
+        'text': 'h',
+        'startTime': 0,
+        'endTime': 0.08,
+        'wordIndex': 0,
+      });
+      expect(TranscriptWord.fromJson(json), word);
     });
   });
 

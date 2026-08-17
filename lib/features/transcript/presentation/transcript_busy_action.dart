@@ -69,13 +69,23 @@ class TranscriptBusyListTile extends StatefulWidget {
     required this.icon,
     required this.title,
     required this.onTap,
+    this.subtitle,
+    this.busy,
+    this.tapWhenBusy = false,
     this.contentPadding,
     super.key,
   });
 
   final IconData icon;
   final String title;
+  final String? subtitle;
   final Future<void> Function() onTap;
+
+  /// When non-null, the spinner follows this flag instead of a local future.
+  final bool? busy;
+
+  /// When true, [onTap] stays enabled while busy (cancel / retry).
+  final bool tapWhenBusy;
   final EdgeInsetsGeometry? contentPadding;
 
   @override
@@ -98,14 +108,22 @@ class _TranscriptBusyListTileState extends State<TranscriptBusyListTile> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final showBusy = widget.busy ?? _busy;
+    final usesExternalBusy = widget.busy != null;
+    final tapEnabled = widget.tapWhenBusy || !showBusy;
     return ListTile(
       contentPadding: widget.contentPadding,
-      leading: _busy
+      leading: showBusy
           ? LoadingIcon(size: 24, color: cs.primary)
           : Icon(widget.icon, size: 24, color: cs.onSurfaceVariant),
       title: Text(widget.title),
-      enabled: !_busy,
-      onTap: _busy ? null : _run,
+      subtitle: widget.subtitle == null ? null : Text(widget.subtitle!),
+      enabled: tapEnabled,
+      onTap: !tapEnabled
+          ? null
+          : usesExternalBusy
+          ? widget.onTap
+          : _run,
     );
   }
 }
