@@ -342,14 +342,9 @@ void main() {
     },
   );
 
-  test('awaits resolveEnabled instead of treating loading as off', () async {
+  test('enrichment is always attempted when enabled (default)', () async {
     var aligned = false;
     final enricher = CraftTimelineEnricher(
-      enabled: false,
-      resolveEnabled: () async {
-        await Future<void>.delayed(Duration.zero);
-        return true;
-      },
       decodePcm: _dummyPcm,
       alignSegmentsFn:
           ({

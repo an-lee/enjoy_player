@@ -71,5 +71,29 @@ void main() {
         isNull,
       );
     });
+
+    test('repairs Latin-1 mojibake from mis-decoded UTF-8 phones', () {
+      // UTF-8 of hæv / ɡ misread as Latin-1 code units.
+      final haveMojibake = String.fromCharCodes(const [0x68, 0xC3, 0xA6, 0x76]);
+      final gMojibake = String.fromCharCodes(const [0xC9, 0xA1]);
+      expect(repairUtf8Mojibake(haveMojibake), 'hæv');
+      expect(repairUtf8Mojibake(gMojibake), 'ɡ');
+      expect(
+        wordIpaSpelling(
+          TranscriptWord(
+            text: 'have',
+            phones: [
+              TranscriptPhone(
+                phone: haveMojibake,
+                text: haveMojibake,
+                startTime: 0,
+                endTime: 0.1,
+              ),
+            ],
+          ),
+        ),
+        'hæv',
+      );
+    });
   });
 }

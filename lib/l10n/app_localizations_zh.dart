@@ -971,33 +971,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsTranscriptKaraokeTitle => '高亮当前词';
 
   @override
-  String get settingsTranscriptKaraokeSubtitle =>
-      '开启后，若该句已有词级时间，播放时高亮正在说的词。关闭（默认）仍按整句高亮。';
+  String get settingsTranscriptKaraokeSubtitle => '有词级时间时高亮正在说的词。';
 
   @override
   String get settingsTranscriptIpaOverlayTitle => '显示音标（IPA）';
 
   @override
-  String get settingsTranscriptIpaOverlaySubtitle =>
-      '开启后，在已有音标的词上方显示存储的读音。关闭（默认）仍只显示字幕文本。';
+  String get settingsTranscriptIpaOverlaySubtitle => '在词下方显示音标，点按可听。';
 
   @override
-  String get settingsTranscriptWordPracticeTitle => '单词练习';
+  String get transcriptDisplaySettingsTitle => '字幕显示';
 
   @override
-  String get settingsTranscriptWordPracticeSubtitle =>
-      '开启后，点按时长词可跳到该词。当前行可循环或查看音标。关闭（默认）仍按整句点击。';
-
-  @override
-  String get transcriptWordLoopTooltip => '循环此词';
-
-  @override
-  String get transcriptWordInspectTooltip => '查看读音';
-
-  @override
-  String transcriptWordInspectTitle(String word) {
-    return '读音：$word';
-  }
+  String get transcriptIpaUnavailableHint => '需先有 Craft 对齐后的音标。';
 
   @override
   String get settingsRecordingMicTitle => '麦克风';
@@ -4472,33 +4458,19 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get settingsTranscriptKaraokeTitle => '高亮当前词';
 
   @override
-  String get settingsTranscriptKaraokeSubtitle =>
-      '开启后，若该句已有词级时间，播放时高亮正在说的词。关闭（默认）仍按整句高亮。';
+  String get settingsTranscriptKaraokeSubtitle => '有词级时间时高亮正在说的词。';
 
   @override
   String get settingsTranscriptIpaOverlayTitle => '显示音标（IPA）';
 
   @override
-  String get settingsTranscriptIpaOverlaySubtitle =>
-      '开启后，在已有音标的词上方显示存储的读音。关闭（默认）仍只显示字幕文本。';
+  String get settingsTranscriptIpaOverlaySubtitle => '在词下方显示音标，点按可听。';
 
   @override
-  String get settingsTranscriptWordPracticeTitle => '单词练习';
+  String get transcriptDisplaySettingsTitle => '字幕显示';
 
   @override
-  String get settingsTranscriptWordPracticeSubtitle =>
-      '开启后，点按时长词可跳到该词。当前行可循环或查看音标。关闭（默认）仍按整句点击。';
-
-  @override
-  String get transcriptWordLoopTooltip => '循环此词';
-
-  @override
-  String get transcriptWordInspectTooltip => '查看读音';
-
-  @override
-  String transcriptWordInspectTitle(String word) {
-    return '读音：$word';
-  }
+  String get transcriptIpaUnavailableHint => '需先有 Craft 对齐后的音标。';
 
   @override
   String get settingsRecordingMicTitle => '麦克风';

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:enjoy_player/data/subtitle/ipa_mapping.dart';
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
 import 'package:enjoy_player/features/settings/application/karaoke_highlight_settings.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_blur_mode_provider.dart';
@@ -29,24 +30,48 @@ const _nested = TranscriptLine(
   startMs: 0,
   durationMs: 2000,
   timeline: [
-    TranscriptWord(text: 'Hello', startMs: 0, durationMs: 800),
-    TranscriptWord(text: 'world', startMs: 800, durationMs: 800),
+    TranscriptWord(
+      text: 'Hello',
+      startMs: 0,
+      durationMs: 800,
+      phones: [
+        TranscriptPhone(
+          phone: 'həˈloʊ',
+          text: 'həˈloʊ',
+          startTime: 0,
+          endTime: 0.4,
+        ),
+      ],
+    ),
+    TranscriptWord(
+      text: 'world',
+      startMs: 800,
+      durationMs: 800,
+      phones: [
+        TranscriptPhone(
+          phone: 'wɝld',
+          text: 'wɝld',
+          startTime: 0.8,
+          endTime: 1.2,
+        ),
+      ],
+    ),
   ],
 );
 
 Widget _harness({
   required Widget child,
-  bool practice = true,
+  bool overlay = true,
   bool blur = false,
 }) {
   return ProviderScope(
     overrides: [
       transcriptBlurModeProvider.overrideWith(() => _BlurMode(blur)),
       karaokeHighlightSettingsProvider.overrideWith(_KaraokeOff.new),
-      if (practice)
-        ...transcriptWordPracticeOnOverrides()
+      if (overlay)
+        ...transcriptIpaOverlayOnOverrides()
       else
-        ...transcriptWordPracticeOffOverrides(),
+        ...transcriptIpaOverlayOffOverrides(),
     ],
     child: MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -57,7 +82,9 @@ Widget _harness({
 }
 
 void main() {
-  testWidgets('practice on: timestamp tap still line-seeks', (tester) async {
+  final helloIpa = formatPhonesAsFamiliarIpa(['həˈloʊ']);
+
+  testWidgets('overlay on: timestamp tap still line-seeks', (tester) async {
     var taps = 0;
     await tester.pumpWidget(
       _harness(
@@ -78,9 +105,7 @@ void main() {
     expect(taps, 1);
   });
 
-  testWidgets('practice on: tap second timed word does not fire line onTap', (
-    tester,
-  ) async {
+  testWidgets('overlay on: tap IPA does not fire line onTap', (tester) async {
     var taps = 0;
     await tester.pumpWidget(
       _harness(
@@ -100,17 +125,16 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final rect = tester.getRect(find.text('Hello world'));
-    await tester.tapAt(Offset(rect.left + rect.width * 0.8, rect.center.dy));
+    await tester.tap(find.text(helloIpa).first);
     await tester.pump();
     expect(taps, 0);
   });
 
-  testWidgets('practice off: word tap still fires line onTap', (tester) async {
+  testWidgets('overlay off: orthography tap fires line onTap', (tester) async {
     var taps = 0;
     await tester.pumpWidget(
       _harness(
-        practice: false,
+        overlay: false,
         child: SizedBox(
           width: 400,
           child: TranscriptLineTile(
@@ -127,15 +151,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final rect = tester.getRect(find.text('Hello world'));
-    await tester.tapAt(Offset(rect.left + rect.width * 0.8, rect.center.dy));
+    await tester.tap(find.text('Hello world'));
     await tester.pump();
     expect(taps, 1);
   });
 
-  testWidgets('selectable row does not word-seek; onTap is unused', (
-    tester,
-  ) async {
+  testWidgets('selectable row has no line InkWell', (tester) async {
     var taps = 0;
     await tester.pumpWidget(
       _harness(
@@ -157,7 +178,7 @@ void main() {
   });
 
   testWidgets(
-    'practice on + unrevealed blur: timed-word tap still line-seeks',
+    'overlay on + unrevealed blur: IPA is not hittable; line tap seeks',
     (tester) async {
       var taps = 0;
       await tester.pumpWidget(
@@ -179,8 +200,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final rect = tester.getRect(find.text('Hello world'));
-      await tester.tapAt(Offset(rect.left + rect.width * 0.8, rect.center.dy));
+      expect(find.text(helloIpa), findsNothing);
+      await tester.tap(find.byType(InkWell));
       await tester.pump();
       expect(taps, 1);
     },

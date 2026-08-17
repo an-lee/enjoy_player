@@ -24,7 +24,6 @@ import 'package:enjoy_player/features/settings/presentation/widgets/sections/clo
 import 'package:enjoy_player/features/settings/presentation/widgets/sections/developer_section.dart';
 import 'package:enjoy_player/features/settings/presentation/widgets/sections/keyboard_shortcuts_section.dart';
 import 'package:enjoy_player/features/settings/presentation/widgets/sections/recording_section.dart';
-import 'package:enjoy_player/features/settings/presentation/widgets/sections/transcript_section.dart';
 import 'package:enjoy_player/features/settings/presentation/widgets/settings_collapsible_section.dart';
 import 'package:enjoy_player/features/settings/presentation/widgets/settings_no_results.dart';
 import 'package:enjoy_player/features/settings/presentation/widgets/settings_section_card.dart';
@@ -100,16 +99,6 @@ class SettingsLayoutSingleColumn extends ConsumerWidget {
             icon: visual(SettingsSectionIds.recording).icon,
             padding: EdgeInsets.zero,
             child: const RecordingSectionBody(),
-          ),
-          SizedBox(height: t.space8),
-        ],
-        if (visible(SettingsSectionIds.transcript)) ...[
-          SettingsSectionCard(
-            title: visual(SettingsSectionIds.transcript).title,
-            hint: visual(SettingsSectionIds.transcript).hint,
-            icon: visual(SettingsSectionIds.transcript).icon,
-            padding: EdgeInsets.zero,
-            child: const TranscriptSectionBody(),
           ),
           SizedBox(height: t.space8),
         ],

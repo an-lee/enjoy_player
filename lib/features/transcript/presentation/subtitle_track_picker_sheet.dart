@@ -33,10 +33,13 @@ import '../../player/application/player_controller.dart';
 import '../application/active_transcript_provider.dart';
 import '../application/all_transcripts_provider.dart';
 import '../application/transcript_fetch_controller.dart';
+import '../application/transcript_lines_provider.dart';
 import '../application/transcript_repository_provider.dart';
 import '../application/video_row_for_media_provider.dart';
 import '../domain/transcript_fetch_status.dart';
 import '../domain/transcript_track.dart';
+import 'transcript_display_settings_sheet.dart';
+import 'transcript_word_ipa_layer.dart';
 
 enum SubtitleTrackPickerPresentation { sheet, dialog }
 
@@ -269,6 +272,7 @@ class _SubtitleTrackPickerSheetState
     required String targetLanguage,
     required AutoTranslateUiState autoTranslateState,
     required bool signedIn,
+    required bool hasPhones,
   }) {
     final theme = Theme.of(context);
     final translationTracks = tracks
@@ -309,15 +313,7 @@ class _SubtitleTrackPickerSheetState
         Padding(
           padding: EdgeInsets.symmetric(horizontal: sheetHorizontalPadding(t)),
           child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerLow.withValues(
-                alpha: 0.92,
-              ),
-              borderRadius: BorderRadius.circular(t.radiusLg),
-              border: Border.all(
-                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.16),
-              ),
-            ),
+            decoration: subtitlePickerCardDecoration(context),
             child: Padding(
               padding: EdgeInsets.all(t.space16),
               child: Text(
@@ -458,6 +454,11 @@ class _SubtitleTrackPickerSheetState
         ),
       ),
       SizedBox(height: t.space16),
+      TranscriptDisplaySettingsSection(
+        hasPhones: hasPhones,
+        horizontalPadding: sheetHorizontalPadding(t),
+      ),
+      SizedBox(height: t.space16),
       SubtitleActionsSection(
         horizontalPadding: sheetHorizontalPadding(t),
         showExtractEmbedded: showExtractEmbedded,
@@ -545,6 +546,7 @@ class _SubtitleTrackPickerSheetState
     required String targetLanguage,
     required AutoTranslateUiState autoTranslateState,
     required bool signedIn,
+    required bool hasPhones,
   }) {
     final cs = Theme.of(context).colorScheme;
 
@@ -564,6 +566,7 @@ class _SubtitleTrackPickerSheetState
         targetLanguage: targetLanguage,
         autoTranslateState: autoTranslateState,
         signedIn: signedIn,
+        hasPhones: hasPhones,
       );
 
       if (isDialog) {
@@ -708,6 +711,14 @@ class _SubtitleTrackPickerSheetState
             ?.effectiveNativeLanguage ??
         '';
     final signedIn = ref.watch(authCtrlProvider).valueOrNull is AuthSignedIn;
+    final linesAsync = ref.watch(
+      transcriptLinesForMediaProvider(widget.mediaId),
+    );
+    final hasPhones = linesAsync.maybeWhen(
+      data: (lines) =>
+          lines.any((line) => transcriptWordsHavePhones(line.timeline)),
+      orElse: () => false,
+    );
 
     Widget columnBody(ScrollController sc) {
       final isDialog =
@@ -734,6 +745,7 @@ class _SubtitleTrackPickerSheetState
         targetLanguage: targetLanguage,
         autoTranslateState: autoTranslateState,
         signedIn: signedIn,
+        hasPhones: hasPhones,
       );
 
       if (isDialog) {

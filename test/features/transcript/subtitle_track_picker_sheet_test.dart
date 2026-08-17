@@ -15,6 +15,7 @@ import 'package:enjoy_player/features/transcript/application/active_transcript_p
 import 'package:enjoy_player/features/transcript/application/all_transcripts_provider.dart';
 import 'package:enjoy_player/features/transcript/application/auto_translate_controller.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_fetch_controller.dart';
+import 'package:enjoy_player/features/transcript/application/transcript_lines_provider.dart';
 import 'package:enjoy_player/features/transcript/domain/auto_translate.dart';
 import 'package:enjoy_player/features/auth/domain/user_profile.dart';
 import 'package:enjoy_player/features/transcript/application/video_row_for_media_provider.dart';
@@ -23,7 +24,11 @@ import 'package:enjoy_player/features/transcript/domain/transcript_track.dart';
 import 'package:enjoy_player/features/transcript/presentation/subtitle_track_picker_sheet.dart';
 import 'package:enjoy_player/features/transcript/presentation/subtitle_track_picker_sections.dart';
 import 'package:enjoy_player/features/transcript/presentation/subtitle_track_picker_tiles.dart';
+import 'package:enjoy_player/features/transcript/presentation/subtitle_track_picker_primitives.dart';
+import 'package:enjoy_player/features/transcript/presentation/transcript_display_settings_sheet.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
+import 'package:enjoy_player/features/settings/application/karaoke_highlight_settings.dart';
+import '../../helpers/transcript_settings_overrides.dart';
 
 const _mediaId = 'media-picker-test';
 
@@ -48,6 +53,9 @@ List<Override> _pickerOverrides({
   secondaryTranscriptIdProvider(
     _mediaId,
   ).overrideWith((ref) => Stream.value(null)),
+  transcriptLinesForMediaProvider(
+    _mediaId,
+  ).overrideWith((ref) => Stream.value(const [])),
   videoRowForMediaProvider(_mediaId).overrideWith((ref) async => null),
   transcriptFetchStatusProvider(_mediaId).overrideWithValue(
     const TranscriptFetchUiState(status: TranscriptFetchStatus.idle),
@@ -60,6 +68,10 @@ List<Override> _pickerOverrides({
   ).overrideWith((ref) async => 'ai-selection-id'),
   appPreferencesCtrlProvider.overrideWith(() => _ZhNativePrefsCtrl()),
   authCtrlProvider.overrideWith(() => _SignedInAuthCtrl()),
+  ...transcriptIpaOverlayOffOverrides(),
+  karaokeHighlightSettingsProvider.overrideWith(
+    () => KaraokeHighlightSettingsOverride(false),
+  ),
 ];
 
 class _SpyAutoTranslateCtrl extends AutoTranslateCtrl {
@@ -164,6 +176,12 @@ void main() {
       expect(find.byType(CollapsibleTrackSection), findsNWidgets(2));
       expect(find.text(l10n.subtitlesPrimary), findsOneWidget);
       expect(find.text(l10n.subtitlesTranslation), findsOneWidget);
+      expect(find.byType(TranscriptDisplaySettingsSection), findsOneWidget);
+      expect(find.byType(SubtitlePickerCard), findsWidgets);
+      expect(find.byType(SubtitleToggleTile), findsNWidgets(2));
+      expect(find.text(l10n.transcriptDisplaySettingsTitle), findsOneWidget);
+      expect(find.text(l10n.settingsTranscriptKaraokeTitle), findsOneWidget);
+      expect(find.text(l10n.settingsTranscriptIpaOverlayTitle), findsOneWidget);
     },
   );
 
@@ -341,6 +359,9 @@ void main() {
       secondaryTranscriptIdProvider(
         _mediaId,
       ).overrideWith((ref) => const Stream.empty()),
+      transcriptLinesForMediaProvider(
+        _mediaId,
+      ).overrideWith((ref) => const Stream.empty()),
       videoRowForMediaProvider(_mediaId).overrideWith((ref) async => null),
       transcriptFetchStatusProvider(_mediaId).overrideWithValue(
         const TranscriptFetchUiState(status: TranscriptFetchStatus.idle),
@@ -353,6 +374,10 @@ void main() {
       ).overrideWith((ref) async => 'ai-selection-id'),
       appPreferencesCtrlProvider.overrideWith(() => _ZhNativePrefsCtrl()),
       authCtrlProvider.overrideWith(() => _SignedInAuthCtrl()),
+      ...transcriptIpaOverlayOffOverrides(),
+      karaokeHighlightSettingsProvider.overrideWith(
+        () => KaraokeHighlightSettingsOverride(false),
+      ),
     ];
     await tester.pumpWidget(_harness(overrides: overrides));
     await tester.pump();

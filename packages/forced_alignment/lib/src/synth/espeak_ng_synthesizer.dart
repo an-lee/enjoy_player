@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
 
@@ -21,6 +22,16 @@ bool? _ffiAvailableOverride;
 @visibleForTesting
 void debugSetEspeakFfiAvailable(bool? value) {
   _ffiAvailableOverride = value;
+}
+
+/// Decodes eSpeak `id.string[8]` IPA bytes (UTF-8 with `espeakINITIALIZE_PHONEME_IPA`).
+///
+/// Must not use [String.fromCharCodes] on the raw bytes — that Latin-1-style
+/// decode turns multi-byte IPA (e.g. `ɡ` `C9 A1`) into mojibake (`É¡`).
+@visibleForTesting
+String decodeEspeakPhonemeIdBytes(List<int> units) {
+  if (units.isEmpty) return '';
+  return utf8.decode(units, allowMalformed: true);
 }
 
 /// True when a vendored eSpeak-NG library and data directory can be opened.
@@ -108,8 +119,7 @@ final class EspeakNgSynthesizer implements SpokenReferenceSynthesizer {
       if (b == 0) break;
       units.add(b);
     }
-    if (units.isEmpty) return '';
-    return String.fromCharCodes(units);
+    return decodeEspeakPhonemeIdBytes(units);
   }
 
   static EspeakNgBindings _open() {

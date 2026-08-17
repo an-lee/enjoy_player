@@ -40,21 +40,10 @@ class CollapsibleTrackSection extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: horizontal),
       child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerLow.withValues(alpha: 0.92),
-          borderRadius: BorderRadius.circular(t.radiusLg),
-          border: Border.all(
-            color: isExpanded
-                ? cs.primary.withValues(alpha: 0.28)
-                : cs.outlineVariant.withValues(alpha: 0.16),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: cs.shadow.withValues(alpha: 0.04),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
+        decoration: subtitlePickerCardDecoration(
+          context,
+          emphasized: isExpanded,
+          withShadow: true,
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(t.radiusLg),
@@ -83,11 +72,7 @@ class CollapsibleTrackSection extends StatelessWidget {
                             children: [
                               Text(
                                 title,
-                                style: tt.labelLarge?.copyWith(
-                                  color: cs.primary,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.2,
-                                ),
+                                style: subtitlePickerSectionTitleStyle(context),
                               ),
                               if (!isExpanded) ...[
                                 SizedBox(height: t.space8),

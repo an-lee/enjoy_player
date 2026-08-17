@@ -1926,7 +1926,7 @@ abstract class AppLocalizations {
   /// Settings switch subtitle explaining karaoke word highlight.
   ///
   /// In en, this message translates to:
-  /// **'When on, highlight the spoken word if the cue already has word timings. Off (default) keeps line-level highlighting.'**
+  /// **'Highlight the spoken word when word timings exist.'**
   String get settingsTranscriptKaraokeSubtitle;
 
   /// Settings switch title for opt-in stored IPA overlay on transcript words.
@@ -1938,38 +1938,20 @@ abstract class AppLocalizations {
   /// Settings switch subtitle explaining stored IPA overlay.
   ///
   /// In en, this message translates to:
-  /// **'When on, show stored pronunciation above words that already have phone labels. Off (default) keeps the line as transcript text only.'**
+  /// **'Show IPA under words; tap to play.'**
   String get settingsTranscriptIpaOverlaySubtitle;
 
-  /// Settings switch title for opt-in word tap, loop, and inspect.
+  /// Section title for karaoke and IPA toggles in the subtitle track picker.
   ///
   /// In en, this message translates to:
-  /// **'Word-level practice'**
-  String get settingsTranscriptWordPracticeTitle;
+  /// **'Transcript display'**
+  String get transcriptDisplaySettingsTitle;
 
-  /// Settings switch subtitle explaining word-level practice.
+  /// Hint when IPA toggle is unavailable because the transcript has no phones.
   ///
   /// In en, this message translates to:
-  /// **'When on, tap a timed word to hear it. Loop and inspect are available on the current line. Off (default) keeps line-level taps.'**
-  String get settingsTranscriptWordPracticeSubtitle;
-
-  /// Tooltip for looping the current timed word's media window.
-  ///
-  /// In en, this message translates to:
-  /// **'Loop this word'**
-  String get transcriptWordLoopTooltip;
-
-  /// Tooltip for listing stored phone labels of the current word.
-  ///
-  /// In en, this message translates to:
-  /// **'Inspect pronunciation'**
-  String get transcriptWordInspectTooltip;
-
-  /// Title of the on-demand stored-phone inspect sheet.
-  ///
-  /// In en, this message translates to:
-  /// **'Pronunciation: {word}'**
-  String transcriptWordInspectTitle(String word);
+  /// **'Needs Craft-aligned phones first.'**
+  String get transcriptIpaUnavailableHint;
 
   /// Title of the microphone picker tile in settings.
   ///
