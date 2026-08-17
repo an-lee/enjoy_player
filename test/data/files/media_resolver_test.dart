@@ -98,9 +98,9 @@ void main() {
       // If anyone ever accidentally duplicates an extension across the two
       // lists, the union still classifies it as one or the other — but we
       // want to keep them clean so callers can render the right kind icon.
-      final overlap = kFilePickerLocalVideoExtensions
-          .toSet()
-          .intersection(kFilePickerLocalAudioExtensions.toSet());
+      final overlap = kFilePickerLocalVideoExtensions.toSet().intersection(
+        kFilePickerLocalAudioExtensions.toSet(),
+      );
       expect(overlap, isEmpty);
     });
   });
