@@ -1,5 +1,5 @@
 /// Hero artwork widget — rounded square with dynamic-color rim light and
-/// ground shadow. Used in AudioPlayerLayout and library cards.
+/// ground shadow. Used by library cards.
 library;
 
 import 'dart:io';
