@@ -59,7 +59,7 @@ final class WordPracticeSessionProvider
 }
 
 String _$wordPracticeSessionHash() =>
-    r'c8d92ed496e280fe682a288964261c22aee8a5bc';
+    r'98e532dd037e657d466514408c411089a230da77';
 
 final class WordPracticeSessionFamily extends $Family
     with

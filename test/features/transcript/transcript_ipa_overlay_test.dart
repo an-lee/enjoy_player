@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:enjoy_player/data/subtitle/ipa_mapping.dart';
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
 import 'package:enjoy_player/features/settings/application/karaoke_highlight_settings.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_blur_mode_provider.dart';
@@ -102,8 +103,11 @@ Widget _harness({
 }
 
 void main() {
+  final helloIpa = formatPhonesAsFamiliarIpa(['hɛˈloʊ']);
+  final worldIpa = formatPhonesAsFamiliarIpa(['wɝld']);
+
   testWidgets(
-    'overlay on paints stored IPA; lookup and taps stay orthography/line-level',
+    'overlay on shows stacked IPA; lookup and line taps stay orthography',
     (tester) async {
       var taps = 0;
       String? lookedUp;
@@ -137,17 +141,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(TranscriptWordIpaLayer), findsWidgets);
-      expect(
-        transcriptIpaOverlayLabels(
-          plain: 'Hello world',
-          words: _nested.timeline,
-          wordStyle: const TextStyle(fontSize: 16),
-          maxWidth: 400,
-        ).map((e) => e.text),
-        contains('hɛˈloʊ'),
-      );
-      expect(find.text('Hello world'), findsNWidgets(2));
+      expect(find.byType(TranscriptAlignedWords), findsWidgets);
+      expect(find.text(helloIpa), findsWidgets);
+      expect(find.text('Hello'), findsWidgets);
       expect(find.byType(Chip), findsNothing);
 
       await tester.tap(find.byType(InkWell).first);
@@ -178,8 +174,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Hello world'), findsOneWidget);
-    expect(find.byType(TranscriptWordIpaLayer), findsNothing);
-    expect(find.text('hɛˈloʊ'), findsNothing);
+    expect(find.byType(TranscriptAlignedWords), findsNothing);
+    expect(find.text(helloIpa), findsNothing);
   });
 
   testWidgets('unreadable phones skip that word and do not blank the line', (
@@ -201,16 +197,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Hello world'), findsOneWidget);
-    expect(
-      transcriptIpaOverlayLabels(
-        plain: 'Hello world',
-        words: _mixedEmptyPhones.timeline,
-        wordStyle: const TextStyle(fontSize: 16),
-        maxWidth: 400,
-      ).map((e) => e.text),
-      ['wɝld'],
-    );
+    expect(find.text('Hello'), findsOneWidget);
+    expect(find.text('world'), findsOneWidget);
+    expect(find.text(worldIpa), findsOneWidget);
     expect(find.byType(Chip), findsNothing);
   });
 }

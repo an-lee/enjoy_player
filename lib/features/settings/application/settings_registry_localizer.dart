@@ -55,40 +55,6 @@ _Localized _localize(SettingsEntryDescriptor d, AppLocalizations l10n) {
       return _Localized(l10n.settingsSectionRecording, [
         l10n.settingsSectionRecordingHint,
       ]);
-    case SettingsSectionIds.transcript:
-      if (d.rowId == 'timelineEnrichment') {
-        return _Localized(l10n.settingsTranscriptEnrichmentTitle, [
-          'enrichment',
-          'alignment',
-          'timeline',
-          l10n.settingsTranscriptEnrichmentSubtitle,
-        ]);
-      }
-      if (d.rowId == 'karaokeHighlight') {
-        return _Localized(l10n.settingsTranscriptKaraokeTitle, [
-          'karaoke',
-          'word highlight',
-          'timings',
-          l10n.settingsTranscriptKaraokeSubtitle,
-        ]);
-      }
-      if (d.rowId == 'ipaOverlay') {
-        return _Localized(l10n.settingsTranscriptIpaOverlayTitle, [
-          'IPA',
-          'pronunciation',
-          l10n.settingsTranscriptIpaOverlaySubtitle,
-        ]);
-      }
-      if (d.rowId == 'wordPractice') {
-        return _Localized(l10n.settingsTranscriptWordPracticeTitle, [
-          'word tap',
-          'word loop',
-          l10n.settingsTranscriptWordPracticeSubtitle,
-        ]);
-      }
-      return _Localized(l10n.settingsSectionTranscript, [
-        l10n.settingsSectionTranscriptHint,
-      ]);
     case SettingsSectionIds.keyboardShortcuts:
       switch (d.rowId) {
         case 'openCheatsheet':

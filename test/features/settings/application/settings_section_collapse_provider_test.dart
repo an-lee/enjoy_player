@@ -16,7 +16,7 @@ void main() {
       expect(state[SettingsSectionIds.about], isTrue);
       expect(state[SettingsSectionIds.cloudSync], isFalse);
       expect(state[SettingsSectionIds.appearanceLanguage], isFalse);
-      expect(state[SettingsSectionIds.transcript], isFalse);
+      expect(state.containsKey(SettingsSectionIds.transcript), isFalse);
     });
 
     test('toggle flips only the targeted section', () {

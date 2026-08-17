@@ -1018,32 +1018,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsTranscriptKaraokeSubtitle =>
-      'When on, highlight the spoken word if the cue already has word timings. Off (default) keeps line-level highlighting.';
+      'Highlight the spoken word when word timings exist.';
 
   @override
   String get settingsTranscriptIpaOverlayTitle => 'Show pronunciation (IPA)';
 
   @override
   String get settingsTranscriptIpaOverlaySubtitle =>
-      'When on, show stored pronunciation above words that already have phone labels. Off (default) keeps the line as transcript text only.';
+      'Show IPA under words; tap to play.';
 
   @override
-  String get settingsTranscriptWordPracticeTitle => 'Word-level practice';
+  String get transcriptDisplaySettingsTitle => 'Transcript display';
 
   @override
-  String get settingsTranscriptWordPracticeSubtitle =>
-      'When on, tap a timed word to hear it. Loop and inspect are available on the current line. Off (default) keeps line-level taps.';
-
-  @override
-  String get transcriptWordLoopTooltip => 'Loop this word';
-
-  @override
-  String get transcriptWordInspectTooltip => 'Inspect pronunciation';
-
-  @override
-  String transcriptWordInspectTitle(String word) {
-    return 'Pronunciation: $word';
-  }
+  String get transcriptIpaUnavailableHint =>
+      'Needs Craft-aligned phones first.';
 
   @override
   String get settingsRecordingMicTitle => 'Microphone';

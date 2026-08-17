@@ -215,19 +215,9 @@ void main() {
         );
         expect(find.text(l10n.settingsAiProvidersTileTitle), findsOneWidget);
 
-        expect(
-          find.text(l10n.settingsTranscriptEnrichmentTitle),
-          findsOneWidget,
-        );
-        expect(find.text(l10n.settingsTranscriptKaraokeTitle), findsOneWidget);
-        expect(
-          find.text(l10n.settingsTranscriptIpaOverlayTitle),
-          findsOneWidget,
-        );
-        expect(
-          find.text(l10n.settingsTranscriptWordPracticeTitle),
-          findsOneWidget,
-        );
+        expect(find.text(l10n.settingsTranscriptEnrichmentTitle), findsNothing);
+        expect(find.text(l10n.settingsTranscriptKaraokeTitle), findsNothing);
+        expect(find.text(l10n.settingsTranscriptIpaOverlayTitle), findsNothing);
 
         expect(find.text(l10n.settingsApiBaseUrl), findsOneWidget);
         expect(find.text(l10n.appTitle), findsWidgets);

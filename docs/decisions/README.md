@@ -99,3 +99,4 @@ Trade-offs, follow-up work, risks.
 | [0073](0073-craft-timeline-enrichment.md) | Craft timeline enrichment — opt-in Craft save is the first product caller of `alignSegments` (default off, fail-closed) |
 | [0074](0074-karaoke-word-highlight.md) | Karaoke word highlight — opt-in in-place current-word highlight from stored timings (default off; independent of Craft enrichment) |
 | [0075](0075-word-level-practice.md) | Word-level practice + stored IPA overlay — two default-off Settings toggles; annotation-layer IPA; hit-test seek; ephemeral loop; inspect sheet (no G2P / play-time alignment / new Player) |
+| [0076](0076-stacked-ipa-player-controls.md) | Stacked IPA columns + familiar mapping + Noto Sans; tap IPA to play; karaoke/IPA in CC subtitle sheet; eSpeak phoneme UTF-8; Craft enrichment always-on (supersedes 0073 default-off + 0075 overlay/inspect/Settings hub) |

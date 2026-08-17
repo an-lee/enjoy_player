@@ -4,7 +4,7 @@ library;
 import 'package:flutter_riverpod/misc.dart' show Override;
 
 import 'package:enjoy_player/features/settings/application/ipa_overlay_settings.dart';
-import 'package:enjoy_player/features/settings/application/word_practice_settings.dart';
+import 'package:enjoy_player/features/settings/application/karaoke_highlight_settings.dart';
 
 class IpaOverlaySettingsOverride extends IpaOverlaySettings {
   IpaOverlaySettingsOverride(this.enabled);
@@ -15,8 +15,8 @@ class IpaOverlaySettingsOverride extends IpaOverlaySettings {
   Future<bool> build() async => enabled;
 }
 
-class WordPracticeSettingsOverride extends WordPracticeSettings {
-  WordPracticeSettingsOverride(this.enabled);
+class KaraokeHighlightSettingsOverride extends KaraokeHighlightSettings {
+  KaraokeHighlightSettingsOverride(this.enabled);
 
   final bool enabled;
 
@@ -24,30 +24,19 @@ class WordPracticeSettingsOverride extends WordPracticeSettings {
   Future<bool> build() async => enabled;
 }
 
-/// Default-off gates for existing tile tests (US1 / karaoke / blur).
-List<Override> transcriptWordPracticeOffOverrides() => [
+/// Default-off IPA for existing tile tests (karaoke / blur / lookup).
+List<Override> transcriptIpaOverlayOffOverrides() => [
   ipaOverlaySettingsProvider.overrideWith(
     () => IpaOverlaySettingsOverride(false),
   ),
-  wordPracticeSettingsProvider.overrideWith(
-    () => WordPracticeSettingsOverride(false),
-  ),
 ];
 
-List<Override> transcriptIpaOverlayOnOverrides({bool practice = false}) => [
+/// Alias kept so older call sites still compile during the IPA UX migrate.
+List<Override> transcriptWordPracticeOffOverrides() =>
+    transcriptIpaOverlayOffOverrides();
+
+List<Override> transcriptIpaOverlayOnOverrides() => [
   ipaOverlaySettingsProvider.overrideWith(
     () => IpaOverlaySettingsOverride(true),
-  ),
-  wordPracticeSettingsProvider.overrideWith(
-    () => WordPracticeSettingsOverride(practice),
-  ),
-];
-
-List<Override> transcriptWordPracticeOnOverrides({bool overlay = false}) => [
-  ipaOverlaySettingsProvider.overrideWith(
-    () => IpaOverlaySettingsOverride(overlay),
-  ),
-  wordPracticeSettingsProvider.overrideWith(
-    () => WordPracticeSettingsOverride(true),
   ),
 ];

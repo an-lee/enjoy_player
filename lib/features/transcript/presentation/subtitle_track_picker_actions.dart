@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
+import 'subtitle_track_picker_primitives.dart';
 import 'transcript_busy_action.dart';
 
 class SubtitleActionsSection extends StatelessWidget {
@@ -84,34 +85,23 @@ class SubtitleActionsSection extends StatelessWidget {
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerLow.withValues(alpha: 0.92),
-          borderRadius: BorderRadius.circular(t.radiusLg),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.16)),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(t.radiusLg),
-          child: Material(
-            type: MaterialType.transparency,
-            child: Column(
-              children: [
-                for (var i = 0; i < tiles.length; i++) ...[
-                  if (i > 0)
-                    Divider(
-                      height: 1,
-                      indent: t.space16 + 24 + t.space16,
-                      endIndent: t.space16,
-                      color: cs.outlineVariant.withValues(alpha: 0.14),
-                    ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: t.space4),
-                    child: tiles[i],
-                  ),
-                ],
-              ],
-            ),
-          ),
+      child: SubtitlePickerCard(
+        child: Column(
+          children: [
+            for (var i = 0; i < tiles.length; i++) ...[
+              if (i > 0)
+                Divider(
+                  height: 1,
+                  indent: t.space16 + 24 + t.space16,
+                  endIndent: t.space16,
+                  color: cs.outlineVariant.withValues(alpha: 0.14),
+                ),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: t.space4),
+                child: tiles[i],
+              ),
+            ],
+          ],
         ),
       ),
     );

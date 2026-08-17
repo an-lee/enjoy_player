@@ -1,4 +1,4 @@
-/// Opt-in Craft-save hook: attach nested word/phone spans via alignSegments.
+/// Craft-save hook: attach nested word/phone spans via alignSegments.
 library;
 
 import 'dart:convert';
@@ -12,7 +12,6 @@ import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/data/audio/pcm16k_mono.dart';
 import 'package:enjoy_player/data/subtitle/attach_alignment_to_lines.dart';
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
-import 'package:enjoy_player/features/settings/application/timeline_enrichment_settings.dart';
 
 typedef DecodePcm16k = Future<Float32List> Function(Uint8List bytes);
 
@@ -41,38 +40,28 @@ String? alignmentLanguageForCraft(String language) {
 
 /// Extract + [alignSegments] + [attachAlignmentToLines] for Craft save.
 ///
-/// When enrichment is off, [timelineJson] is null, or extract/alignment
-/// fails, returns the original spec 030 JSON unchanged.
+/// Always attempts enrichment on a real Craft write. When [timelineJson] is
+/// null or extract/alignment fails, returns the original spec 030 JSON
+/// unchanged (fail-closed). Pass [enabled] `false` only in tests.
 final class CraftTimelineEnricher {
   CraftTimelineEnricher({
-    required this.enabled,
-    Future<bool> Function()? resolveEnabled,
+    this.enabled = true,
     DecodePcm16k? decodePcm,
     AlignSegmentsFn? alignSegmentsFn,
-  }) : // Named [resolveEnabled] so tests outside this library can pass it.
-       // ignore: prefer_initializing_formals
-       _resolveEnabled = resolveEnabled,
-       _decodePcm = decodePcm ?? decodeToPcm16kMono,
+  }) : _decodePcm = decodePcm ?? decodeToPcm16kMono,
        _alignSegments = alignSegmentsFn ?? _productionAlignSegments;
 
-  /// Explicit on/off used when [resolveEnabled] is omitted (tests).
+  /// Production is always on. Tests may pass `false` to skip alignment.
   final bool enabled;
-  final Future<bool> Function()? _resolveEnabled;
   final DecodePcm16k _decodePcm;
   final AlignSegmentsFn _alignSegments;
-
-  Future<bool> _isEnabled() async {
-    final resolve = _resolveEnabled;
-    if (resolve != null) return resolve();
-    return enabled;
-  }
 
   Future<String?> enrich({
     required String? timelineJson,
     required Uint8List audioBytes,
     required String language,
   }) async {
-    if (!await _isEnabled()) return timelineJson;
+    if (!enabled) return timelineJson;
     if (timelineJson == null) return null;
 
     final lines = _decodeLines(timelineJson);
@@ -174,8 +163,5 @@ Future<AlignmentOutcome> _productionAlignSegments({
 }
 
 final craftTimelineEnricherProvider = Provider<CraftTimelineEnricher>((ref) {
-  return CraftTimelineEnricher(
-    enabled: false,
-    resolveEnabled: () => ref.read(timelineEnrichmentSettingsProvider.future),
-  );
+  return CraftTimelineEnricher();
 });

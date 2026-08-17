@@ -61,49 +61,13 @@ void main() {
   });
 
   group('kSettingsRegistry', () {
-    test(
-      'includes Transcript section, timelineEnrichment, karaokeHighlight, ipaOverlay, and wordPractice',
-      () {
-        expect(
-          kSettingsRegistry.any(
-            (d) =>
-                d.sectionId == SettingsSectionIds.transcript && d.rowId == null,
-          ),
-          isTrue,
-        );
-        expect(
-          kSettingsRegistry.any(
-            (d) =>
-                d.sectionId == SettingsSectionIds.transcript &&
-                d.rowId == 'timelineEnrichment',
-          ),
-          isTrue,
-        );
-        expect(
-          kSettingsRegistry.any(
-            (d) =>
-                d.sectionId == SettingsSectionIds.transcript &&
-                d.rowId == 'karaokeHighlight',
-          ),
-          isTrue,
-        );
-        expect(
-          kSettingsRegistry.any(
-            (d) =>
-                d.sectionId == SettingsSectionIds.transcript &&
-                d.rowId == 'ipaOverlay',
-          ),
-          isTrue,
-        );
-        expect(
-          kSettingsRegistry.any(
-            (d) =>
-                d.sectionId == SettingsSectionIds.transcript &&
-                d.rowId == 'wordPractice',
-          ),
-          isTrue,
-        );
-      },
-    );
+    test('does not include Transcript section rows', () {
+      expect(
+        kSettingsRegistry.any(
+          (d) => d.sectionId == SettingsSectionIds.transcript,
+        ),
+        isFalse,
+      );
+    });
   });
 }

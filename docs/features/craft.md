@@ -152,7 +152,7 @@ After synthesis, `wordBoundary` events from the Azure Speech SDK produce time-al
 
 **Solid timings only (ADR-0063)**: Craft writes a primary AI transcript (`source: 'ai'`) only when word boundaries are non-empty **and** the segmenter produces ≥1 non-empty line after punctuation merge. When word boundaries are missing (OpenAI BYOK TTS, or Linux which has no native TTS plugin), no transcript is saved — `primaryTimelineJson: null` is passed on import/update, which omits or deletes transcript rows. The audio file still saves successfully.
 
-**Opt-in nested word/phone spans (ADR-0073)**: Settings → Transcript → **Enrich Craft word timings** (`transcript.timelineEnrichment`, default **off**) may attach nested `timeline` / `phones` onto those same spec 030 lines at save time via on-device `alignSegments`. Off, blank 030 JSON, a dedupe hit, PCM extract failure, or alignment failure persist today’s line-only (or blank) transcript — never a blocking save error, never an invented cue list. Learners still hear the Azure/Craft WAV; the spoken alignment reference is not played. Karaoke / IPA overlay are later slices.
+**Always-on nested word/phone spans (ADR-0073 / ADR-0076)**: every real (non-dedupe) Craft save attempts on-device `alignSegments` and may attach nested `timeline` / `phones` onto those same spec 030 lines. Blank 030 JSON, a dedupe hit, PCM extract failure, or alignment failure persist today’s line-only (or blank) transcript — never a blocking save error, never an invented cue list. Learners still hear the Azure/Craft WAV; the spoken alignment reference is not played. Karaoke / IPA display are opt-in player transcript controls (ADR-0076).
 
 - Items with a blank transcript open in the player with an empty transcript panel and a clear **Generate** affordance, allowing the learner to create cues via the existing player ASR flow (`launchAsrGeneration`) at any time.
 - No auto-STT runs on Craft save — the learner initiates ASR explicitly.
@@ -166,7 +166,7 @@ After synthesis, `wordBoundary` events from the Azure Speech SDK produce time-al
 | `Audios.source` | `'craft-express'` (Express mode), `'craft-translate'` (Advanced translate mode), or `'craft-direct'` (Advanced speak directly) |
 | `Audios.sourceText` | Original text (retained for re-generation). In Express mode this is the raw ASR transcript; in Advanced translate mode it is the source text; in speak directly it is empty. |
 | Audio file | WAV in app audio directory |
-| Transcript | One track (`source = 'ai'`) with word-boundary-segmented lines when solid timings are available; omitted (`null`) otherwise (see ADR-0063). When **Enrich Craft word timings** is on and alignment succeeds, those lines may also store nested word/phone spans (ADR-0073). Secondary source-text track in translate mode. Blank-transcript items show an ASR Generate affordance in the player. |
+| Transcript | One track (`source = 'ai'`) with word-boundary-segmented lines when solid timings are available; omitted (`null`) otherwise (see ADR-0063). When alignment succeeds on save, those lines may also store nested word/phone spans (ADR-0073 / ADR-0076). Secondary source-text track in translate mode. Blank-transcript items show an ASR Generate affordance in the player. |
 
 ### Deduplication
 

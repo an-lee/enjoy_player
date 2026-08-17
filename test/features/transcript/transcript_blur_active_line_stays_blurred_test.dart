@@ -199,7 +199,7 @@ void main() {
         find.byType(TranscriptBlurText).first,
       );
       expect(blur.revealed, isFalse);
-      expect(find.text('hɛˈloʊ'), findsNothing);
+      expect(find.textContaining('loʊ'), findsNothing);
     },
   );
 }

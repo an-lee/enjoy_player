@@ -24,6 +24,44 @@ double sheetHorizontalPadding(EnjoyThemeTokens t) => t.space16 + t.space4;
 EdgeInsetsDirectional trackOptionPadding(EnjoyThemeTokens t) =>
     const EdgeInsetsDirectional.fromSTEB(0, 2, 0, 2);
 
+/// Shared surface for track sections, display toggles, and action lists.
+BoxDecoration subtitlePickerCardDecoration(
+  BuildContext context, {
+  bool emphasized = false,
+  bool withShadow = false,
+}) {
+  final t = EnjoyThemeTokens.of(context);
+  final cs = Theme.of(context).colorScheme;
+  return BoxDecoration(
+    color: cs.surfaceContainerLow.withValues(alpha: 0.92),
+    borderRadius: BorderRadius.circular(t.radiusLg),
+    border: Border.all(
+      color: emphasized
+          ? cs.primary.withValues(alpha: 0.28)
+          : cs.outlineVariant.withValues(alpha: 0.16),
+    ),
+    boxShadow: withShadow
+        ? [
+            BoxShadow(
+              color: cs.shadow.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ]
+        : null,
+  );
+}
+
+/// Purple section label used inside picker cards (matches primary/translation).
+TextStyle? subtitlePickerSectionTitleStyle(BuildContext context) {
+  final cs = Theme.of(context).colorScheme;
+  return Theme.of(context).textTheme.labelLarge?.copyWith(
+    color: cs.primary,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0.2,
+  );
+}
+
 ThemeData trackPickerRadioTheme(BuildContext context) {
   final cs = Theme.of(context).colorScheme;
   return Theme.of(context).copyWith(

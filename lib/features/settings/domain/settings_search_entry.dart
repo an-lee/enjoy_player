@@ -122,23 +122,6 @@ const List<SettingsEntryDescriptor> kSettingsRegistry = [
     sectionId: SettingsSectionIds.recording,
     rowId: 'micPicker',
   ),
-  SettingsEntryDescriptor(sectionId: SettingsSectionIds.transcript),
-  SettingsEntryDescriptor(
-    sectionId: SettingsSectionIds.transcript,
-    rowId: 'timelineEnrichment',
-  ),
-  SettingsEntryDescriptor(
-    sectionId: SettingsSectionIds.transcript,
-    rowId: 'karaokeHighlight',
-  ),
-  SettingsEntryDescriptor(
-    sectionId: SettingsSectionIds.transcript,
-    rowId: 'ipaOverlay',
-  ),
-  SettingsEntryDescriptor(
-    sectionId: SettingsSectionIds.transcript,
-    rowId: 'wordPractice',
-  ),
   SettingsEntryDescriptor(sectionId: SettingsSectionIds.keyboardShortcuts),
   SettingsEntryDescriptor(
     sectionId: SettingsSectionIds.keyboardShortcuts,

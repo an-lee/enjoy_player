@@ -4,7 +4,7 @@ library;
 import 'package:meta/meta.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import 'package:enjoy_player/features/settings/application/word_practice_settings.dart';
+import 'package:enjoy_player/features/settings/application/ipa_overlay_settings.dart';
 
 part 'word_practice_session.g.dart';
 
@@ -58,7 +58,7 @@ class WordPracticeState {
 class WordPracticeSession extends _$WordPracticeSession {
   @override
   WordPracticeState build(String mediaId) {
-    ref.listen(wordPracticeSettingsProvider, (prev, next) {
+    ref.listen(ipaOverlaySettingsProvider, (prev, next) {
       if (next.value != true) {
         state = const WordPracticeState();
       }

@@ -13,6 +13,7 @@ export 'src/synth/espeak_ng_synthesizer.dart'
     show
         EspeakNgSynthesizer,
         createProductionSynthesizer,
+        decodeEspeakPhonemeIdBytes,
         debugSetEspeakFfiAvailable,
         espeakFfiIsAvailable,
         productionSynthesizerIsEspeakNg;

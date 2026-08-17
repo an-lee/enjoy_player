@@ -401,7 +401,7 @@
   "@settingsTranscriptKaraokeTitle": {
     "description": "Settings switch title for opt-in karaoke word highlight in the transcript panel."
   },
-  "settingsTranscriptKaraokeSubtitle": "开启后，若该句已有词级时间，播放时高亮正在说的词。关闭（默认）仍按整句高亮。",
+  "settingsTranscriptKaraokeSubtitle": "有词级时间时高亮正在说的词。",
   "@settingsTranscriptKaraokeSubtitle": {
     "description": "Settings switch subtitle explaining karaoke word highlight."
   },
@@ -409,35 +409,17 @@
   "@settingsTranscriptIpaOverlayTitle": {
     "description": "Settings switch title for opt-in stored IPA overlay on transcript words."
   },
-  "settingsTranscriptIpaOverlaySubtitle": "开启后，在已有音标的词上方显示存储的读音。关闭（默认）仍只显示字幕文本。",
+  "settingsTranscriptIpaOverlaySubtitle": "在词下方显示音标，点按可听。",
   "@settingsTranscriptIpaOverlaySubtitle": {
     "description": "Settings switch subtitle explaining stored IPA overlay."
   },
-  "settingsTranscriptWordPracticeTitle": "单词练习",
-  "@settingsTranscriptWordPracticeTitle": {
-    "description": "Settings switch title for opt-in word tap, loop, and inspect."
+  "transcriptDisplaySettingsTitle": "字幕显示",
+  "@transcriptDisplaySettingsTitle": {
+    "description": "Section title for karaoke and IPA toggles in the subtitle track picker."
   },
-  "settingsTranscriptWordPracticeSubtitle": "开启后，点按时长词可跳到该词。当前行可循环或查看音标。关闭（默认）仍按整句点击。",
-  "@settingsTranscriptWordPracticeSubtitle": {
-    "description": "Settings switch subtitle explaining word-level practice."
-  },
-  "transcriptWordLoopTooltip": "循环此词",
-  "@transcriptWordLoopTooltip": {
-    "description": "Tooltip for looping the current timed word's media window."
-  },
-  "transcriptWordInspectTooltip": "查看读音",
-  "@transcriptWordInspectTooltip": {
-    "description": "Tooltip for listing stored phone labels of the current word."
-  },
-  "transcriptWordInspectTitle": "读音：{word}",
-  "@transcriptWordInspectTitle": {
-    "description": "Title of the on-demand stored-phone inspect sheet.",
-    "placeholders": {
-      "word": {
-        "type": "String",
-        "example": "Hello"
-      }
-    }
+  "transcriptIpaUnavailableHint": "需先有 Craft 对齐后的音标。",
+  "@transcriptIpaUnavailableHint": {
+    "description": "Hint when IPA toggle is unavailable because the transcript has no phones."
   },
   "settingsRecordingMicTitle": "麦克风",
   "@settingsRecordingMicTitle": {

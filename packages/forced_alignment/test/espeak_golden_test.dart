@@ -50,6 +50,11 @@ void main() {
           .map((p) => p.phone)
           .toList();
       expect(helloPhones, isNot(equals(['h', 'e', 'l', 'l', 'o'])));
+      expect(
+        helloPhones.join(),
+        isNot(contains('Ã')),
+        reason: 'phonemes must be UTF-8 IPA, not Latin-1 mojibake',
+      );
     },
     skip: espeakFfiIsAvailable()
         ? false
