@@ -1095,4 +1095,57 @@ void main() {
       expect(state!.lastStatus, 'success');
     });
   });
+
+  group('replaceTimeline', () {
+    late AppDatabase db;
+
+    setUp(() {
+      db = AppDatabase(executor: NativeDatabase.memory());
+    });
+
+    tearDown(() => db.close());
+
+    test('rewrites JSON in place and preserves identity fields', () async {
+      await _insertAudio(db, 'rt1');
+      await _insertTranscriptRow(db, id: 'tr-rt', targetId: 'rt1');
+      final repo = TranscriptRepository(db);
+      final before = await db.transcriptDao.getById('tr-rt');
+      expect(before, isNotNull);
+
+      final ok = await repo.replaceTimeline(
+        transcriptId: 'tr-rt',
+        lines: const [
+          TranscriptLine(
+            text: 'hello',
+            startMs: 0,
+            durationMs: 1000,
+            timeline: [
+              TranscriptWord(text: 'hello', startMs: 0, durationMs: 800),
+            ],
+          ),
+        ],
+      );
+      expect(ok, isTrue);
+      final after = await db.transcriptDao.getById('tr-rt');
+      expect(after!.id, before!.id);
+      expect(after.source, before.source);
+      expect(after.language, before.language);
+      expect(after.label, before.label);
+      expect(after.targetId, before.targetId);
+      expect(after.timelineJson, contains('timeline'));
+      expect(after.updatedAt.isAfter(before.updatedAt), isTrue);
+
+      final cached = repo.linesForRow(after);
+      expect(cached.single.timeline, isNotNull);
+    });
+
+    test('returns false when the row is missing', () async {
+      final repo = TranscriptRepository(db);
+      final ok = await repo.replaceTimeline(
+        transcriptId: 'missing',
+        lines: const [TranscriptLine(text: 'x', startMs: 0, durationMs: 1)],
+      );
+      expect(ok, isFalse);
+    });
+  });
 }

@@ -1950,8 +1950,62 @@ abstract class AppLocalizations {
   /// Hint when IPA toggle is unavailable because the transcript has no phones.
   ///
   /// In en, this message translates to:
-  /// **'Needs Craft-aligned phones first.'**
+  /// **'Generate pronunciation first.'**
   String get transcriptIpaUnavailableHint;
+
+  /// Hint when karaoke is off because the primary track has no timed words.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate word timings first.'**
+  String get transcriptKaraokeUnavailableHint;
+
+  /// Hint when karaoke stays off for YouTube or other non-extractable media.
+  ///
+  /// In en, this message translates to:
+  /// **'Karaoke needs word timings from a local file.'**
+  String get transcriptKaraokeUnavailableRemoteHint;
+
+  /// CC-sheet tile title to align words + IPA from this item's local audio.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate word timings and pronunciation'**
+  String get transcriptEnrichOwnedTitle;
+
+  /// CC-sheet tile subtitle for owned-media transcript enrichment.
+  ///
+  /// In en, this message translates to:
+  /// **'Uses this item\'s audio. Playback stays available.'**
+  String get transcriptEnrichOwnedSubtitle;
+
+  /// CC-sheet tile title to phonemize YouTube captions without downloading video.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate pronunciation'**
+  String get transcriptEnrichYoutubeTitle;
+
+  /// CC-sheet tile subtitle for YouTube IPA-only enrichment.
+  ///
+  /// In en, this message translates to:
+  /// **'Karaoke stays unavailable. The video is not downloaded.'**
+  String get transcriptEnrichYoutubeSubtitle;
+
+  /// Busy enrich tile title that cancels an in-flight run.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel generation'**
+  String get transcriptEnrichCancel;
+
+  /// Enrich tile title after a failed run.
+  ///
+  /// In en, this message translates to:
+  /// **'Try generating again'**
+  String get transcriptEnrichRetry;
+
+  /// Inline error on the enrich tile after failure or cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t generate. Tap to try again.'**
+  String get transcriptEnrichFailed;
 
   /// Title of the microphone picker tile in settings.
   ///

@@ -597,9 +597,45 @@
   "@transcriptDisplaySettingsTitle": {
     "description": "Section title for karaoke and IPA toggles in the subtitle track picker."
   },
-  "transcriptIpaUnavailableHint": "Needs Craft-aligned phones first.",
+  "transcriptIpaUnavailableHint": "Generate pronunciation first.",
   "@transcriptIpaUnavailableHint": {
     "description": "Hint when IPA toggle is unavailable because the transcript has no phones."
+  },
+  "transcriptKaraokeUnavailableHint": "Generate word timings first.",
+  "@transcriptKaraokeUnavailableHint": {
+    "description": "Hint when karaoke is off because the primary track has no timed words."
+  },
+  "transcriptKaraokeUnavailableRemoteHint": "Karaoke needs word timings from a local file.",
+  "@transcriptKaraokeUnavailableRemoteHint": {
+    "description": "Hint when karaoke stays off for YouTube or other non-extractable media."
+  },
+  "transcriptEnrichOwnedTitle": "Generate word timings and pronunciation",
+  "@transcriptEnrichOwnedTitle": {
+    "description": "CC-sheet tile title to align words + IPA from this item's local audio."
+  },
+  "transcriptEnrichOwnedSubtitle": "Uses this item's audio. Playback stays available.",
+  "@transcriptEnrichOwnedSubtitle": {
+    "description": "CC-sheet tile subtitle for owned-media transcript enrichment."
+  },
+  "transcriptEnrichYoutubeTitle": "Generate pronunciation",
+  "@transcriptEnrichYoutubeTitle": {
+    "description": "CC-sheet tile title to phonemize YouTube captions without downloading video."
+  },
+  "transcriptEnrichYoutubeSubtitle": "Karaoke stays unavailable. The video is not downloaded.",
+  "@transcriptEnrichYoutubeSubtitle": {
+    "description": "CC-sheet tile subtitle for YouTube IPA-only enrichment."
+  },
+  "transcriptEnrichCancel": "Cancel generation",
+  "@transcriptEnrichCancel": {
+    "description": "Busy enrich tile title that cancels an in-flight run."
+  },
+  "transcriptEnrichRetry": "Try generating again",
+  "@transcriptEnrichRetry": {
+    "description": "Enrich tile title after a failed run."
+  },
+  "transcriptEnrichFailed": "Couldn't generate. Tap to try again.",
+  "@transcriptEnrichFailed": {
+    "description": "Inline error on the enrich tile after failure or cancel."
   },
   "settingsRecordingMicTitle": "Microphone",
   "@settingsRecordingMicTitle": {

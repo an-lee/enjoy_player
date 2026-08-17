@@ -14,7 +14,8 @@ part of 'karaoke_word_index_provider.dart';
 /// Watches [karaokeHighlightSettingsProvider] so a persisted `'true'` is not
 /// frozen as off: loading is `null` (no paint yet), then this provider
 /// rebuilds when the keep-alive notifier resolves. Inactive tiles must not
-/// watch this provider.
+/// watch this provider. Also requires [karaokeSwitchEnabled] (timed words on
+/// extractable local media) so YouTube / untimed tracks never highlight.
 
 @ProviderFor(karaokeWordIndex)
 final karaokeWordIndexProvider = KaraokeWordIndexFamily._();
@@ -25,7 +26,8 @@ final karaokeWordIndexProvider = KaraokeWordIndexFamily._();
 /// Watches [karaokeHighlightSettingsProvider] so a persisted `'true'` is not
 /// frozen as off: loading is `null` (no paint yet), then this provider
 /// rebuilds when the keep-alive notifier resolves. Inactive tiles must not
-/// watch this provider.
+/// watch this provider. Also requires [karaokeSwitchEnabled] (timed words on
+/// extractable local media) so YouTube / untimed tracks never highlight.
 
 final class KaraokeWordIndexProvider
     extends $FunctionalProvider<int?, int?, int?>
@@ -36,7 +38,8 @@ final class KaraokeWordIndexProvider
   /// Watches [karaokeHighlightSettingsProvider] so a persisted `'true'` is not
   /// frozen as off: loading is `null` (no paint yet), then this provider
   /// rebuilds when the keep-alive notifier resolves. Inactive tiles must not
-  /// watch this provider.
+  /// watch this provider. Also requires [karaokeSwitchEnabled] (timed words on
+  /// extractable local media) so YouTube / untimed tracks never highlight.
   KaraokeWordIndexProvider._({
     required KaraokeWordIndexFamily super.from,
     required String super.argument,
@@ -88,7 +91,7 @@ final class KaraokeWordIndexProvider
   }
 }
 
-String _$karaokeWordIndexHash() => r'50744bb23b86d7d04a6f7dcc995dd80e72fb9ebd';
+String _$karaokeWordIndexHash() => r'41a6bb336433654068d1e9b555c2e745dae22704';
 
 /// Word index into the current cue's `timeline`, or null when karaoke is off
 /// / still loading, the cue is line-only, or position is in a gap.
@@ -96,7 +99,8 @@ String _$karaokeWordIndexHash() => r'50744bb23b86d7d04a6f7dcc995dd80e72fb9ebd';
 /// Watches [karaokeHighlightSettingsProvider] so a persisted `'true'` is not
 /// frozen as off: loading is `null` (no paint yet), then this provider
 /// rebuilds when the keep-alive notifier resolves. Inactive tiles must not
-/// watch this provider.
+/// watch this provider. Also requires [karaokeSwitchEnabled] (timed words on
+/// extractable local media) so YouTube / untimed tracks never highlight.
 
 final class KaraokeWordIndexFamily extends $Family
     with $FunctionalFamilyOverride<int?, String> {
@@ -115,7 +119,8 @@ final class KaraokeWordIndexFamily extends $Family
   /// Watches [karaokeHighlightSettingsProvider] so a persisted `'true'` is not
   /// frozen as off: loading is `null` (no paint yet), then this provider
   /// rebuilds when the keep-alive notifier resolves. Inactive tiles must not
-  /// watch this provider.
+  /// watch this provider. Also requires [karaokeSwitchEnabled] (timed words on
+  /// extractable local media) so YouTube / untimed tracks never highlight.
 
   KaraokeWordIndexProvider call(String mediaId) =>
       KaraokeWordIndexProvider._(argument: mediaId, from: this);

@@ -8,6 +8,7 @@ export 'src/flatten.dart';
 export 'src/language_map.dart'
     show kSupportedAlignmentLanguageTags, isSupportedAlignmentLanguage;
 export 'src/outcome.dart';
+export 'src/phonemize.dart';
 export 'src/request.dart';
 export 'src/synth/espeak_ng_synthesizer.dart'
     show

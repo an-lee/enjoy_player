@@ -256,10 +256,7 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
 
         Widget primaryWidget;
         if (useAligned && isRevealed) {
-          final ipaStyle = transcriptIpaTextStyle(
-            baseBody,
-            scheme.onSurfaceVariant,
-          );
+          final ipaStyle = transcriptIpaTextStyle(baseBody, tok.echoActive);
           primaryWidget = TranscriptAlignedWords(
             words: words,
             wordStyle: baseBody,

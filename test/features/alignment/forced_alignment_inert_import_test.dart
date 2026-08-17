@@ -5,10 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test(
-    'transcript, player, ASR, lookup, Settings, and l10n do not import forced_alignment',
+    'transcript presentation, player, ASR, lookup, Settings, and l10n do not import forced_alignment',
     () {
       const roots = [
-        'lib/features/transcript',
+        'lib/features/transcript/presentation',
         'lib/features/player',
         'lib/features/asr',
         'lib/features/lookup',
@@ -30,6 +30,17 @@ void main() {
       expect(hits, isEmpty, reason: hits.join('\n'));
     },
   );
+
+  test('transcript application enricher may import forced_alignment', () {
+    final file = File(
+      'lib/features/transcript/application/transcript_enrichment_controller.dart',
+    );
+    expect(file.existsSync(), isTrue);
+    expect(
+      file.readAsStringSync().contains('package:forced_alignment/'),
+      isTrue,
+    );
+  });
 
   test(
     'Craft, subtitle mapper, and PCM helper may import forced_alignment',

@@ -10,7 +10,7 @@
 - **Neutrals** — zinc-style dark ramp only: base `#09090B`, containers through `#3F3F46` (see `AppColors` in `lib/core/theme/colors.dart`).
 - **Brand** — premium purple `#7B61FF` (primary) elevating the logo gradient, with logo blue `#4797F5` (secondary) (Material `ColorScheme` roles).
 - **Dynamic accent** — extracted per-media via `palette_generator`; applied to now-playing ring glow, transcript active-line rail, and ambient backdrop tint.
-- **Echo accent** — `#E65100` orange kept for brand recognition, only on echo-mode affordances.
+- **Echo accent** — `#E65100` orange kept for brand recognition, used on echo-mode affordances and stacked IPA labels.
 
 ### Typography
 

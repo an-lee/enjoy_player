@@ -139,6 +139,7 @@ Future<AlignmentOutcome> align({
   AlignmentGranularity granularity = AlignmentGranularity.medium,
   Duration? timeout,
   AlignmentCancelToken? cancel,
+  double timeOffset = 0,
   @visibleForTesting SpokenReferenceSynthesizer? synthesizer,
 }) async {
   final langFail = _validateLanguage(language);
@@ -178,6 +179,7 @@ Future<AlignmentOutcome> align({
       transcript: transcript,
       language: language,
       granularity: granularity,
+      timeOffset: timeOffset,
       reference: reference,
     ),
     timeout: timeout ?? kDefaultWholeClipTimeout,

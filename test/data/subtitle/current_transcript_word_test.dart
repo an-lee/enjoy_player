@@ -204,5 +204,14 @@ void main() {
       expect(wordMediaWindowMs(line, 0), isNull);
       expect(wordMediaWindowMs(line, 1), isNull);
     });
+
+    test('null duration is untimed', () {
+      final line = _line(
+        text: 'Hello',
+        timeline: const [TranscriptWord(text: 'Hello')],
+      );
+      expect(currentWordIndex(line, 1100), isNull);
+      expect(wordMediaWindowMs(line, 0), isNull);
+    });
   });
 }

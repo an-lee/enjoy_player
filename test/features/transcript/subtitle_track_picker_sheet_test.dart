@@ -14,6 +14,7 @@ import 'package:enjoy_player/features/auth/domain/auth_state.dart';
 import 'package:enjoy_player/features/transcript/application/active_transcript_provider.dart';
 import 'package:enjoy_player/features/transcript/application/all_transcripts_provider.dart';
 import 'package:enjoy_player/features/transcript/application/auto_translate_controller.dart';
+import 'package:enjoy_player/features/transcript/application/transcript_display_readiness_provider.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_fetch_controller.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_lines_provider.dart';
 import 'package:enjoy_player/features/transcript/domain/auto_translate.dart';
@@ -57,6 +58,7 @@ List<Override> _pickerOverrides({
     _mediaId,
   ).overrideWith((ref) => Stream.value(const [])),
   videoRowForMediaProvider(_mediaId).overrideWith((ref) async => null),
+  canTrustWordTimesProvider(_mediaId).overrideWith((ref) async => false),
   transcriptFetchStatusProvider(_mediaId).overrideWithValue(
     const TranscriptFetchUiState(status: TranscriptFetchStatus.idle),
   ),
@@ -363,6 +365,7 @@ void main() {
         _mediaId,
       ).overrideWith((ref) => const Stream.empty()),
       videoRowForMediaProvider(_mediaId).overrideWith((ref) async => null),
+      canTrustWordTimesProvider(_mediaId).overrideWith((ref) async => false),
       transcriptFetchStatusProvider(_mediaId).overrideWithValue(
         const TranscriptFetchUiState(status: TranscriptFetchStatus.idle),
       ),
