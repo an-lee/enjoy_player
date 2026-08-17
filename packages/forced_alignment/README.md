@@ -64,5 +64,6 @@ cd packages/forced_alignment && flutter test
 ```
 
 DTW, flatten, caps, fail-closed, and failure tests always run. The eSpeak
-“hello world” golden **skips** when native eSpeak-NG FFI is not loaded
-(`espeakFfiIsAvailable()`).
+FFI tests (golden, native phonemize, fr-CA voice) run unconditionally —
+native binaries are vendored for every supported host platform, so a load
+failure is a regression, not a skip.

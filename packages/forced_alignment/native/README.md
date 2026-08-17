@@ -8,21 +8,39 @@ tree at runtime (`DynamicLibrary.open`). Nothing here is compiled during
 
 ```text
 native/
-  android/libespeak-ng.so
-  ios/libespeak-ng.dylib
-  macos/libespeak-ng.dylib
+  android/libespeak-ng.so      # arm64-v8a
+  ios/libespeak-ng.dylib       # NOT vendored yet (see below)
+  macos/libespeak-ng.dylib     # universal: arm64 + x86_64
   windows/libespeak-ng.dll
-  linux/libespeak-ng.so
-  espeak-ng-data/          # voices + phoneme tables for focus languages
+  linux/libespeak-ng.so        # x86_64
+  espeak-ng-data/              # voices + phoneme tables for focus languages
 ```
 
-A missing library or data directory is not a test failure. Production
-`align` / `alignSegments` return `spokenReferenceUnavailable`. Quality
-goldens skip when `espeakFfiIsAvailable()` is false.
+A missing library or data directory is not a test failure for the app suite:
+production `align` / `alignSegments` return `spokenReferenceUnavailable`.
+The package's own eSpeak FFI tests (golden, native phonemize, fr-CA voice)
+run **unconditionally** on host platforms that have a vendored binary — a
+load failure there is a regression, not a skip.
 
-Windows x64 `libespeak-ng.dll` plus a trimmed focus-language
-`espeak-ng-data` tree are vendored from the official eSpeak-NG 1.52.0
-MSI. Other OS binaries may be added the same way.
+## Provenance (eSpeak-NG 1.52.0, GPL-3.0)
+
+| Platform | Artifact | Built from the official 1.52.0 source with |
+|---|---|---|
+| windows | `libespeak-ng.dll` (x64) | official eSpeak-NG 1.52.0 MSI |
+| linux | `libespeak-ng.so` (x86_64) | zig cc 0.15.2 `-target x86_64-linux-gnu.2.31`; requires glibc ≥ 2.29; links only libc/libm |
+| macos | `libespeak-ng.dylib` (arm64 + x86_64, min 10.15) | zig cc 0.15.2 against the MacOSX11.3 SDK; links only libSystem |
+| android | `libespeak-ng.so` (arm64-v8a) | Android NDK r27d, API 26; links only libc/libm/libdl |
+| ios | — | pending: build on a macOS host with Xcode/iPhoneOS SDK and vendor here |
+
+All builds compile the same upstream sources (`src/libespeak-ng/*.c` except
+`sPlayer.c`, plus `src/ucd-tools/src/{case,categories,ctype,proplist,
+scripts,tostring}.c`) with `-fvisibility=hidden -DLIBESPEAK_NG_EXPORT`
+(same export discipline as the upstream Windows build), no pcaudiolib, no
+speech-player. Rebuilds should keep the 1.52.0 tag and the focus-language
+data tree below in lockstep.
+
+Android ships arm64-v8a only; `armeabi-v7a` / `x86_64` builds belong with
+the app-packaging work that embeds these artifacts per ABI.
 
 ## Voices (focus catalog)
 
