@@ -80,20 +80,14 @@ void main() {
     },
   );
 
-  test(
-    'native phonemize returns labels when eSpeak is available',
-    () async {
-      final outcome = await phonemizeLines(
-        texts: const ['Hello'],
-        language: 'en-US',
-      );
-      expect(outcome, isA<PhonemizeSuccess>());
-      final words = (outcome as PhonemizeSuccess).lines.single.words;
-      expect(words, isNotEmpty);
-      expect(words.first.phones, isNotEmpty);
-    },
-    skip: espeakFfiIsAvailable()
-        ? false
-        : 'eSpeak-NG library or data unavailable',
-  );
+  test('native phonemize returns labels when eSpeak is available', () async {
+    final outcome = await phonemizeLines(
+      texts: const ['Hello'],
+      language: 'en-US',
+    );
+    expect(outcome, isA<PhonemizeSuccess>());
+    final words = (outcome as PhonemizeSuccess).lines.single.words;
+    expect(words, isNotEmpty);
+    expect(words.first.phones, isNotEmpty);
+  });
 }

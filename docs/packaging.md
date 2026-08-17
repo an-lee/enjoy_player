@@ -582,8 +582,14 @@ Identity: **`ai.enjoy.player`** everywhere ([ADR-0020](decisions/0020-android-wi
 `DynamicLibrary.open`). This is an internal alignment input only — it is never
 played to the learner and does not replace Craft/library audio.
 
-- Missing lib or data → `spokenReferenceUnavailable` (not a test failure).
-- Quality goldens skip when `espeakFfiIsAvailable()` is false.
+- Missing lib or data at runtime → `spokenReferenceUnavailable` (not a test
+  failure).
+- Binaries are vendored from official eSpeak-NG 1.52.0 sources for
+  `windows/`, `linux/` (x86_64), `macos/` (universal), and `android/`
+  (arm64-v8a); `ios/` is pending a macOS-host build. Provenance and rebuild
+  notes live in `packages/forced_alignment/native/README.md`.
+- `packages/forced_alignment`'s eSpeak FFI tests run unconditionally on
+  vendored host platforms — a load failure is a regression, not a skip.
 - eSpeak-NG is GPL-3.0; linking into this AGPL-3.0 app is recorded in
   [ADR-0072](decisions/0072-spoken-alignment-reference.md).
 - Do not compile eSpeak-NG from source on every `flutter test`.
