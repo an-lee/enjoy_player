@@ -5,20 +5,18 @@ String _camelToSnakeToken(String input) {
   // Walk the code units directly. Going via `input[i]` + `c.toLowerCase()`
   // allocates a fresh single-char String per iteration; for an API request
   // body with hundreds of keys this dominates the JSON-encode hot path.
-  // ASCII uppercase is folded inline; non-ASCII falls back to the original
-  // Unicode-aware path so non-English keys keep their previous shape.
+  // ASCII uppercase is folded inline; keys containing any non-ASCII
+  // character are returned unchanged so non-English keys keep their previous
+  // shape (e.g. `caféName` stays `caféName`, not `café_name`).
   final b = StringBuffer();
   for (var i = 0; i < input.length; i++) {
     final code = input.codeUnitAt(i);
+    if (code >= 0x80) return input;
     final isUpperAscii = code >= 0x41 && code <= 0x5A;
     if (isUpperAscii && i > 0) {
       b.write('_');
     }
-    if (code < 0x80) {
-      b.writeCharCode(isUpperAscii ? code + 0x20 : code);
-    } else {
-      b.write(input[i].toLowerCase());
-    }
+    b.writeCharCode(isUpperAscii ? code + 0x20 : code);
   }
   return b.toString();
 }
