@@ -1,4 +1,4 @@
-/// Full-screen player: ambient artwork backdrop + transparent AppBar.
+/// Full-screen player: ambient artwork backdrop + video/audio chrome.
 library;
 
 import 'package:flutter/material.dart';
@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:enjoy_player/core/theme/dynamic_color/dynamic_color_provider.dart';
 import 'package:enjoy_player/features/player/application/open_media_provider.dart';
 import 'package:enjoy_player/features/player/application/player_controller.dart';
-import 'package:enjoy_player/features/player/application/player_state_providers.dart';
 import 'package:enjoy_player/features/player/application/player_ui_provider.dart';
 import 'package:enjoy_player/features/player/domain/media_relocate_exception.dart';
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
@@ -41,7 +40,6 @@ class _ExpandedPlayerScreenState extends ConsumerState<ExpandedPlayerScreen> {
   Widget build(BuildContext context) {
     final open = ref.watch(openMediaLaunchProvider(widget.launch));
     final chrome = ref.watch(playerControllerProvider.select(playbackChromeOf));
-    final isPlaying = ref.watch(playerIsPlayingProvider).value ?? false;
     final paletteAsync = ref.watch(currentArtworkPaletteProvider);
     final accent = paletteAsync.value?.dominant;
     final cs = Theme.of(context).colorScheme;
@@ -51,7 +49,6 @@ class _ExpandedPlayerScreenState extends ConsumerState<ExpandedPlayerScreen> {
       return ExpandedPlayerChromeBody(
         mediaId: mediaId,
         chrome: chrome,
-        isPlaying: isPlaying,
         accent: accent,
       );
     }

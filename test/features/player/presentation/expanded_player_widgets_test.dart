@@ -136,7 +136,6 @@ void main() {
         child: ExpandedPlayerChromeBody(
           mediaId: 'm1',
           chrome: chrome,
-          isPlaying: true,
           accent: Colors.amber,
         ),
       ),
@@ -146,6 +145,43 @@ void main() {
     // Video path never reserves an AppBar slot (even when playing).
     expect(find.byType(AppBar), findsNothing);
   });
+
+  testWidgets(
+    'ExpandedPlayerChromeBody audio path uses body collapse chevron, no AppBar',
+    (tester) async {
+      final container = _containerFor(db);
+      addTearDown(container.dispose);
+
+      final chrome = (
+        mediaId: 'm1',
+        dexieTargetType: 'Audio',
+        mediaType: 'audio',
+        mediaTitle: 'Grandma house title that must not appear as AppBar title',
+        thumbnailUrl: null,
+        durationSeconds: 4.0,
+        language: 'en',
+      );
+
+      await tester.pumpWidget(
+        _wrap(
+          container: container,
+          child: ExpandedPlayerChromeBody(
+            mediaId: 'm1',
+            chrome: chrome,
+            accent: null,
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byType(AppBar), findsNothing);
+      expect(find.byIcon(Icons.keyboard_arrow_down_rounded), findsOneWidget);
+      expect(
+        find.text('Grandma house title that must not appear as AppBar title'),
+        findsNothing,
+      );
+    },
+  );
 
   test('ExpandedPlayerChromeBody accepts null accent for both paths', () {
     final audioChrome = (
@@ -169,13 +205,11 @@ void main() {
     final audio = ExpandedPlayerChromeBody(
       mediaId: 'm1',
       chrome: audioChrome,
-      isPlaying: false,
       accent: null,
     );
     final video = ExpandedPlayerChromeBody(
       mediaId: 'm2',
       chrome: videoChrome,
-      isPlaying: true,
       accent: null,
     );
     expect(audio, isNotNull);

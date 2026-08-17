@@ -131,18 +131,15 @@ class ExpandedPlayerChromeBody extends ConsumerWidget {
     super.key,
     required this.mediaId,
     required this.chrome,
-    required this.isPlaying,
     required this.accent,
   });
 
   final String mediaId;
   final PlaybackChrome chrome;
-  final bool isPlaying;
   final Color? accent;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
     final isVideo = chrome.mediaType == 'video';
     final engine = ref.read(playerEngineProvider);
     final splitPx = ref.watch(
@@ -163,47 +160,19 @@ class ExpandedPlayerChromeBody extends ConsumerWidget {
           )
         : AudioPlayerLayout(transcript: transcript);
 
-    return Scaffold(
-      backgroundColor: cs.surface,
-      extendBodyBehindAppBar: true,
-      // Video: never reserve an [AppBar] slot — paused title chrome overlays the
-      // body so the video stage geometry does not jump on play/pause.
-      appBar: isVideo
-          ? null
-          : (isPlaying
-                ? null
-                : AppBar(
-                    backgroundColor: Colors.transparent,
-                    elevation: 0,
-                    scrolledUnderElevation: 0,
-                    surfaceTintColor: Colors.transparent,
-                    leading: IconButton(
-                      tooltip: MaterialLocalizations.of(
-                        context,
-                      ).backButtonTooltip,
-                      icon: Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: cs.onSurface,
-                        size: 28,
-                      ),
-                      onPressed: () =>
-                          unawaited(collapseExpandedPlayer(ref, context)),
-                    ),
-                    title: Text(
-                      chrome.mediaTitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: cs.onSurface,
-                      ),
-                    ),
-                    centerTitle: false,
-                  )),
-      body: PlayerAmbientBackdrop(
-        accentColor: accent,
-        intensity: 0.08,
-        child: mediaBody,
+    // Lift ambient tint around the Scaffold so audio collapse chrome and
+    // transcript share one backdrop (transparent scaffold).
+    return PlayerAmbientBackdrop(
+      accentColor: accent,
+      intensity: 0.08,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        // Video only: body draws under overlay chrome so the 16:9 stage does
+        // not jump on play/pause. Audio has no AppBar — collapse lives in
+        // [AudioPlayerLayout] as a compact top-left chevron (ADR-0077).
+        extendBodyBehindAppBar: isVideo,
+        appBar: null,
+        body: mediaBody,
       ),
     );
   }
