@@ -595,8 +595,17 @@ played to the learner and does not replace Craft/library audio.
   so packaged `align` / `alignSegments` can `DynamicLibrary.open` without
   the source tree. Android ships the per-ABI `.so` through jniLibs and
   `espeak-ng-data` as Flutter assets extracted at startup
-  (`lib/core/platform/espeak_android_provisioner.dart`). Windows/Linux
-  desktop app bundles remain a follow-up.
+  (`lib/core/platform/espeak_android_provisioner.dart`). Flutter does **not**
+  recurse directory assets — `pubspec.yaml` must list `espeak-ng-data/` **and**
+  `espeak-ng-data/lang/` or `espeak_SetVoiceByName(en-us)` fails on device
+  while Windows (source-tree files) still works. Windows/Linux desktop app
+  bundles remain a follow-up.
+- **CI gates**: unit tests assert iOS (`Runner.app/espeak-ng-data`) and macOS
+  (`Contents/Resources/espeak-ng-data`) layouts include every mapped `lang/`
+  voice and can phonemize `en-US`. [Build Apple](../.github/workflows/build_apple.yml)
+  runs `.github/scripts/check_bundled_espeak_data.sh` on the compiled `.app`.
+  [Android APK smoke](../.github/workflows/android_apk_smoke.yml) greps the
+  APK for `lang/en-us`, not only `phontab`.
 - `packages/forced_alignment`'s eSpeak FFI tests run unconditionally on
   vendored host platforms — a load failure is a regression, not a skip.
 - eSpeak-NG is GPL-3.0; linking into this AGPL-3.0 app is recorded in

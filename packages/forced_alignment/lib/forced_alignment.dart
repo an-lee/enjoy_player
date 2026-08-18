@@ -6,7 +6,11 @@ export 'src/constants.dart';
 export 'src/failures.dart';
 export 'src/flatten.dart';
 export 'src/language_map.dart'
-    show kSupportedAlignmentLanguageTags, isSupportedAlignmentLanguage;
+    show
+        kEspeakRequiredDataRelativePaths,
+        kEspeakVoiceByLanguageTag,
+        kSupportedAlignmentLanguageTags,
+        isSupportedAlignmentLanguage;
 export 'src/outcome.dart';
 export 'src/phonemize.dart';
 export 'src/request.dart';
@@ -20,8 +24,10 @@ export 'src/synth/espeak_ng_synthesizer.dart'
         productionSynthesizerIsEspeakNg;
 export 'src/synth/native_paths.dart'
     show
+        kEspeakAndroidSoname,
         resolveEspeakDataPath,
         resolveEspeakLibraryPath,
+        missingEspeakRequiredDataFiles,
         setEspeakNativePathOverrides;
 export 'src/synth/spoken_reference.dart';
 export 'src/types.dart';

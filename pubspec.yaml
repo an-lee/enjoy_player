@@ -109,5 +109,8 @@ flutter:
     - assets/discover/recommended_channels.json
     # Vendored eSpeak-NG voices/dicts; extracted to disk on Android at startup
     # (espeak_android_provisioner) because eSpeak fopens real files.
+    # Flutter does not recurse: each directory needs its own entry or `lang/`
+    # is omitted and espeak_SetVoiceByName(en-us) fails on Android.
     - packages/forced_alignment/native/espeak-ng-data/
+    - packages/forced_alignment/native/espeak-ng-data/lang/
 

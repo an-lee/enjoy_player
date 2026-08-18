@@ -19,6 +19,7 @@ final class _EspeakJob {
     required this.language,
     this.libraryPath,
     this.dataPath,
+    this.phonemesOnly = false,
   });
 
   final int id;
@@ -27,6 +28,7 @@ final class _EspeakJob {
   final String language;
   final String? libraryPath;
   final String? dataPath;
+  final bool phonemesOnly;
 }
 
 final class _EspeakCancel {
@@ -40,6 +42,7 @@ final class _EspeakCancel {
 /// eSpeak-NG process-global APIs are not safe across overlapping
 /// `Isolate.spawn` workers. All production synth goes through this host;
 /// DTW isolates receive a finished [ReferenceAudio] only.
+@pragma('vm:entry-point')
 void _espeakSynthIsolateMain(SendPort ready) {
   final inbox = ReceivePort();
   var cancelled = false;
@@ -59,6 +62,7 @@ void _espeakSynthIsolateMain(SendPort ready) {
     try {
       final audio = EspeakNgSynthesizer(
         isCancelled: () => cancelled,
+        phonemesOnly: message.phonemesOnly,
       ).synthesize(text: message.text, language: message.language);
       message.reply.send(audio);
     } on SpokenReferenceException catch (e) {
@@ -105,10 +109,13 @@ final class EspeakSynthHost {
   }
 
   /// Speak [text] on the dedicated eSpeak isolate (one job at a time).
+  ///
+  /// [phonemesOnly] skips copying PCM onto the Dart heap (YouTube IPA).
   static Future<ReferenceAudio> synthesize({
     required String text,
     required String language,
     AlignmentCancelToken? cancel,
+    bool phonemesOnly = false,
   }) {
     final previous = _queue;
     final released = Completer<void>();
@@ -120,6 +127,7 @@ final class EspeakSynthHost {
           text: text,
           language: language,
           cancel: cancel,
+          phonemesOnly: phonemesOnly,
         );
       } finally {
         released.complete();
@@ -131,6 +139,7 @@ final class EspeakSynthHost {
     required String text,
     required String language,
     AlignmentCancelToken? cancel,
+    bool phonemesOnly = false,
   }) async {
     await _ensureStarted();
     if (cancel?.isCancelled ?? false) {
@@ -149,6 +158,7 @@ final class EspeakSynthHost {
         language: language,
         libraryPath: resolveEspeakLibraryPath(),
         dataPath: resolveEspeakDataPath(),
+        phonemesOnly: phonemesOnly,
       ),
     );
     cancel?.onCancel(() {

@@ -14,6 +14,7 @@ import 'package:enjoy_player/data/db/media_target_resolver.dart';
 import 'package:enjoy_player/data/subtitle/alignment_language.dart';
 import 'package:enjoy_player/data/subtitle/attach_alignment_to_lines.dart';
 import 'package:enjoy_player/data/subtitle/attach_phonemes_to_lines.dart';
+import 'package:enjoy_player/data/subtitle/subtitle_markup_parser.dart';
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
 import 'package:enjoy_player/features/player/domain/playable_source.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_repository_provider.dart';
@@ -139,7 +140,14 @@ final class TranscriptEnricher {
       return const TranscriptEnrichmentErr('empty');
     }
     final alignmentLanguage = alignmentLanguageForTranscript(language);
+    logNamed('transcript.enrichment').info(
+      'enrich start id=$transcriptId lang=$language '
+      'mapped=$alignmentLanguage extractable=$extractable lines=${lines.length}',
+    );
     if (alignmentLanguage == null) {
+      logNamed(
+        'transcript.enrichment',
+      ).warning('enrich failed: unsupportedLanguage lang=$language');
       return const TranscriptEnrichmentErr('unsupportedLanguage');
     }
     if (cancel?.isCancelled ?? false) {
@@ -175,7 +183,9 @@ final class TranscriptEnricher {
     late final PhonemizeOutcome outcome;
     try {
       outcome = await _phonemize(
-        texts: [for (final line in lines) line.text],
+        texts: [
+          for (final line in lines) plainTextFromSubtitleMarkup(line.text),
+        ],
         language: language,
         cancel: cancel,
       );
@@ -188,11 +198,14 @@ final class TranscriptEnricher {
     }
     switch (outcome) {
       case PhonemizeFailed(:final failure):
+        logNamed(
+          'transcript.enrichment',
+        ).warning('phonemize failed: ${failure.reason.name}');
         return TranscriptEnrichmentErr(failure.reason.name);
       case PhonemizeSuccess(lines: final phonemeLines):
         try {
           final attached = attachPhonemesToLines(lines, phonemeLines);
-          return _persistIfChanged(
+          return await _persistIfChanged(
             transcriptId: transcriptId,
             original: lines,
             attached: attached,
@@ -292,7 +305,7 @@ final class TranscriptEnricher {
       case AlignmentSuccess(:final result):
         try {
           final attached = attachAlignmentToLines(lines, result);
-          return _persistIfChanged(
+          return await _persistIfChanged(
             transcriptId: transcriptId,
             original: lines,
             attached: attached,
@@ -412,6 +425,9 @@ final class TranscriptEnricher {
       (line) => line.timeline != null && line.timeline!.isNotEmpty,
     );
     if (!anyNested) {
+      logNamed(
+        'transcript.enrichment',
+      ).warning('enrich failed: noNestedWords id=$transcriptId');
       return const TranscriptEnrichmentErr('noNestedWords');
     }
     if (cancel?.isCancelled ?? false) {
@@ -554,11 +570,13 @@ class TranscriptEnrichmentController extends _$TranscriptEnrichmentController {
         state = const TranscriptEnrichmentState.failed('cancelled');
         return;
       }
-      state = switch (outcome) {
-        TranscriptEnrichmentOk() => const TranscriptEnrichmentState.succeeded(),
-        TranscriptEnrichmentErr(:final reason) =>
-          TranscriptEnrichmentState.failed(reason),
-      };
+      switch (outcome) {
+        case TranscriptEnrichmentOk():
+          state = const TranscriptEnrichmentState.succeeded();
+        case TranscriptEnrichmentErr(:final reason):
+          logNamed('transcript.enrichment').warning('run failed: $reason');
+          state = TranscriptEnrichmentState.failed(reason);
+      }
     } on Object catch (e, st) {
       logNamed('transcript.enrichment').warning('run failed: $e', e, st);
       if (!ref.mounted || id != _runId) return;

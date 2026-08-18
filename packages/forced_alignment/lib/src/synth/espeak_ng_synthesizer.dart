@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
+import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
 import 'package:logging/logging.dart';
@@ -58,27 +60,51 @@ final class _WordMark {
 }
 
 final class _PhoneMark {
-  _PhoneMark({required this.phone, required this.audioMs});
+  _PhoneMark({
+    required this.phone,
+    required this.audioMs,
+    required this.textPosition,
+  });
 
   final String phone;
   final int audioMs;
+  final int textPosition;
 }
 
 /// Production spoken reference: eSpeak-NG `espeak_Synth` + WORD/PHONEME events.
 final class EspeakNgSynthesizer implements SpokenReferenceSynthesizer {
-  EspeakNgSynthesizer({this._isCancelled});
+  EspeakNgSynthesizer({this._isCancelled, this.phonemesOnly = false});
 
   final bool Function()? _isCancelled;
+
+  /// When true, discard native PCM (YouTube IPA). Still runs `espeak_Synth`
+  /// so WORD/PHONEME events arrive; does not copy samples onto the Dart heap.
+  final bool phonemesOnly;
 
   static DynamicLibrary? _lib;
   static EspeakNgBindings? _bindings;
   static bool _initialized = false;
   static int _nativeSampleRate = 22050;
   static NativeCallable<EspeakCallbackNative>? _callable;
-  static final List<int> _pcm = <int>[];
+  static Int16List _pcm = Int16List(0);
+  static int _pcmCount = 0;
+  static bool _capturePcm = true;
   static final List<_WordMark> _words = <_WordMark>[];
   static final List<_PhoneMark> _phones = <_PhoneMark>[];
   static bool Function()? _cancelHook;
+
+  static void _appendPcm(Pointer<Int16> wav, int n) {
+    if (n <= 0) return;
+    if (_pcmCount + n > _pcm.length) {
+      final next = Int16List(math.max((_pcm.length * 2), _pcmCount + n));
+      if (_pcmCount > 0) {
+        next.setRange(0, _pcmCount, _pcm);
+      }
+      _pcm = next;
+    }
+    _pcm.setRange(_pcmCount, _pcmCount + n, wav.asTypedList(n));
+    _pcmCount += n;
+  }
 
   static int _onSynth(
     Pointer<Int16> wav,
@@ -86,8 +112,8 @@ final class EspeakNgSynthesizer implements SpokenReferenceSynthesizer {
     Pointer<EspeakEvent> events,
   ) {
     if (_cancelHook?.call() ?? false) return 1;
-    if (wav != nullptr && numsamples > 0) {
-      _pcm.addAll(wav.asTypedList(numsamples));
+    if (_capturePcm && wav != nullptr && numsamples > 0) {
+      _appendPcm(wav, numsamples);
     }
     if (events != nullptr) {
       for (var i = 0; i < 64; i++) {
@@ -104,7 +130,13 @@ final class EspeakNgSynthesizer implements SpokenReferenceSynthesizer {
         } else if (event.type == espeakEventPhoneme) {
           final phone = _readPhoneme(event);
           if (phone.isNotEmpty) {
-            _phones.add(_PhoneMark(phone: phone, audioMs: event.audioPosition));
+            _phones.add(
+              _PhoneMark(
+                phone: phone,
+                audioMs: event.audioPosition,
+                textPosition: event.textPosition,
+              ),
+            );
           }
         }
       }
@@ -132,13 +164,29 @@ final class EspeakNgSynthesizer implements SpokenReferenceSynthesizer {
       );
     }
     try {
-      _lib = DynamicLibrary.open(path);
+      _lib = _openDynamicLibrary(path);
       _bindings = EspeakNgBindings(_lib!);
     } catch (e, st) {
       _log.warning('failed to open eSpeak-NG', e, st);
       throw SpokenReferenceException(message: 'failed to open $path');
     }
     return _bindings!;
+  }
+
+  static DynamicLibrary _openDynamicLibrary(String path) {
+    try {
+      return DynamicLibrary.open(path);
+    } on Object catch (e, st) {
+      if (Platform.isAndroid && path != kEspeakAndroidSoname) {
+        _log.warning(
+          'failed to open eSpeak-NG at $path; retrying Android soname',
+          e,
+          st,
+        );
+        return DynamicLibrary.open(kEspeakAndroidSoname);
+      }
+      rethrow;
+    }
   }
 
   static void _ensureInitialized(EspeakNgBindings bindings) {
@@ -199,7 +247,8 @@ final class EspeakNgSynthesizer implements SpokenReferenceSynthesizer {
     final bindings = _open();
     _ensureInitialized(bindings);
     _cancelHook = _isCancelled;
-    _pcm.clear();
+    _capturePcm = !phonemesOnly;
+    _pcmCount = 0;
     _words.clear();
     _phones.clear();
 
@@ -238,26 +287,55 @@ final class EspeakNgSynthesizer implements SpokenReferenceSynthesizer {
         message: 'spoken reference cancelled',
       );
     }
-    if (_pcm.isEmpty) {
+    if (!phonemesOnly && _pcmCount <= 0) {
       throw const SpokenReferenceException(
         message: 'eSpeak-NG produced no PCM',
       );
     }
 
-    final floatNative = int16ToFloat32(_pcm);
+    if (phonemesOnly) {
+      final duration = _eventDurationSeconds();
+      final words = _buildWords(text, duration, requireWordEvents: false);
+      return ReferenceAudio(
+        pcm: Float32List(0),
+        words: words,
+        durationSeconds: duration,
+      );
+    }
+
+    final floatNative = int16ToFloat32(_pcm.sublist(0, _pcmCount));
     final pcm = resampleToAlignmentRate(floatNative, _nativeSampleRate);
     final duration = pcm.length / kAlignmentSampleRate;
     final words = _buildWords(text, duration);
     return ReferenceAudio(pcm: pcm, words: words, durationSeconds: duration);
   }
 
-  static List<ReferenceWord> _buildWords(String text, double duration) {
+  static double _eventDurationSeconds() {
+    var maxMs = 0;
+    for (final word in _words) {
+      if (word.audioMs > maxMs) maxMs = word.audioMs;
+    }
+    for (final phone in _phones) {
+      if (phone.audioMs > maxMs) maxMs = phone.audioMs;
+    }
+    if (maxMs <= 0) return 0.05;
+    return maxMs / 1000.0;
+  }
+
+  static List<ReferenceWord> _buildWords(
+    String text,
+    double duration, {
+    bool requireWordEvents = true,
+  }) {
     if (_words.isEmpty) {
       final tokens = tokenizeWords(text);
       if (tokens.isEmpty) return const [];
-      throw const SpokenReferenceException(
-        message: 'eSpeak-NG produced PCM but no word events',
-      );
+      if (requireWordEvents) {
+        throw const SpokenReferenceException(
+          message: 'eSpeak-NG produced PCM but no word events',
+        );
+      }
+      return _wordsFromTokenSpans(text, duration);
     }
     final tokens = tokenizeWords(text);
     final built = <ReferenceWord>[];
@@ -310,6 +388,49 @@ final class EspeakNgSynthesizer implements SpokenReferenceSynthesizer {
       );
     }
     return built;
+  }
+
+  /// IPA-only fallback when eSpeak emitted phones but no WORD events.
+  static List<ReferenceWord> _wordsFromTokenSpans(
+    String text,
+    double duration,
+  ) {
+    final spans = tokenizeWordSpans(text);
+    if (spans.isEmpty) return const [];
+    final phonesByWord = List<List<String>>.generate(
+      spans.length,
+      (_) => <String>[],
+    );
+    for (final phone in _phones) {
+      var pos = phone.textPosition;
+      if (pos >= 1) pos -= 1;
+      var idx = 0;
+      for (var i = 0; i < spans.length; i++) {
+        if (pos >= spans[i].start && pos < spans[i].end) {
+          idx = i;
+          break;
+        }
+        if (pos >= spans[i].end) idx = i;
+      }
+      if (phone.phone.isNotEmpty) phonesByWord[idx].add(phone.phone);
+    }
+    return [
+      for (var i = 0; i < spans.length; i++)
+        ReferenceWord(
+          text: spans[i].text,
+          startTime: 0,
+          endTime: duration,
+          phones: [
+            for (var p = 0; p < phonesByWord[i].length; p++)
+              ReferencePhone(
+                phone: phonesByWord[i][p],
+                startTime: 0,
+                endTime: duration,
+                wordIndex: i,
+              ),
+          ],
+        ),
+    ];
   }
 
   static String _sliceText(String text, int position, int length) {

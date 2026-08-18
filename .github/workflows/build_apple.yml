@@ -17,6 +17,7 @@ on:
       - ".github/scripts/apple_spm_hygiene.sh"
       - ".github/scripts/build_ios_ci.sh"
       - ".github/scripts/build_macos_ci.sh"
+      - ".github/scripts/check_bundled_espeak_data.sh"
       - ".github/workflows/build_apple.yml"
   push:
     branches: main
@@ -56,6 +57,16 @@ jobs:
       - name: Flutter build ios (release, compile-only)
         run: bash .github/scripts/build_ios_ci.sh Release
 
+      - name: Assert eSpeak data in iOS Runner.app
+        run: |
+          set -euo pipefail
+          found=0
+          while IFS= read -r app; do
+            bash .github/scripts/check_bundled_espeak_data.sh "${app}/espeak-ng-data"
+            found=1
+          done < <(find build/ios/DerivedData/Build/Products -name Runner.app -type d)
+          test "$found" -eq 1
+
   macos:
     name: macOS smoke
     runs-on: [self-hosted, macos]
@@ -80,3 +91,14 @@ jobs:
 
       - name: Flutter build macos (release, compile-only)
         run: bash .github/scripts/build_macos_ci.sh Release
+
+      - name: Assert eSpeak data in macOS app bundle
+        run: |
+          set -euo pipefail
+          found=0
+          while IFS= read -r app; do
+            bash .github/scripts/check_bundled_espeak_data.sh \
+              "${app}/Contents/Resources/espeak-ng-data"
+            found=1
+          done < <(find build/macos/Build/Products -name 'Enjoy Player.app' -type d)
+          test "$found" -eq 1

@@ -90,4 +90,19 @@ void main() {
     expect(words, isNotEmpty);
     expect(words.first.phones, isNotEmpty);
   });
+
+  test('all-line synth failure is spokenReferenceUnavailable', () async {
+    final outcome = await phonemizeLines(
+      texts: const ['Hello world'],
+      language: 'en-US',
+      synthesize: ({required text, required language, cancel}) async {
+        throw const SpokenReferenceException(message: 'forced unavailable');
+      },
+    );
+    expect(outcome, isA<PhonemizeFailed>());
+    expect(
+      (outcome as PhonemizeFailed).failure.reason,
+      AlignmentFailureReason.spokenReferenceUnavailable,
+    );
+  });
 }
