@@ -79,6 +79,17 @@ android {
         checkReleaseBuilds = false
         abortOnError = false
     }
+
+    // Vendored eSpeak-NG per-ABI libraries (packages/forced_alignment); the
+    // directory layout <abi>/libespeak-ng.so is exactly the jniLibs shape.
+    sourceSets {
+        getByName("main") {
+            jniLibs.srcDirs(
+                "src/main/jniLibs",
+                "../../packages/forced_alignment/native/android",
+            )
+        }
+    }
 }
 
 flutter {

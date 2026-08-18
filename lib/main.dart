@@ -12,6 +12,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'app.dart';
 import 'core/platform/device_form_factor.dart';
+import 'core/platform/espeak_android_provisioner.dart';
 import 'core/recovery/widget_error_surface.dart';
 import 'core/logging/diagnostic_log_config.dart';
 import 'core/logging/diagnostic_session_header.dart';
@@ -39,6 +40,8 @@ Future<void> _bootstrap() async {
     setupAppLogging(),
     if (defaultTargetPlatform == TargetPlatform.windows)
       ensureWindowsWebViewEnvironment(),
+    if (defaultTargetPlatform == TargetPlatform.android)
+      _provisionAndroidEspeak(),
   ]);
   _installFrameworkErrorHandlers();
   try {
@@ -69,6 +72,16 @@ Future<void> _bootstrap() async {
     app = const ExcludeSemantics(child: root);
   }
   runApp(app);
+}
+
+/// eSpeak-NG provisioning failures must not block startup; alignment then
+/// stays fail-closed (`spokenReferenceUnavailable`).
+Future<void> _provisionAndroidEspeak() async {
+  try {
+    await ensureAndroidEspeakRuntime();
+  } on Object catch (e, st) {
+    _bootstrapLog.warning('eSpeak provisioning failed', e, st);
+  }
 }
 
 /// Phone: portrait lock. Tablet: all orientations. Desktop: no-op.

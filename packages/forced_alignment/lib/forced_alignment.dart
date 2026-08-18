@@ -18,6 +18,11 @@ export 'src/synth/espeak_ng_synthesizer.dart'
         debugSetEspeakFfiAvailable,
         espeakFfiIsAvailable,
         productionSynthesizerIsEspeakNg;
+export 'src/synth/native_paths.dart'
+    show
+        resolveEspeakDataPath,
+        resolveEspeakLibraryPath,
+        setEspeakNativePathOverrides;
 export 'src/synth/spoken_reference.dart';
 export 'src/types.dart';
 export 'src/web_timings.dart';
