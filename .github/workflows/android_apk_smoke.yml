@@ -83,7 +83,7 @@ jobs:
       - name: Assert eSpeak-NG artifacts in split-per-abi release APK
         run: |
           set -euo pipefail
-          apk="build/app/outputs/flutter-apk/app-direct-arm64-v8a-release.apk"
+          apk="build/app/outputs/flutter-apk/app-arm64-v8a-direct-release.apk"
           listing="$(unzip -l "$apk")"
           echo "$listing" | grep -q "lib/arm64-v8a/libespeak-ng.so" || {
             echo "::error::libespeak-ng.so missing from $apk"; exit 1; }
