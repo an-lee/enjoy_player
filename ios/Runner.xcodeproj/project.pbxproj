@@ -191,6 +191,7 @@
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				2950F9E6B98302EE47AE6FF6 /* [CP] Embed Pods Frameworks */,
+				E8F2A1B52D4C5E6F7A8B9C0F /* Bundle eSpeak-NG */,
 			);
 			buildRules = (
 			);
@@ -317,6 +318,26 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" build";
+		};
+		E8F2A1B52D4C5E6F7A8B9C0F /* Bundle eSpeak-NG */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Bundle eSpeak-NG";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "PLATFORM_NAME=\"${PLATFORM_NAME}\" CONFIGURATION=\"${CONFIGURATION}\" EXPANDED_CODE_SIGN_IDENTITY=\"${EXPANDED_CODE_SIGN_IDENTITY}\" CODE_SIGN_IDENTITY=\"${CODE_SIGN_IDENTITY}\" CODE_SIGNING_ALLOWED=\"${CODE_SIGNING_ALLOWED}\" \"${SRCROOT}/../packages/forced_alignment/native/bundle_into_app.sh\" \"${TARGET_BUILD_DIR}/${WRAPPER_NAME}\"\n";
+			showEnvVarsInLog = 0;
 		};
 		C5A15A61A4656B487F1F203B /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
