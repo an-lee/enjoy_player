@@ -74,6 +74,8 @@ jobs:
           done
           echo "$listing" | grep -q "flutter_assets/packages/forced_alignment/native/espeak-ng-data/phontab" || {
             echo "::error::espeak-ng-data assets missing from $apk"; exit 1; }
+          echo "$listing" | grep -q "flutter_assets/packages/forced_alignment/native/espeak-ng-data/lang/en-us" || {
+            echo "::error::espeak-ng-data/lang/en-us missing from $apk (SetVoiceByName will fail)"; exit 1; }
 
       - name: Flutter build apk (release, compile-only, split per ABI)
         run: flutter build apk --release --split-per-abi --flavor direct --dart-define=DISTRIBUTION_CHANNEL=direct
@@ -87,6 +89,8 @@ jobs:
             echo "::error::libespeak-ng.so missing from $apk"; exit 1; }
           echo "$listing" | grep -q "flutter_assets/packages/forced_alignment/native/espeak-ng-data/phontab" || {
             echo "::error::espeak-ng-data assets missing from $apk"; exit 1; }
+          echo "$listing" | grep -q "flutter_assets/packages/forced_alignment/native/espeak-ng-data/lang/en-us" || {
+            echo "::error::espeak-ng-data/lang/en-us missing from $apk (SetVoiceByName will fail)"; exit 1; }
 
       - name: Flutter build appbundle (release, compile-only)
         run: flutter build appbundle --release --flavor store

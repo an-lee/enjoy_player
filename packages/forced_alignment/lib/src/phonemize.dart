@@ -2,12 +2,15 @@
 library;
 
 import 'package:flutter/foundation.dart';
+import 'package:logging/logging.dart';
 
 import 'failures.dart';
 import 'language_map.dart';
 import 'request.dart';
 import 'synth/espeak_synth_host.dart';
 import 'synth/spoken_reference.dart';
+
+final _log = Logger('forced_alignment');
 
 /// One token with IPA labels and no media-timeline clocks.
 final class PhonemeWord {
@@ -67,6 +70,7 @@ Future<PhonemizeOutcome> phonemizeLines({
   }
 
   final out = <PhonemizeLineResult>[];
+  var synthFailures = 0;
   for (final text in texts) {
     if (cancel?.isCancelled ?? false) {
       return const PhonemizeFailed(
@@ -85,6 +89,7 @@ Future<PhonemizeOutcome> phonemizeLines({
               text: text,
               language: language,
               cancel: cancel,
+              phonemesOnly: true,
             );
       out.add(
         PhonemizeLineResult(
@@ -105,9 +110,22 @@ Future<PhonemizeOutcome> phonemizeLines({
       if (e.reason == AlignmentFailureReason.cancelled) {
         return PhonemizeFailed(e.toFailure());
       }
-      // Leave this cue line-only; other lines may still phonemize.
+      synthFailures++;
+      _log.warning('phonemize skipped a line: $e');
       out.add(const PhonemizeLineResult(words: []));
     }
+  }
+  final anyWords = out.any((line) => line.words.isNotEmpty);
+  if (!anyWords) {
+    _log.warning(
+      'phonemize produced no words '
+      '(synthFailures=$synthFailures lines=${texts.length})',
+    );
+    return const PhonemizeFailed(
+      AlignmentFailure(
+        reason: AlignmentFailureReason.spokenReferenceUnavailable,
+      ),
+    );
   }
   return PhonemizeSuccess(out);
 }

@@ -45,7 +45,8 @@ data tree below in lockstep.
 Android app builds merge the per-ABI libraries via the app's jniLibs source
 (`android/app/build.gradle.kts` points at `native/android/`, whose `<abi>/`
 subfolders are exactly the jniLibs shape), and the app pubspec bundles
-`espeak-ng-data/` as Flutter assets. At startup
+`espeak-ng-data/` **and** `espeak-ng-data/lang/` as Flutter assets (Flutter
+does not recurse directory entries). At startup
 `lib/core/platform/espeak_android_provisioner.dart` reads
 `applicationInfo.nativeLibraryDir` over the `ai.enjoy.player/espeak` channel,
 extracts the data assets into app-support storage (revision-marked,
@@ -54,7 +55,9 @@ missing keeps the package fail-closed (`spokenReferenceUnavailable`).
 
 macOS and iOS app builds copy the host dylib into `Frameworks/` and the
 trimmed data tree into `Contents/Resources/espeak-ng-data` (macOS) or
-`Runner.app/espeak-ng-data` (iOS) via `bundle_into_app.sh`. Production
+`Runner.app/espeak-ng-data` (iOS) via `bundle_into_app.sh`. Package tests
+assert both layouts include `lang/en-us` (and every mapped voice) and can
+phonemize English; Apple CI greps the compiled `.app`. Production
 `align` resolves those bundle paths from `Platform.resolvedExecutable`
 when the process is not sitting in the source tree.
 

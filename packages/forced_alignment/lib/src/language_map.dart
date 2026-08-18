@@ -27,3 +27,11 @@ bool isSupportedAlignmentLanguage(String languageTag) =>
 
 String? espeakVoiceFor(String languageTag) =>
     kEspeakVoiceByLanguageTag[languageTag];
+
+/// Files that must exist inside a packaged `espeak-ng-data` directory.
+///
+/// Keep `.github/scripts/check_bundled_espeak_data.sh` in sync.
+List<String> get kEspeakRequiredDataRelativePaths => [
+  'phontab',
+  for (final voice in kEspeakVoiceByLanguageTag.values) 'lang/$voice',
+];

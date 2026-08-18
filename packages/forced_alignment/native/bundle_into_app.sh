@@ -62,8 +62,12 @@ fi
 
 rm -rf "${DATA_DEST}"
 mkdir -p "${DATA_DEST}"
-# -C: exclude .gitkeep so the runtime "usable data dir" check stays honest.
-rsync -a --exclude '.gitkeep' "${DATA_SRC}/" "${DATA_DEST}/"
+# Copy the trimmed voice tree (including nested lang/). Do not use a
+# Flutter asset bundle here — Xcode copies real files. Exclude .gitkeep
+# so the runtime "usable data dir" check stays honest. `cp -R` is present
+# on macOS (Xcode) and Linux (package tests); rsync is not assumed.
+cp -R "${DATA_SRC}/." "${DATA_DEST}/"
+find "${DATA_DEST}" -name '.gitkeep' -delete
 
 sign_identity="${EXPANDED_CODE_SIGN_IDENTITY:-}"
 if [ -z "${sign_identity}" ] || [ "${sign_identity}" = "-" ]; then

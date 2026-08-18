@@ -54,7 +54,7 @@ void main() {
       final outcome = await enricher.enrich(
         transcriptId: 't1',
         lines: _lineOnly,
-        language: 'en-US',
+        language: 'en',
         extractable: false,
         localPath: 'https://youtube.example/watch',
       );
@@ -74,4 +74,52 @@ void main() {
       expect(readiness.showEnrich, isFalse);
     },
   );
+
+  test('YouTube phonemize strips subtitle markup before eSpeak', () async {
+    late List<String> seen;
+    final enricher = TranscriptEnricher(
+      replaceTimeline: ({required transcriptId, required lines}) async => true,
+      decodeFile: (path) async => fail('YouTube must not decode PCM'),
+      decodeWindow:
+          ({
+            required pathOrUri,
+            required startSeconds,
+            required durationSeconds,
+          }) async {
+            fail('YouTube must not window-extract');
+          },
+      alignSegmentsFn:
+          ({
+            required sourcePcm16k,
+            required language,
+            required segments,
+            required granularity,
+            cancel,
+          }) async {
+            fail('YouTube must not alignSegments');
+          },
+      phonemizeFn: ({required texts, required language, cancel}) async {
+        seen = texts;
+        return const PhonemizeSuccess([
+          PhonemizeLineResult(
+            words: [
+              PhonemeWord(text: 'Hello', phones: ['h']),
+            ],
+          ),
+        ]);
+      },
+    );
+
+    final outcome = await enricher.enrich(
+      transcriptId: 't1',
+      lines: const [
+        TranscriptLine(text: '<font>Hello</font>', startMs: 0, durationMs: 700),
+      ],
+      language: 'en',
+      extractable: false,
+    );
+
+    expect(outcome, isA<TranscriptEnrichmentOk>());
+    expect(seen, ['Hello']);
+  });
 }

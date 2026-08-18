@@ -4,13 +4,28 @@ import '../failures.dart';
 
 final _wordPattern = RegExp(r"[\p{L}\p{N}']+", unicode: true);
 
-/// Words in transcript order. Punctuation-only text yields an empty list.
-List<String> tokenizeWords(String text) {
+/// One [tokenizeWords] token with Dart string indexes into the source text.
+final class WordSpan {
+  const WordSpan({required this.text, required this.start, required this.end});
+
+  final String text;
+  final int start;
+  final int end;
+}
+
+/// Word spans in transcript order. Punctuation-only text yields an empty list.
+List<WordSpan> tokenizeWordSpans(String text) {
   return [
     for (final match in _wordPattern.allMatches(text))
-      if (match.group(0)!.isNotEmpty) match.group(0)!,
+      if (match.group(0)!.isNotEmpty)
+        WordSpan(text: match.group(0)!, start: match.start, end: match.end),
   ];
 }
+
+/// Words in transcript order. Punctuation-only text yields an empty list.
+List<String> tokenizeWords(String text) => [
+  for (final span in tokenizeWordSpans(text)) span.text,
+];
 
 /// Thrown when a spoken reference cannot be produced.
 final class SpokenReferenceException implements Exception {

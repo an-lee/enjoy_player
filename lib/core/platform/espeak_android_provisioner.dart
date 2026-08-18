@@ -2,7 +2,11 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:forced_alignment/forced_alignment.dart'
-    show setEspeakNativePathOverrides;
+    show
+        kEspeakAndroidSoname,
+        kEspeakRequiredDataRelativePaths,
+        missingEspeakRequiredDataFiles,
+        setEspeakNativePathOverrides;
 import 'package:path_provider/path_provider.dart';
 
 import '../logging/log.dart';
@@ -11,7 +15,7 @@ final _log = logNamed('espeak.provision');
 
 /// Bump when the vendored `espeak-ng-data` tree changes so installed apps
 /// re-extract on next launch.
-const kEspeakDataRevision = '1.52.0-1';
+const kEspeakDataRevision = '1.52.0-2';
 
 const _channelName = 'ai.enjoy.player/espeak';
 const _assetPrefix = 'packages/forced_alignment/native/espeak-ng-data/';
@@ -58,10 +62,21 @@ Future<bool> ensureAndroidEspeakRuntime({
       _log.warning('native library dir unavailable; eSpeak stays disabled');
       return false;
     }
-    final libPath = '$nativeLibDir${Platform.pathSeparator}libespeak-ng.so';
+    var libPath = '$nativeLibDir${Platform.pathSeparator}libespeak-ng.so';
     if (!File(libPath).existsSync()) {
-      _log.warning('vendored libespeak-ng.so missing at $libPath');
-      return false;
+      // MIUI / uncompressed-in-APK installs often have no regular file
+      // under nativeLibraryDir even though dlopen(soname) works.
+      var listing = 'unreadable';
+      try {
+        listing = Directory(nativeLibDir).existsSync()
+            ? Directory(nativeLibDir).listSync().map((e) => e.path).join(', ')
+            : 'dir missing';
+      } on Object catch (_) {}
+      _log.warning(
+        'libespeak-ng.so not a regular file at $libPath '
+        '(listing: $listing); pinning Android soname for dlopen',
+      );
+      libPath = kEspeakAndroidSoname;
     }
 
     final sep = Platform.pathSeparator;
@@ -74,8 +89,11 @@ Future<bool> ensureAndroidEspeakRuntime({
 
     if (!_isProvisioned(revisionDir)) {
       final files = await (loadData ?? loadEspeakDataAssets)();
-      if (!files.containsKey('phontab')) {
-        _log.warning('espeak-ng-data assets missing from the bundle');
+      if (!_hasRequiredRelativeFiles(files.keys)) {
+        _log.warning(
+          'espeak-ng-data assets missing phontab or lang voices; '
+          'keys=${files.keys.toList()..sort()}',
+        );
         return false;
       }
       if (revisionsRoot.existsSync()) {
@@ -106,10 +124,16 @@ Future<bool> ensureAndroidEspeakRuntime({
   }
 }
 
-/// A complete revision carries `phontab` plus the `.provisioned` marker, so
-/// warm launches skip asset enumeration entirely.
+/// A complete revision carries `phontab`, mapped `lang/` voices, and the
+/// `.provisioned` marker, so warm launches skip asset enumeration.
 bool _isProvisioned(Directory revisionDir) {
   final sep = Platform.pathSeparator;
-  return File('${revisionDir.path}$sep.provisioned').existsSync() &&
-      File('${revisionDir.path}${sep}espeak-ng-data${sep}phontab').existsSync();
+  final dataDir = Directory('${revisionDir.path}${sep}espeak-ng-data');
+  if (!File('${revisionDir.path}$sep.provisioned').existsSync()) return false;
+  return missingEspeakRequiredDataFiles(dataDir.path).isEmpty;
+}
+
+bool _hasRequiredRelativeFiles(Iterable<String> relativePaths) {
+  final keys = relativePaths.toSet();
+  return kEspeakRequiredDataRelativePaths.every(keys.contains);
 }

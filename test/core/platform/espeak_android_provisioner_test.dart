@@ -23,6 +23,8 @@ void main() {
     'phontab': Uint8List.fromList([1, 2, 3]),
     'en_dict': Uint8List.fromList([4, 5]),
     'lang/en': Uint8List.fromList([6]),
+    for (final voice in kEspeakVoiceByLanguageTag.values)
+      'lang/$voice': Uint8List.fromList([7]),
   };
 
   Future<Map<String, Uint8List>> countingLoader() async {
@@ -75,6 +77,10 @@ void main() {
     expect(File(p.join(expectedDataPath(), 'phontab')).existsSync(), isTrue);
     expect(File(p.join(expectedDataPath(), 'lang', 'en')).existsSync(), isTrue);
     expect(
+      File(p.join(expectedDataPath(), 'lang', 'en-us')).existsSync(),
+      isTrue,
+    );
+    expect(
       File(
         p.join(supportPath, 'espeak-ng', kEspeakDataRevision, '.provisioned'),
       ).existsSync(),
@@ -106,17 +112,15 @@ void main() {
     expect(resolveEspeakDataPath(), expectedDataPath());
   });
 
-  test('missing vendored library fails closed without pinning', () async {
+  test('missing on-disk library still pins soname and extracts data', () async {
     mockNativeLibraryDir(p.join(tempRoot.path, 'no_such_dir'));
 
     final ok = await ensureAndroidEspeakRuntime(loadData: countingLoader);
 
-    expect(ok, isFalse);
-    expect(loadCalls, 0);
-    expect(
-      resolveEspeakLibraryPath(),
-      isNot(p.join(tempRoot.path, 'no_such_dir', 'libespeak-ng.so')),
-    );
+    expect(ok, isTrue);
+    expect(loadCalls, 1);
+    expect(resolveEspeakLibraryPath(), kEspeakAndroidSoname);
+    expect(resolveEspeakDataPath(), expectedDataPath());
   });
 
   test('channel failure fails closed', () async {
@@ -139,5 +143,36 @@ void main() {
 
     expect(ok, isFalse);
     expect(Directory(expectedDataPath()).existsSync(), isFalse);
+  });
+
+  test('asset bundle without lang/en-us fails closed', () async {
+    mockNativeLibraryDir(nativeLibDir.path);
+
+    final ok = await ensureAndroidEspeakRuntime(
+      loadData: () async => {
+        'phontab': Uint8List.fromList([1, 2, 3]),
+        'lang/en': Uint8List.fromList([6]),
+      },
+    );
+
+    expect(ok, isFalse);
+    expect(Directory(expectedDataPath()).existsSync(), isFalse);
+  });
+
+  test('stale extract missing lang/en-us re-extracts voices', () async {
+    mockNativeLibraryDir(nativeLibDir.path);
+    final revisionDir = Directory(
+      p.join(supportPath, 'espeak-ng', kEspeakDataRevision),
+    );
+    final dataDir = Directory(p.join(revisionDir.path, 'espeak-ng-data'));
+    dataDir.createSync(recursive: true);
+    File(p.join(revisionDir.path, '.provisioned')).writeAsStringSync('1');
+    File(p.join(dataDir.path, 'phontab')).writeAsBytesSync([1]);
+
+    final ok = await ensureAndroidEspeakRuntime(loadData: countingLoader);
+
+    expect(ok, isTrue);
+    expect(loadCalls, 1);
+    expect(File(p.join(dataDir.path, 'lang', 'en-us')).existsSync(), isTrue);
   });
 }

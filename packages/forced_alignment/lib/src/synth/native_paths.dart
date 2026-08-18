@@ -2,9 +2,15 @@ import 'dart:io';
 
 import 'package:meta/meta.dart';
 
+import '../language_map.dart';
+
 String? _libraryPathOverride;
 String? _dataPathOverride;
 String? _resolvedExecutableOverride;
+
+/// Android linker soname. `dlopen` can resolve this even when the `.so` is
+/// not a regular file under `nativeLibraryDir` (uncompressed in the APK).
+const kEspeakAndroidSoname = 'libespeak-ng.so';
 
 /// Pin resolved native paths for a worker isolate (sendable strings).
 void setEspeakNativePathOverrides({String? libraryPath, String? dataPath}) {
@@ -110,10 +116,16 @@ bool _isUsableDataDir(String path) {
   );
 }
 
+bool _libraryPathIsUsable(String path) {
+  if (File(path).existsSync()) return true;
+  // Bare soname: Android's linker namespace finds the packaged JNI lib.
+  return path == kEspeakAndroidSoname;
+}
+
 /// First existing library path, or null.
 String? resolveEspeakLibraryPath() {
   if (_libraryPathOverride != null &&
-      File(_libraryPathOverride!).existsSync()) {
+      _libraryPathIsUsable(_libraryPathOverride!)) {
     return _libraryPathOverride;
   }
   final os = espeakOsFolderName();
@@ -145,4 +157,14 @@ String? resolveEspeakDataPath() {
     if (_isUsableDataDir(candidate)) return candidate;
   }
   return null;
+}
+
+/// Relative paths from [kEspeakRequiredDataRelativePaths] that are missing
+/// under [dataDir]. Empty means focus voices can resolve via SetVoiceByName.
+List<String> missingEspeakRequiredDataFiles(String dataDir) {
+  final sep = Platform.pathSeparator;
+  return [
+    for (final rel in kEspeakRequiredDataRelativePaths)
+      if (!File('$dataDir$sep${rel.replaceAll('/', sep)}').existsSync()) rel,
+  ];
 }

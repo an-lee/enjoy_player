@@ -60,12 +60,9 @@ void main() {
     }
   });
 
-  test('resolve prefers an existing library override', () {
-    final tmp = Directory.systemTemp.createTempSync('espeak-override-');
-    addTearDown(() => tmp.deleteSync(recursive: true));
-    final fake = File('${tmp.path}/libespeak-ng.dylib')..writeAsBytesSync([]);
-    setEspeakNativePathOverrides(libraryPath: fake.path);
-    expect(resolveEspeakLibraryPath(), fake.path);
+  test('bare Android soname override resolves without a file on disk', () {
+    setEspeakNativePathOverrides(libraryPath: kEspeakAndroidSoname);
+    expect(resolveEspeakLibraryPath(), kEspeakAndroidSoname);
   });
 
   test('debug executable override finds a fake macOS app bundle', () {
