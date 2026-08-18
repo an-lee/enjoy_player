@@ -63,8 +63,30 @@ jobs:
       - name: Flutter build apk (debug)
         run: flutter build apk --debug --flavor store
 
+      - name: Assert eSpeak-NG artifacts in debug APK
+        run: |
+          set -euo pipefail
+          apk="build/app/outputs/flutter-apk/app-store-debug.apk"
+          listing="$(unzip -l "$apk")"
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            echo "$listing" | grep -q "lib/$abi/libespeak-ng.so" || {
+              echo "::error::lib/$abi/libespeak-ng.so missing from $apk"; exit 1; }
+          done
+          echo "$listing" | grep -q "flutter_assets/packages/forced_alignment/native/espeak-ng-data/phontab" || {
+            echo "::error::espeak-ng-data assets missing from $apk"; exit 1; }
+
       - name: Flutter build apk (release, compile-only, split per ABI)
         run: flutter build apk --release --split-per-abi --flavor direct --dart-define=DISTRIBUTION_CHANNEL=direct
+
+      - name: Assert eSpeak-NG artifacts in split-per-abi release APK
+        run: |
+          set -euo pipefail
+          apk="build/app/outputs/flutter-apk/app-direct-arm64-v8a-release.apk"
+          listing="$(unzip -l "$apk")"
+          echo "$listing" | grep -q "lib/arm64-v8a/libespeak-ng.so" || {
+            echo "::error::libespeak-ng.so missing from $apk"; exit 1; }
+          echo "$listing" | grep -q "flutter_assets/packages/forced_alignment/native/espeak-ng-data/phontab" || {
+            echo "::error::espeak-ng-data assets missing from $apk"; exit 1; }
 
       - name: Flutter build appbundle (release, compile-only)
         run: flutter build appbundle --release --flavor store

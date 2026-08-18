@@ -8,7 +8,9 @@ tree at runtime (`DynamicLibrary.open`). Nothing here is compiled during
 
 ```text
 native/
-  android/libespeak-ng.so           # arm64-v8a
+  android/arm64-v8a/libespeak-ng.so
+  android/armeabi-v7a/libespeak-ng.so
+  android/x86_64/libespeak-ng.so
   ios/libespeak-ng.dylib            # iphoneos arm64
   ios/libespeak-ng.simulator.dylib  # iphonesimulator arm64 + x86_64
   macos/libespeak-ng.dylib          # universal: arm64 + x86_64
@@ -30,7 +32,7 @@ load failure there is a regression, not a skip.
 | windows | `libespeak-ng.dll` (x64) | official eSpeak-NG 1.52.0 MSI |
 | linux | `libespeak-ng.so` (x86_64) | zig cc 0.15.2 `-target x86_64-linux-gnu.2.31`; requires glibc ≥ 2.29; links only libc/libm |
 | macos | `libespeak-ng.dylib` (arm64 + x86_64, min 10.15) | zig cc 0.15.2 against the MacOSX11.3 SDK; links only libSystem |
-| android | `libespeak-ng.so` (arm64-v8a) | Android NDK r27d, API 26; links only libc/libm/libdl |
+| android | `libespeak-ng.so` (arm64-v8a, armeabi-v7a, x86_64) | Android NDK r27d, API 26, `-Wl,-z,max-page-size=16384` (Play 16 KB page requirement); links only libc/libm/libdl |
 | ios | `libespeak-ng.dylib` (iphoneos arm64, min 14.0) + `libespeak-ng.simulator.dylib` (arm64 + x86_64) | Xcode clang against the iPhoneOS / iPhoneSimulator SDKs; links only libSystem. Rebuild: `native/build_ios.sh` |
 
 All builds compile the same upstream sources (`src/libespeak-ng/*.c` except
@@ -40,8 +42,15 @@ scripts,tostring}.c`) with `-fvisibility=hidden -DLIBESPEAK_NG_EXPORT`
 speech-player. Rebuilds should keep the 1.52.0 tag and the focus-language
 data tree below in lockstep.
 
-Android ships arm64-v8a only; `armeabi-v7a` / `x86_64` builds belong with
-the app-packaging work that embeds these artifacts per ABI.
+Android app builds merge the per-ABI libraries via the app's jniLibs source
+(`android/app/build.gradle.kts` points at `native/android/`, whose `<abi>/`
+subfolders are exactly the jniLibs shape), and the app pubspec bundles
+`espeak-ng-data/` as Flutter assets. At startup
+`lib/core/platform/espeak_android_provisioner.dart` reads
+`applicationInfo.nativeLibraryDir` over the `ai.enjoy.player/espeak` channel,
+extracts the data assets into app-support storage (revision-marked,
+idempotent), and pins both paths via `setEspeakNativePathOverrides`. Anything
+missing keeps the package fail-closed (`spokenReferenceUnavailable`).
 
 macOS and iOS app builds copy the host dylib into `Frameworks/` and the
 trimmed data tree into `Contents/Resources/espeak-ng-data` (macOS) or

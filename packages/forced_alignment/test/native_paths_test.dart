@@ -40,6 +40,26 @@ void main() {
     );
   });
 
+  test('non-Apple hosts have no executable-derived bundle candidates', () {
+    for (final os in const ['android', 'windows', 'linux']) {
+      expect(
+        espeakBundleLibraryCandidates(
+          resolvedExecutable: '/tmp/fake/app',
+          osFolder: os,
+        ),
+        isEmpty,
+        reason: '$os path delivery is override-driven, not bundle-derived',
+      );
+      expect(
+        espeakBundleDataCandidates(
+          resolvedExecutable: '/tmp/fake/app',
+          osFolder: os,
+        ),
+        isEmpty,
+      );
+    }
+  });
+
   test('resolve prefers an existing library override', () {
     final tmp = Directory.systemTemp.createTempSync('espeak-override-');
     addTearDown(() => tmp.deleteSync(recursive: true));

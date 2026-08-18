@@ -586,14 +586,17 @@ played to the learner and does not replace Craft/library audio.
   failure).
 - Binaries are vendored from official eSpeak-NG 1.52.0 sources for
   `windows/`, `linux/` (x86_64), `macos/` (universal), `android/`
-  (arm64-v8a), and `ios/` (iphoneos arm64 + iphonesimulator universal).
-  Provenance and rebuild notes live in
-  `packages/forced_alignment/native/README.md`. iOS rebuilds run
-  `native/build_ios.sh` on a macOS host with Xcode.
+  (arm64-v8a, armeabi-v7a, x86_64; 16 KB page-aligned for Play), and
+  `ios/` (iphoneos arm64 + iphonesimulator universal). Provenance and
+  rebuild notes live in `packages/forced_alignment/native/README.md`.
+  iOS rebuilds run `native/build_ios.sh` on a macOS host with Xcode.
 - macOS and iOS app targets copy the dylib + `espeak-ng-data` into the
   `.app` via `native/bundle_into_app.sh` (Xcode "Bundle eSpeak-NG" phase)
   so packaged `align` / `alignSegments` can `DynamicLibrary.open` without
-  the source tree. Other OS app bundles are a follow-up.
+  the source tree. Android ships the per-ABI `.so` through jniLibs and
+  `espeak-ng-data` as Flutter assets extracted at startup
+  (`lib/core/platform/espeak_android_provisioner.dart`). Windows/Linux
+  desktop app bundles remain a follow-up.
 - `packages/forced_alignment`'s eSpeak FFI tests run unconditionally on
   vendored host platforms — a load failure is a regression, not a skip.
 - eSpeak-NG is GPL-3.0; linking into this AGPL-3.0 app is recorded in

@@ -107,4 +107,7 @@ flutter:
     - assets/logo-light.svg
     - assets/illustrations/
     - assets/discover/recommended_channels.json
+    # Vendored eSpeak-NG voices/dicts; extracted to disk on Android at startup
+    # (espeak_android_provisioner) because eSpeak fopens real files.
+    - packages/forced_alignment/native/espeak-ng-data/
 
