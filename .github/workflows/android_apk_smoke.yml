@@ -68,13 +68,15 @@ jobs:
           set -euo pipefail
           apk="build/app/outputs/flutter-apk/app-store-debug.apk"
           listing="$(unzip -l "$apk")"
+          # Here-string, not `echo | grep -q`: grep -q closes early and
+          # `set -o pipefail` then treats SIGPIPE as a missing-file failure.
           for abi in arm64-v8a armeabi-v7a x86_64; do
-            echo "$listing" | grep -q "lib/$abi/libespeak-ng.so" || {
+            grep -F -q -- "lib/$abi/libespeak-ng.so" <<<"$listing" || {
               echo "::error::lib/$abi/libespeak-ng.so missing from $apk"; exit 1; }
           done
-          echo "$listing" | grep -q "flutter_assets/packages/forced_alignment/native/espeak-ng-data/phontab" || {
+          grep -F -q -- "flutter_assets/packages/forced_alignment/native/espeak-ng-data/phontab" <<<"$listing" || {
             echo "::error::espeak-ng-data assets missing from $apk"; exit 1; }
-          echo "$listing" | grep -q "flutter_assets/packages/forced_alignment/native/espeak-ng-data/lang/en-us" || {
+          grep -F -q -- "flutter_assets/packages/forced_alignment/native/espeak-ng-data/lang/en-us" <<<"$listing" || {
             echo "::error::espeak-ng-data/lang/en-us missing from $apk (SetVoiceByName will fail)"; exit 1; }
 
       - name: Flutter build apk (release, compile-only, split per ABI)
@@ -85,11 +87,11 @@ jobs:
           set -euo pipefail
           apk="build/app/outputs/flutter-apk/app-arm64-v8a-direct-release.apk"
           listing="$(unzip -l "$apk")"
-          echo "$listing" | grep -q "lib/arm64-v8a/libespeak-ng.so" || {
+          grep -F -q -- "lib/arm64-v8a/libespeak-ng.so" <<<"$listing" || {
             echo "::error::libespeak-ng.so missing from $apk"; exit 1; }
-          echo "$listing" | grep -q "flutter_assets/packages/forced_alignment/native/espeak-ng-data/phontab" || {
+          grep -F -q -- "flutter_assets/packages/forced_alignment/native/espeak-ng-data/phontab" <<<"$listing" || {
             echo "::error::espeak-ng-data assets missing from $apk"; exit 1; }
-          echo "$listing" | grep -q "flutter_assets/packages/forced_alignment/native/espeak-ng-data/lang/en-us" || {
+          grep -F -q -- "flutter_assets/packages/forced_alignment/native/espeak-ng-data/lang/en-us" <<<"$listing" || {
             echo "::error::espeak-ng-data/lang/en-us missing from $apk (SetVoiceByName will fail)"; exit 1; }
 
       - name: Flutter build appbundle (release, compile-only)
