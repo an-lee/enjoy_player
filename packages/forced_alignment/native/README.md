@@ -8,12 +8,13 @@ tree at runtime (`DynamicLibrary.open`). Nothing here is compiled during
 
 ```text
 native/
-  android/libespeak-ng.so      # arm64-v8a
-  ios/libespeak-ng.dylib       # NOT vendored yet (see below)
-  macos/libespeak-ng.dylib     # universal: arm64 + x86_64
+  android/libespeak-ng.so           # arm64-v8a
+  ios/libespeak-ng.dylib            # iphoneos arm64
+  ios/libespeak-ng.simulator.dylib  # iphonesimulator arm64 + x86_64
+  macos/libespeak-ng.dylib          # universal: arm64 + x86_64
   windows/libespeak-ng.dll
-  linux/libespeak-ng.so        # x86_64
-  espeak-ng-data/              # voices + phoneme tables for focus languages
+  linux/libespeak-ng.so             # x86_64
+  espeak-ng-data/                   # voices + phoneme tables for focus languages
 ```
 
 A missing library or data directory is not a test failure for the app suite:
@@ -30,7 +31,7 @@ load failure there is a regression, not a skip.
 | linux | `libespeak-ng.so` (x86_64) | zig cc 0.15.2 `-target x86_64-linux-gnu.2.31`; requires glibc ≥ 2.29; links only libc/libm |
 | macos | `libespeak-ng.dylib` (arm64 + x86_64, min 10.15) | zig cc 0.15.2 against the MacOSX11.3 SDK; links only libSystem |
 | android | `libespeak-ng.so` (arm64-v8a) | Android NDK r27d, API 26; links only libc/libm/libdl |
-| ios | — | pending: build on a macOS host with Xcode/iPhoneOS SDK and vendor here |
+| ios | `libespeak-ng.dylib` (iphoneos arm64, min 14.0) + `libespeak-ng.simulator.dylib` (arm64 + x86_64) | Xcode clang against the iPhoneOS / iPhoneSimulator SDKs; links only libSystem. Rebuild: `native/build_ios.sh` |
 
 All builds compile the same upstream sources (`src/libespeak-ng/*.c` except
 `sPlayer.c`, plus `src/ucd-tools/src/{case,categories,ctype,proplist,
@@ -41,6 +42,12 @@ data tree below in lockstep.
 
 Android ships arm64-v8a only; `armeabi-v7a` / `x86_64` builds belong with
 the app-packaging work that embeds these artifacts per ABI.
+
+macOS and iOS app builds copy the host dylib into `Frameworks/` and the
+trimmed data tree into `Contents/Resources/espeak-ng-data` (macOS) or
+`Runner.app/espeak-ng-data` (iOS) via `bundle_into_app.sh`. Production
+`align` resolves those bundle paths from `Platform.resolvedExecutable`
+when the process is not sitting in the source tree.
 
 ## Voices (focus catalog)
 

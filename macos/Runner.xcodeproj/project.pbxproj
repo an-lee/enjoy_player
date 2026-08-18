@@ -237,6 +237,7 @@
 				33CC110E2044A8840003C045 /* Bundle Framework */,
 				3399D490228B24CF009A79C7 /* ShellScript */,
 				7F7AA7C82D318531365204BE /* [CP] Embed Pods Frameworks */,
+				E8F2A1B42D4C5E6F7A8B9C0E /* Bundle eSpeak-NG */,
 				E8F2A1B32D4C5E6F7A8B9C0D /* Bundle FFmpeg Homebrew deps */,
 			);
 			buildRules = (
@@ -376,6 +377,26 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		E8F2A1B42D4C5E6F7A8B9C0E /* Bundle eSpeak-NG */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Bundle eSpeak-NG";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "PLATFORM_NAME=\"${PLATFORM_NAME}\" CONFIGURATION=\"${CONFIGURATION}\" EXPANDED_CODE_SIGN_IDENTITY=\"${EXPANDED_CODE_SIGN_IDENTITY}\" CODE_SIGN_IDENTITY=\"${CODE_SIGN_IDENTITY}\" CODE_SIGNING_ALLOWED=\"${CODE_SIGNING_ALLOWED}\" ENABLE_HARDENED_RUNTIME=\"${ENABLE_HARDENED_RUNTIME}\" \"${SRCROOT}/../packages/forced_alignment/native/bundle_into_app.sh\" \"${TARGET_BUILD_DIR}/${WRAPPER_NAME}\"\n";
 			showEnvVarsInLog = 0;
 		};
 		E8F2A1B32D4C5E6F7A8B9C0D /* Bundle FFmpeg Homebrew deps */ = {

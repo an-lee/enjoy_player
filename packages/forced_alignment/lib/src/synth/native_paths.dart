@@ -1,13 +1,25 @@
 import 'dart:io';
 
+import 'package:meta/meta.dart';
+
 String? _libraryPathOverride;
 String? _dataPathOverride;
+String? _resolvedExecutableOverride;
 
 /// Pin resolved native paths for a worker isolate (sendable strings).
 void setEspeakNativePathOverrides({String? libraryPath, String? dataPath}) {
   _libraryPathOverride = libraryPath;
   _dataPathOverride = dataPath;
 }
+
+/// Test harness: pretend [Platform.resolvedExecutable] is an app binary.
+@visibleForTesting
+void debugSetEspeakResolvedExecutable(String? path) {
+  _resolvedExecutableOverride = path;
+}
+
+String _resolvedExecutable() =>
+    _resolvedExecutableOverride ?? Platform.resolvedExecutable;
 
 /// Candidate directories that may contain vendored `libespeak-ng` + data.
 List<String> espeakNativeSearchRoots() {
@@ -37,6 +49,67 @@ String espeakOsFolderName() {
   return 'linux';
 }
 
+/// App-bundle library paths derived from the running executable.
+///
+/// macOS: `App.app/Contents/MacOS/<exe>` → `Contents/Frameworks/libespeak-ng.dylib`
+/// iOS: `Runner.app/<exe>` → `Frameworks/libespeak-ng.dylib`
+@visibleForTesting
+List<String> espeakBundleLibraryCandidates({
+  String? resolvedExecutable,
+  String? osFolder,
+}) {
+  final exe = resolvedExecutable ?? _resolvedExecutable();
+  final exeDir = File(exe).parent.path;
+  final sep = Platform.pathSeparator;
+  switch (osFolder ?? espeakOsFolderName()) {
+    case 'macos':
+      final contents = Directory(exeDir).parent.path;
+      return [
+        '$contents${sep}Frameworks${sep}libespeak-ng.dylib',
+        '$contents${sep}Frameworks${sep}libespeak_ng.dylib',
+      ];
+    case 'ios':
+      return [
+        '$exeDir${sep}Frameworks${sep}libespeak-ng.dylib',
+        '$exeDir${sep}Frameworks${sep}libespeak_ng.dylib',
+        '$exeDir${sep}Frameworks${sep}eSpeakNG.framework${sep}eSpeakNG',
+      ];
+    default:
+      return const [];
+  }
+}
+
+/// App-bundle `espeak-ng-data` directories derived from the running executable.
+@visibleForTesting
+List<String> espeakBundleDataCandidates({
+  String? resolvedExecutable,
+  String? osFolder,
+}) {
+  final exe = resolvedExecutable ?? _resolvedExecutable();
+  final exeDir = File(exe).parent.path;
+  final sep = Platform.pathSeparator;
+  switch (osFolder ?? espeakOsFolderName()) {
+    case 'macos':
+      final contents = Directory(exeDir).parent.path;
+      return ['$contents${sep}Resources${sep}espeak-ng-data'];
+    case 'ios':
+      return [
+        '$exeDir${sep}espeak-ng-data',
+        '$exeDir${sep}Frameworks${sep}espeak-ng-data',
+      ];
+    default:
+      return const [];
+  }
+}
+
+bool _isUsableDataDir(String path) {
+  final dir = Directory(path);
+  if (!dir.existsSync()) return false;
+  return dir.listSync().any(
+    (e) => e.path.split(Platform.pathSeparator).last != '.gitkeep',
+  );
+}
+
 /// First existing library path, or null.
 String? resolveEspeakLibraryPath() {
   if (_libraryPathOverride != null &&
@@ -53,6 +126,9 @@ String? resolveEspeakLibraryPath() {
       if (File(flat).existsSync()) return flat;
     }
   }
+  for (final candidate in espeakBundleLibraryCandidates()) {
+    if (File(candidate).existsSync()) return candidate;
+  }
   return null;
 }
 
@@ -63,13 +139,10 @@ String? resolveEspeakDataPath() {
   }
   for (final root in espeakNativeSearchRoots()) {
     final candidate = '$root${Platform.pathSeparator}espeak-ng-data';
-    final dir = Directory(candidate);
-    if (dir.existsSync() &&
-        dir.listSync().any(
-          (e) => e.path.split(Platform.pathSeparator).last != '.gitkeep',
-        )) {
-      return candidate;
-    }
+    if (_isUsableDataDir(candidate)) return candidate;
+  }
+  for (final candidate in espeakBundleDataCandidates()) {
+    if (_isUsableDataDir(candidate)) return candidate;
   }
   return null;
 }

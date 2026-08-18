@@ -55,7 +55,9 @@ native/<os>/libespeak-ng.*
 native/espeak-ng-data/
 ```
 
-See [native/README.md](native/README.md). eSpeak-NG is GPL-3.0.
+macOS / iOS app builds embed the dylib and data tree in the `.app` so
+production alignment works outside the source checkout. See
+[native/README.md](native/README.md). eSpeak-NG is GPL-3.0.
 
 ## Tests
 
