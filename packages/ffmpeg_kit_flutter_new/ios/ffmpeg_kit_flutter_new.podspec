@@ -18,7 +18,7 @@ Pod::Spec.new do |s|
   s.default_subspec = 'full-gpl'
 
   s.dependency          'Flutter'
-  s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386 arm64' }
+  s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
 
   s.subspec 'full-gpl' do |ss|
     # Adding pre-install hook
@@ -26,18 +26,25 @@ Pod::Spec.new do |s|
       if [ ! -d "./Frameworks" ]; then
         chmod +x ../scripts/setup_ios.sh
         ../scripts/setup_ios.sh
-        fi
+      fi
+      # Build xcframeworks (with separate iOS-device and iOS-simulator slices)
+      # so the plugin links on Apple Silicon iOS simulators. The upstream
+      # fat frameworks only ship iOS-device slices; we add a vtool-rebased
+      # arm64 simulator slice on top of the existing x86_64 simulator one.
+      if [ ! -d "./FrameworksXc" ] || [ -z "$(ls -A ./FrameworksXc 2>/dev/null)" ]; then
+        bash ../scripts/build_ios_xcframeworks.sh
+      fi
     CMD
     ss.source_files         = 'Classes/**/*'
     ss.public_header_files  = 'Classes/**/*.h'
-    ss.ios.vendored_frameworks = 'Frameworks/ffmpegkit.framework',
-                                 'Frameworks/libavcodec.framework',
-                                 'Frameworks/libavdevice.framework',
-                                 'Frameworks/libavfilter.framework',
-                                 'Frameworks/libavformat.framework',
-                                 'Frameworks/libavutil.framework',
-                                 'Frameworks/libswresample.framework',
-                                 'Frameworks/libswscale.framework'
+    ss.ios.vendored_frameworks = 'FrameworksXc/ffmpegkit.xcframework',
+                                 'FrameworksXc/libavcodec.xcframework',
+                                 'FrameworksXc/libavdevice.xcframework',
+                                 'FrameworksXc/libavfilter.xcframework',
+                                 'FrameworksXc/libavformat.xcframework',
+                                 'FrameworksXc/libavutil.xcframework',
+                                 'FrameworksXc/libswresample.xcframework',
+                                 'FrameworksXc/libswscale.xcframework'
     ss.ios.frameworks = 'AudioToolbox', 'CoreMedia'
     ss.libraries = 'z', 'bz2', 'c++', 'iconv'
     ss.ios.deployment_target = '14.0'

@@ -51,7 +51,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   azure_speech: cd59609565095e563a4a17e0bab6c88d6652545d
-  ffmpeg_kit_flutter_new: 12426a19f10ac81186c67c6ebc4717f8f4364b7f
+  ffmpeg_kit_flutter_new: 7b9f3002d46fcc97c544c032aff57f02cd1644b6
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   flutter_inappwebview_ios: b89ba3482b96fb25e00c967aae065701b66e9b99
   media_kit_libs_ios_video: 5a18affdb97d1f5d466dc79988b13eff6c5e2854
@@ -59,6 +59,6 @@ SPEC CHECKSUMS:
   MicrosoftCognitiveServicesSpeech-iOS: 6f35fa829c778d6e2f15b1bcc5110eccd7709831
   OrderedSet: e539b66b644ff081c73a262d24ad552a69be3a94
 
-PODFILE CHECKSUM: 32867f9463c08d010d76ebcccfdd7e1669cd2e2a
+PODFILE CHECKSUM: 878e7b73f14b2526dc140156a33095b5ab75df7c
 
 COCOAPODS: 1.16.2

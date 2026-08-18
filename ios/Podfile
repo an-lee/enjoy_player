@@ -43,4 +43,18 @@ post_install do |installer|
       end
     end
   end
+
+  # media_kit ships xcframeworks with an ios-arm64_x86_64-simulator slice; on
+  # Apple Silicon the simulator runs arm64, but Flutter-generated
+  # EXCLUDED_ARCHS[sdk=iphonesimulator*]=i386 arm64 removes that slice, so the
+  # Runner can't link for simulator. Re-scope the exclusion to legacy i386
+  # only so the simulator can use the arm64 slice at native speed.
+  installer.aggregate_targets.each do |aggregate|
+    aggregate.user_project.native_targets.each do |native_target|
+      native_target.build_configurations.each do |config|
+        config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'i386'
+      end
+    end
+    aggregate.user_project.save
+  end
 end

@@ -50,6 +50,8 @@ app.*.map.json
 # ffmpeg_kit_flutter_new vendored frameworks (see packages/ffmpeg_kit_flutter_new/scripts/setup_*.sh)
 /packages/ffmpeg_kit_flutter_new/macos/Frameworks/
 /packages/ffmpeg_kit_flutter_new/ios/Frameworks/
+# Generated xcframeworks (built on demand by packages/ffmpeg_kit_flutter_new/scripts/build_ios_xcframeworks.sh)
+/packages/ffmpeg_kit_flutter_new/ios/FrameworksXc/
 
 # Tooling (SVG→PNG helper)
 /tool/node_modules/
