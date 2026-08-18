@@ -149,6 +149,12 @@ flutter test
 
 - **Xcode** + **CocoaPods** + Apple Developer team **`46X685R747`**
 - **Homebrew** + FFmpeg deps: `brew bundle install --file=macos/Brewfile`
+- The Xcode target bundles FFmpeg/media-kit's Homebrew dylib dependencies into
+  `Contents/Frameworks/`. This includes relocatable references such as
+  `/opt/homebrew/*/libssl.3.dylib`; the bundler resolves them through installed
+  formula prefixes and rewrites them to `@rpath`, which is required for
+  notarized apps because external Homebrew libraries have a different signing
+  team.
 - **App Store Connect app** for bundle ID `ai.enjoy.player` (required for full `--platform apple` runs that build iOS)
 - **Keychain certs** (OS Keychain, not files in the repo): Apple Distribution (iOS / TestFlight) and Developer ID Application (macOS direct download)
 - **Local Apple secrets** (one directory — shared by local release and the self-hosted Mac runner):
@@ -527,7 +533,7 @@ git-ignored.
 
 ### Apple
 
-- **macOS DYLD / missing `libz.1.dylib`**: run `brew bundle install --file=macos/Brewfile` and rebuild.
+- **macOS DYLD / missing Homebrew dylib**: run `brew bundle install --file=macos/Brewfile` and rebuild; the release bundle must contain the dependency under `Contents/Frameworks/` with an `@rpath` load path.
 - **Keychain / signing on new Mac**: open `macos/Runner.xcworkspace`, enable automatic signing, team `46X685R747`, build once in Xcode.
 - **Notarization fails**: check `NOTARY_PROFILE` (default `enjoy-notary`) and stored credentials; unlock the login keychain if `notarytool` reports `keychainLocked` or `errSecInternalComponent`:
   ```bash
