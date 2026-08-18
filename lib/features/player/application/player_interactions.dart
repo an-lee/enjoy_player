@@ -321,31 +321,4 @@ class PlayerInteractions extends _$PlayerInteractions {
     }
     await ref.read(playerControllerProvider.notifier).play();
   }
-
-  Future<void> toggleWordLoop(
-    TranscriptLine line,
-    int lineIndex,
-    int wordIndex,
-  ) async {
-    final session = ref.read(playerControllerProvider);
-    if (session == null) return;
-    final mediaId = session.mediaId;
-    final window = wordMediaWindowMs(line, wordIndex);
-    if (window == null) return;
-    final current = ref.read(wordPracticeSessionProvider(mediaId));
-    final notifier = ref.read(wordPracticeSessionProvider(mediaId).notifier);
-    if (current.isLooping &&
-        current.loopLineIndex == lineIndex &&
-        current.loopWordIndex == wordIndex) {
-      notifier.clearLoop();
-      return;
-    }
-    notifier.startLoop(
-      lineIndex: lineIndex,
-      wordIndex: wordIndex,
-      startMs: window.startMs,
-      endMs: window.endMs,
-    );
-    await seekToWord(line, lineIndex, wordIndex, keepLoop: true);
-  }
 }
