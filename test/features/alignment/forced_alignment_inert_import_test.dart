@@ -66,19 +66,6 @@ void main() {
     },
   );
 
-  test('transcript.timelineEnrichment settings key is allowlisted', () {
-    expect(
-      SettingsKeys.transcriptTimelineEnrichment,
-      'transcript.timelineEnrichment',
-    );
-    expect(
-      SettingsKeys.isKnown(SettingsKeys.transcriptTimelineEnrichment),
-      isTrue,
-    );
-    final settings = File('lib/data/db/settings_keys.dart').readAsStringSync();
-    expect(settings.contains('transcript.timelineEnrichment'), isTrue);
-  });
-
   test('transcript.karaokeHighlight settings key is allowlisted', () {
     expect(
       SettingsKeys.transcriptKaraokeHighlight,
@@ -92,13 +79,10 @@ void main() {
     expect(settings.contains('transcript.karaokeHighlight'), isTrue);
   });
 
-  test('transcript IPA overlay and word practice keys are allowlisted', () {
+  test('transcript IPA overlay key is allowlisted', () {
     expect(SettingsKeys.transcriptIpaOverlay, 'transcript.ipaOverlay');
-    expect(SettingsKeys.transcriptWordPractice, 'transcript.wordPractice');
     expect(SettingsKeys.isKnown(SettingsKeys.transcriptIpaOverlay), isTrue);
-    expect(SettingsKeys.isKnown(SettingsKeys.transcriptWordPractice), isTrue);
     final settings = File('lib/data/db/settings_keys.dart').readAsStringSync();
     expect(settings.contains('transcript.ipaOverlay'), isTrue);
-    expect(settings.contains('transcript.wordPractice'), isTrue);
   });
 }

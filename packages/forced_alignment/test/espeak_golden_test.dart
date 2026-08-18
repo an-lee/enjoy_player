@@ -55,6 +55,39 @@ void main() {
     );
   });
 
+  test('eSpeak es-ES golden ±50 ms vs that run’s word events', () async {
+    const text = 'hola mundo';
+    final reference = await EspeakSynthHost.synthesize(
+      text: text,
+      language: 'es-ES',
+    );
+    expect(reference.words, hasLength(2));
+    final n = math.max(reference.pcm.length, kAlignmentSampleRate);
+    final source = Float32List(n);
+    source.setRange(0, reference.pcm.length, reference.pcm);
+    final outcome = await align(
+      sourcePcm16k: source,
+      transcript: text,
+      language: 'es-ES',
+    );
+    final failureReason = switch (outcome) {
+      AlignmentFailed(:final failure) => failure.toString(),
+      _ => '$outcome',
+    };
+    expect(outcome, isA<AlignmentSuccess>(), reason: failureReason);
+    final result = (outcome as AlignmentSuccess).result;
+    expect(result.wordTimeline, hasLength(2));
+    expect(result.wordTimeline.map((w) => w.text), ['hola', 'mundo']);
+    for (var i = 0; i < result.wordTimeline.length; i++) {
+      expect(
+        result.wordTimeline[i].startTime,
+        closeTo(reference.words[i].startTime, 0.050),
+      );
+    }
+    final flat = flattenToWordPhoneTimings(result);
+    expect(flat.phones, isNotEmpty);
+  });
+
   test(
     'concurrent align jobs share one serial spoken-reference host',
     () async {

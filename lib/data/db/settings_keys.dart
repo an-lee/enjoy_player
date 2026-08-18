@@ -53,11 +53,6 @@ abstract final class SettingsKeys {
   /// When `true`, allowlisted diagnostic loggers write FINE records to the log file.
   static const String diagnosticsVerboseEnabled = 'diagnostics.verbose_enabled';
 
-  /// When `true`, Craft save may attach nested word/phone spans via on-device
-  /// alignment. Missing value ≡ off.
-  static const String transcriptTimelineEnrichment =
-      'transcript.timelineEnrichment';
-
   /// When `true`, the transcript panel highlights the current word if the cue
   /// already has stored word timings. Missing value ≡ off.
   static const String transcriptKaraokeHighlight =
@@ -66,9 +61,6 @@ abstract final class SettingsKeys {
   /// When `true`, show stored pronunciation spelling with each primary-line
   /// word that has phone pieces. Missing value ≡ off.
   static const String transcriptIpaOverlay = 'transcript.ipaOverlay';
-
-  /// When `true`, allow seek/loop/inspect of stored timed words. Missing ≡ off.
-  static const String transcriptWordPractice = 'transcript.wordPractice';
 
   /// JSON blob: volume, rate, repeat, split width ([PlayerPreferencesCtrl]).
   static const String playerPreferencesV1 = 'player_preferences_v1';
@@ -115,10 +107,8 @@ abstract final class SettingsKeys {
     updateSnoozeUntil,
     updateSnoozeVersion,
     diagnosticsVerboseEnabled,
-    transcriptTimelineEnrichment,
     transcriptKaraokeHighlight,
     transcriptIpaOverlay,
-    transcriptWordPractice,
     playerPreferencesV1,
     hotkeysCustomBindings,
     aiModalityConfigsV1,

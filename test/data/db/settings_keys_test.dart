@@ -41,13 +41,6 @@ void main() {
       expect(SettingsKeys.updateSnoozeVersion, 'update.snooze_version');
     });
 
-    test('transcript timeline enrichment key', () {
-      expect(
-        SettingsKeys.transcriptTimelineEnrichment,
-        'transcript.timelineEnrichment',
-      );
-    });
-
     test('transcript karaoke highlight key', () {
       expect(
         SettingsKeys.transcriptKaraokeHighlight,
@@ -55,9 +48,8 @@ void main() {
       );
     });
 
-    test('transcript IPA overlay and word practice keys', () {
+    test('transcript IPA overlay key', () {
       expect(SettingsKeys.transcriptIpaOverlay, 'transcript.ipaOverlay');
-      expect(SettingsKeys.transcriptWordPractice, 'transcript.wordPractice');
     });
 
     test('diagnostics / hotkeys / ai / youtube keys', () {
@@ -124,10 +116,8 @@ void main() {
         SettingsKeys.updateSnoozeUntil,
         SettingsKeys.updateSnoozeVersion,
         SettingsKeys.diagnosticsVerboseEnabled,
-        SettingsKeys.transcriptTimelineEnrichment,
         SettingsKeys.transcriptKaraokeHighlight,
         SettingsKeys.transcriptIpaOverlay,
-        SettingsKeys.transcriptWordPractice,
         SettingsKeys.playerPreferencesV1,
         SettingsKeys.hotkeysCustomBindings,
         SettingsKeys.aiModalityConfigsV1,
