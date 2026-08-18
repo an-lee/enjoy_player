@@ -113,6 +113,7 @@ class _EnjoyAppState extends ConsumerState<EnjoyApp> {
   }) {
     if (router != null) {
       return MaterialApp.router(
+        debugShowCheckedModeBanner: false,
         scaffoldMessengerKey: appScaffoldMessengerKey,
         onGenerateTitle: (ctx) => AppLocalizations.of(ctx)!.appTitle,
         theme: theme,
@@ -124,6 +125,7 @@ class _EnjoyAppState extends ConsumerState<EnjoyApp> {
       );
     }
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       scaffoldMessengerKey: appScaffoldMessengerKey,
       theme: theme,
       localizationsDelegates: _fallbackLocalizationsDelegates,
