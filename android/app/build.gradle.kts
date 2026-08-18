@@ -80,6 +80,16 @@ android {
         abortOnError = false
     }
 
+    // Extract native libraries to disk at install time so the vendored
+    // libespeak-ng.so is dlopen-able from applicationInfo.nativeLibraryDir.
+    // AGP 9 rejects the manifest's extractNativeLibs attribute; this is the
+    // build-script replacement.
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
     // Vendored eSpeak-NG per-ABI libraries (packages/forced_alignment); the
     // directory layout <abi>/libespeak-ng.so is exactly the jniLibs shape.
     sourceSets {
