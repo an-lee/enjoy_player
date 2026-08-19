@@ -84,6 +84,9 @@ class YoutubePlayerEngine implements PlayerEngine {
   bool get supportsSubtitleDisabling => false;
 
   @override
+  bool get keepSurfaceWhenParked => true;
+
+  @override
   ({bool playing, bool buffering}) get transportSnapshot =>
       _session.transportSnapshot;
 

@@ -2,15 +2,17 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:enjoy_player/features/player/application/player_surface_registry.dart';
 
 /// Placeholder slot that reports geometry to [playerSurfaceRegistryProvider].
 ///
-/// The native video surface is painted by [PlayerSurfaceHost] via
-/// [CompositedTransformFollower]; this widget only reserves space and may
-/// show a poster/loading placeholder underneath.
+/// The native video surface is painted by [PlayerSurfaceHost] via absolute
+/// [Positioned] bounds (not a follower transform — WebView2 DPI, ADR-0057);
+/// this widget only reserves space and may show a poster/loading placeholder
+/// underneath.
 class PlayerSurfaceTarget extends ConsumerStatefulWidget {
   const PlayerSurfaceTarget({
     required this.id,
@@ -45,7 +47,11 @@ class _PlayerSurfaceTargetState extends ConsumerState<PlayerSurfaceTarget> {
     super.initState();
     // Capture notifier while mounted — [dispose] must not use [ref].
     _registry = ref.read(playerSurfaceRegistryProvider.notifier);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _sync());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _sync();
+      // First layout can be 0×0 (nested scaffold). Retry once size exists.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _sync());
+    });
   }
 
   @override
@@ -127,12 +133,67 @@ class _PlayerSurfaceTargetState extends ConsumerState<PlayerSurfaceTarget> {
 
   @override
   Widget build(BuildContext context) {
-    return NotificationListener<SizeChangedLayoutNotification>(
-      onNotification: (_) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => _sync());
-        return false;
-      },
-      child: SizeChangedLayoutNotifier(child: widget.child),
+    return _GeometryProbe(
+      onGeometryPossiblyChanged: _sync,
+      child: widget.child,
     );
+  }
+}
+
+/// Reports after layout **and** paint so ancestor transforms (route fade/slide,
+/// [Transform.translate]) update the host even when size is unchanged.
+///
+/// [SizeChangedLayoutNotifier] only fires on size changes, so a first attach
+/// that captured a stale offset — or a later move of the target — left the
+/// media_kit texture parked/misaligned until the transcript splitter resized
+/// the column.
+class _GeometryProbe extends SingleChildRenderObjectWidget {
+  const _GeometryProbe({
+    required this.onGeometryPossiblyChanged,
+    required super.child,
+  });
+
+  final VoidCallback onGeometryPossiblyChanged;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) {
+    return _RenderGeometryProbe(onGeometryPossiblyChanged);
+  }
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    covariant _RenderGeometryProbe renderObject,
+  ) {
+    renderObject.onGeometryPossiblyChanged = onGeometryPossiblyChanged;
+  }
+}
+
+class _RenderGeometryProbe extends RenderProxyBox {
+  _RenderGeometryProbe(this.onGeometryPossiblyChanged);
+
+  VoidCallback onGeometryPossiblyChanged;
+  bool _scheduled = false;
+
+  void _schedule() {
+    if (_scheduled) return;
+    _scheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scheduled = false;
+      if (!attached) return;
+      onGeometryPossiblyChanged();
+    });
+  }
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    _schedule();
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    _schedule();
+    super.paint(context, offset);
   }
 }

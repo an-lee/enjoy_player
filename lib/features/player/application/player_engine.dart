@@ -1,6 +1,7 @@
 /// Abstraction over playback backends: [MediaKitPlayerEngine] (default) and [YouTubePlayerEngine].
 library;
 
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -47,6 +48,11 @@ abstract class PlayerEngine {
   /// Display aspect ratio for letterboxing (width / height).
   Stream<double> get videoAspectRatioStream;
 
+  /// When false, [PlayerSurfaceHost] omits [buildVideoStage] while parked
+  /// off-screen. MediaKit's Android `Texture` / Surface stays black if it is
+  /// first laid out off-screen; YouTube's WebView must stay mounted.
+  bool get keepSurfaceWhenParked;
+
   Widget buildVideoStage({
     required BuildContext context,
     required double maxWidth,
@@ -75,7 +81,8 @@ abstract class PlayerEngine {
   /// Encoded frame capture (`image/jpeg`, `image/png`, or raw when [format] is null).
   Future<Uint8List?> screenshot({String? format});
 
-  /// Ensures video texture binding before decode on Windows (media_kit only).
+  /// YouTube: attach the WebView. MediaKit: no-op — [VideoController] is
+  /// created when the on-screen [Video] stage builds.
   void warmVideoSurface();
 
   Future<void> dispose();
@@ -110,33 +117,17 @@ class MediaKitPlayerEngine implements PlayerEngine {
   VideoController? _videoController;
 
   static VideoControllerConfiguration get _videoControllerConfiguration {
-    if (Platform.isWindows) {
-      return const VideoControllerConfiguration(
-        width: kVideoControllerWidth,
-        height: kVideoControllerHeight,
-      );
+    if (Platform.isAndroid || Platform.isIOS) {
+      return const VideoControllerConfiguration();
     }
-    if (Platform.isMacOS) {
-      // Bind libmpv video output before decode; prefer software GL texture path
-      // on recent macOS where deprecated OpenGL HW textures can stay black.
-      return const VideoControllerConfiguration(
-        width: kVideoControllerWidth,
-        height: kVideoControllerHeight,
-        hwdec: 'auto-safe',
-        enableHardwareAcceleration: false,
-      );
-    }
-    if (Platform.isLinux) {
-      // Same conservative path as macOS: avoid green-screen / EGL_BAD_DISPLAY
-      // on Linux + Wayland with NVIDIA / AMD hybrid GPUs (ADR-0048, R2).
-      return const VideoControllerConfiguration(
-        width: kVideoControllerWidth,
-        height: kVideoControllerHeight,
-        hwdec: 'auto-safe',
-        enableHardwareAcceleration: false,
-      );
-    }
-    return const VideoControllerConfiguration();
+    // Desktop: software output. HW textures can stay black until a later
+    // Flutter layout (Windows D3D, macOS OpenGL, Linux EGL — ADR-0048).
+    return const VideoControllerConfiguration(
+      width: kVideoControllerWidth,
+      height: kVideoControllerHeight,
+      hwdec: 'auto-safe',
+      enableHardwareAcceleration: false,
+    );
   }
 
   VideoController get videoController {
@@ -191,6 +182,9 @@ class MediaKitPlayerEngine implements PlayerEngine {
       (playing: _player.state.playing, buffering: _player.state.buffering);
 
   @override
+  bool get keepSurfaceWhenParked => false;
+
+  @override
   Stream<double> get videoAspectRatioStream => _player.stream.videoParams
       .map((vp) => aspectRatioFromVideoParams(vp, _player.state))
       .distinct((a, b) => (a - b).abs() < kAspectRatioEpsilon);
@@ -201,45 +195,20 @@ class MediaKitPlayerEngine implements PlayerEngine {
     required double maxWidth,
     required double maxHeight,
   }) {
-    final controller = videoController;
     if (maxWidth <= 0 || maxHeight <= 0) {
       return const SizedBox.shrink();
     }
 
-    return StreamBuilder<double>(
-      stream: videoAspectRatioStream,
-      initialData: aspectRatioFromVideoParams(
-        _player.state.videoParams,
-        _player.state,
+    // Fill the host slot and let [Video] letterbox. An outer [ClipRect] plus a
+    // child taller than the slot makes Android's Surface/Texture stay black
+    // until a later layout (transcript splitter / rotation).
+    return ColoredBox(
+      color: Colors.black,
+      child: _MediaKitVideoStage(
+        controller: videoController,
+        maxWidth: maxWidth,
+        maxHeight: maxHeight,
       ),
-      builder: (context, snapshot) {
-        final ar = (snapshot.data ?? (16 / 9)).clamp(0.001, 1000.0);
-        final w = maxWidth;
-        final h = w / ar;
-
-        return ClipRect(
-          child: Align(
-            alignment: Alignment.center,
-            child: SizedBox(
-              width: w,
-              height: h,
-              child: ExcludeSemantics(
-                child: Video(
-                  controller: controller,
-                  controls: null,
-                  width: w,
-                  height: h,
-                  fit: BoxFit.contain,
-                  fill: Colors.black,
-                  subtitleViewConfiguration: const SubtitleViewConfiguration(
-                    visible: false,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -287,14 +256,130 @@ class MediaKitPlayerEngine implements PlayerEngine {
 
   @override
   void warmVideoSurface() {
-    if (Platform.isWindows || Platform.isMacOS) {
-      videoController;
-    }
+    // Do not construct [VideoController] here. media_kit binds the native
+    // texture one frame after [VideoController] is created; if that happens
+    // with no [Video] widget mounted, Windows/Android stay black until a later
+    // layout. [_MediaKitVideoStage] creates the controller on first build.
   }
 
   @override
   Future<void> dispose() async {
     await __player?.dispose();
     __player = null;
+  }
+}
+
+/// Mounts media_kit [Video] and relayouts it once the native texture exists.
+///
+/// A kick on the first Flutter frame is too early — [Texture] is still a
+/// 1×1 placeholder, so the layout is a no-op. Dragging the transcript splitter
+/// works because it changes the viewport *after* frames are flowing. Listen
+/// for texture id/rect (and first-frame) and then pulse [Video] width/height.
+class _MediaKitVideoStage extends StatefulWidget {
+  const _MediaKitVideoStage({
+    required this.controller,
+    required this.maxWidth,
+    required this.maxHeight,
+  });
+
+  final VideoController controller;
+  final double maxWidth;
+  final double maxHeight;
+
+  @override
+  State<_MediaKitVideoStage> createState() => _MediaKitVideoStageState();
+}
+
+class _MediaKitVideoStageState extends State<_MediaKitVideoStage> {
+  var _nudge = false;
+  var _kicked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.id.addListener(_onTexture);
+    widget.controller.rect.addListener(_onTexture);
+    _onTexture();
+    unawaited(_kickAfterFirstFrame());
+  }
+
+  @override
+  void didUpdateWidget(covariant _MediaKitVideoStage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Loading 16:9 → side-by-side chrome is a large viewport change. The first
+    // kick already ran; without another pulse the Texture stays black until
+    // the user resizes the window / splitter.
+    final dw = (oldWidget.maxWidth - widget.maxWidth).abs();
+    final dh = (oldWidget.maxHeight - widget.maxHeight).abs();
+    if (dw > kVideoTextureKickMinViewportDelta ||
+        dh > kVideoTextureKickMinViewportDelta) {
+      _kicked = false;
+      _scheduleKick();
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.id.removeListener(_onTexture);
+    widget.controller.rect.removeListener(_onTexture);
+    super.dispose();
+  }
+
+  Future<void> _kickAfterFirstFrame() async {
+    try {
+      await widget.controller.waitUntilFirstFrameRendered;
+    } on Object {
+      return;
+    }
+    if (!mounted) return;
+    _scheduleKick();
+  }
+
+  void _onTexture() {
+    final id = widget.controller.id.value;
+    final rect = widget.controller.rect.value;
+    if (id == null || rect == null || rect.width <= 1 || rect.height <= 1) {
+      return;
+    }
+    _scheduleKick();
+  }
+
+  void _scheduleKick() {
+    if (_kicked) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _kick());
+  }
+
+  void _kick() {
+    if (!mounted || _kicked) return;
+    _kicked = true;
+    setState(() => _nudge = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _nudge = false);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final inset = _nudge ? kVideoTextureKickInset : 0.0;
+    final w = widget.maxWidth > inset
+        ? widget.maxWidth - inset
+        : widget.maxWidth;
+    final h = widget.maxHeight > inset
+        ? widget.maxHeight - inset
+        : widget.maxHeight;
+    return ExcludeSemantics(
+      child: Video(
+        controller: widget.controller,
+        controls: null,
+        width: w,
+        height: h,
+        fit: BoxFit.contain,
+        fill: Colors.black,
+        subtitleViewConfiguration: const SubtitleViewConfiguration(
+          visible: false,
+        ),
+      ),
+    );
   }
 }

@@ -1,5 +1,5 @@
 /// Tuning constants for [MediaKitPlayerEngine] video controller dimensions,
-/// aspect-ratio dedup epsilon, and normalised-volume mapping.
+/// aspect-ratio dedup epsilon, normalised-volume mapping, and texture kicks.
 library;
 
 /// Default width for the [media_kit] [VideoController] on non-mobile platforms.
@@ -14,3 +14,10 @@ const double kAspectRatioEpsilon = 0.0001;
 
 /// Scale factor mapping a 0.0–1.0 normalised volume to `media_kit` volume units.
 const double kVolumeScale = 100;
+
+/// Relayout [Video] again when the host viewport jumps by at least this many
+/// logical pixels (loading 16:9 → side-by-side chrome).
+const double kVideoTextureKickMinViewportDelta = 32;
+
+/// Temporary inset applied for one frame to force a Texture present.
+const double kVideoTextureKickInset = 1;

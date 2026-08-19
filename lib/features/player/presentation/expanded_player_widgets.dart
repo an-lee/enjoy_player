@@ -57,9 +57,8 @@ class ExpandedPlayerLoadingBody extends ConsumerWidget {
               ),
             )
           else
-            // Claim the permanent MediaKit surface during open (ADR-0057) so
-            // warmVideoSurface / Video are not parked off-screen for the whole
-            // resolve → open window.
+            // Claim the chrome viewport during open (ADR-0057) so Video is
+            // not unmounted for the whole resolve → open window.
             const Align(
               alignment: Alignment.topCenter,
               child: _LocalLoadingVideoStage(),
@@ -92,7 +91,10 @@ class _LocalLoadingVideoStage extends StatelessWidget {
       child: AspectRatio(
         aspectRatio: aspectWidth / aspectHeight,
         child: PlayerSurfaceTarget(
-          id: PlayerSurfaceIds.expandedPlayerLoading,
+          // Share the chrome viewport id so loading → player does not park
+          // (unmount) the media_kit Texture. A distinct id raced detach/attach
+          // and left ~1s of picture then a black stage until resize.
+          id: PlayerSurfaceIds.expandedPlayer,
           overlayBuilder: (_) => const SizedBox.shrink(),
           child: const ColoredBox(
             color: Colors.black,

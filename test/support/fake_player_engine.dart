@@ -77,6 +77,9 @@ class FakePlayerEngine implements PlayerEngine {
   bool get supportsSubtitleDisabling => true;
 
   @override
+  bool get keepSurfaceWhenParked => true;
+
+  @override
   ({bool playing, bool buffering}) get transportSnapshot =>
       (playing: false, buffering: false);
 

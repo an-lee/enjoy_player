@@ -78,5 +78,8 @@ final playerSurfaceRegistryProvider =
 abstract final class PlayerSurfaceIds {
   static const vocabularyClip = 'vocabulary.clip';
   static const expandedPlayer = 'player.expanded';
+
+  /// YouTube open-in-flight viewport only. Local/URL loading uses
+  /// [expandedPlayer] so the media_kit texture is not parked mid-open.
   static const expandedPlayerLoading = 'player.expanded.loading';
 }
