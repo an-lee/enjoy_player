@@ -26,20 +26,19 @@ if [[ ! -f "${frameworks}/libespeak-ng.dylib" ]]; then
   exit 1
 fi
 
+swift_support="${tmp_dir}/SwiftSupport/iphoneos"
+if [[ ! -d "${swift_support}" ]] ||
+   ! compgen -G "${swift_support}/libswift*.dylib" >/dev/null; then
+  echo "::error::missing SwiftSupport/iphoneos Swift runtime libraries" >&2
+  exit 1
+fi
+
 minimum_os="$(
   plutil -extract MinimumOSVersion raw -o - "${app}/Info.plist"
 )"
 if [[ "${minimum_os}" != "15.0" ]]; then
   echo "::error::expected MinimumOSVersion 15.0, found ${minimum_os}" >&2
   exit 1
-fi
-
-# iOS 15 provides Swift Concurrency in the OS. Older targets require this
-# library in the app bundle, but this release intentionally targets iOS 15.
-if [[ -f "${frameworks}/libswift_Concurrency.dylib" ]]; then
-  echo "Swift Concurrency runtime is embedded in Runner.app/Frameworks."
-else
-  echo "Swift Concurrency runtime is provided by iOS ${minimum_os}+."
 fi
 
 codesign --verify --deep --strict "${app}"
