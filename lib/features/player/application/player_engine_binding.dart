@@ -20,6 +20,11 @@ import 'package:enjoy_player/features/player/application/player_engine_test_doub
 /// identity. We must **swap + bump first** so the host drops the old
 /// `buildVideoStage`, then dispose the previous engine — never dispose while
 /// the host still mounts that engine's platform view.
+///
+/// The first local/URL open also installs [MediaKitPlayerEngine] and bumps
+/// so [PlayerSurfaceHost] can mount `Video` before decode starts. Creating
+/// [VideoController] with no [Video] widget binds a native texture that stays
+/// black on Windows/Android until a later layout.
 Future<void> ensureEngineForPlayableSource(
   Ref ref, {
   required PlayableSource playable,
@@ -52,7 +57,7 @@ Future<void> ensureEngineForPlayableSource(
     return;
   }
 
-  if (!wantYt && haveYt) {
+  if (!wantYt && owned is! MediaKitPlayerEngine) {
     if (currentOpenGeneration() != openGeneration) return;
     final next = MediaKitPlayerEngine();
     setOwnedEngine(next);
@@ -62,6 +67,8 @@ Future<void> ensureEngineForPlayableSource(
       await next.dispose();
       return;
     }
-    await owned.dispose();
+    if (owned != null) {
+      await owned.dispose();
+    }
   }
 }

@@ -22,6 +22,11 @@ class _KeyedSurfaceEngine extends FakePlayerEngine {
   }
 }
 
+class _ParklessSurfaceEngine extends _KeyedSurfaceEngine {
+  @override
+  bool get keepSurfaceWhenParked => false;
+}
+
 void main() {
   testWidgets(
     'target detach and reattach never reparents keyed engine surface',
@@ -207,6 +212,180 @@ void main() {
         restoredBox.localToGlobal(Offset.zero).dx,
         greaterThanOrEqualTo(0),
       );
+    },
+  );
+
+  testWidgets(
+    'host follows target translation even when size does not change',
+    (tester) async {
+      final engine = _KeyedSurfaceEngine();
+      addTearDown(engine.dispose);
+      final dx = ValueNotifier<double>(0);
+      addTearDown(dx.dispose);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [playerEngineTestDoubleProvider.overrideWithValue(engine)],
+          child: MaterialApp(
+            home: Scaffold(
+              body: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ValueListenableBuilder<double>(
+                    valueListenable: dx,
+                    builder: (context, value, _) {
+                      return Align(
+                        alignment: Alignment.topLeft,
+                        child: Transform.translate(
+                          offset: Offset(value, 0),
+                          child: const SizedBox(
+                            width: 320,
+                            height: 180,
+                            child: PlayerSurfaceTarget(
+                              id: PlayerSurfaceIds.expandedPlayer,
+                              child: ColoredBox(color: Colors.grey),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const PlayerSurfaceHost(),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final before =
+          engine.surfaceKey.currentContext!.findRenderObject()! as RenderBox;
+      final beforeDx = before.localToGlobal(Offset.zero).dx;
+
+      dx.value = 48;
+      await tester.pump();
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      final after =
+          engine.surfaceKey.currentContext!.findRenderObject()! as RenderBox;
+      expect(after.localToGlobal(Offset.zero).dx, closeTo(beforeDx + 48, 0.5));
+    },
+  );
+
+  testWidgets(
+    'engine that does not keep a parked surface is unmounted until attached',
+    (tester) async {
+      final engine = _ParklessSurfaceEngine();
+      addTearDown(engine.dispose);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [playerEngineTestDoubleProvider.overrideWithValue(engine)],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: Stack(
+                fit: StackFit.expand,
+                children: [PlayerSurfaceHost()],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(engine.surfaceKey.currentContext, isNull);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [playerEngineTestDoubleProvider.overrideWithValue(engine)],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Align(
+                    alignment: Alignment.topLeft,
+                    child: SizedBox(
+                      width: 320,
+                      height: 180,
+                      child: PlayerSurfaceTarget(
+                        id: PlayerSurfaceIds.expandedPlayer,
+                        child: ColoredBox(color: Colors.grey),
+                      ),
+                    ),
+                  ),
+                  PlayerSurfaceHost(),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(engine.surfaceKey.currentContext, isNotNull);
+      final box =
+          engine.surfaceKey.currentContext!.findRenderObject()! as RenderBox;
+      expect(box.localToGlobal(Offset.zero).dx, greaterThanOrEqualTo(0));
+    },
+  );
+
+  testWidgets(
+    'replacing the expanded-player target does not unmount a parkless surface',
+    (tester) async {
+      final engine = _ParklessSurfaceEngine();
+      addTearDown(engine.dispose);
+      final loading = ValueNotifier(true);
+      addTearDown(loading.dispose);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [playerEngineTestDoubleProvider.overrideWithValue(engine)],
+          child: MaterialApp(
+            home: Scaffold(
+              body: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ValueListenableBuilder<bool>(
+                    valueListenable: loading,
+                    builder: (context, isLoading, _) {
+                      return Align(
+                        alignment: Alignment.topLeft,
+                        child: SizedBox(
+                          width: isLoading ? 400 : 240,
+                          height: isLoading ? 180 : 400,
+                          child: PlayerSurfaceTarget(
+                            id: PlayerSurfaceIds.expandedPlayer,
+                            child: ColoredBox(
+                              color: isLoading ? Colors.grey : Colors.blue,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const PlayerSurfaceHost(),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final original = engine.surfaceKey.currentContext;
+      expect(original, isNotNull);
+
+      loading.value = false;
+      await tester.pump();
+      await tester.pump();
+
+      expect(engine.surfaceKey.currentContext, same(original));
+      expect(tester.takeException(), isNull);
     },
   );
 }

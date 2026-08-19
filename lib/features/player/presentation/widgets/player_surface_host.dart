@@ -74,11 +74,57 @@ class _EngineSurface extends StatefulWidget {
 }
 
 class _EngineSurfaceState extends State<_EngineSurface> {
+  /// Last on-screen target, held one frame when [widget.attachment] goes null
+  /// so a loading → chrome target swap cannot unmount media_kit [Video].
+  PlayerSurfaceAttachment? _heldAttachment;
+
+  @override
+  void initState() {
+    super.initState();
+    _heldAttachment = widget.attachment;
+    // Convert global target bounds using this stack's size from the next frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _EngineSurface oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.attachment != null) {
+      _heldAttachment = widget.attachment;
+      return;
+    }
+    if (oldWidget.attachment == null || widget.engine.keepSurfaceWhenParked) {
+      return;
+    }
+    _heldAttachment = oldWidget.attachment;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || widget.attachment != null) return;
+      setState(() => _heldAttachment = null);
+    });
+  }
+
+  Offset _toLocal(Offset global) {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return global;
+    return box.globalToLocal(global);
+  }
+
   @override
   Widget build(BuildContext context) {
     final engine = widget.engine;
-    final attachment = widget.attachment;
-    final offset = attachment?.offset ?? Offset(-widget.parkWidth - 64, 0);
+    final attachment =
+        widget.attachment ??
+        (engine.keepSurfaceWhenParked ? null : _heldAttachment);
+    if (attachment == null && !engine.keepSurfaceWhenParked) {
+      // MediaKit: first layout of the Android Surface must be on-screen.
+      return const SizedBox.shrink();
+    }
+
+    final offset = attachment != null
+        ? _toLocal(attachment.offset)
+        : Offset(-widget.parkWidth - 64, 0);
     final size = attachment?.size ?? Size(widget.parkWidth, widget.parkHeight);
 
     Widget stageFor(double w, double h) {

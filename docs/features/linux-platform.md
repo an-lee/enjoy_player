@@ -105,7 +105,7 @@ Run `chmod +x enjoy-player-*.AppImage` first.
 
 ### Black video screen / EGL_BAD_DISPLAY on Wayland
 
-The app uses `hwdec: 'auto-safe'` and `enableHardwareAcceleration: false` for the `media_kit` video output on Linux — the same conservative settings as the macOS build. If the screen is still black, try running:
+The app uses `hwdec: 'auto-safe'` and `enableHardwareAcceleration: false` for the `media_kit` video output on Linux — the same software path as Windows and macOS. If the screen is still black, try running:
 
 ```bash
 __GLX_VENDOR_LIBRARY_NAME=mesa ./enjoy-player-*.AppImage

@@ -115,6 +115,14 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
     if (_ownedEngine != null) return;
     if (ref.read(playerEngineTestDoubleProvider) != null) return;
     _ownedEngine = MediaKitPlayerEngine();
+    // Host watches [playerEngineRevProvider], not ownedEngine. Defer the bump
+    // so we never notify during another provider's build.
+    unawaited(
+      Future<void>.microtask(() {
+        if (_disposed) return;
+        ref.read(playerEngineRevProvider.notifier).bump();
+      }),
+    );
   }
 
   PlayerEngine get engine => activeEngine;
