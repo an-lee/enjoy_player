@@ -68,6 +68,18 @@ if [ -z "${sign_identity}" ] || [ "${sign_identity}" = "-" ]; then
   sign_identity="${CODE_SIGN_IDENTITY:-}"
 fi
 
+# Xcode's iOS asset/archive pipeline can leave an empty macOS-style
+# Contents/Resources directory in the app bundle. codesign rejects that
+# directory as unsealed root content, so remove only empty containers before
+# Xcode performs the final app signing.
+if [ "${PLATFORM_NAME}" = "iphoneos" ] || [ "${PLATFORM_NAME}" = "iphonesimulator" ]; then
+  for d in "${APP_BUNDLE}/Contents/Resources" "${APP_BUNDLE}/Contents"; do
+    if [ -d "$d" ] && [ -z "$(ls -A "$d" 2>/dev/null)" ]; then
+      rmdir "$d" 2>/dev/null || true
+    fi
+  done
+fi
+
 case "${PLATFORM_NAME}" in
   iphoneos | iphonesimulator)
     # Xcode's Embed Frameworks phase has CodeSignOnCopy and the final

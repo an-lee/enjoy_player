@@ -610,6 +610,8 @@ played to the learner and does not replace Craft/library audio.
   `install_name_tool` and a post-embed app re-sign can invalidate the
   nested code/resource seal, causing `xcodebuild -exportArchive` to
   remove Swift stdlib dylibs and trigger ITMS-90429. Release packaging
+  also removes an empty iOS `Contents/Resources/` container that Xcode can
+  leave behind and that `codesign` rejects as unsealed root content.
   verifies the exported IPA contains both dylibs, has
   `MinimumOSVersion` 15.0, and passes strict code-sign verification.
   Android ships the per-ABI `.so` through jniLibs and `espeak-ng-data`
