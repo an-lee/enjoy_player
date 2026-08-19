@@ -9,7 +9,7 @@ Karaoke and IPA remain on the CC subtitle sheet (`TranscriptDisplaySettingsSecti
 | Karaoke | `hasTimedWords && canTrustWordTimes` | `preference && capability` |
 | IPA | `hasPhones` | `preference && hasPhones` |
 
-`canTrustWordTimes` is false for YouTube (`provider == youtube` / YouTube engine) and for remote items without a local media file.
+`canTrustWordTimes` is false for YouTube (`provider == youtube` / YouTube engine). Owned cloud-library audio/video that plays from `mediaUrl` (no local file yet) is **trusted** — those clocks came from the learner's own media, and karaoke can follow playback of the remote URL. While the trust future is still loading, treat the item as owned for copy and enrich-tile gating, but keep karaoke off until trust has resolved.
 
 Turning a disabled switch is impossible. Opening a gated item MUST NOT write `'false'` over a stored `'true'`.
 

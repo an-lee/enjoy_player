@@ -113,7 +113,7 @@ final class TranscriptEnrichmentControllerProvider
 }
 
 String _$transcriptEnrichmentControllerHash() =>
-    r'49f0369725526e3aa96ecb0e8f190874620f455e';
+    r'4b554b8e23a0c6f639509820c19bc8c6482eefe2';
 
 final class TranscriptEnrichmentControllerFamily extends $Family
     with

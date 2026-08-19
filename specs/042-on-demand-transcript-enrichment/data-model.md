@@ -40,10 +40,10 @@ Computed from current **primary** lines + media extractability:
 | `hasNestedWords` | Any cue `timeline` non-empty |
 | `hasTimedWords` | Any word with a usable media window (`wordMediaWindowMs != null`) |
 | `hasPhones` | Any word with displayable phone labels (`transcriptWordsHavePhones`) |
-| `canTrustWordTimes` | Media is owned/extractable (local or Craft file). False for YouTube and remote-without-file |
+| `canTrustWordTimes` | Media is owned (local/Craft file **or** the learner's cloud `mediaUrl`). False for YouTube |
 | `karaokeSwitchEnabled` | `hasTimedWords && canTrustWordTimes` |
 | `ipaSwitchEnabled` | `hasPhones` |
-| `showEnrich` | Primary lines exist and `!hasNestedWords` |
+| `showEnrich` | Primary lines exist and enrichment is incomplete. Owned: hide only when timed words **and** phones exist. YouTube: hide once any nested words exist |
 
 ### Enrichment run (session-ephemeral)
 

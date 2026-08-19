@@ -44,4 +44,29 @@ void main() {
       );
     },
   );
+
+  test('pcm16kInputIsRemoteHttp detects owned cloud URLs', () {
+    expect(pcm16kInputIsRemoteHttp('https://cdn.example/a.mp3'), isTrue);
+    expect(pcm16kInputIsRemoteHttp('http://cdn.example/a.mp3'), isTrue);
+    expect(pcm16kInputIsRemoteHttp(r'C:\media\a.mp3'), isFalse);
+    expect(pcm16kInputIsRemoteHttp('file:///tmp/a.mp3'), isFalse);
+  });
+
+  test('decodeFileToPcm16kMono rejects HTTP URLs', () async {
+    expect(
+      () => decodeFileToPcm16kMono('https://cdn.example/a.mp3'),
+      throwsA(isA<Pcm16kDecodeException>()),
+    );
+  });
+
+  test('decodeFileWindowToPcm16kMono rejects HTTP URLs', () async {
+    expect(
+      () => decodeFileWindowToPcm16kMono(
+        pathOrUri: 'https://cdn.example/a.mp3',
+        startSeconds: 0,
+        durationSeconds: 1,
+      ),
+      throwsA(isA<Pcm16kDecodeException>()),
+    );
+  });
 }

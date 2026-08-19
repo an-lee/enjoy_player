@@ -8,17 +8,23 @@ part of 'transcript_display_readiness_provider.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// True when this item has a trusted local file (karaoke may use word clocks).
+/// True when this item is owned media (local file or the user's cloud URL).
+///
+/// Karaoke may use stored word clocks. YouTube stays false.
 
 @ProviderFor(canTrustWordTimes)
 final canTrustWordTimesProvider = CanTrustWordTimesFamily._();
 
-/// True when this item has a trusted local file (karaoke may use word clocks).
+/// True when this item is owned media (local file or the user's cloud URL).
+///
+/// Karaoke may use stored word clocks. YouTube stays false.
 
 final class CanTrustWordTimesProvider
     extends $FunctionalProvider<AsyncValue<bool>, bool, FutureOr<bool>>
     with $FutureModifier<bool>, $FutureProvider<bool> {
-  /// True when this item has a trusted local file (karaoke may use word clocks).
+  /// True when this item is owned media (local file or the user's cloud URL).
+  ///
+  /// Karaoke may use stored word clocks. YouTube stays false.
   CanTrustWordTimesProvider._({
     required CanTrustWordTimesFamily super.from,
     required String super.argument,
@@ -62,9 +68,11 @@ final class CanTrustWordTimesProvider
   }
 }
 
-String _$canTrustWordTimesHash() => r'e26959a74e4faa64f61c97981098628b94b286da';
+String _$canTrustWordTimesHash() => r'6add1f0dc4e43589f180e6b3146d3cc20601c834';
 
-/// True when this item has a trusted local file (karaoke may use word clocks).
+/// True when this item is owned media (local file or the user's cloud URL).
+///
+/// Karaoke may use stored word clocks. YouTube stays false.
 
 final class CanTrustWordTimesFamily extends $Family
     with $FunctionalFamilyOverride<FutureOr<bool>, String> {
@@ -77,7 +85,9 @@ final class CanTrustWordTimesFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// True when this item has a trusted local file (karaoke may use word clocks).
+  /// True when this item is owned media (local file or the user's cloud URL).
+  ///
+  /// Karaoke may use stored word clocks. YouTube stays false.
 
   CanTrustWordTimesProvider call(String mediaId) =>
       CanTrustWordTimesProvider._(argument: mediaId, from: this);
@@ -86,13 +96,19 @@ final class CanTrustWordTimesFamily extends $Family
   String toString() => r'canTrustWordTimesProvider';
 }
 
-/// Primary-track display capability for [mediaId].
+/// Unresolved trust (provider still loading) is treated as owned so
+/// cloud-library nested-but-incomplete tracks keep the enrich tile and
+/// owned copy. YouTube flips to false once the row resolves. Karaoke stays
+/// off until trust is known and [hasTimedWords] is true.
 
 @ProviderFor(transcriptDisplayReadinessForMedia)
 final transcriptDisplayReadinessForMediaProvider =
     TranscriptDisplayReadinessForMediaFamily._();
 
-/// Primary-track display capability for [mediaId].
+/// Unresolved trust (provider still loading) is treated as owned so
+/// cloud-library nested-but-incomplete tracks keep the enrich tile and
+/// owned copy. YouTube flips to false once the row resolves. Karaoke stays
+/// off until trust is known and [hasTimedWords] is true.
 
 final class TranscriptDisplayReadinessForMediaProvider
     extends
@@ -102,7 +118,10 @@ final class TranscriptDisplayReadinessForMediaProvider
           TranscriptDisplayReadiness
         >
     with $Provider<TranscriptDisplayReadiness> {
-  /// Primary-track display capability for [mediaId].
+  /// Unresolved trust (provider still loading) is treated as owned so
+  /// cloud-library nested-but-incomplete tracks keep the enrich tile and
+  /// owned copy. YouTube flips to false once the row resolves. Karaoke stays
+  /// off until trust is known and [hasTimedWords] is true.
   TranscriptDisplayReadinessForMediaProvider._({
     required TranscriptDisplayReadinessForMediaFamily super.from,
     required String super.argument,
@@ -158,9 +177,12 @@ final class TranscriptDisplayReadinessForMediaProvider
 }
 
 String _$transcriptDisplayReadinessForMediaHash() =>
-    r'c2ff60c7bb2bd597c534ca62fb8a61880b9373d0';
+    r'25f22b1016b096967e88f881e4175e09d2bbd3b7';
 
-/// Primary-track display capability for [mediaId].
+/// Unresolved trust (provider still loading) is treated as owned so
+/// cloud-library nested-but-incomplete tracks keep the enrich tile and
+/// owned copy. YouTube flips to false once the row resolves. Karaoke stays
+/// off until trust is known and [hasTimedWords] is true.
 
 final class TranscriptDisplayReadinessForMediaFamily extends $Family
     with $FunctionalFamilyOverride<TranscriptDisplayReadiness, String> {
@@ -173,7 +195,10 @@ final class TranscriptDisplayReadinessForMediaFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// Primary-track display capability for [mediaId].
+  /// Unresolved trust (provider still loading) is treated as owned so
+  /// cloud-library nested-but-incomplete tracks keep the enrich tile and
+  /// owned copy. YouTube flips to false once the row resolves. Karaoke stays
+  /// off until trust is known and [hasTimedWords] is true.
 
   TranscriptDisplayReadinessForMediaProvider call(String mediaId) =>
       TranscriptDisplayReadinessForMediaProvider._(

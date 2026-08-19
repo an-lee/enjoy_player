@@ -38,9 +38,24 @@ Future<Float32List> decodeToPcm16kMono(Uint8List bytes) async {
   return _ffmpegFallback(bytes);
 }
 
+/// True when [pathOrUri] is an HTTP(S) URL (owned cloud library).
+///
+/// FFmpeg must not fetch these: download with Dart HTTP first, then decode
+/// the local file (FFmpegKit TLS is unreliable across Android/iOS/macOS).
+bool pcm16kInputIsRemoteHttp(String pathOrUri) {
+  final uri = Uri.tryParse(pathOrUri);
+  if (uri == null) return false;
+  return uri.isScheme('http') || uri.isScheme('https');
+}
+
 /// Decode a local media [pathOrUri] to 16 kHz mono Float32.
 Future<Float32List> decodeFileToPcm16kMono(String pathOrUri) async {
   final input = FfmpegMediaProbe.mediaInputForFfmpeg(pathOrUri);
+  if (pcm16kInputIsRemoteHttp(input)) {
+    throw Pcm16kDecodeException(
+      'HTTP(S) media must be downloaded locally before FFmpeg: $input',
+    );
+  }
   final file = File(input);
   if (!file.existsSync()) {
     throw Pcm16kDecodeException('file does not exist: $input');
@@ -58,6 +73,11 @@ Future<Float32List> decodeFileWindowToPcm16kMono({
   required double durationSeconds,
 }) async {
   final input = FfmpegMediaProbe.mediaInputForFfmpeg(pathOrUri);
+  if (pcm16kInputIsRemoteHttp(input)) {
+    throw Pcm16kDecodeException(
+      'HTTP(S) media must be downloaded locally before FFmpeg: $input',
+    );
+  }
   if (!File(input).existsSync()) {
     throw Pcm16kDecodeException('file does not exist: $input');
   }
@@ -99,15 +119,31 @@ Future<Float32List> _ffmpegFallback(Uint8List bytes) async {
   final dir = await Directory.systemTemp.createTemp('enjoy_pcm16k_');
   try {
     final input = File('${dir.path}${Platform.pathSeparator}in.bin');
-    final output = File('${dir.path}${Platform.pathSeparator}out.wav');
     await input.writeAsBytes(bytes, flush: true);
+    return await _ffmpegConvertInputToPcm(input.path, failLabel: 'convert');
+  } finally {
+    try {
+      await dir.delete(recursive: true);
+    } on Object catch (_) {}
+  }
+}
+
+/// FFmpeg `-i` [input] (local path or HTTP URL) → 16 kHz mono PCM.
+Future<Float32List> _ffmpegConvertInputToPcm(
+  String input, {
+  required String failLabel,
+}) async {
+  final dir = await Directory.systemTemp.createTemp('enjoy_pcm16k_in_');
+  try {
+    final output = File('${dir.path}${Platform.pathSeparator}out.wav');
     await _runFfmpegToWav(
-      input: input.path,
+      input: input,
       outputPath: output.path,
-      failLabel: 'convert',
+      failLabel: failLabel,
     );
-    final outBytes = await output.readAsBytes();
-    final decoded = decodePcmWavTo16kMono(Uint8List.fromList(outBytes));
+    final decoded = decodePcmWavTo16kMono(
+      Uint8List.fromList(await output.readAsBytes()),
+    );
     if (decoded == null || decoded.isEmpty) {
       throw const Pcm16kDecodeException('ffmpeg output was not PCM WAV');
     }

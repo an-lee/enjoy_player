@@ -4,9 +4,10 @@ Shown in the same CC-sheet display card as karaoke/IPA, using `TranscriptBusyLis
 
 ## Visibility
 
-Show when the current **primary** transcript has ≥1 line and **no** cue has a nested `timeline`.
+Show when the current **primary** transcript has ≥1 line and enrichment is still incomplete:
 
-Hide when nested words already exist (including YouTube IPA-only words). Optional re-run is out of scope.
+- **Owned** (local file or the learner's cloud URL): hide only when timed words **and** phones exist. Nested words without phones (typical cloud-synced Enjoy transcripts) still show the tile.
+- **YouTube**: hide once any nested words exist (IPA-only is enough). Optional re-run is out of scope.
 
 Hide when there is no primary track / no lines (empty-state import / ASR / YouTube fetch stay as today).
 

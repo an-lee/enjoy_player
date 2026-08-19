@@ -11,15 +11,20 @@ import 'package:enjoy_player/features/transcript/application/transcript_lines_pr
 
 part 'transcript_display_readiness_provider.g.dart';
 
-/// True when this item has a trusted local file (karaoke may use word clocks).
+/// True when this item is owned media (local file or the user's cloud URL).
+///
+/// Karaoke may use stored word clocks. YouTube stays false.
 @riverpod
 Future<bool> canTrustWordTimes(Ref ref, String mediaId) async {
   final db = ref.watch(appDatabaseProvider);
   final source = await resolvePlayableSource(db, mediaId);
-  return source is LocalFilePlayableSource;
+  return source is LocalFilePlayableSource || source is RemoteUrlPlayableSource;
 }
 
-/// Primary-track display capability for [mediaId].
+/// Unresolved trust (provider still loading) is treated as owned so
+/// cloud-library nested-but-incomplete tracks keep the enrich tile and
+/// owned copy. YouTube flips to false once the row resolves. Karaoke stays
+/// off until trust is known and [hasTimedWords] is true.
 @riverpod
 TranscriptDisplayReadiness transcriptDisplayReadinessForMedia(
   Ref ref,
@@ -27,6 +32,11 @@ TranscriptDisplayReadiness transcriptDisplayReadinessForMedia(
 ) {
   final lines =
       ref.watch(transcriptLinesForMediaProvider(mediaId)).value ?? const [];
-  final canTrust = ref.watch(canTrustWordTimesProvider(mediaId)).value ?? false;
-  return transcriptDisplayReadiness(lines: lines, canTrustWordTimes: canTrust);
+  final trustAsync = ref.watch(canTrustWordTimesProvider(mediaId));
+  final canTrust = trustAsync.hasError ? false : (trustAsync.value ?? true);
+  return transcriptDisplayReadiness(
+    lines: lines,
+    canTrustWordTimes: canTrust,
+    trustResolved: trustAsync.hasValue || trustAsync.hasError,
+  );
 }

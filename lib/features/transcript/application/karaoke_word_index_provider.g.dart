@@ -15,7 +15,7 @@ part of 'karaoke_word_index_provider.dart';
 /// frozen as off: loading is `null` (no paint yet), then this provider
 /// rebuilds when the keep-alive notifier resolves. Inactive tiles must not
 /// watch this provider. Also requires [karaokeSwitchEnabled] (timed words on
-/// extractable local media) so YouTube / untimed tracks never highlight.
+/// owned media) so YouTube / untimed tracks never highlight.
 
 @ProviderFor(karaokeWordIndex)
 final karaokeWordIndexProvider = KaraokeWordIndexFamily._();
@@ -27,7 +27,7 @@ final karaokeWordIndexProvider = KaraokeWordIndexFamily._();
 /// frozen as off: loading is `null` (no paint yet), then this provider
 /// rebuilds when the keep-alive notifier resolves. Inactive tiles must not
 /// watch this provider. Also requires [karaokeSwitchEnabled] (timed words on
-/// extractable local media) so YouTube / untimed tracks never highlight.
+/// owned media) so YouTube / untimed tracks never highlight.
 
 final class KaraokeWordIndexProvider
     extends $FunctionalProvider<int?, int?, int?>
@@ -39,7 +39,7 @@ final class KaraokeWordIndexProvider
   /// frozen as off: loading is `null` (no paint yet), then this provider
   /// rebuilds when the keep-alive notifier resolves. Inactive tiles must not
   /// watch this provider. Also requires [karaokeSwitchEnabled] (timed words on
-  /// extractable local media) so YouTube / untimed tracks never highlight.
+  /// owned media) so YouTube / untimed tracks never highlight.
   KaraokeWordIndexProvider._({
     required KaraokeWordIndexFamily super.from,
     required String super.argument,
@@ -100,7 +100,7 @@ String _$karaokeWordIndexHash() => r'41a6bb336433654068d1e9b555c2e745dae22704';
 /// frozen as off: loading is `null` (no paint yet), then this provider
 /// rebuilds when the keep-alive notifier resolves. Inactive tiles must not
 /// watch this provider. Also requires [karaokeSwitchEnabled] (timed words on
-/// extractable local media) so YouTube / untimed tracks never highlight.
+/// owned media) so YouTube / untimed tracks never highlight.
 
 final class KaraokeWordIndexFamily extends $Family
     with $FunctionalFamilyOverride<int?, String> {
@@ -120,7 +120,7 @@ final class KaraokeWordIndexFamily extends $Family
   /// frozen as off: loading is `null` (no paint yet), then this provider
   /// rebuilds when the keep-alive notifier resolves. Inactive tiles must not
   /// watch this provider. Also requires [karaokeSwitchEnabled] (timed words on
-  /// extractable local media) so YouTube / untimed tracks never highlight.
+  /// owned media) so YouTube / untimed tracks never highlight.
 
   KaraokeWordIndexProvider call(String mediaId) =>
       KaraokeWordIndexProvider._(argument: mediaId, from: this);

@@ -20,7 +20,7 @@ part 'karaoke_word_index_provider.g.dart';
 /// frozen as off: loading is `null` (no paint yet), then this provider
 /// rebuilds when the keep-alive notifier resolves. Inactive tiles must not
 /// watch this provider. Also requires [karaokeSwitchEnabled] (timed words on
-/// extractable local media) so YouTube / untimed tracks never highlight.
+/// owned media) so YouTube / untimed tracks never highlight.
 @riverpod
 int? karaokeWordIndex(Ref ref, String mediaId) {
   final enabled = ref.watch(karaokeHighlightSettingsProvider).value;

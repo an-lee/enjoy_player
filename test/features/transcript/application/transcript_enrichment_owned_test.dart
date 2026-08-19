@@ -288,6 +288,55 @@ void main() {
     expect(readiness.showEnrich, isFalse);
   });
 
+  test('owned HTTP URL downloads then aligns locally', () async {
+    var decoded = '';
+    var downloaded = '';
+    final enricher = TranscriptEnricher(
+      replaceTimeline: ({required transcriptId, required lines}) async => true,
+      downloadHttp: (url, {cancel}) async {
+        downloaded = url;
+        return '/tmp/downloaded.mp3';
+      },
+      decodeFile: (path) async {
+        decoded = path;
+        return _dummyPcm(path);
+      },
+      decodeWindow:
+          ({
+            required pathOrUri,
+            required startSeconds,
+            required durationSeconds,
+          }) async {
+            fail('short files must not window-extract');
+          },
+      alignSegmentsFn:
+          ({
+            required sourcePcm16k,
+            required language,
+            required segments,
+            required granularity,
+            cancel,
+          }) async {
+            return _successFor(segments);
+          },
+      phonemizeFn: ({required texts, required language, cancel}) async {
+        fail('owned remote URL must not phonemize');
+      },
+    );
+
+    final outcome = await enricher.enrich(
+      transcriptId: 't1',
+      lines: _lineOnly,
+      language: 'en',
+      extractable: true,
+      localPath: 'https://cdn.example/owned.mp3',
+    );
+
+    expect(outcome, isA<TranscriptEnrichmentOk>());
+    expect(downloaded, 'https://cdn.example/owned.mp3');
+    expect(decoded, '/tmp/downloaded.mp3');
+  });
+
   test('window path reports cue progress including failed cues', () async {
     final progress = <(int, int)>[];
     final lines = [

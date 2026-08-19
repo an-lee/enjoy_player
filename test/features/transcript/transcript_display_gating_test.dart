@@ -173,4 +173,27 @@ void main() {
     expect(find.text(l10n.transcriptEnrichProgress(12, 240)), findsOneWidget);
     expect(find.byType(LinearProgressIndicator), findsOneWidget);
   });
+
+  testWidgets('owned nested words without phones still show enrich', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _harness(
+        karaoke: KaraokeHighlightSettingsOverride(false),
+        readiness: const TranscriptDisplayReadiness(
+          hasNestedWords: true,
+          hasTimedWords: true,
+          hasPhones: false,
+          canTrustWordTimes: true,
+          karaokeSwitchEnabled: true,
+          ipaSwitchEnabled: false,
+          showEnrich: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TranscriptBusyListTile), findsOneWidget);
+    expect(find.text(l10n.transcriptEnrichOwnedTitle), findsOneWidget);
+  });
 }
