@@ -62,7 +62,9 @@ jobs:
           set -euo pipefail
           found=0
           while IFS= read -r app; do
-            bash .github/scripts/check_bundled_espeak_data.sh "${app}/espeak-ng-data"
+            bash .github/scripts/check_bundled_espeak_data.sh \
+              "${app}/espeak-ng-data" \
+              "${app}/Frameworks/libespeak-ng.dylib"
             found=1
           done < <(find build/ios/DerivedData/Build/Products -name Runner.app -type d)
           test "$found" -eq 1
@@ -98,7 +100,8 @@ jobs:
           found=0
           while IFS= read -r app; do
             bash .github/scripts/check_bundled_espeak_data.sh \
-              "${app}/Contents/Resources/espeak-ng-data"
+              "${app}/Contents/Resources/espeak-ng-data" \
+              "${app}/Contents/Frameworks/libespeak-ng.dylib"
             found=1
           done < <(find build/macos/Build/Products -name 'Enjoy Player.app' -type d)
           test "$found" -eq 1

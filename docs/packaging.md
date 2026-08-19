@@ -596,11 +596,20 @@ played to the learner and does not replace Craft/library audio.
   `ios/` (iphoneos arm64 + iphonesimulator universal). Provenance and
   rebuild notes live in `packages/forced_alignment/native/README.md`.
   iOS rebuilds run `native/build_ios.sh` on a macOS host with Xcode.
-- macOS and iOS app targets copy the dylib + `espeak-ng-data` into the
-  `.app` via `native/bundle_into_app.sh` (Xcode "Bundle eSpeak-NG" phase)
-  so packaged `align` / `alignSegments` can `DynamicLibrary.open` without
-  the source tree. Android ships the per-ABI `.so` through jniLibs and
-  `espeak-ng-data` as Flutter assets extracted at startup
+- macOS and iOS app targets copy `espeak-ng-data` into the `.app` via
+  `native/bundle_into_app.sh` (Xcode "Bundle eSpeak-NG" phase) so packaged
+  `align` / `alignSegments` can `DynamicLibrary.open` without the source
+  tree. **`libespeak-ng.dylib` itself is embedded by the Xcode "Embed
+  Frameworks" `CopyFiles` build phase** (`dstSubfolderSpec = 10`,
+  `Frameworks/`) — the script verifies the dylib is present (Xcode owns
+  the copy, with `CodeSignOnCopy` / `RemoveHeadersOnCopy`) so a missing
+  dylib fails the build with a clear error instead of silently dropping
+  the spoken-reference at runtime (`spokenReferenceUnavailable` →
+  "failed to generate, tap to retry"). The script also re-signs the
+  whole bundle (iOS only) to keep the Swift stdlib dylibs in the
+  TestFlight IPA (same root cause as the ITMS-90429 fix in `bf820c03`).
+  Android ships the per-ABI `.so` through jniLibs and `espeak-ng-data`
+  as Flutter assets extracted at startup
   (`lib/core/platform/espeak_android_provisioner.dart`). Flutter does **not**
   recurse directory assets — `pubspec.yaml` must list `espeak-ng-data/` **and**
   `espeak-ng-data/lang/` or `espeak_SetVoiceByName(en-us)` fails on device
@@ -609,7 +618,10 @@ played to the learner and does not replace Craft/library audio.
 - **CI gates**: unit tests assert iOS (`Runner.app/espeak-ng-data`) and macOS
   (`Contents/Resources/espeak-ng-data`) layouts include every mapped `lang/`
   voice and can phonemize `en-US`. [Build Apple](../.github/workflows/build_apple.yml)
-  runs `.github/scripts/check_bundled_espeak_data.sh` on the compiled `.app`.
+  runs `.github/scripts/check_bundled_espeak_data.sh` on the compiled `.app`,
+  passing both the data directory and the `libespeak-ng.dylib` path so
+  archive-stripped dylibs (the same failure mode as the Swift stdlib
+  ITMS-90429) also fail the gate.
   [Android APK smoke](../.github/workflows/android_apk_smoke.yml) greps the
   APK for `lang/en-us`, not only `phontab`.
 - `packages/forced_alignment`'s eSpeak FFI tests run unconditionally on
