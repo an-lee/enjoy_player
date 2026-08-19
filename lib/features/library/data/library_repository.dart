@@ -210,7 +210,7 @@ class MediaLibraryRepository {
             updatedAt: now,
           ),
         );
-        return _finalizeLocalImport(
+        return await _finalizeLocalImport(
           id: id,
           previousUri: existing?.localUri,
           fileUri: result.fileUri,
@@ -252,7 +252,7 @@ class MediaLibraryRepository {
           updatedAt: now,
         ),
       );
-      return _finalizeLocalImport(
+      return await _finalizeLocalImport(
         id: id,
         previousUri: existing?.localUri,
         fileUri: result.fileUri,

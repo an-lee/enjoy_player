@@ -136,7 +136,7 @@ class AsrAudioExtractor {
         );
       }
       onProgress?.call(1.0);
-      return out.readAsBytes();
+      return await out.readAsBytes();
     } finally {
       try {
         final f = File(outputPath);

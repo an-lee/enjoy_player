@@ -44,7 +44,7 @@ final class EnjoyAsrCapability implements AsrCapability {
       if (duration != null &&
           duration >= kLongFormMinDurationSeconds &&
           uploadApi != null) {
-        return _transcribeLongForm(
+        return await _transcribeLongForm(
           request,
           language: baseLanguage,
           durationSeconds: duration,

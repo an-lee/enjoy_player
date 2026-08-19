@@ -215,7 +215,7 @@ class AuthRepository {
     try {
       final body = request.toUserJson();
       if (body.isEmpty) {
-        return fetchProfile();
+        return await fetchProfile();
       }
       final m = await _authApi.updateProfile(body);
       final profile = UserProfile.fromJson(m);
@@ -264,7 +264,7 @@ class AuthRepository {
         filename: filename,
         contentType: mime,
       );
-      return updateProfile(UpdateProfileRequest(avatarSignedId: signedId));
+      return await updateProfile(UpdateProfileRequest(avatarSignedId: signedId));
     } on ApiException catch (e) {
       if (e.isUnauthorized) {
         await clearSession();
@@ -360,7 +360,7 @@ class AuthRepository {
         await _cacheProfile(tokens.user!);
         return tokens.user!;
       }
-      return fetchProfile();
+      return await fetchProfile();
     } on ApiException catch (e) {
       throw AuthFailure(e.message, code: authFailureCodeForApiException(e));
     } on FormatException catch (e) {
