@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **iOS TestFlight packaging** now leaves Xcode's Embed Frameworks phase as the sole owner of copying and signing `libespeak-ng.dylib`. The custom eSpeak script no longer mutates or re-signs nested code after that phase, removes Xcode's empty iOS `Contents/Resources/` container before final signing, and prevents archive export from dropping `libswift_Concurrency.dylib` and triggering ITMS-90429; exported IPAs are now checked for both dylibs, strict signing, and `MinimumOSVersion` 15.0.
+- **iOS TestFlight packaging** now leaves Xcode's Embed Frameworks phase as the sole owner of copying and signing `libespeak-ng.dylib`. The custom eSpeak script no longer mutates or re-signs nested code after that phase, removes Xcode's empty iOS `Contents/Resources/` container before final signing, and prevents archive export from invalidating the app seal; exported IPAs are now checked for the eSpeak dylib, strict signing, and `MinimumOSVersion` 15.0, where Swift Concurrency is supplied by iOS.
 
 ## [0.8.2] - 2026-08-18
 
