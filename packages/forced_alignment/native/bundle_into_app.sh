@@ -5,11 +5,13 @@
 # Xcode env: PLATFORM_NAME, EXPANDED_CODE_SIGN_IDENTITY, CODE_SIGN_IDENTITY,
 #            CODE_SIGNING_ALLOWED, ENABLE_HARDENED_RUNTIME, CONFIGURATION
 #
-# The libespeak-ng.dylib itself is embedded by the Xcode "Embed Frameworks"
-# phase (PBXCopyFilesBuildPhase with dstSubfolderSpec=10), so this script
-# only handles the data tree copy. Xcode owns the embedded dylib's
+# The native library itself is embedded by the Xcode "Embed Frameworks"
+# phase (PBXCopyFilesBuildPhase with dstSubfolderSpec=10): macOS copies
+# libespeak-ng.dylib, iOS copies eSpeakNG.xcframework. This script only
+# handles the data tree copy. Xcode owns the embedded binary's
 # install-name and code signature so archive export sees a consistent
-# nested bundle.
+# nested bundle. iOS must ship a real framework — a naked .dylib in
+# Frameworks/ is rejected by App Store Connect as ITMS-90426 (TN2435).
 set -eu
 
 APP_BUNDLE="${1:-}"
@@ -35,7 +37,7 @@ case "${PLATFORM_NAME}" in
     DATA_DEST="${APP_BUNDLE}/Contents/Resources/espeak-ng-data"
     ;;
   iphonesimulator | iphoneos | *)
-    LIB_DEST="${APP_BUNDLE}/Frameworks/libespeak-ng.dylib"
+    LIB_DEST="${APP_BUNDLE}/Frameworks/eSpeakNG.framework/eSpeakNG"
     DATA_DEST="${APP_BUNDLE}/espeak-ng-data"
     ;;
 esac
@@ -47,11 +49,11 @@ if [ ! -d "${DATA_SRC}" ]; then
 fi
 
 # Xcode's "Embed Frameworks" phase (dstSubfolderSpec=10) is the source of
-# truth for libespeak-ng.dylib. Fail closed if it didn't land — without the
-# dylib the production align path returns spokenReferenceUnavailable at
-# runtime, which the user sees as "failed to generate, tap to retry".
+# truth for the native library. Fail closed if it didn't land — without it
+# the production align path returns spokenReferenceUnavailable at runtime,
+# which the user sees as "failed to generate, tap to retry".
 if [ ! -f "${LIB_DEST}" ]; then
-  echo "bundle_espeak_ng: missing ${LIB_DEST} (Xcode Embed Frameworks did not copy libespeak-ng.dylib)" >&2
+  echo "bundle_espeak_ng: missing ${LIB_DEST} (Xcode Embed Frameworks did not copy eSpeak-NG)" >&2
   exit 1
 fi
 rm -rf "${DATA_DEST}"

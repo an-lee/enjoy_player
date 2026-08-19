@@ -58,7 +58,7 @@ String espeakOsFolderName() {
 /// App-bundle library paths derived from the running executable.
 ///
 /// macOS: `App.app/Contents/MacOS/<exe>` → `Contents/Frameworks/libespeak-ng.dylib`
-/// iOS: `Runner.app/<exe>` → `Frameworks/libespeak-ng.dylib`
+/// iOS: `Runner.app/<exe>` → `Frameworks/eSpeakNG.framework/eSpeakNG`
 @visibleForTesting
 List<String> espeakBundleLibraryCandidates({
   String? resolvedExecutable,
@@ -76,9 +76,9 @@ List<String> espeakBundleLibraryCandidates({
       ];
     case 'ios':
       return [
+        '$exeDir${sep}Frameworks${sep}eSpeakNG.framework${sep}eSpeakNG',
         '$exeDir${sep}Frameworks${sep}libespeak-ng.dylib',
         '$exeDir${sep}Frameworks${sep}libespeak_ng.dylib',
-        '$exeDir${sep}Frameworks${sep}eSpeakNG.framework${sep}eSpeakNG',
       ];
     default:
       return const [];

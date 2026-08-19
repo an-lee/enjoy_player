@@ -21,15 +21,22 @@ if [[ ! -d "${app}" ]]; then
 fi
 
 frameworks="${app}/Frameworks"
-if [[ ! -f "${frameworks}/libespeak-ng.dylib" ]]; then
-  echo "::error::missing Payload/Runner.app/Frameworks/libespeak-ng.dylib" >&2
+if [[ ! -f "${frameworks}/eSpeakNG.framework/eSpeakNG" ]]; then
+  echo "::error::missing Payload/Runner.app/Frameworks/eSpeakNG.framework/eSpeakNG" >&2
   exit 1
 fi
 
-swift_support="${tmp_dir}/SwiftSupport/iphoneos"
-if [[ ! -d "${swift_support}" ]] ||
-   ! compgen -G "${swift_support}/libswift*.dylib" >/dev/null; then
-  echo "::error::missing SwiftSupport/iphoneos Swift runtime libraries" >&2
+# Naked .dylibs in Frameworks/ are not supported on iOS (TN2435). App Store
+# Connect reports that as ITMS-90426 ("SwiftSupport folder is missing") or
+# ITMS-90429 because it treats every .dylib as a Swift stdlib.
+naked_dylibs=()
+while IFS= read -r dylib; do
+  naked_dylibs+=("${dylib}")
+done < <(find "${frameworks}" -maxdepth 1 -name '*.dylib' -type f | sort)
+
+if [[ ${#naked_dylibs[@]} -gt 0 ]]; then
+  echo "::error::standalone .dylib files in Frameworks/ are not allowed on iOS (TN2435 / ITMS-90426):" >&2
+  printf '  %s\n' "${naked_dylibs[@]#"${tmp_dir}/"}" >&2
   exit 1
 fi
 

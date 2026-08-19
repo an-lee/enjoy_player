@@ -249,8 +249,8 @@ and IPA display ([ADR-0076](../decisions/0076-stacked-ipa-player-controls.md))
 only **read** stored spans when their player transcript toggles are on **and**
 capability gating allows it; they do not run alignment on open/play/seek.
 Learners never hear the spoken reference. Import / YouTube / ASR remain
-line-only writers until enrich. macOS and iOS app bundles embed
-`libespeak-ng` plus the trimmed voice data (see
+line-only writers until enrich. macOS embeds `libespeak-ng.dylib` and iOS
+embeds `eSpeakNG.framework` plus the trimmed voice data (see
 [packaging.md](../packaging.md#espeak-ng-alignment-reference)). Android
 extracts the same tree from Flutter assets and must include `espeak-ng-data/lang/`
 (Flutter does not recurse directory assets) or `espeak_SetVoiceByName`

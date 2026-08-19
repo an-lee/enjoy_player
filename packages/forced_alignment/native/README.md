@@ -11,8 +11,9 @@ native/
   android/arm64-v8a/libespeak-ng.so
   android/armeabi-v7a/libespeak-ng.so
   android/x86_64/libespeak-ng.so
-  ios/libespeak-ng.dylib            # iphoneos arm64
+  ios/libespeak-ng.dylib            # iphoneos arm64 (wrap source)
   ios/libespeak-ng.simulator.dylib  # iphonesimulator arm64 + x86_64
+  ios/eSpeakNG.xcframework          # App Store embed (TN2435)
   macos/libespeak-ng.dylib          # universal: arm64 + x86_64
   windows/libespeak-ng.dll
   linux/libespeak-ng.so             # x86_64
@@ -33,7 +34,7 @@ load failure there is a regression, not a skip.
 | linux | `libespeak-ng.so` (x86_64) | zig cc 0.15.2 `-target x86_64-linux-gnu.2.31`; requires glibc ≥ 2.29; links only libc/libm |
 | macos | `libespeak-ng.dylib` (arm64 + x86_64, min 10.15) | zig cc 0.15.2 against the MacOSX11.3 SDK; links only libSystem |
 | android | `libespeak-ng.so` (arm64-v8a, armeabi-v7a, x86_64) | Android NDK r27d, API 26, `-Wl,-z,max-page-size=16384` (Play 16 KB page requirement); links only libc/libm/libdl |
-| ios | `libespeak-ng.dylib` (iphoneos arm64, min 14.0) + `libespeak-ng.simulator.dylib` (arm64 + x86_64) | Xcode clang against the iPhoneOS / iPhoneSimulator SDKs; links only libSystem. Rebuild: `native/build_ios.sh` |
+| ios | `eSpeakNG.xcframework` (iphoneos arm64 + iphonesimulator arm64/x86_64, min 15.0) wrapped from `libespeak-ng.dylib` | Xcode clang against the iPhoneOS / iPhoneSimulator SDKs; links only libSystem. Rebuild: `native/build_ios.sh` (also runs `wrap_ios_framework.sh`). A naked `.dylib` in `Runner.app/Frameworks/` is rejected by App Store Connect (ITMS-90426, TN2435). |
 
 All builds compile the same upstream sources (`src/libespeak-ng/*.c` except
 `sPlayer.c`, plus `src/ucd-tools/src/{case,categories,ctype,proplist,
@@ -53,9 +54,11 @@ extracts the data assets into app-support storage (revision-marked,
 idempotent), and pins both paths via `setEspeakNativePathOverrides`. Anything
 missing keeps the package fail-closed (`spokenReferenceUnavailable`).
 
-macOS and iOS app builds copy the host dylib into `Frameworks/` and the
-trimmed data tree into `Contents/Resources/espeak-ng-data` (macOS) or
-`Runner.app/espeak-ng-data` (iOS) via `bundle_into_app.sh`. Package tests
+macOS app builds copy the host dylib into `Contents/Frameworks/`. iOS
+embeds `eSpeakNG.xcframework` (not a naked dylib) via Xcode Embed
+Frameworks. Both copy the trimmed data tree into
+`Contents/Resources/espeak-ng-data` (macOS) or `Runner.app/espeak-ng-data`
+(iOS) via `bundle_into_app.sh`. Package tests
 assert both layouts include `lang/en-us` (and every mapped voice) and can
 phonemize English; Apple CI greps the compiled `.app`. Production
 `align` resolves those bundle paths from `Platform.resolvedExecutable`

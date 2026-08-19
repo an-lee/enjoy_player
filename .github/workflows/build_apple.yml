@@ -64,7 +64,7 @@ jobs:
           while IFS= read -r app; do
             bash .github/scripts/check_bundled_espeak_data.sh \
               "${app}/espeak-ng-data" \
-              "${app}/Frameworks/libespeak-ng.dylib"
+              "${app}/Frameworks/eSpeakNG.framework/eSpeakNG"
             found=1
           done < <(find build/ios/DerivedData/Build/Products -name Runner.app -type d)
           test "$found" -eq 1

@@ -16,7 +16,8 @@
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
-		E8F2A1C12D4C5E6F7A8B9C20 /* libespeak-ng.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = E8F2A1C02D4C5E6F7A8B9C1F /* libespeak-ng.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		E8F2A1C12D4C5E6F7A8B9C20 /* eSpeakNG.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = E8F2A1C02D4C5E6F7A8B9C1F /* eSpeakNG.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		E8F2A1C22D4C5E6F7A8B9C21 /* eSpeakNG.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = E8F2A1C02D4C5E6F7A8B9C1F /* eSpeakNG.xcframework */; };
 		EF23D88E35DA0DE9BA66C977 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7C182831482E12604FA8D0E5 /* Pods_Runner.framework */; };
 /* End PBXBuildFile section */
 
@@ -37,7 +38,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				E8F2A1C12D4C5E6F7A8B9C20 /* libespeak-ng.dylib in Embed Frameworks */,
+				E8F2A1C12D4C5E6F7A8B9C20 /* eSpeakNG.xcframework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -66,7 +67,7 @@
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A1B2C3D42EC3AA0100C636F1 /* Runner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
-		E8F2A1C02D4C5E6F7A8B9C1F /* libespeak-ng.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libespeak-ng.dylib"; path = "../packages/forced_alignment/native/ios/libespeak-ng.dylib"; sourceTree = SOURCE_ROOT; };
+		E8F2A1C02D4C5E6F7A8B9C1F /* eSpeakNG.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = eSpeakNG.xcframework; path = ../packages/forced_alignment/native/ios/eSpeakNG.xcframework; sourceTree = SOURCE_ROOT; };
 		F3D3B5EBA1FF8CB830D86C98 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -76,6 +77,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */,
+				E8F2A1C22D4C5E6F7A8B9C21 /* eSpeakNG.xcframework in Frameworks */,
 				EF23D88E35DA0DE9BA66C977 /* Pods_Runner.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -87,7 +89,7 @@
 			isa = PBXGroup;
 			children = (
 				7C182831482E12604FA8D0E5 /* Pods_Runner.framework */,
-				E8F2A1C02D4C5E6F7A8B9C1F /* libespeak-ng.dylib */,
+				E8F2A1C02D4C5E6F7A8B9C1F /* eSpeakNG.xcframework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";

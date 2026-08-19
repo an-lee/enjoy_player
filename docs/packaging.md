@@ -550,6 +550,7 @@ git-ignored.
   ```bash
   ./macos/scripts/notarize_release.sh "build/macos/Build/Products/Release/Enjoy Player.app" --skip-sign
   ```
+- **ITMS-90426 / 90429 Invalid Swift Support**: App Store Connect reports this when a standalone `.dylib` is in `Runner.app/Frameworks/` (TN2435). iOS embeds `eSpeakNG.xcframework`, not `libespeak-ng.dylib`. `check_ios_ipa.sh` fails the release if any naked `.dylib` is present. Do not inject a fake `SwiftSupport/` folder to paper over this.
 - **TestFlight credentials missing** (local): put `asc.env` + `AuthKey_<KEY_ID>.p8` under `~/.config/enjoy-player/` (or export the three `APP_STORE_CONNECT_*` env vars), then re-run `bash .github/scripts/verify_macos_release_env.sh`. With `--testflight`, a missing key is a hard error — not a soft skip.
 - **TestFlight upload only** (IPA already built):
   ```bash
@@ -599,22 +600,22 @@ played to the learner and does not replace Craft/library audio.
 - macOS and iOS app targets copy `espeak-ng-data` into the `.app` via
   `native/bundle_into_app.sh` (Xcode "Bundle eSpeak-NG" phase) so packaged
   `align` / `alignSegments` can `DynamicLibrary.open` without the source
-  tree. **`libespeak-ng.dylib` itself is embedded by the Xcode "Embed
-  Frameworks" `CopyFiles` build phase** (`dstSubfolderSpec = 10`,
-  `Frameworks/`) — the script verifies the dylib is present (Xcode owns
-  the copy, with `CodeSignOnCopy` / `RemoveHeadersOnCopy`) so a missing
-  dylib fails the build with a clear error instead of silently dropping
-  the spoken-reference at runtime (`spokenReferenceUnavailable` →
-  "failed to generate, tap to retry"). The script does not mutate or
-  re-sign the embedded dylib after Xcode's Embed Frameworks phase:
-  `install_name_tool` and a post-embed app re-sign can invalidate the
-  nested code/resource seal, causing `xcodebuild -exportArchive` to
-  remove Swift stdlib dylibs and trigger ITMS-90429. Release packaging
-  also removes an empty iOS `Contents/Resources/` container that Xcode can
-  leave behind and that `codesign` rejects as unsealed root content.
-  verifies the exported IPA contains the eSpeak dylib, a populated
-  `SwiftSupport/iphoneos/` directory, has `MinimumOSVersion` 15.0, and
-  passes strict code-sign verification.
+  tree. **The native library is embedded by the Xcode "Embed Frameworks"
+  `CopyFiles` build phase** (`dstSubfolderSpec = 10`, `Frameworks/`):
+  macOS copies `libespeak-ng.dylib`; iOS copies `eSpeakNG.xcframework`
+  (`CodeSignOnCopy` / `RemoveHeadersOnCopy`). A naked `.dylib` in an iOS
+  `Frameworks/` folder is not supported (TN2435) and App Store Connect
+  reports it as ITMS-90426 ("SwiftSupport folder is missing") or
+  ITMS-90429. The bundle script verifies the embedded binary is present
+  so a missing library fails the build instead of silently dropping the
+  spoken-reference at runtime (`spokenReferenceUnavailable` → "failed to
+  generate, tap to retry"). It does not mutate or re-sign nested code
+  after Embed Frameworks. Release packaging also removes an empty iOS
+  `Contents/Resources/` container that Xcode can leave behind and that
+  `codesign` rejects as unsealed root content. The exported IPA is
+  checked for `eSpeakNG.framework`, no standalone `.dylib` files under
+  `Frameworks/`, `MinimumOSVersion` 15.0, and strict code-sign
+  verification.
   Android ships the per-ABI `.so` through jniLibs and `espeak-ng-data`
   as Flutter assets extracted at startup
   (`lib/core/platform/espeak_android_provisioner.dart`). Flutter does **not**
@@ -626,9 +627,10 @@ played to the learner and does not replace Craft/library audio.
   (`Contents/Resources/espeak-ng-data`) layouts include every mapped `lang/`
   voice and can phonemize `en-US`. [Build Apple](../.github/workflows/build_apple.yml)
   runs `.github/scripts/check_bundled_espeak_data.sh` on the compiled `.app`,
-  passing both the data directory and the `libespeak-ng.dylib` path so
-  archive-stripped dylibs (the same failure mode as the Swift stdlib
-  ITMS-90429) also fail the gate.
+  passing both the data directory and the native library path so a
+  missing embed fails the gate. iOS asserts
+  `Frameworks/eSpeakNG.framework/eSpeakNG`; macOS asserts
+  `Contents/Frameworks/libespeak-ng.dylib`.
   [Android APK smoke](../.github/workflows/android_apk_smoke.yml) greps the
   APK for `lang/en-us`, not only `phontab`.
 - `packages/forced_alignment`'s eSpeak FFI tests run unconditionally on

@@ -2,19 +2,18 @@
 # Assert a packaged espeak-ng-data directory has phoneme tables + focus voices.
 # Keep the voice list in sync with kEspeakVoiceByLanguageTag.
 #
-# Usage: check_bundled_espeak_data.sh <path/to/espeak-ng-data> [<path/to/libespeak-ng.dylib>]
+# Usage: check_bundled_espeak_data.sh <path/to/espeak-ng-data> [<path/to/native-lib>]
 #
-# Pass the dylib path on iOS/macOS app bundles so we also assert the dynamic
-# library (DynamicLibrary.open at runtime) is present next to the data. The
-# dylib is embedded by the Xcode "Embed Frameworks" build phase, so a missing
-# dylib means the dylib was stripped by xcodebuild -exportArchive (the same
-# failure mode that drops the Swift stdlib dylibs in ITMS-90429).
+# Pass the native library path on iOS/macOS app bundles so we also assert
+# DynamicLibrary.open can succeed. iOS embeds eSpeakNG.framework; macOS
+# embeds libespeak-ng.dylib. Both are copied by Xcode's Embed Frameworks
+# phase.
 set -euo pipefail
 
 data="${1:-}"
 lib="${2:-}"
 if [ -z "${data}" ] || [ ! -d "${data}" ]; then
-  echo "usage: $0 <path/to/espeak-ng-data> [<path/to/libespeak-ng.dylib>]" >&2
+  echo "usage: $0 <path/to/espeak-ng-data> [<path/to/native-lib>]" >&2
   echo "missing directory: ${data:-<(empty)>}" >&2
   exit 1
 fi

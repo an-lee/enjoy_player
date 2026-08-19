@@ -2,8 +2,9 @@
 # Build vendored iOS libespeak-ng (eSpeak-NG 1.52.0) on a macOS host.
 #
 # Produces:
-#   ios/libespeak-ng.dylib            # iphoneos arm64
+#   ios/libespeak-ng.dylib            # iphoneos arm64 (wrap source)
 #   ios/libespeak-ng.simulator.dylib  # iphonesimulator arm64 + x86_64
+#   ios/eSpeakNG.xcframework          # App Store embed (TN2435)
 #
 # Matches the other OS vendors: same upstream sources (libespeak-ng/*.c
 # except sPlayer.c, plus ucd-tools), -fvisibility=hidden
@@ -15,7 +16,7 @@ VERSION="1.52.0"
 SRC_DIR="${ROOT}/.build/espeak-ng-${VERSION}"
 TARBALL="${ROOT}/.build/espeak-ng-${VERSION}.tar.gz"
 URL="https://github.com/espeak-ng/espeak-ng/archive/refs/tags/${VERSION}.tar.gz"
-MIN_IOS="14.0"
+MIN_IOS="15.0"
 
 mkdir -p "${ROOT}/.build"
 
@@ -100,7 +101,7 @@ compile_one() {
   "${cc}" -dynamiclib \
     -isysroot "${sysroot}" \
     -target "${target}" \
-    -install_name @rpath/libespeak-ng.dylib \
+    -install_name @rpath/eSpeakNG.framework/eSpeakNG \
     -current_version 1.0.0 \
     -compatibility_version 1.0.0 \
     ${CFLAGS} ${INCLUDES} \
@@ -136,3 +137,6 @@ file "${ROOT}/ios/libespeak-ng.dylib"
 file "${ROOT}/ios/libespeak-ng.simulator.dylib"
 otool -L "${ROOT}/ios/libespeak-ng.dylib"
 nm -gU "${ROOT}/ios/libespeak-ng.dylib" | grep -c 'T _espeak_'
+
+# App Store Connect rejects a naked .dylib in Frameworks/ (ITMS-90426).
+sh "${ROOT}/wrap_ios_framework.sh"

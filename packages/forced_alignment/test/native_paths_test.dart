@@ -9,6 +9,18 @@ void main() {
     setEspeakNativePathOverrides();
   });
 
+  test('iOS ships eSpeakNG.xcframework for App Store embedding', () {
+    final src = resolveEspeakDataPath();
+    expect(src, isNotNull);
+    final native = Directory(src!).parent.path;
+    final plist = File('$native/ios/eSpeakNG.xcframework/Info.plist');
+    final device = File(
+      '$native/ios/eSpeakNG.xcframework/ios-arm64/eSpeakNG.framework/eSpeakNG',
+    );
+    expect(plist.existsSync(), isTrue, reason: plist.path);
+    expect(device.existsSync(), isTrue, reason: device.path);
+  });
+
   test('cwd search finds the vendored host library and data', () {
     expect(resolveEspeakLibraryPath(), isNotNull);
     expect(resolveEspeakDataPath(), isNotNull);
@@ -28,11 +40,11 @@ void main() {
     );
   });
 
-  test('iOS bundle candidates sit in Frameworks and the app root', () {
+  test('iOS bundle candidates prefer eSpeakNG.framework', () {
     const exe = '/tmp/Runner.app/Runner';
     expect(
       espeakBundleLibraryCandidates(resolvedExecutable: exe, osFolder: 'ios'),
-      contains('/tmp/Runner.app/Frameworks/libespeak-ng.dylib'),
+      contains('/tmp/Runner.app/Frameworks/eSpeakNG.framework/eSpeakNG'),
     );
     expect(
       espeakBundleDataCandidates(resolvedExecutable: exe, osFolder: 'ios'),

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.5] - 2026-08-19
+
+### Fixed
+
+- **iOS TestFlight** packages eSpeak-NG as `eSpeakNG.xcframework` instead of a naked `libespeak-ng.dylib` in `Runner.app/Frameworks/`. App Store Connect treats standalone `.dylib` files as Swift stdlibs (TN2435) and rejects the IPA with ITMS-90426 ("SwiftSupport folder is missing"). Exported IPAs are now checked for the framework, no standalone `.dylib` files, `MinimumOSVersion` 15.0, and strict signing.
+
 ## [0.8.4] - 2026-08-19
 
 ### Fixed

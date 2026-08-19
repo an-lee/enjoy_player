@@ -9,7 +9,7 @@
 #define MyAppName "Enjoy Player"
 #define MyAppPublisher "Enjoy"
 #define MyAppExeName "enjoy_player.exe"
-#define MyAppVersion "0.8.4"
+#define MyAppVersion "0.8.5"
 
 [Setup]
 AppId={{8F3C2B1A-9D8E-4F7C-A6B5-4D3C2B1A0F9E}}
