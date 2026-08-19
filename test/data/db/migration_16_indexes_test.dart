@@ -15,8 +15,8 @@ void main() {
       await db.close();
     });
 
-    test('schemaVersion is 16', () {
-      expect(db.schemaVersion, 16);
+    test('schemaVersion is at least 17', () {
+      expect(db.schemaVersion, greaterThanOrEqualTo(17));
     });
 
     test('all covering indexes exist after fresh create', () async {

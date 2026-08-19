@@ -25,6 +25,9 @@ class Audios extends Table with SyncMetadataColumns {
   TextColumn get voice => text().nullable()();
   TextColumn get source => text().nullable()();
   TextColumn get localUri => text().nullable()();
+
+  /// macOS security-scoped bookmark bytes for [localUri]. See ADR-0060.
+  BlobColumn get bookmarkData => blob().nullable()();
   TextColumn get md5 => text().nullable()();
   IntColumn get size => integer().nullable()();
 

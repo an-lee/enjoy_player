@@ -103,3 +103,4 @@ Trade-offs, follow-up work, risks.
 | [0077](0077-audio-reserved-collapse-chrome.md) | Audio expanded chrome is a compact body collapse chevron (no blank AppBar); video keeps in-stage overlay |
 | [0078](0078-on-demand-transcript-enrichment.md) | On-demand transcript enrichment — gated karaoke/IPA, explicit CC-sheet generate, owned `alignSegments`, YouTube IPA-only untimed words (supplements 0070; supersedes 0076 “no generate path” for this button only) |
 | [0079](0079-azure-word-boundaries-stay-craft-timing-source.md) | Azure TTS word boundaries stay the Craft line-timing source — rejects #540 §5 deprecation; boundaries = cue windows, DTW = nested word/phone spans |
+| [0080](0080-macos-security-scoped-bookmarks.md) | macOS security-scoped bookmarks for path-linked local media — sandbox-restart resilience + file-move resilience for externally linked imports (supplements ADR-0050) |

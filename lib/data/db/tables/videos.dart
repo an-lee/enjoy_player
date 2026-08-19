@@ -26,6 +26,20 @@ class Videos extends Table with SyncMetadataColumns {
 
   /// Local file URI (replaces web `fileHandle` / `blob`).
   TextColumn get localUri => text().nullable()();
+
+  /// macOS security-scoped bookmark bytes for [localUri].
+  ///
+  /// The sandboxed macOS build only grants access to user-picked files for the
+  /// current process — the grant is lost on restart. We persist a
+  /// `URL.bookmarkData(options: .withSecurityScope, …)` blob captured at
+  /// import time and resolve it on every open (`startAccessing…`). See
+  /// ADR-0060 and `security_scoped_bookmark.dart`.
+  ///
+  /// `null` for rows imported before this column existed, rows whose source
+  /// file was copied into app-managed `media/`, and rows on non-macOS
+  /// platforms.
+  BlobColumn get bookmarkData => blob().nullable()();
+
   TextColumn get md5 => text().nullable()();
   IntColumn get size => integer().nullable()();
 

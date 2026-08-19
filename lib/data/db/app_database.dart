@@ -104,7 +104,7 @@ class AppDatabase extends _$AppDatabase {
   bool get isDeviceGlobalDatabase => _dbName == deviceGlobalDatabaseName;
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -264,6 +264,15 @@ class AppDatabase extends _$AppDatabase {
           'CREATE INDEX IF NOT EXISTS idx_sync_queue_retry_created '
           'ON sync_queue (retry_count, created_at)',
         );
+      } else if (next == 17) {
+        // macOS security-scoped bookmarks (ADR-0060). The implicit
+        // `NSOpenPanel` security scope only lasts for the current process,
+        // so on the next open media_kit would hit EACCES while libmpv tries
+        // to read the linked file. We persist a `URL.bookmarkData(…
+        // .withSecurityScope)` blob captured at import and resolve it on
+        // every open via `lib/data/files/security_scoped_bookmark.dart`.
+        await _addColumnIfMissing(m, videos, videos.bookmarkData);
+        await _addColumnIfMissing(m, audios, audios.bookmarkData);
       }
       current = next;
     }

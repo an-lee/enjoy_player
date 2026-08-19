@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart' as mk;
 import 'package:media_kit_video/media_kit_video.dart';
 
+import 'package:enjoy_player/data/files/security_scoped_bookmark.dart';
 import 'package:enjoy_player/features/player/application/player_engine_constants.dart';
 import 'package:enjoy_player/features/player/domain/playable_source.dart';
 
@@ -113,6 +114,11 @@ class MediaKitPlayerEngine implements PlayerEngine {
   mk.Player get _player => __player ??= mk.Player();
 
   mk.Player get player => _player;
+
+  /// Handle for the currently-held macOS security-scoped resource grant, if
+  /// any. Owned by this engine and paired with [releaseBookmark] before the
+  /// next `open()` or on `dispose()`. See ADR-0060.
+  int? _scopeToken;
 
   VideoController? _videoController;
 
@@ -221,6 +227,16 @@ class MediaKitPlayerEngine implements PlayerEngine {
         'MediaKitPlayerEngine cannot open YouTube',
       ),
     };
+    // Release any prior scope before we open the new source — libmpv will
+    // read from the URL immediately, so the grant must cover the new path.
+    final previousToken = _scopeToken;
+    if (previousToken != null) {
+      _scopeToken = null;
+      await SecurityScopedBookmarkChannel.releaseBookmark(previousToken);
+    }
+    if (source is LocalFilePlayableSource) {
+      _scopeToken = source.scopeToken;
+    }
     await _player.open(mk.Media(uri));
   }
 
@@ -264,6 +280,11 @@ class MediaKitPlayerEngine implements PlayerEngine {
 
   @override
   Future<void> dispose() async {
+    final token = _scopeToken;
+    if (token != null) {
+      _scopeToken = null;
+      await SecurityScopedBookmarkChannel.releaseBookmark(token);
+    }
     await __player?.dispose();
     __player = null;
   }
