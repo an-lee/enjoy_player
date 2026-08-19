@@ -470,12 +470,35 @@ a:hover { text-decoration: underline; }
 
 .card--recommended .platform-icon { color: var(--brand-from); }
 
+.card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .card-title {
   font-size: 1rem;
   font-weight: 600;
   color: var(--text);
   line-height: 1.2;
 }
+
+.card-version {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(71, 151, 245, 0.1);
+  border: 1px solid rgba(71, 151, 245, 0.25);
+  color: var(--brand-from);
+  line-height: 1.2;
+}
+
+.card-version.hidden { display: none; }
 
 .card-subtitle {
   font-size: 0.75rem;
