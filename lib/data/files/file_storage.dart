@@ -15,6 +15,7 @@ import 'package:uuid/uuid.dart';
 import 'package:enjoy_player/core/errors/app_failure.dart';
 import 'chunked_file_hash.dart';
 import 'lasting_local_access.dart';
+import 'security_scoped_bookmark.dart';
 
 class FileImportResult {
   const FileImportResult({
@@ -23,6 +24,7 @@ class FileImportResult {
     required this.fileSize,
     required this.title,
     this.mtimeMs,
+    this.bookmarkData,
   });
 
   final String localPath;
@@ -34,6 +36,16 @@ class FileImportResult {
 
   /// [File.stat] modified time in ms since epoch when available.
   final int? mtimeMs;
+
+  /// Security-scoped bookmark bytes captured while the implicit
+  /// `NSOpenPanel` grant was still alive. Only set on macOS when the file
+  /// is *externally linked* (lives outside the app sandbox container);
+  /// `null` for files copied into app-managed `media/`, on non-macOS
+  /// platforms, and when bookmark creation failed.
+  ///
+  /// Persist alongside `localUri` so future opens can re-establish the
+  /// security scope. See ADR-0060.
+  final Uint8List? bookmarkData;
 
   String get fileUri => Uri.file(localPath).toString();
 }
@@ -154,6 +166,15 @@ class FileStorage {
       final title = p.basenameWithoutExtension(file.name);
       final linkExternally = await canLinkExternally(path);
 
+      // Capture the macOS security-scoped bookmark *before* the isolate
+      // hops away from the main isolate (and while the implicit
+      // `NSOpenPanel` grant is still alive). Only persist when the file
+      // is going to be externally linked — copied bytes inside the app
+      // sandbox container don't need one.
+      final bookmarkData = linkExternally
+          ? await SecurityScopedBookmarkChannel.createBookmark(path)
+          : null;
+
       final worker = await Isolate.run(
         () => _importMediaFileInIsolate((
           sourcePath: path,
@@ -172,6 +193,7 @@ class FileStorage {
         fileSize: worker.fileSize,
         title: worker.title,
         mtimeMs: await _mtimeMsForPath(worker.localPath),
+        bookmarkData: bookmarkData,
       );
     } catch (e, st) {
       if (e is FileFailure) {

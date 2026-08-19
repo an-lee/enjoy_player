@@ -158,6 +158,18 @@ class $VideosTable extends Videos with TableInfo<$VideosTable, VideoRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _bookmarkDataMeta = const VerificationMeta(
+    'bookmarkData',
+  );
+  @override
+  late final GeneratedColumn<Uint8List> bookmarkData =
+      GeneratedColumn<Uint8List>(
+        'bookmark_data',
+        aliasedName,
+        true,
+        type: DriftSqlType.blob,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _md5Meta = const VerificationMeta('md5');
   @override
   late final GeneratedColumn<String> md5 = GeneratedColumn<String>(
@@ -214,6 +226,7 @@ class $VideosTable extends Videos with TableInfo<$VideosTable, VideoRow> {
     language,
     source,
     localUri,
+    bookmarkData,
     md5,
     size,
     localMtimeMs,
@@ -334,6 +347,15 @@ class $VideosTable extends Videos with TableInfo<$VideosTable, VideoRow> {
         localUri.isAcceptableOrUnknown(data['local_uri']!, _localUriMeta),
       );
     }
+    if (data.containsKey('bookmark_data')) {
+      context.handle(
+        _bookmarkDataMeta,
+        bookmarkData.isAcceptableOrUnknown(
+          data['bookmark_data']!,
+          _bookmarkDataMeta,
+        ),
+      );
+    }
     if (data.containsKey('md5')) {
       context.handle(
         _md5Meta,
@@ -426,6 +448,10 @@ class $VideosTable extends Videos with TableInfo<$VideosTable, VideoRow> {
         DriftSqlType.string,
         data['${effectivePrefix}local_uri'],
       ),
+      bookmarkData: attachedDatabase.typeMapping.read(
+        DriftSqlType.blob,
+        data['${effectivePrefix}bookmark_data'],
+      ),
       md5: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}md5'],
@@ -470,6 +496,19 @@ class VideoRow extends DataClass implements Insertable<VideoRow> {
 
   /// Local file URI (replaces web `fileHandle` / `blob`).
   final String? localUri;
+
+  /// macOS security-scoped bookmark bytes for [localUri].
+  ///
+  /// The sandboxed macOS build only grants access to user-picked files for the
+  /// current process — the grant is lost on restart. We persist a
+  /// `URL.bookmarkData(options: .withSecurityScope, …)` blob captured at
+  /// import time and resolve it on every open (`startAccessing…`). See
+  /// ADR-0060 and `security_scoped_bookmark.dart`.
+  ///
+  /// `null` for rows imported before this column existed, rows whose source
+  /// file was copied into app-managed `media/`, and rows on non-macOS
+  /// platforms.
+  final Uint8List? bookmarkData;
   final String? md5;
   final int? size;
 
@@ -492,6 +531,7 @@ class VideoRow extends DataClass implements Insertable<VideoRow> {
     required this.language,
     this.source,
     this.localUri,
+    this.bookmarkData,
     this.md5,
     this.size,
     this.localMtimeMs,
@@ -525,6 +565,9 @@ class VideoRow extends DataClass implements Insertable<VideoRow> {
     }
     if (!nullToAbsent || localUri != null) {
       map['local_uri'] = Variable<String>(localUri);
+    }
+    if (!nullToAbsent || bookmarkData != null) {
+      map['bookmark_data'] = Variable<Uint8List>(bookmarkData);
     }
     if (!nullToAbsent || md5 != null) {
       map['md5'] = Variable<String>(md5);
@@ -569,6 +612,9 @@ class VideoRow extends DataClass implements Insertable<VideoRow> {
       localUri: localUri == null && nullToAbsent
           ? const Value.absent()
           : Value(localUri),
+      bookmarkData: bookmarkData == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bookmarkData),
       md5: md5 == null && nullToAbsent ? const Value.absent() : Value(md5),
       size: size == null && nullToAbsent ? const Value.absent() : Value(size),
       localMtimeMs: localMtimeMs == null && nullToAbsent
@@ -600,6 +646,7 @@ class VideoRow extends DataClass implements Insertable<VideoRow> {
       language: serializer.fromJson<String>(json['language']),
       source: serializer.fromJson<String?>(json['source']),
       localUri: serializer.fromJson<String?>(json['localUri']),
+      bookmarkData: serializer.fromJson<Uint8List?>(json['bookmarkData']),
       md5: serializer.fromJson<String?>(json['md5']),
       size: serializer.fromJson<int?>(json['size']),
       localMtimeMs: serializer.fromJson<int?>(json['localMtimeMs']),
@@ -624,6 +671,7 @@ class VideoRow extends DataClass implements Insertable<VideoRow> {
       'language': serializer.toJson<String>(language),
       'source': serializer.toJson<String?>(source),
       'localUri': serializer.toJson<String?>(localUri),
+      'bookmarkData': serializer.toJson<Uint8List?>(bookmarkData),
       'md5': serializer.toJson<String?>(md5),
       'size': serializer.toJson<int?>(size),
       'localMtimeMs': serializer.toJson<int?>(localMtimeMs),
@@ -646,6 +694,7 @@ class VideoRow extends DataClass implements Insertable<VideoRow> {
     String? language,
     Value<String?> source = const Value.absent(),
     Value<String?> localUri = const Value.absent(),
+    Value<Uint8List?> bookmarkData = const Value.absent(),
     Value<String?> md5 = const Value.absent(),
     Value<int?> size = const Value.absent(),
     Value<int?> localMtimeMs = const Value.absent(),
@@ -667,6 +716,7 @@ class VideoRow extends DataClass implements Insertable<VideoRow> {
     language: language ?? this.language,
     source: source.present ? source.value : this.source,
     localUri: localUri.present ? localUri.value : this.localUri,
+    bookmarkData: bookmarkData.present ? bookmarkData.value : this.bookmarkData,
     md5: md5.present ? md5.value : this.md5,
     size: size.present ? size.value : this.size,
     localMtimeMs: localMtimeMs.present ? localMtimeMs.value : this.localMtimeMs,
@@ -698,6 +748,9 @@ class VideoRow extends DataClass implements Insertable<VideoRow> {
       language: data.language.present ? data.language.value : this.language,
       source: data.source.present ? data.source.value : this.source,
       localUri: data.localUri.present ? data.localUri.value : this.localUri,
+      bookmarkData: data.bookmarkData.present
+          ? data.bookmarkData.value
+          : this.bookmarkData,
       md5: data.md5.present ? data.md5.value : this.md5,
       size: data.size.present ? data.size.value : this.size,
       localMtimeMs: data.localMtimeMs.present
@@ -724,6 +777,7 @@ class VideoRow extends DataClass implements Insertable<VideoRow> {
           ..write('language: $language, ')
           ..write('source: $source, ')
           ..write('localUri: $localUri, ')
+          ..write('bookmarkData: $bookmarkData, ')
           ..write('md5: $md5, ')
           ..write('size: $size, ')
           ..write('localMtimeMs: $localMtimeMs, ')
@@ -748,6 +802,7 @@ class VideoRow extends DataClass implements Insertable<VideoRow> {
     language,
     source,
     localUri,
+    $driftBlobEquality.hash(bookmarkData),
     md5,
     size,
     localMtimeMs,
@@ -771,6 +826,7 @@ class VideoRow extends DataClass implements Insertable<VideoRow> {
           other.language == this.language &&
           other.source == this.source &&
           other.localUri == this.localUri &&
+          $driftBlobEquality.equals(other.bookmarkData, this.bookmarkData) &&
           other.md5 == this.md5 &&
           other.size == this.size &&
           other.localMtimeMs == this.localMtimeMs &&
@@ -792,6 +848,7 @@ class VideosCompanion extends UpdateCompanion<VideoRow> {
   final Value<String> language;
   final Value<String?> source;
   final Value<String?> localUri;
+  final Value<Uint8List?> bookmarkData;
   final Value<String?> md5;
   final Value<int?> size;
   final Value<int?> localMtimeMs;
@@ -812,6 +869,7 @@ class VideosCompanion extends UpdateCompanion<VideoRow> {
     this.language = const Value.absent(),
     this.source = const Value.absent(),
     this.localUri = const Value.absent(),
+    this.bookmarkData = const Value.absent(),
     this.md5 = const Value.absent(),
     this.size = const Value.absent(),
     this.localMtimeMs = const Value.absent(),
@@ -833,6 +891,7 @@ class VideosCompanion extends UpdateCompanion<VideoRow> {
     this.language = const Value.absent(),
     this.source = const Value.absent(),
     this.localUri = const Value.absent(),
+    this.bookmarkData = const Value.absent(),
     this.md5 = const Value.absent(),
     this.size = const Value.absent(),
     this.localMtimeMs = const Value.absent(),
@@ -858,6 +917,7 @@ class VideosCompanion extends UpdateCompanion<VideoRow> {
     Expression<String>? language,
     Expression<String>? source,
     Expression<String>? localUri,
+    Expression<Uint8List>? bookmarkData,
     Expression<String>? md5,
     Expression<int>? size,
     Expression<int>? localMtimeMs,
@@ -879,6 +939,7 @@ class VideosCompanion extends UpdateCompanion<VideoRow> {
       if (language != null) 'language': language,
       if (source != null) 'source': source,
       if (localUri != null) 'local_uri': localUri,
+      if (bookmarkData != null) 'bookmark_data': bookmarkData,
       if (md5 != null) 'md5': md5,
       if (size != null) 'size': size,
       if (localMtimeMs != null) 'local_mtime_ms': localMtimeMs,
@@ -902,6 +963,7 @@ class VideosCompanion extends UpdateCompanion<VideoRow> {
     Value<String>? language,
     Value<String?>? source,
     Value<String?>? localUri,
+    Value<Uint8List?>? bookmarkData,
     Value<String?>? md5,
     Value<int?>? size,
     Value<int?>? localMtimeMs,
@@ -923,6 +985,7 @@ class VideosCompanion extends UpdateCompanion<VideoRow> {
       language: language ?? this.language,
       source: source ?? this.source,
       localUri: localUri ?? this.localUri,
+      bookmarkData: bookmarkData ?? this.bookmarkData,
       md5: md5 ?? this.md5,
       size: size ?? this.size,
       localMtimeMs: localMtimeMs ?? this.localMtimeMs,
@@ -976,6 +1039,9 @@ class VideosCompanion extends UpdateCompanion<VideoRow> {
     if (localUri.present) {
       map['local_uri'] = Variable<String>(localUri.value);
     }
+    if (bookmarkData.present) {
+      map['bookmark_data'] = Variable<Uint8List>(bookmarkData.value);
+    }
     if (md5.present) {
       map['md5'] = Variable<String>(md5.value);
     }
@@ -1011,6 +1077,7 @@ class VideosCompanion extends UpdateCompanion<VideoRow> {
           ..write('language: $language, ')
           ..write('source: $source, ')
           ..write('localUri: $localUri, ')
+          ..write('bookmarkData: $bookmarkData, ')
           ..write('md5: $md5, ')
           ..write('size: $size, ')
           ..write('localMtimeMs: $localMtimeMs, ')
@@ -1207,6 +1274,18 @@ class $AudiosTable extends Audios with TableInfo<$AudiosTable, AudioRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _bookmarkDataMeta = const VerificationMeta(
+    'bookmarkData',
+  );
+  @override
+  late final GeneratedColumn<Uint8List> bookmarkData =
+      GeneratedColumn<Uint8List>(
+        'bookmark_data',
+        aliasedName,
+        true,
+        type: DriftSqlType.blob,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _md5Meta = const VerificationMeta('md5');
   @override
   late final GeneratedColumn<String> md5 = GeneratedColumn<String>(
@@ -1266,6 +1345,7 @@ class $AudiosTable extends Audios with TableInfo<$AudiosTable, AudioRow> {
     voice,
     source,
     localUri,
+    bookmarkData,
     md5,
     size,
     localMtimeMs,
@@ -1407,6 +1487,15 @@ class $AudiosTable extends Audios with TableInfo<$AudiosTable, AudioRow> {
         localUri.isAcceptableOrUnknown(data['local_uri']!, _localUriMeta),
       );
     }
+    if (data.containsKey('bookmark_data')) {
+      context.handle(
+        _bookmarkDataMeta,
+        bookmarkData.isAcceptableOrUnknown(
+          data['bookmark_data']!,
+          _bookmarkDataMeta,
+        ),
+      );
+    }
     if (data.containsKey('md5')) {
       context.handle(
         _md5Meta,
@@ -1511,6 +1600,10 @@ class $AudiosTable extends Audios with TableInfo<$AudiosTable, AudioRow> {
         DriftSqlType.string,
         data['${effectivePrefix}local_uri'],
       ),
+      bookmarkData: attachedDatabase.typeMapping.read(
+        DriftSqlType.blob,
+        data['${effectivePrefix}bookmark_data'],
+      ),
       md5: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}md5'],
@@ -1554,6 +1647,9 @@ class AudioRow extends DataClass implements Insertable<AudioRow> {
   final String? voice;
   final String? source;
   final String? localUri;
+
+  /// macOS security-scoped bookmark bytes for [localUri]. See ADR-0060.
+  final Uint8List? bookmarkData;
   final String? md5;
   final int? size;
 
@@ -1579,6 +1675,7 @@ class AudioRow extends DataClass implements Insertable<AudioRow> {
     this.voice,
     this.source,
     this.localUri,
+    this.bookmarkData,
     this.md5,
     this.size,
     this.localMtimeMs,
@@ -1621,6 +1718,9 @@ class AudioRow extends DataClass implements Insertable<AudioRow> {
     }
     if (!nullToAbsent || localUri != null) {
       map['local_uri'] = Variable<String>(localUri);
+    }
+    if (!nullToAbsent || bookmarkData != null) {
+      map['bookmark_data'] = Variable<Uint8List>(bookmarkData);
     }
     if (!nullToAbsent || md5 != null) {
       map['md5'] = Variable<String>(md5);
@@ -1674,6 +1774,9 @@ class AudioRow extends DataClass implements Insertable<AudioRow> {
       localUri: localUri == null && nullToAbsent
           ? const Value.absent()
           : Value(localUri),
+      bookmarkData: bookmarkData == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bookmarkData),
       md5: md5 == null && nullToAbsent ? const Value.absent() : Value(md5),
       size: size == null && nullToAbsent ? const Value.absent() : Value(size),
       localMtimeMs: localMtimeMs == null && nullToAbsent
@@ -1708,6 +1811,7 @@ class AudioRow extends DataClass implements Insertable<AudioRow> {
       voice: serializer.fromJson<String?>(json['voice']),
       source: serializer.fromJson<String?>(json['source']),
       localUri: serializer.fromJson<String?>(json['localUri']),
+      bookmarkData: serializer.fromJson<Uint8List?>(json['bookmarkData']),
       md5: serializer.fromJson<String?>(json['md5']),
       size: serializer.fromJson<int?>(json['size']),
       localMtimeMs: serializer.fromJson<int?>(json['localMtimeMs']),
@@ -1735,6 +1839,7 @@ class AudioRow extends DataClass implements Insertable<AudioRow> {
       'voice': serializer.toJson<String?>(voice),
       'source': serializer.toJson<String?>(source),
       'localUri': serializer.toJson<String?>(localUri),
+      'bookmarkData': serializer.toJson<Uint8List?>(bookmarkData),
       'md5': serializer.toJson<String?>(md5),
       'size': serializer.toJson<int?>(size),
       'localMtimeMs': serializer.toJson<int?>(localMtimeMs),
@@ -1760,6 +1865,7 @@ class AudioRow extends DataClass implements Insertable<AudioRow> {
     Value<String?> voice = const Value.absent(),
     Value<String?> source = const Value.absent(),
     Value<String?> localUri = const Value.absent(),
+    Value<Uint8List?> bookmarkData = const Value.absent(),
     Value<String?> md5 = const Value.absent(),
     Value<int?> size = const Value.absent(),
     Value<int?> localMtimeMs = const Value.absent(),
@@ -1786,6 +1892,7 @@ class AudioRow extends DataClass implements Insertable<AudioRow> {
     voice: voice.present ? voice.value : this.voice,
     source: source.present ? source.value : this.source,
     localUri: localUri.present ? localUri.value : this.localUri,
+    bookmarkData: bookmarkData.present ? bookmarkData.value : this.bookmarkData,
     md5: md5.present ? md5.value : this.md5,
     size: size.present ? size.value : this.size,
     localMtimeMs: localMtimeMs.present ? localMtimeMs.value : this.localMtimeMs,
@@ -1824,6 +1931,9 @@ class AudioRow extends DataClass implements Insertable<AudioRow> {
       voice: data.voice.present ? data.voice.value : this.voice,
       source: data.source.present ? data.source.value : this.source,
       localUri: data.localUri.present ? data.localUri.value : this.localUri,
+      bookmarkData: data.bookmarkData.present
+          ? data.bookmarkData.value
+          : this.bookmarkData,
       md5: data.md5.present ? data.md5.value : this.md5,
       size: data.size.present ? data.size.value : this.size,
       localMtimeMs: data.localMtimeMs.present
@@ -1853,6 +1963,7 @@ class AudioRow extends DataClass implements Insertable<AudioRow> {
           ..write('voice: $voice, ')
           ..write('source: $source, ')
           ..write('localUri: $localUri, ')
+          ..write('bookmarkData: $bookmarkData, ')
           ..write('md5: $md5, ')
           ..write('size: $size, ')
           ..write('localMtimeMs: $localMtimeMs, ')
@@ -1880,6 +1991,7 @@ class AudioRow extends DataClass implements Insertable<AudioRow> {
     voice,
     source,
     localUri,
+    $driftBlobEquality.hash(bookmarkData),
     md5,
     size,
     localMtimeMs,
@@ -1906,6 +2018,7 @@ class AudioRow extends DataClass implements Insertable<AudioRow> {
           other.voice == this.voice &&
           other.source == this.source &&
           other.localUri == this.localUri &&
+          $driftBlobEquality.equals(other.bookmarkData, this.bookmarkData) &&
           other.md5 == this.md5 &&
           other.size == this.size &&
           other.localMtimeMs == this.localMtimeMs &&
@@ -1930,6 +2043,7 @@ class AudiosCompanion extends UpdateCompanion<AudioRow> {
   final Value<String?> voice;
   final Value<String?> source;
   final Value<String?> localUri;
+  final Value<Uint8List?> bookmarkData;
   final Value<String?> md5;
   final Value<int?> size;
   final Value<int?> localMtimeMs;
@@ -1953,6 +2067,7 @@ class AudiosCompanion extends UpdateCompanion<AudioRow> {
     this.voice = const Value.absent(),
     this.source = const Value.absent(),
     this.localUri = const Value.absent(),
+    this.bookmarkData = const Value.absent(),
     this.md5 = const Value.absent(),
     this.size = const Value.absent(),
     this.localMtimeMs = const Value.absent(),
@@ -1977,6 +2092,7 @@ class AudiosCompanion extends UpdateCompanion<AudioRow> {
     this.voice = const Value.absent(),
     this.source = const Value.absent(),
     this.localUri = const Value.absent(),
+    this.bookmarkData = const Value.absent(),
     this.md5 = const Value.absent(),
     this.size = const Value.absent(),
     this.localMtimeMs = const Value.absent(),
@@ -2005,6 +2121,7 @@ class AudiosCompanion extends UpdateCompanion<AudioRow> {
     Expression<String>? voice,
     Expression<String>? source,
     Expression<String>? localUri,
+    Expression<Uint8List>? bookmarkData,
     Expression<String>? md5,
     Expression<int>? size,
     Expression<int>? localMtimeMs,
@@ -2029,6 +2146,7 @@ class AudiosCompanion extends UpdateCompanion<AudioRow> {
       if (voice != null) 'voice': voice,
       if (source != null) 'source': source,
       if (localUri != null) 'local_uri': localUri,
+      if (bookmarkData != null) 'bookmark_data': bookmarkData,
       if (md5 != null) 'md5': md5,
       if (size != null) 'size': size,
       if (localMtimeMs != null) 'local_mtime_ms': localMtimeMs,
@@ -2055,6 +2173,7 @@ class AudiosCompanion extends UpdateCompanion<AudioRow> {
     Value<String?>? voice,
     Value<String?>? source,
     Value<String?>? localUri,
+    Value<Uint8List?>? bookmarkData,
     Value<String?>? md5,
     Value<int?>? size,
     Value<int?>? localMtimeMs,
@@ -2079,6 +2198,7 @@ class AudiosCompanion extends UpdateCompanion<AudioRow> {
       voice: voice ?? this.voice,
       source: source ?? this.source,
       localUri: localUri ?? this.localUri,
+      bookmarkData: bookmarkData ?? this.bookmarkData,
       md5: md5 ?? this.md5,
       size: size ?? this.size,
       localMtimeMs: localMtimeMs ?? this.localMtimeMs,
@@ -2141,6 +2261,9 @@ class AudiosCompanion extends UpdateCompanion<AudioRow> {
     if (localUri.present) {
       map['local_uri'] = Variable<String>(localUri.value);
     }
+    if (bookmarkData.present) {
+      map['bookmark_data'] = Variable<Uint8List>(bookmarkData.value);
+    }
     if (md5.present) {
       map['md5'] = Variable<String>(md5.value);
     }
@@ -2179,6 +2302,7 @@ class AudiosCompanion extends UpdateCompanion<AudioRow> {
           ..write('voice: $voice, ')
           ..write('source: $source, ')
           ..write('localUri: $localUri, ')
+          ..write('bookmarkData: $bookmarkData, ')
           ..write('md5: $md5, ')
           ..write('size: $size, ')
           ..write('localMtimeMs: $localMtimeMs, ')
@@ -11590,6 +11714,7 @@ typedef $$VideosTableCreateCompanionBuilder =
       Value<String> language,
       Value<String?> source,
       Value<String?> localUri,
+      Value<Uint8List?> bookmarkData,
       Value<String?> md5,
       Value<int?> size,
       Value<int?> localMtimeMs,
@@ -11612,6 +11737,7 @@ typedef $$VideosTableUpdateCompanionBuilder =
       Value<String> language,
       Value<String?> source,
       Value<String?> localUri,
+      Value<Uint8List?> bookmarkData,
       Value<String?> md5,
       Value<int?> size,
       Value<int?> localMtimeMs,
@@ -11695,6 +11821,11 @@ class $$VideosTableFilterComposer
 
   ColumnFilters<String> get localUri => $composableBuilder(
     column: $table.localUri,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<Uint8List> get bookmarkData => $composableBuilder(
+    column: $table.bookmarkData,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -11798,6 +11929,11 @@ class $$VideosTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<Uint8List> get bookmarkData => $composableBuilder(
+    column: $table.bookmarkData,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get md5 => $composableBuilder(
     column: $table.md5,
     builder: (column) => ColumnOrderings(column),
@@ -11880,6 +12016,11 @@ class $$VideosTableAnnotationComposer
   GeneratedColumn<String> get localUri =>
       $composableBuilder(column: $table.localUri, builder: (column) => column);
 
+  GeneratedColumn<Uint8List> get bookmarkData => $composableBuilder(
+    column: $table.bookmarkData,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get md5 =>
       $composableBuilder(column: $table.md5, builder: (column) => column);
 
@@ -11937,6 +12078,7 @@ class $$VideosTableTableManager
                 Value<String> language = const Value.absent(),
                 Value<String?> source = const Value.absent(),
                 Value<String?> localUri = const Value.absent(),
+                Value<Uint8List?> bookmarkData = const Value.absent(),
                 Value<String?> md5 = const Value.absent(),
                 Value<int?> size = const Value.absent(),
                 Value<int?> localMtimeMs = const Value.absent(),
@@ -11957,6 +12099,7 @@ class $$VideosTableTableManager
                 language: language,
                 source: source,
                 localUri: localUri,
+                bookmarkData: bookmarkData,
                 md5: md5,
                 size: size,
                 localMtimeMs: localMtimeMs,
@@ -11979,6 +12122,7 @@ class $$VideosTableTableManager
                 Value<String> language = const Value.absent(),
                 Value<String?> source = const Value.absent(),
                 Value<String?> localUri = const Value.absent(),
+                Value<Uint8List?> bookmarkData = const Value.absent(),
                 Value<String?> md5 = const Value.absent(),
                 Value<int?> size = const Value.absent(),
                 Value<int?> localMtimeMs = const Value.absent(),
@@ -11999,6 +12143,7 @@ class $$VideosTableTableManager
                 language: language,
                 source: source,
                 localUri: localUri,
+                bookmarkData: bookmarkData,
                 md5: md5,
                 size: size,
                 localMtimeMs: localMtimeMs,
@@ -12046,6 +12191,7 @@ typedef $$AudiosTableCreateCompanionBuilder =
       Value<String?> voice,
       Value<String?> source,
       Value<String?> localUri,
+      Value<Uint8List?> bookmarkData,
       Value<String?> md5,
       Value<int?> size,
       Value<int?> localMtimeMs,
@@ -12071,6 +12217,7 @@ typedef $$AudiosTableUpdateCompanionBuilder =
       Value<String?> voice,
       Value<String?> source,
       Value<String?> localUri,
+      Value<Uint8List?> bookmarkData,
       Value<String?> md5,
       Value<int?> size,
       Value<int?> localMtimeMs,
@@ -12169,6 +12316,11 @@ class $$AudiosTableFilterComposer
 
   ColumnFilters<String> get localUri => $composableBuilder(
     column: $table.localUri,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<Uint8List> get bookmarkData => $composableBuilder(
+    column: $table.bookmarkData,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -12287,6 +12439,11 @@ class $$AudiosTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<Uint8List> get bookmarkData => $composableBuilder(
+    column: $table.bookmarkData,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get md5 => $composableBuilder(
     column: $table.md5,
     builder: (column) => ColumnOrderings(column),
@@ -12382,6 +12539,11 @@ class $$AudiosTableAnnotationComposer
   GeneratedColumn<String> get localUri =>
       $composableBuilder(column: $table.localUri, builder: (column) => column);
 
+  GeneratedColumn<Uint8List> get bookmarkData => $composableBuilder(
+    column: $table.bookmarkData,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get md5 =>
       $composableBuilder(column: $table.md5, builder: (column) => column);
 
@@ -12442,6 +12604,7 @@ class $$AudiosTableTableManager
                 Value<String?> voice = const Value.absent(),
                 Value<String?> source = const Value.absent(),
                 Value<String?> localUri = const Value.absent(),
+                Value<Uint8List?> bookmarkData = const Value.absent(),
                 Value<String?> md5 = const Value.absent(),
                 Value<int?> size = const Value.absent(),
                 Value<int?> localMtimeMs = const Value.absent(),
@@ -12465,6 +12628,7 @@ class $$AudiosTableTableManager
                 voice: voice,
                 source: source,
                 localUri: localUri,
+                bookmarkData: bookmarkData,
                 md5: md5,
                 size: size,
                 localMtimeMs: localMtimeMs,
@@ -12490,6 +12654,7 @@ class $$AudiosTableTableManager
                 Value<String?> voice = const Value.absent(),
                 Value<String?> source = const Value.absent(),
                 Value<String?> localUri = const Value.absent(),
+                Value<Uint8List?> bookmarkData = const Value.absent(),
                 Value<String?> md5 = const Value.absent(),
                 Value<int?> size = const Value.absent(),
                 Value<int?> localMtimeMs = const Value.absent(),
@@ -12513,6 +12678,7 @@ class $$AudiosTableTableManager
                 voice: voice,
                 source: source,
                 localUri: localUri,
+                bookmarkData: bookmarkData,
                 md5: md5,
                 size: size,
                 localMtimeMs: localMtimeMs,

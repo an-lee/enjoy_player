@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:drift/native.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
 import 'package:enjoy_player/data/db/media_target_resolver.dart';
+import 'package:enjoy_player/data/files/security_scoped_bookmark.dart';
 import 'package:enjoy_player/features/player/domain/playable_source.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 VideoRow _video({
@@ -18,6 +20,7 @@ VideoRow _video({
   int? size,
   int? localMtimeMs,
   String? mediaUrl,
+  Uint8List? bookmarkData,
 }) {
   final now = DateTime.utc(2026, 7, 1);
   return VideoRow(
@@ -29,6 +32,7 @@ VideoRow _video({
     language: language,
     source: source,
     localUri: localUri,
+    bookmarkData: bookmarkData,
     size: size,
     localMtimeMs: localMtimeMs,
     mediaUrl: mediaUrl,
@@ -48,6 +52,7 @@ AudioRow _audio({
   int? size,
   int? localMtimeMs,
   String? mediaUrl,
+  Uint8List? bookmarkData,
 }) {
   final now = DateTime.utc(2026, 7, 1);
   return AudioRow(
@@ -58,6 +63,7 @@ AudioRow _audio({
     durationSeconds: durationSeconds,
     language: language,
     localUri: localUri,
+    bookmarkData: bookmarkData,
     size: size,
     localMtimeMs: localMtimeMs,
     mediaUrl: mediaUrl,
@@ -67,6 +73,7 @@ AudioRow _audio({
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late AppDatabase db;
   late Directory tempDir;
 
@@ -209,6 +216,120 @@ void main() {
       expect(src, isA<LocalFilePlayableSource>());
       expect((src as LocalFilePlayableSource).uri, f.path);
     });
+
+    test('resolves bookmark when present and uses the resolved path '
+        'with a scope token (ADR-0060)', () async {
+      final realFile = await touchFile('real.mp4', 100);
+      // Stale localUri (the file moved). With a bookmark present the
+      // resolver must use the resolved path instead.
+      await db.videoDao.insertRow(
+        _video(
+          id: 'bookmarked',
+          localUri: '/Users/an-lee/Downloads/old.mp4',
+          bookmarkData: Uint8List.fromList([1, 2, 3]),
+          size: 100,
+        ),
+      );
+      final mockChannel = const MethodChannel(
+        'enjoy.player/security_scoped_bookmark.test_resolve_ok',
+      );
+      SecurityScopedBookmarkChannel.overrideChannel = mockChannel;
+      addTearDown(() {
+        SecurityScopedBookmarkChannel.overrideChannel = null;
+      });
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(mockChannel, (call) async {
+            if (call.method == 'resolveBookmark') {
+              return <String, Object?>{
+                'path': realFile.path,
+                'token': 17,
+                'stale': false,
+              };
+            }
+            if (call.method == 'releaseBookmark') return null;
+            throw MissingPluginException();
+          });
+
+      final src = await resolvePlayableSource(db, 'bookmarked');
+      expect(src, isA<LocalFilePlayableSource>());
+      final local = src as LocalFilePlayableSource;
+      expect(local.uri, realFile.path);
+      expect(local.scopeToken, 17);
+    });
+
+    test(
+      'falls back to localUri when bookmark resolves but the resolved '
+      'path fails trust check (size/mtime mismatch — silent rebind)',
+      () async {
+        final untouchedFile = await touchFile('present.mp4', 100);
+        await db.videoDao.insertRow(
+          _video(
+            id: 'rebound-untrusted',
+            localUri: untouchedFile.path,
+            bookmarkData: Uint8List.fromList([9, 9, 9]),
+            size: 100,
+          ),
+        );
+        final mockChannel = const MethodChannel(
+          'enjoy.player/security_scoped_bookmark.test_rebound_untrusted',
+        );
+        SecurityScopedBookmarkChannel.overrideChannel = mockChannel;
+        addTearDown(() {
+          SecurityScopedBookmarkChannel.overrideChannel = null;
+        });
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(mockChannel, (call) async {
+              if (call.method == 'resolveBookmark') {
+                return <String, Object?>{
+                  'path': untouchedFile.path,
+                  'token': 42,
+                  'stale': true,
+                };
+              }
+              if (call.method == 'releaseBookmark') return null;
+              throw MissingPluginException();
+            });
+
+        final src = await resolvePlayableSource(db, 'rebound-untrusted');
+        // Falls through to localUri path, which IS trusted (size matches).
+        expect(src, isA<LocalFilePlayableSource>());
+        expect((src as LocalFilePlayableSource).uri, untouchedFile.path);
+      },
+    );
+
+    test(
+      'falls back to remote mediaUrl when both bookmark and localUri fail',
+      () async {
+        await db.videoDao.insertRow(
+          _video(
+            id: 'both-fail',
+            localUri: '/tmp/missing.mp4',
+            bookmarkData: Uint8List.fromList([1]),
+            size: 100,
+            mediaUrl: 'https://x.example/a.mp4',
+          ),
+        );
+        final mockChannel = const MethodChannel(
+          'enjoy.player/security_scoped_bookmark.test_both_fail',
+        );
+        SecurityScopedBookmarkChannel.overrideChannel = mockChannel;
+        addTearDown(() {
+          SecurityScopedBookmarkChannel.overrideChannel = null;
+        });
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(mockChannel, (call) async {
+              if (call.method == 'resolveBookmark') {
+                // Native side fails to resolve (file gone).
+                throw PlatformException(code: 'RESOLVE_FAILED');
+              }
+              if (call.method == 'releaseBookmark') return null;
+              throw MissingPluginException();
+            });
+
+        final src = await resolvePlayableSource(db, 'both-fail');
+        expect(src, isA<RemoteUrlPlayableSource>());
+      },
+    );
   });
 
   group('resolvePlayableSourceUri', () {
@@ -261,6 +382,40 @@ void main() {
         await resolvePlayableSourceUri(db, 'a'),
         'https://x.example/a.mp3',
       );
+    });
+
+    test('prefers bookmark-resolved path over stale localUri when bookmark '
+        'is present', () async {
+      final realFile = await touchFile('reb.mp4', 100);
+      await db.videoDao.insertRow(
+        _video(
+          id: 'u',
+          localUri: '/Users/an-lee/Downloads/old.mp4',
+          bookmarkData: Uint8List.fromList([1]),
+          size: 100,
+        ),
+      );
+      final mockChannel = const MethodChannel(
+        'enjoy.player/security_scoped_bookmark.test_uri_resolve_ok',
+      );
+      SecurityScopedBookmarkChannel.overrideChannel = mockChannel;
+      addTearDown(() {
+        SecurityScopedBookmarkChannel.overrideChannel = null;
+      });
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(mockChannel, (call) async {
+            if (call.method == 'resolveBookmark') {
+              return <String, Object?>{
+                'path': realFile.path,
+                'token': 5,
+                'stale': false,
+              };
+            }
+            if (call.method == 'releaseBookmark') return null;
+            throw MissingPluginException();
+          });
+
+      expect(await resolvePlayableSourceUri(db, 'u'), realFile.path);
     });
   });
 }

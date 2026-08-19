@@ -199,6 +199,7 @@ class MediaLibraryRepository {
             language: canonicalMediaLanguageTag(contentLanguage),
             source: existing?.source,
             localUri: result.fileUri,
+            bookmarkData: result.bookmarkData,
             md5: contentHash,
             size: result.fileSize,
             localMtimeMs: result.mtimeMs,
@@ -240,6 +241,7 @@ class MediaLibraryRepository {
           voice: existing?.voice,
           source: existing?.source,
           localUri: result.fileUri,
+          bookmarkData: result.bookmarkData,
           md5: contentHash,
           size: result.fileSize,
           localMtimeMs: result.mtimeMs,
@@ -887,6 +889,7 @@ class MediaLibraryRepository {
           persist: (result) => _db.videoDao.insertRow(
             video.copyWith(
               localUri: Value(result.fileUri),
+              bookmarkData: Value(result.bookmarkData),
               size: Value(result.fileSize),
               localMtimeMs: Value(result.mtimeMs),
               updatedAt: DateTime.now(),
@@ -907,6 +910,7 @@ class MediaLibraryRepository {
           persist: (result) => _db.audioDao.insertRow(
             audio.copyWith(
               localUri: Value(result.fileUri),
+              bookmarkData: Value(result.bookmarkData),
               size: Value(result.fileSize),
               localMtimeMs: Value(result.mtimeMs),
               updatedAt: DateTime.now(),
