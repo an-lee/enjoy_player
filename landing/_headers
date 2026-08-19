@@ -26,6 +26,9 @@
 /og-image.svg
   Cache-Control: public, max-age=86400, immutable
 
+/screenshot-hero.png
+  Cache-Control: public, max-age=86400, immutable
+
 # Manifest proxy: edge-side caching is set by the Function; browser gets 5 min
 /api/latest
   Cache-Control: public, max-age=300, stale-while-revalidate=600
