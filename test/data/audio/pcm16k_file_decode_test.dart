@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:enjoy_player/data/audio/pcm16k_mono.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   test('decodeFileToPcm16kMono fails when the path is missing', () async {
     expect(
       () => decodeFileToPcm16kMono(r'C:\enjoy-missing-pcm16k-file.wav'),
