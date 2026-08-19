@@ -144,12 +144,14 @@ if [[ "${RELEASE_SKIP_BUILD}" != true ]]; then
     }
     apple_with_spm_host_lock build_ios_ipa
 
+    IPA="$(ls -1 "${root}/build/ios/ipa/"*.ipa | head -1)"
+    if [[ -z "${IPA}" ]]; then
+      echo "Missing IPA under build/ios/ipa/ — flutter build ipa did not produce one." >&2
+      exit 1
+    fi
+    bash "${root}/.github/scripts/check_ios_ipa.sh" "${IPA}"
+
     if [[ "${UPLOAD_TESTFLIGHT}" == true ]]; then
-      IPA="$(ls -1 "${root}/build/ios/ipa/"*.ipa | head -1)"
-      if [[ -z "${IPA}" ]]; then
-        echo "Missing IPA under build/ios/ipa/ — flutter build ipa did not produce one." >&2
-        exit 1
-      fi
       release_upload_testflight_ipa "${IPA}"
     fi
   fi
@@ -177,6 +179,7 @@ else
       echo "Missing IPA under build/ios/ipa/ — build first or drop --skip-build." >&2
       exit 1
     fi
+    bash "${root}/.github/scripts/check_ios_ipa.sh" "${IPA}"
     release_upload_testflight_ipa "${IPA}"
   fi
 

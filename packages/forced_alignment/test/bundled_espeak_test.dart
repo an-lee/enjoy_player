@@ -75,8 +75,8 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
 
     // Xcode's "Embed Frameworks" phase owns libespeak-ng.dylib; the script
-    // only handles the data tree copy and the bundle re-sign. Pre-stage the
-    // dylib the way Xcode would.
+    // only handles the data tree copy. Pre-stage the dylib the way Xcode
+    // would.
     final macApp = Directory('${tmp.path}/Enjoy Player.app')
       ..createSync(recursive: true);
     Directory('${macApp.path}/Contents/MacOS').createSync(recursive: true);

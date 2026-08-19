@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **iOS TestFlight uploads** no longer fail with ITMS-90429 ("Invalid Swift Support — libswift_Concurrency.dylib isn't at the expected location /Payload/Runner.app/Frameworks") after the eSpeak-NG Bundle build phase is added. The script used to hand-sign `libespeak-ng.dylib` after `install_name_tool` rewrote its Mach-O header, which invalidated the outer `_CodeSignature/CodeResources` seal and caused `xcodebuild -exportArchive` to strip the Swift stdlib dylibs (placed by Xcode's automatic Swift stdlib copy, since the `Embed Frameworks` phase is empty) from the signed IPA. iOS now re-signs the whole app bundle instead; macOS keeps the per-dylib `--options runtime --timestamp` sign for notarization.
+- **iOS TestFlight packaging** now leaves Xcode's Embed Frameworks phase as the sole owner of copying and signing `libespeak-ng.dylib`. The custom eSpeak script no longer mutates or re-signs nested code after that phase, preventing archive export from dropping `libswift_Concurrency.dylib` and triggering ITMS-90429; exported IPAs are now checked for both dylibs, strict signing, and `MinimumOSVersion` 15.0.
 
 ## [0.8.2] - 2026-08-18
 

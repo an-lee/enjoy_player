@@ -576,7 +576,7 @@ Identity: **`ai.enjoy.player`** everywhere ([ADR-0020](decisions/0020-android-wi
 | Platform | Min target | Notes |
 |----------|------------|-------|
 | Android | minSdk 26, Java 17 | AGP 9; vendored `ffmpeg_kit_flutter_new` |
-| iOS | 14.0 | `use_frameworks!` for Azure Speech, FFmpeg |
+| iOS | 15.0 | `use_frameworks!` for Azure Speech, FFmpeg |
 | macOS | 10.15 | App Sandbox on; GPL FFmpeg bundled |
 | Windows | x64 | Authenticode signing outside repo |
 | Linux | x86_64 | AppImage; bundled `libmpv` + `ffmpeg`; Ubuntu 22.04+ / Fedora 39+ / Debian 12 |
@@ -605,9 +605,13 @@ played to the learner and does not replace Craft/library audio.
   the copy, with `CodeSignOnCopy` / `RemoveHeadersOnCopy`) so a missing
   dylib fails the build with a clear error instead of silently dropping
   the spoken-reference at runtime (`spokenReferenceUnavailable` →
-  "failed to generate, tap to retry"). The script also re-signs the
-  whole bundle (iOS only) to keep the Swift stdlib dylibs in the
-  TestFlight IPA (same root cause as the ITMS-90429 fix in `bf820c03`).
+  "failed to generate, tap to retry"). The script does not mutate or
+  re-sign the embedded dylib after Xcode's Embed Frameworks phase:
+  `install_name_tool` and a post-embed app re-sign can invalidate the
+  nested code/resource seal, causing `xcodebuild -exportArchive` to
+  remove Swift stdlib dylibs and trigger ITMS-90429. Release packaging
+  verifies the exported IPA contains both dylibs, has
+  `MinimumOSVersion` 15.0, and passes strict code-sign verification.
   Android ships the per-ABI `.so` through jniLibs and `espeak-ng-data`
   as Flutter assets extracted at startup
   (`lib/core/platform/espeak_android_provisioner.dart`). Flutter does **not**

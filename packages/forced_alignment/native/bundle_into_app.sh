@@ -7,8 +7,9 @@
 #
 # The libespeak-ng.dylib itself is embedded by the Xcode "Embed Frameworks"
 # phase (PBXCopyFilesBuildPhase with dstSubfolderSpec=10), so this script
-# only handles the data tree copy and the bundle re-sign that keeps the
-# Swift stdlib dylibs in the TestFlight IPA (see commit bf820c03).
+# only handles the data tree copy. Xcode owns the embedded dylib's
+# install-name and code signature so archive export sees a consistent
+# nested bundle.
 set -eu
 
 APP_BUNDLE="${1:-}"
@@ -53,10 +54,6 @@ if [ ! -f "${LIB_DEST}" ]; then
   echo "bundle_espeak_ng: missing ${LIB_DEST} (Xcode Embed Frameworks did not copy libespeak-ng.dylib)" >&2
   exit 1
 fi
-if command -v install_name_tool >/dev/null 2>&1; then
-  install_name_tool -id "@rpath/libespeak-ng.dylib" "${LIB_DEST}" 2>/dev/null || true
-fi
-
 rm -rf "${DATA_DEST}"
 mkdir -p "${DATA_DEST}"
 # Copy the trimmed voice tree (including nested lang/). Do not use a
@@ -71,47 +68,12 @@ if [ -z "${sign_identity}" ] || [ "${sign_identity}" = "-" ]; then
   sign_identity="${CODE_SIGN_IDENTITY:-}"
 fi
 
-# For iOS, do NOT hand-sign the dylib here. The Runner target's
-# "Embed Frameworks" phase carries libespeak-ng.dylib and the Swift
-# stdlib dylibs (libswift_Concurrency.dylib, etc.) are only embedded
-# by Xcode's automatic Swift stdlib copy — files that are not
-# declared in the Embed Frameworks phase. A manual `codesign --force
-# --sign "$LIB_DEST"` rewrites the dylib hash after Xcode's outer
-# CodeResources seal has been computed, which causes
-# xcodebuild -exportArchive to drop the unmatched Swift stdlib dylibs
-# from the IPA and App Store Connect rejects the upload with
-# ITMS-90429 ("Invalid Swift Support — libswift_Concurrency.dylib
-# isn't at the expected location /Payload/Runner.app/Frameworks").
-# Let Xcode's implicit outer sign handle libespeak-ng.dylib via the
-# bundle-level re-sign below so the dylib hash and the outer seal
-# stay consistent.
-#
-# Skip the whole-bundle re-sign on Debug iOS builds: Flutter's
-# ENABLE_DEBUG_DYLIB=YES drops an unsigned __preview.dylib at the
-# bundle root, which fails `codesign --force --sign "$APP_BUNDLE"`
-# with "unsealed contents present in the bundle root". The Debug
-# build never hits xcodebuild -exportArchive so the ITMS-90429 fix
-# is unnecessary there.
-#
-# Likewise, prune the empty `Contents/Resources/` (a stray macOS-style
-# Resources folder that Xcode's asset/strip pipeline leaves behind in
-# iOS bundles and codesign refuses to seal) before signing.
-if [ "${PLATFORM_NAME}" = "iphoneos" ] || [ "${PLATFORM_NAME}" = "iphonesimulator" ]; then
-  for d in "${APP_BUNDLE}/Contents/Resources" "${APP_BUNDLE}/Contents"; do
-    if [ -d "$d" ] && [ -z "$(ls -A "$d" 2>/dev/null)" ]; then
-      rmdir "$d" 2>/dev/null || true
-    fi
-  done
-fi
-
 case "${PLATFORM_NAME}" in
   iphoneos | iphonesimulator)
-    if [ "${CONFIGURATION:-Debug}" != "Debug" ] &&
-       [ "${CODE_SIGNING_ALLOWED:-YES}" != "NO" ] &&
-       [ -n "${sign_identity}" ] && [ "${sign_identity}" != "-" ]; then
-      # shellcheck disable=SC2086
-      codesign --force --sign "${sign_identity}" "${APP_BUNDLE}"
-    fi
+    # Xcode's Embed Frameworks phase has CodeSignOnCopy and the final
+    # target signing phase owns the app seal. Do not mutate or re-sign
+    # either one here: exportArchive otherwise sees stale CodeResources
+    # and can remove libswift_Concurrency.dylib from the IPA.
     ;;
   *)
     if [ "${CODE_SIGNING_ALLOWED:-YES}" != "NO" ] &&

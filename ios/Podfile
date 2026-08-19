@@ -1,5 +1,5 @@
 # Azure Speech iOS SDK is distributed as a dynamic framework — keep use_frameworks enabled.
-platform :ios, '14.0'
+platform :ios, '15.0'
 
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
@@ -38,8 +38,8 @@ post_install do |installer|
       # Azure Speech pods (and transitive deps) may ship with a lower declared
       # IPHONEOS_DEPLOYMENT_TARGET than our app; align to the Podfile floor to
       # avoid Xcode warnings and stale SDK compatibility flags.
-      if config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f < 14.0
-        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
+      if config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f < 15.0
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
       end
     end
   end
