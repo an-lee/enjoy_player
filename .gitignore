@@ -33,6 +33,10 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Flutter golden comparator dumps (`matchesGoldenFile` writes these next to
+# the test when a snapshot mismatches). Keep goldens/; do not commit failures/.
+**/failures/
+
 # Symbolication related
 app.*.symbols
 
