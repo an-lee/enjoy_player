@@ -65,16 +65,24 @@ void main() {
       return;
     }
     final src = resolveEspeakDataPath();
+    final lib = resolveEspeakLibraryPath();
     expect(src, isNotNull);
+    expect(lib, isNotNull);
     final script = File('${Directory(src!).parent.path}/bundle_into_app.sh');
     expect(script.existsSync(), isTrue, reason: script.path);
 
     final tmp = Directory.systemTemp.createTempSync('espeak-bundle-script-');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
+    // Xcode's "Embed Frameworks" phase owns libespeak-ng.dylib; the script
+    // only handles the data tree copy and the bundle re-sign. Pre-stage the
+    // dylib the way Xcode would.
     final macApp = Directory('${tmp.path}/Enjoy Player.app')
       ..createSync(recursive: true);
     Directory('${macApp.path}/Contents/MacOS').createSync(recursive: true);
+    final macFrameworks = Directory('${macApp.path}/Contents/Frameworks')
+      ..createSync();
+    File(lib!).copySync('${macFrameworks.path}/libespeak-ng.dylib');
     _runBundleScript(script.path, macApp.path, platformName: 'macosx');
     expect(
       missingEspeakRequiredDataFiles(
@@ -84,6 +92,8 @@ void main() {
     );
 
     final iosApp = Directory('${tmp.path}/Runner.app')..createSync();
+    final iosFrameworks = Directory('${iosApp.path}/Frameworks')..createSync();
+    File(lib).copySync('${iosFrameworks.path}/libespeak-ng.dylib');
     _runBundleScript(script.path, iosApp.path, platformName: 'iphoneos');
     expect(
       missingEspeakRequiredDataFiles('${iosApp.path}/espeak-ng-data'),
@@ -102,6 +112,10 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
     final app = Directory('${tmp.path}/Enjoy Player.app');
     Directory('${app.path}/Contents/MacOS').createSync(recursive: true);
+    // Xcode's "Embed Frameworks" phase copies the dylib; pre-stage it.
+    final macFrameworks = Directory('${app.path}/Contents/Frameworks')
+      ..createSync();
+    File(repoNative!).copySync('${macFrameworks.path}/libespeak-ng.dylib');
     final script = File(
       '${Directory(repoData!).parent.path}/bundle_into_app.sh',
     );

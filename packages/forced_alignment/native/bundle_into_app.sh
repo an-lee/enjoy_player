@@ -1,9 +1,14 @@
 #!/bin/sh
-# Copy vendored libespeak-ng + espeak-ng-data into a built macOS/iOS app.
+# Copy vendored espeak-ng-data into a built macOS/iOS app.
 #
 # Usage: bundle_into_app.sh <path/to/App.app>
 # Xcode env: PLATFORM_NAME, EXPANDED_CODE_SIGN_IDENTITY, CODE_SIGN_IDENTITY,
 #            CODE_SIGNING_ALLOWED, ENABLE_HARDENED_RUNTIME, CONFIGURATION
+#
+# The libespeak-ng.dylib itself is embedded by the Xcode "Embed Frameworks"
+# phase (PBXCopyFilesBuildPhase with dstSubfolderSpec=10), so this script
+# only handles the data tree copy and the bundle re-sign that keeps the
+# Swift stdlib dylibs in the TestFlight IPA (see commit bf820c03).
 set -eu
 
 APP_BUNDLE="${1:-}"
@@ -25,26 +30,14 @@ fi
 
 case "${PLATFORM_NAME}" in
   macosx)
-    LIB_SRC="${NATIVE_DIR}/macos/libespeak-ng.dylib"
-    FRAMEWORKS_DIR="${APP_BUNDLE}/Contents/Frameworks"
+    LIB_DEST="${APP_BUNDLE}/Contents/Frameworks/libespeak-ng.dylib"
     DATA_DEST="${APP_BUNDLE}/Contents/Resources/espeak-ng-data"
     ;;
-  iphonesimulator)
-    LIB_SRC="${NATIVE_DIR}/ios/libespeak-ng.simulator.dylib"
-    FRAMEWORKS_DIR="${APP_BUNDLE}/Frameworks"
-    DATA_DEST="${APP_BUNDLE}/espeak-ng-data"
-    ;;
-  iphoneos|*)
-    LIB_SRC="${NATIVE_DIR}/ios/libespeak-ng.dylib"
-    FRAMEWORKS_DIR="${APP_BUNDLE}/Frameworks"
+  iphonesimulator | iphoneos | *)
+    LIB_DEST="${APP_BUNDLE}/Frameworks/libespeak-ng.dylib"
     DATA_DEST="${APP_BUNDLE}/espeak-ng-data"
     ;;
 esac
-
-if [ ! -f "${LIB_SRC}" ]; then
-  echo "bundle_espeak_ng: missing ${LIB_SRC}" >&2
-  exit 1
-fi
 
 DATA_SRC="${NATIVE_DIR}/espeak-ng-data"
 if [ ! -d "${DATA_SRC}" ]; then
@@ -52,10 +45,14 @@ if [ ! -d "${DATA_SRC}" ]; then
   exit 1
 fi
 
-mkdir -p "${FRAMEWORKS_DIR}"
-LIB_DEST="${FRAMEWORKS_DIR}/libespeak-ng.dylib"
-cp -f "${LIB_SRC}" "${LIB_DEST}"
-chmod +x "${LIB_DEST}"
+# Xcode's "Embed Frameworks" phase (dstSubfolderSpec=10) is the source of
+# truth for libespeak-ng.dylib. Fail closed if it didn't land — without the
+# dylib the production align path returns spokenReferenceUnavailable at
+# runtime, which the user sees as "failed to generate, tap to retry".
+if [ ! -f "${LIB_DEST}" ]; then
+  echo "bundle_espeak_ng: missing ${LIB_DEST} (Xcode Embed Frameworks did not copy libespeak-ng.dylib)" >&2
+  exit 1
+fi
 if command -v install_name_tool >/dev/null 2>&1; then
   install_name_tool -id "@rpath/libespeak-ng.dylib" "${LIB_DEST}" 2>/dev/null || true
 fi
@@ -74,22 +71,43 @@ if [ -z "${sign_identity}" ] || [ "${sign_identity}" = "-" ]; then
   sign_identity="${CODE_SIGN_IDENTITY:-}"
 fi
 
-# For iOS, do NOT hand-sign the dylib here. The runner target's
-# "Embed Frameworks" phase is empty and the Swift stdlib dylibs
-# (libswift_Concurrency.dylib, etc.) are only embedded by Xcode's
-# automatic Swift stdlib copy. A manual `codesign --force --sign`
-# rewrites libespeak-ng.dylib after Xcode's outer CodeResources
-# seal has been computed, which causes xcodebuild -exportArchive
-# to drop the unmatched Swift stdlib dylibs from the IPA and
-# App Store Connect rejects the upload with ITMS-90429
-# ("Invalid Swift Support — libswift_Concurrency.dylib isn't at
-# the expected location /Payload/Runner.app/Frameworks"). Let
-# Xcode's implicit outer sign handle libespeak-ng.dylib via the
-# bundle-level re-sign below so the dylib hash and the outer
-# seal stay consistent.
+# For iOS, do NOT hand-sign the dylib here. The Runner target's
+# "Embed Frameworks" phase carries libespeak-ng.dylib and the Swift
+# stdlib dylibs (libswift_Concurrency.dylib, etc.) are only embedded
+# by Xcode's automatic Swift stdlib copy — files that are not
+# declared in the Embed Frameworks phase. A manual `codesign --force
+# --sign "$LIB_DEST"` rewrites the dylib hash after Xcode's outer
+# CodeResources seal has been computed, which causes
+# xcodebuild -exportArchive to drop the unmatched Swift stdlib dylibs
+# from the IPA and App Store Connect rejects the upload with
+# ITMS-90429 ("Invalid Swift Support — libswift_Concurrency.dylib
+# isn't at the expected location /Payload/Runner.app/Frameworks").
+# Let Xcode's implicit outer sign handle libespeak-ng.dylib via the
+# bundle-level re-sign below so the dylib hash and the outer seal
+# stay consistent.
+#
+# Skip the whole-bundle re-sign on Debug iOS builds: Flutter's
+# ENABLE_DEBUG_DYLIB=YES drops an unsigned __preview.dylib at the
+# bundle root, which fails `codesign --force --sign "$APP_BUNDLE"`
+# with "unsealed contents present in the bundle root". The Debug
+# build never hits xcodebuild -exportArchive so the ITMS-90429 fix
+# is unnecessary there.
+#
+# Likewise, prune the empty `Contents/Resources/` (a stray macOS-style
+# Resources folder that Xcode's asset/strip pipeline leaves behind in
+# iOS bundles and codesign refuses to seal) before signing.
+if [ "${PLATFORM_NAME}" = "iphoneos" ] || [ "${PLATFORM_NAME}" = "iphonesimulator" ]; then
+  for d in "${APP_BUNDLE}/Contents/Resources" "${APP_BUNDLE}/Contents"; do
+    if [ -d "$d" ] && [ -z "$(ls -A "$d" 2>/dev/null)" ]; then
+      rmdir "$d" 2>/dev/null || true
+    fi
+  done
+fi
+
 case "${PLATFORM_NAME}" in
   iphoneos | iphonesimulator)
-    if [ "${CODE_SIGNING_ALLOWED:-YES}" != "NO" ] &&
+    if [ "${CONFIGURATION:-Debug}" != "Debug" ] &&
+       [ "${CODE_SIGNING_ALLOWED:-YES}" != "NO" ] &&
        [ -n "${sign_identity}" ] && [ "${sign_identity}" != "-" ]; then
       # shellcheck disable=SC2086
       codesign --force --sign "${sign_identity}" "${APP_BUNDLE}"
@@ -110,4 +128,4 @@ case "${PLATFORM_NAME}" in
     ;;
 esac
 
-echo "bundle_espeak_ng: ${LIB_DEST} + ${DATA_DEST} (${PLATFORM_NAME})"
+echo "bundle_espeak_ng: data=${DATA_DEST} (${PLATFORM_NAME})"

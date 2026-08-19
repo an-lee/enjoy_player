@@ -29,6 +29,7 @@
 		33CC11132044BFA00003C045 /* MainFlutterWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CC11122044BFA00003C045 /* MainFlutterWindow.swift */; };
 		5B5C9F1026E3A5D9007B0001 /* SecurityScopedBookmarkChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B5C9F1026E3A5D9007B0002 /* SecurityScopedBookmarkChannel.swift */; };
 		DFF45C875C0FEABD840BA019 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7FA82744BC17A0C5098C537C /* Pods_Runner.framework */; };
+		E8F2A1C12D4C5E6F7A8B9C30 /* libespeak-ng.dylib in Bundle Framework */ = {isa = PBXBuildFile; fileRef = E8F2A1C02D4C5E6F7A8B9C2F /* libespeak-ng.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy); }; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
 /* End PBXBuildFile section */
 
@@ -56,6 +57,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
+				E8F2A1C12D4C5E6F7A8B9C30 /* libespeak-ng.dylib in Bundle Framework */,
 			);
 			name = "Bundle Framework";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -83,6 +85,7 @@
 		79C4D5C3E1CB9B6FD25B6FFF /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		7FA82744BC17A0C5098C537C /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		E8F2A1C02D4C5E6F7A8B9C2F /* libespeak-ng.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libespeak-ng.dylib; path = "../packages/forced_alignment/native/macos/libespeak-ng.dylib"; sourceTree = SOURCE_ROOT; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		CE9425446C74203A7863608B /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 		DB600046C585E82334273B5E /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
@@ -201,6 +204,7 @@
 			isa = PBXGroup;
 			children = (
 				7FA82744BC17A0C5098C537C /* Pods_Runner.framework */,
+				E8F2A1C02D4C5E6F7A8B9C2F /* libespeak-ng.dylib */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -384,18 +388,20 @@
 		};
 		E8F2A1B42D4C5E6F7A8B9C0E /* Bundle eSpeak-NG */ = {
 			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			inputFileListPaths = (
 			);
 			inputPaths = (
+				"$(SRCROOT)/../packages/forced_alignment/native/espeak-ng-data",
 			);
 			name = "Bundle eSpeak-NG";
 			outputFileListPaths = (
 			);
 			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(WRAPPER_NAME)/Contents/Resources/espeak-ng-data",
+				"$(TARGET_BUILD_DIR)/$(WRAPPER_NAME)/espeak-ng-data",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
