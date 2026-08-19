@@ -74,16 +74,40 @@ if [ -z "${sign_identity}" ] || [ "${sign_identity}" = "-" ]; then
   sign_identity="${CODE_SIGN_IDENTITY:-}"
 fi
 
-if [ "${CODE_SIGNING_ALLOWED:-YES}" != "NO" ] &&
-   [ -n "${sign_identity}" ] && [ "${sign_identity}" != "-" ]; then
-  extra=""
-  if [ "${PLATFORM_NAME}" = "macosx" ] &&
-     { [ "${CONFIGURATION:-Debug}" = "Release" ] ||
-       [ "${ENABLE_HARDENED_RUNTIME:-}" = "YES" ]; }; then
-    extra="--options runtime --timestamp"
-  fi
-  # shellcheck disable=SC2086
-  codesign --force --sign "${sign_identity}" ${extra} "${LIB_DEST}"
-fi
+# For iOS, do NOT hand-sign the dylib here. The runner target's
+# "Embed Frameworks" phase is empty and the Swift stdlib dylibs
+# (libswift_Concurrency.dylib, etc.) are only embedded by Xcode's
+# automatic Swift stdlib copy. A manual `codesign --force --sign`
+# rewrites libespeak-ng.dylib after Xcode's outer CodeResources
+# seal has been computed, which causes xcodebuild -exportArchive
+# to drop the unmatched Swift stdlib dylibs from the IPA and
+# App Store Connect rejects the upload with ITMS-90429
+# ("Invalid Swift Support — libswift_Concurrency.dylib isn't at
+# the expected location /Payload/Runner.app/Frameworks"). Let
+# Xcode's implicit outer sign handle libespeak-ng.dylib via the
+# bundle-level re-sign below so the dylib hash and the outer
+# seal stay consistent.
+case "${PLATFORM_NAME}" in
+  iphoneos | iphonesimulator)
+    if [ "${CODE_SIGNING_ALLOWED:-YES}" != "NO" ] &&
+       [ -n "${sign_identity}" ] && [ "${sign_identity}" != "-" ]; then
+      # shellcheck disable=SC2086
+      codesign --force --sign "${sign_identity}" "${APP_BUNDLE}"
+    fi
+    ;;
+  *)
+    if [ "${CODE_SIGNING_ALLOWED:-YES}" != "NO" ] &&
+       [ -n "${sign_identity}" ] && [ "${sign_identity}" != "-" ]; then
+      extra=""
+      if [ "${PLATFORM_NAME}" = "macosx" ] &&
+         { [ "${CONFIGURATION:-Debug}" = "Release" ] ||
+           [ "${ENABLE_HARDENED_RUNTIME:-}" = "YES" ]; }; then
+        extra="--options runtime --timestamp"
+      fi
+      # shellcheck disable=SC2086
+      codesign --force --sign "${sign_identity}" ${extra} "${LIB_DEST}"
+    fi
+    ;;
+esac
 
 echo "bundle_espeak_ng: ${LIB_DEST} + ${DATA_DEST} (${PLATFORM_NAME})"
