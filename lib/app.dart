@@ -1,14 +1,18 @@
 /// Root Material app with router + theming.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:logging/logging.dart';
 
 import 'package:enjoy_player/core/application/app_preferences_provider.dart';
 import 'package:enjoy_player/core/layout/constrained_app_viewport.dart';
+import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/core/recovery/recovery_actions.dart';
 import 'package:enjoy_player/core/recovery/recovery_surface.dart';
 import 'package:enjoy_player/core/riverpod/async_value_x.dart';
@@ -74,10 +78,14 @@ class EnjoyApp extends ConsumerStatefulWidget {
   ConsumerState<EnjoyApp> createState() => _EnjoyAppState();
 }
 
-class _EnjoyAppState extends ConsumerState<EnjoyApp> {
+class _EnjoyAppState extends ConsumerState<EnjoyApp>
+    with WidgetsBindingObserver {
   /// Keeps locale/prefs visible while [appPreferencesCtrlProvider] reloads after
   /// auth-scoped DB switches (signed-in), avoiding a full-app loading flash.
   AppPreferencesState? _lastResolvedPrefs;
+
+  /// Logger for app-lifecycle shutdown.
+  static final Logger _log = logNamed('app-shutdown');
 
   /// Shared by every [MaterialApp] instance built here — including the
   /// loading/error fallbacks, which run before [appPreferencesCtrlProvider]
@@ -203,6 +211,52 @@ class _EnjoyAppState extends ConsumerState<EnjoyApp> {
       router: router,
       prefs: prefs,
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.detached) {
+      // Desktop quit path (Cmd+Q, window close → -[NSApplication terminate:]).
+      // `ref.onDispose` callbacks on the keep-alive DB providers never fire on
+      // app exit (Riverpod only disposes when its [ProviderContainer] is torn
+      // down — tests and hot restart, not normal quit), so without this hook
+      // the two Drift "DartWorker" background isolates are torn down by the
+      // VM mid-shutdown and race `sqlite3_finalize` on stale prepared-statement
+      // handles (see ADR-0002 + macOS crash signature
+      // `EXC_BAD_ACCESS / sqlite3_finalize + 36`).
+      //
+      // Best-effort: the Dart VM may exit before the close completes, but in
+      // practice each Drift worker isolate drains its prepared-statement cache
+      // + `sqlite3_close_v2` chain within a few hundred ms, well before
+      // macOS escalates to SIGKILL. Fire-and-forget here is the documented
+      // "drain the worker isolate before the engine tears down" recipe —
+      // awaiting in this method would deadlock (it's a void callback).
+      unawaited(
+        closeAndClearAllAppDatabases().catchError((
+          Object error,
+          StackTrace st,
+        ) {
+          _log.warning(
+            'shutdown: closeAndClearAllAppDatabases failed',
+            error,
+            st,
+          );
+        }),
+      );
+    }
   }
 
   @override

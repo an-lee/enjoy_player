@@ -9,6 +9,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'package:enjoy_player/features/auth/application/auth_controller.dart';
 import 'package:enjoy_player/features/auth/domain/auth_state.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import 'app_database.dart';
 
@@ -56,6 +57,7 @@ Future<void> _releaseDeviceGlobalDatabase() async {
 
 /// Closes every open device-global / per-user [AppDatabase] and clears caches.
 Future<void> closeAndClearAllAppDatabases() async {
+  debugOnShutdownDatabaseClose?.call();
   _deviceGlobalDatabaseRefCount = 0;
   final deviceGlobal = _deviceGlobalDatabaseInstance;
   _deviceGlobalDatabaseInstance = null;
@@ -75,6 +77,15 @@ Future<void> closeAndClearAllAppDatabases() async {
     }
   }
 }
+
+/// Test-only observer fired on every entry into [closeAndClearAllAppDatabases].
+///
+/// Lets regression tests for the app-shutdown lifecycle hook (see
+/// `_EnjoyAppState.didChangeAppLifecycleState` in `lib/app.dart`) verify the
+/// hook fires without having to plumb the singleton maps through a public
+/// surface. Production callers leave this `null`.
+@visibleForTesting
+void Function()? debugOnShutdownDatabaseClose;
 
 /// Signed-in user's Drift file base name, or `null` when unauthenticated.
 String? _signedInSessionDbBaseName(AsyncValue<AuthState> auth) {
