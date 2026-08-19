@@ -21,7 +21,7 @@
 
 ## 2. Owned-media timed enrich
 
-**Decision**: Player-side enrich of local/Craft files calls existing `alignSegments` + `attachAlignmentToLines`. Extract 16 kHz mono PCM in `lib/data/audio` from a **file path** (FFmpeg), not via `AsrAudioExtractor`. Transcript MUST NOT import Craft’s `CraftTimelineEnricher`.
+**Decision**: Player-side enrich of local/Craft files **and** owned cloud `mediaUrl` calls existing `alignSegments` + `attachAlignmentToLines`. Extract 16 kHz mono PCM in `lib/data/audio` from a **file path** (FFmpeg), not via `AsrAudioExtractor`. HTTP(S) cloud URLs are downloaded with Dart HTTP first so FFmpegKit (Android/iOS/macOS) and CLI ffmpeg (Windows/Linux) never speak TLS. Transcript MUST NOT import Craft’s `CraftTimelineEnricher`.
 
 **Rationale**: Same nested mapping as Craft save (ADR-0073/0076). Feature↔feature: transcript must not import `lib/features/craft` or `lib/features/asr`. Slice 2 already forbids YouTube as “audio unavailable.”
 
@@ -58,9 +58,9 @@
 
 | Control | Enable when |
 |---------|-------------|
-| Karaoke | ≥1 nested word with a usable media window **and** media is extractable (not YouTube / remote-without-file) |
+| Karaoke | ≥1 nested word with a usable media window **and** media is owned (not YouTube) |
 | IPA | ≥1 nested word with stored phone labels (times not required) |
-| Enrich | Primary track has lines and **no** nested `timeline` on any cue |
+| Enrich | Primary track has lines and enrichment is incomplete (owned: missing timed words or phones; YouTube: no nested words yet) |
 
 Empty / no-track: switches disabled; enrich hidden (empty-state import/ASR stays).
 

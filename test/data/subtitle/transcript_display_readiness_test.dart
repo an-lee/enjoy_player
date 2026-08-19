@@ -96,6 +96,38 @@ void main() {
     expect(r.showEnrich, isFalse);
   });
 
+  test('owned incomplete nested data still shows enrich', () {
+    final untimed = transcriptDisplayReadiness(
+      lines: untimedPhones,
+      canTrustWordTimes: true,
+    );
+    expect(untimed.hasPhones, isTrue);
+    expect(untimed.hasTimedWords, isFalse);
+    expect(untimed.karaokeSwitchEnabled, isFalse);
+    expect(untimed.ipaSwitchEnabled, isTrue);
+    expect(untimed.showEnrich, isTrue);
+
+    final timedNoIpa = transcriptDisplayReadiness(
+      lines: timedNoPhones,
+      canTrustWordTimes: true,
+    );
+    expect(timedNoIpa.karaokeSwitchEnabled, isTrue);
+    expect(timedNoIpa.ipaSwitchEnabled, isFalse);
+    expect(timedNoIpa.showEnrich, isTrue);
+  });
+
+  test('unresolved trust keeps karaoke off while enrich stays owned', () {
+    final r = transcriptDisplayReadiness(
+      lines: timedNoPhones,
+      canTrustWordTimes: true,
+      trustResolved: false,
+    );
+    expect(r.canTrustWordTimes, isTrue);
+    expect(r.showEnrich, isTrue);
+    expect(r.karaokeSwitchEnabled, isFalse);
+    expect(r.ipaSwitchEnabled, isFalse);
+  });
+
   test(
     'nested words without phones → IPA off; karaoke only if timed+owned',
     () {
@@ -105,7 +137,7 @@ void main() {
       );
       expect(owned.ipaSwitchEnabled, isFalse);
       expect(owned.karaokeSwitchEnabled, isTrue);
-      expect(owned.showEnrich, isFalse);
+      expect(owned.showEnrich, isTrue);
 
       final youtube = transcriptDisplayReadiness(
         lines: timedNoPhones,

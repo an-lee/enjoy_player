@@ -40,9 +40,14 @@ class TranscriptDisplayReadiness {
 ///
 /// When [lines] is empty, [showEnrich] is false (empty-state import/ASR
 /// handles that surface).
+///
+/// Owned / extractable media ([canTrustWordTimes]) still offers enrich when
+/// nested words exist but karaoke or IPA cannot light up yet (untimed words
+/// or missing phones). YouTube hides the tile once any nested words exist.
 TranscriptDisplayReadiness transcriptDisplayReadiness({
   required List<TranscriptLine> lines,
   required bool canTrustWordTimes,
+  bool trustResolved = true,
 }) {
   if (lines.isEmpty) {
     return TranscriptDisplayReadiness(
@@ -72,13 +77,17 @@ TranscriptDisplayReadiness transcriptDisplayReadiness({
     }
   }
 
+  final enrichmentComplete = canTrustWordTimes
+      ? hasTimedWords && hasPhones
+      : hasNestedWords;
+
   return TranscriptDisplayReadiness(
     hasNestedWords: hasNestedWords,
     hasTimedWords: hasTimedWords,
     hasPhones: hasPhones,
     canTrustWordTimes: canTrustWordTimes,
-    karaokeSwitchEnabled: hasTimedWords && canTrustWordTimes,
+    karaokeSwitchEnabled: hasTimedWords && canTrustWordTimes && trustResolved,
     ipaSwitchEnabled: hasPhones,
-    showEnrich: !hasNestedWords,
+    showEnrich: !enrichmentComplete,
   );
 }

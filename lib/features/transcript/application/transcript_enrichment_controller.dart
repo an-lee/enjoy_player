@@ -8,6 +8,7 @@ import 'package:forced_alignment/forced_alignment.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'package:enjoy_player/core/logging/log.dart';
+import 'package:enjoy_player/data/audio/http_media_download.dart';
 import 'package:enjoy_player/data/audio/pcm16k_mono.dart';
 import 'package:enjoy_player/data/db/app_database_provider.dart';
 import 'package:enjoy_player/data/db/media_target_resolver.dart';
@@ -132,6 +133,9 @@ final class TranscriptEnrichmentErr extends TranscriptEnrichmentOutcome {
   final String reason;
 }
 
+typedef DownloadHttpMedia =
+    Future<String> Function(String url, {AlignmentCancelToken? cancel});
+
 /// Injectable owned-align / YouTube-phonemize worker. No work until [enrich].
 final class TranscriptEnricher {
   TranscriptEnricher({
@@ -141,11 +145,13 @@ final class TranscriptEnricher {
     AlignSegmentsFn? alignSegmentsFn,
     AlignFn? alignFn,
     PhonemizeLinesFn? phonemizeFn,
+    DownloadHttpMedia? downloadHttp,
   }) : _decodeFile = decodeFile ?? decodeFileToPcm16kMono,
        _decodeWindow = decodeWindow ?? decodeFileWindowToPcm16kMono,
        _alignSegments = alignSegmentsFn ?? _productionAlignSegments,
        _align = alignFn ?? _productionAlign,
-       _phonemize = phonemizeFn ?? _productionPhonemize;
+       _phonemize = phonemizeFn ?? _productionPhonemize,
+       _downloadHttp = downloadHttp ?? downloadHttpMediaToTemp;
 
   final ReplaceTimelineFn replaceTimeline;
   final DecodeFilePcm16k _decodeFile;
@@ -153,8 +159,9 @@ final class TranscriptEnricher {
   final AlignSegmentsFn _alignSegments;
   final AlignFn _align;
   final PhonemizeLinesFn _phonemize;
+  final DownloadHttpMedia _downloadHttp;
 
-  /// Owned media: timed words + phones. YouTube / remote: untimed IPA labels.
+  /// Owned media: timed words + phones. YouTube: untimed IPA labels.
   Future<TranscriptEnrichmentOutcome> enrich({
     required String transcriptId,
     required List<TranscriptLine> lines,
@@ -191,17 +198,39 @@ final class TranscriptEnricher {
         onProgress: onProgress,
       );
     }
-    if (localPath == null || localPath.isEmpty || _looksRemote(localPath)) {
+    if (localPath == null || localPath.isEmpty) {
       return const TranscriptEnrichmentErr('audioUnavailable');
     }
-    return _enrichOwned(
-      transcriptId: transcriptId,
-      lines: lines,
-      language: alignmentLanguage,
-      localPath: localPath,
-      cancel: cancel,
-      onProgress: onProgress,
-    );
+    var ownedPath = localPath;
+    String? downloaded;
+    if (pcm16kInputIsRemoteHttp(ownedPath)) {
+      try {
+        downloaded = await _downloadHttp(ownedPath, cancel: cancel);
+        ownedPath = downloaded;
+      } on Object catch (e, st) {
+        if (cancel?.isCancelled ?? false) {
+          return const TranscriptEnrichmentErr('cancelled');
+        }
+        logNamed(
+          'transcript.enrichment',
+        ).warning('HTTP media download failed: $e', e, st);
+        return const TranscriptEnrichmentErr('audioUnavailable');
+      }
+    }
+    try {
+      return await _enrichOwned(
+        transcriptId: transcriptId,
+        lines: lines,
+        language: alignmentLanguage,
+        localPath: ownedPath,
+        cancel: cancel,
+        onProgress: onProgress,
+      );
+    } finally {
+      if (downloaded != null) {
+        await deleteDownloadedHttpMedia(downloaded);
+      }
+    }
   }
 
   Future<TranscriptEnrichmentOutcome> _enrichPhonemes({
@@ -487,12 +516,6 @@ final class TranscriptEnricher {
   }
 }
 
-bool _looksRemote(String pathOrUri) {
-  final uri = Uri.tryParse(pathOrUri);
-  if (uri == null) return false;
-  return uri.isScheme('http') || uri.isScheme('https');
-}
-
 extension on TimelineEntry {
   TimelineEntry copyWithId(int id) {
     return TimelineEntry(
@@ -594,9 +617,12 @@ class TranscriptEnrichmentController extends _$TranscriptEnrichmentController {
       final db = ref.read(appDatabaseProvider);
       final source = await resolvePlayableSource(db, mediaId);
       if (!ref.mounted || id != _runId) return;
-      final extractable = source is LocalFilePlayableSource;
+      final extractable =
+          source is LocalFilePlayableSource ||
+          source is RemoteUrlPlayableSource;
       final localPath = switch (source) {
         LocalFilePlayableSource(:final uri) => uri,
+        RemoteUrlPlayableSource(:final uri) => uri,
         _ => null,
       };
 
