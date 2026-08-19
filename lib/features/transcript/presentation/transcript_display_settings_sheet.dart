@@ -92,6 +92,9 @@ class TranscriptDisplaySettingsSection extends ConsumerWidget {
       final running = enrich.isRunning;
       final failed = enrich.isFailed;
       final owned = readiness.canTrustWordTimes;
+      final progressLabel = running && enrich.total > 0
+          ? l10n.transcriptEnrichProgress(enrich.completed, enrich.total)
+          : null;
       tiles.add(
         TranscriptBusyListTile(
           icon: Icons.auto_fix_high_outlined,
@@ -102,12 +105,15 @@ class TranscriptDisplaySettingsSection extends ConsumerWidget {
               : owned
               ? l10n.transcriptEnrichOwnedTitle
               : l10n.transcriptEnrichYoutubeTitle,
-          subtitle: failed
+          subtitle: running
+              ? (progressLabel ?? l10n.transcriptEnrichWorking)
+              : failed
               ? l10n.transcriptEnrichFailed
               : owned
               ? l10n.transcriptEnrichOwnedSubtitle
               : l10n.transcriptEnrichYoutubeSubtitle,
           busy: running,
+          progress: enrich.fraction,
           tapWhenBusy: true,
           onTap: () async {
             final ctrl = ref.read(

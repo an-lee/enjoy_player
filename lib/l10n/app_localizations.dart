@@ -2007,6 +2007,18 @@ abstract class AppLocalizations {
   /// **'Couldn\'t generate. Tap to try again.'**
   String get transcriptEnrichFailed;
 
+  /// Busy enrich tile subtitle before the first cue reports progress.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating…'**
+  String get transcriptEnrichWorking;
+
+  /// Busy enrich tile subtitle while aligning cues on a long transcript.
+  ///
+  /// In en, this message translates to:
+  /// **'{completed} of {total}'**
+  String transcriptEnrichProgress(int completed, int total);
+
   /// Title of the microphone picker tile in settings.
   ///
   /// In en, this message translates to:

@@ -287,4 +287,76 @@ void main() {
     expect(readiness.hasNestedWords, isTrue);
     expect(readiness.showEnrich, isFalse);
   });
+
+  test('window path reports cue progress including failed cues', () async {
+    final progress = <(int, int)>[];
+    final lines = [
+      const TranscriptLine(text: 'Hello', startMs: 0, durationMs: 1000),
+      const TranscriptLine(text: 'Later', startMs: 91000, durationMs: 1000),
+    ];
+    final enricher = TranscriptEnricher(
+      replaceTimeline: ({required transcriptId, required lines}) async => true,
+      decodeFile: (path) async => fail('long files must not decode whole clip'),
+      decodeWindow:
+          ({
+            required pathOrUri,
+            required startSeconds,
+            required durationSeconds,
+          }) async {
+            if (startSeconds > 10) throw StateError('window missing');
+            return Float32List(kAlignmentSampleRate);
+          },
+      alignFn:
+          ({
+            required sourcePcm16k,
+            required transcript,
+            required language,
+            cancel,
+            required timeOffset,
+          }) async {
+            return AlignmentSuccess(
+              AlignmentResult(
+                timeline: [
+                  TimelineEntry(
+                    type: TimelineEntryType.segment,
+                    text: transcript,
+                    startTime: timeOffset,
+                    endTime: timeOffset + 0.7,
+                    timeline: [
+                      TimelineEntry(
+                        type: TimelineEntryType.word,
+                        text: 'Hello',
+                        startTime: timeOffset,
+                        endTime: timeOffset + 0.7,
+                      ),
+                    ],
+                  ),
+                ],
+                wordTimeline: const [],
+                transcript: transcript,
+                language: language,
+                durationSeconds: 1,
+              ),
+            );
+          },
+      phonemizeFn: ({required texts, required language, cancel}) async {
+        fail('owned path must not phonemize');
+      },
+    );
+
+    await enricher.enrich(
+      transcriptId: 't1',
+      lines: lines,
+      language: 'en-US',
+      extractable: true,
+      localPath: '/tmp/long.wav',
+      onProgress: ({required completed, required total}) {
+        progress.add((completed, total));
+      },
+    );
+
+    expect(progress.first, (0, 2));
+    expect(progress, contains((1, 2)));
+    expect(progress.last, (2, 2));
+  });
 }

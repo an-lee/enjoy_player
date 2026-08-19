@@ -234,9 +234,14 @@ duration-model tone stand-in. Missing voice → `spokenReferenceUnavailable`.
 [ADR-0076](../decisions/0076-stacked-ipa-player-controls.md)):
 every real (non-dedupe) Craft write attempts `alignSegments` and may attach
 nested spans onto spec 030 lines. **On-demand enrich** ([ADR-0078](../decisions/0078-on-demand-transcript-enrichment.md))
-is the CC-sheet button: owned local files run `alignSegments` / per-cue
-`align()`; YouTube phonemizes caption text (untimed words + IPA labels, no
-demux). Karaoke highlight ([ADR-0074](../decisions/0074-karaoke-word-highlight.md))
+is the CC-sheet button: owned local files extract 16 kHz mono PCM via
+[`pcm16k_mono.dart`](../../lib/data/audio/pcm16k_mono.dart) (**FFmpegKit** on
+Android/iOS/macOS; CLI `ffmpeg` on Windows and Linux, including a binary next
+to the Linux app/AppImage). While a long file runs per-cue extract + `align()`,
+the enrich tile shows **cue N of M** plus a determinate bar and stays tappable
+to cancel. YouTube phonemizes
+caption text (untimed words + IPA labels, no demux). Karaoke highlight
+([ADR-0074](../decisions/0074-karaoke-word-highlight.md))
 and IPA display ([ADR-0076](../decisions/0076-stacked-ipa-player-controls.md))
 only **read** stored spans when their player transcript toggles are on **and**
 capability gating allows it; they do not run alignment on open/play/seek.

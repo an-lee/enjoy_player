@@ -1065,6 +1065,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transcriptEnrichFailed => 'Couldn\'t generate. Tap to try again.';
 
   @override
+  String get transcriptEnrichWorking => 'Generating…';
+
+  @override
+  String transcriptEnrichProgress(int completed, int total) {
+    return '$completed of $total';
+  }
+
+  @override
   String get settingsRecordingMicTitle => 'Microphone';
 
   @override

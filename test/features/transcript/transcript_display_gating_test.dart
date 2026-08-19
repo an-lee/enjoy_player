@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/data/subtitle/transcript_display_readiness.dart';
 import 'package:enjoy_player/features/settings/application/karaoke_highlight_settings.dart';
+import 'package:enjoy_player/features/transcript/application/transcript_enrichment_controller.dart';
 import 'package:enjoy_player/features/transcript/presentation/subtitle_track_picker_primitives.dart';
 import 'package:enjoy_player/features/transcript/presentation/transcript_busy_action.dart';
 import 'package:enjoy_player/features/transcript/presentation/transcript_display_settings_sheet.dart';
@@ -27,12 +29,14 @@ class _SpyKaraoke extends KaraokeHighlightSettingsOverride {
 Widget _harness({
   required TranscriptDisplayReadiness readiness,
   required KaraokeHighlightSettings karaoke,
+  List<Override> extraOverrides = const [],
 }) {
   final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF003366));
   return ProviderScope(
     overrides: [
       karaokeHighlightSettingsProvider.overrideWith(() => karaoke),
       ...transcriptIpaOverlayOffOverrides(),
+      ...extraOverrides,
     ],
     child: MaterialApp(
       theme: ThemeData(
@@ -139,5 +143,34 @@ void main() {
       find.text(l10n.transcriptKaraokeUnavailableRemoteHint),
       findsOneWidget,
     );
+  });
+
+  testWidgets('running enrich tile shows cue progress', (tester) async {
+    await tester.pumpWidget(
+      _harness(
+        karaoke: KaraokeHighlightSettingsOverride(false),
+        extraOverrides: [
+          transcriptEnrichmentControllerProvider(
+            'media-gating',
+          ).overrideWithValue(
+            const TranscriptEnrichmentState.running(completed: 12, total: 240),
+          ),
+        ],
+        readiness: const TranscriptDisplayReadiness(
+          hasNestedWords: false,
+          hasTimedWords: false,
+          hasPhones: false,
+          canTrustWordTimes: true,
+          karaokeSwitchEnabled: false,
+          ipaSwitchEnabled: false,
+          showEnrich: true,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text(l10n.transcriptEnrichCancel), findsOneWidget);
+    expect(find.text(l10n.transcriptEnrichProgress(12, 240)), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
   });
 }

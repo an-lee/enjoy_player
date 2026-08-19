@@ -18,31 +18,51 @@ class FfmpegMediaProbe {
   /// same in-flight [Future].
   static Future<String?>? _resolvedFuture;
 
-  /// Bundled `ffmpeg.exe` next to the app, or `ffmpeg` on PATH (Windows),
-  /// or `ffmpeg` on PATH elsewhere. The result is memoized for the process
-  /// lifetime (see [_resolvedFuture]).
+  /// Bundled CLI next to the app (Windows `ffmpeg.exe`, Linux `ffmpeg`), or
+  /// `ffmpeg` on PATH. Android / iOS / macOS do not use this — they run
+  /// FFmpegKit. The result is memoized for the process lifetime
+  /// (see [_resolvedFuture]).
   static Future<String?> resolveFfmpegExecutable() {
     return _resolvedFuture ??= _resolveFfmpegExecutableUncached();
   }
 
   static Future<String?> _resolveFfmpegExecutableUncached() async {
-    if (Platform.isWindows) {
-      final bundled = p.join(
-        p.dirname(Platform.resolvedExecutable),
-        'ffmpeg.exe',
-      );
-      if (File(bundled).existsSync()) return bundled;
-      try {
-        final r = await Process.run('ffmpeg', ['-version']);
-        if (r.exitCode == 0) return 'ffmpeg';
-      } on Object catch (_) {}
-      return null;
+    final dir = p.dirname(Platform.resolvedExecutable);
+    for (final candidate in bundledFfmpegCandidatePaths(
+      executableDir: dir,
+      isWindows: Platform.isWindows,
+      isLinux: Platform.isLinux,
+    )) {
+      if (File(candidate).existsSync()) return candidate;
     }
     try {
       final r = await Process.run('ffmpeg', ['-version']);
       if (r.exitCode == 0) return 'ffmpeg';
     } on Object catch (_) {}
     return null;
+  }
+
+  /// Windows: `ffmpeg.exe` next to the app. Linux: `ffmpeg` next to the app
+  /// or under `lib/` (AppImage / desktop bundle). Empty on Apple/Android.
+  @visibleForTesting
+  static List<String> bundledFfmpegCandidatePaths({
+    required String executableDir,
+    required bool isWindows,
+    required bool isLinux,
+  }) {
+    if (isWindows) {
+      return [
+        p.Context(style: p.Style.windows).join(executableDir, 'ffmpeg.exe'),
+      ];
+    }
+    if (isLinux) {
+      final join = p.Context(style: p.Style.posix).join;
+      return [
+        join(executableDir, 'ffmpeg'),
+        join(executableDir, 'lib', 'ffmpeg'),
+      ];
+    }
+    return const [];
   }
 
   /// Test seam: clears the memoized resolution so the next call re-probes.

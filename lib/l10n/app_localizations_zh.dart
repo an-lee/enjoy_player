@@ -1013,6 +1013,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get transcriptEnrichFailed => '无法生成。点按重试。';
 
   @override
+  String get transcriptEnrichWorking => '正在生成…';
+
+  @override
+  String transcriptEnrichProgress(int completed, int total) {
+    return '$completed / $total';
+  }
+
+  @override
   String get settingsRecordingMicTitle => '麦克风';
 
   @override
@@ -4525,6 +4533,14 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get transcriptEnrichFailed => '无法生成。点按重试。';
+
+  @override
+  String get transcriptEnrichWorking => '正在生成…';
+
+  @override
+  String transcriptEnrichProgress(int completed, int total) {
+    return '$completed / $total';
+  }
 
   @override
   String get settingsRecordingMicTitle => '麦克风';
