@@ -143,7 +143,10 @@
                 <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24L10.949 22.051"/>
               </svg>
               <div>
-                <div class="card-title" data-i18n="download.windows.title">Windows</div>
+                <div class="card-title-row">
+                  <span class="card-title" data-i18n="download.windows.title">Windows</span>
+                  <span class="card-version hidden" id="version-windows"></span>
+                </div>
                 <div class="card-subtitle" data-i18n="download.windows.subtitle">Windows 10 / 11 · x64</div>
               </div>
             </div>
@@ -153,6 +156,7 @@
                 class="btn btn--primary"
                 href="https://dl.enjoy.bot/player/"
                 aria-label="Download Enjoy Player installer for Windows"
+                data-aria-i18n="download.windows.aria"
               >
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 12l-4.5-4.5 1.06-1.06L7 8.88V2h2v6.88l2.44-2.44L12.5 7.5 8 12zM2 14v-2h12v2H2z"/></svg>
                 <span data-i18n="download.windows.btn">Download for Windows</span>
@@ -167,7 +171,10 @@
                 <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.54 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/>
               </svg>
               <div>
-                <div class="card-title" data-i18n="download.macos.title">macOS</div>
+                <div class="card-title-row">
+                  <span class="card-title" data-i18n="download.macos.title">macOS</span>
+                  <span class="card-version hidden" id="version-macos"></span>
+                </div>
                 <div class="card-subtitle" data-i18n="download.macos.subtitle">macOS 10.15+ · Universal</div>
               </div>
             </div>
@@ -177,6 +184,7 @@
                 class="btn btn--primary"
                 href="https://dl.enjoy.bot/player/"
                 aria-label="Download Enjoy Player for macOS"
+                data-aria-i18n="download.macos.aria"
               >
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 12l-4.5-4.5 1.06-1.06L7 8.88V2h2v6.88l2.44-2.44L12.5 7.5 8 12zM2 14v-2h12v2H2z"/></svg>
                 <span data-i18n="download.macos.btn">Download for macOS</span>
@@ -191,7 +199,10 @@
                 <path d="M17.523 15.341c-.551 0-.999-.449-.999-1s.448-.999.999-.999c.551 0 .999.448.999.999 0 .551-.448 1-.999 1m-11.046 0c-.551 0-.999-.449-.999-1s.448-.999.999-.999c.551 0 .999.448.999.999 0 .551-.448 1-.999 1m11.405-6.02l1.997-3.459a.416.416 0 00-.71-.419L17.172 8.9C15.59 8.244 13.853 7.851 12 7.851s-3.59.393-5.172 1.049L4.831 5.443a.416.416 0 00-.71.419l1.997 3.459C2.689 11.187.343 14.659 0 18.761h24c-.344-4.102-2.689-7.574-6.118-9.44"/>
               </svg>
               <div>
-                <div class="card-title" data-i18n="download.android.title">Android</div>
+                <div class="card-title-row">
+                  <span class="card-title" data-i18n="download.android.title">Android</span>
+                  <span class="card-version hidden" id="version-android"></span>
+                </div>
                 <div class="card-subtitle" data-i18n="download.android.subtitle">Android 8.0+</div>
               </div>
             </div>
@@ -201,6 +212,7 @@
                 class="btn btn--primary"
                 href="https://dl.enjoy.bot/player/"
                 aria-label="Download Enjoy Player APK for Android"
+                data-aria-i18n="download.android.aria"
               >
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 12l-4.5-4.5 1.06-1.06L7 8.88V2h2v6.88l2.44-2.44L12.5 7.5 8 12zM2 14v-2h12v2H2z"/></svg>
                 <span data-i18n="download.android.btn.apk">Download APK</span>
@@ -256,7 +268,10 @@
                 <path d="M19.5 11.5c0 4.14-3.36 7.5-7.5 7.5s-7.5-3.36-7.5-7.5 3.36-7.5 7.5-7.5 7.5 3.36 7.5 7.5zm-7.5-5.5c-1.3 0-2.5.42-3.5 1.16-.22.24-.5.4-.83.4-.41 0-.77-.26-.89-.66l-.19-.63c-.06-.2-.24-.34-.44-.34-.27 0-.48.22-.48.49 0 .05.01.09.02.14-.02 0-.06.01-.1.01-.4 0-.73-.33-.73-.73 0-.13.03-.25.09-.35.1-.53.15-1.08.15-1.65 0-3.31 2.69-6 6-6s6 2.69 6 6c0 .57-.05 1.12-.15 1.65.06.1.09.22.09.35 0 .4-.33.73-.73.73-.04 0-.08 0-.1-.01.01-.05.02-.09.02-.14 0-.27-.22-.49-.48-.49-.2 0-.38.14-.44.34l-.19.63c-.12.4-.48.66-.89.66-.33 0-.61-.16-.83-.4-1-.74-2.2-1.16-3.5-1.16zm-.9 5.6c-.54.28-1.17.44-1.84.44-.68 0-1.31-.16-1.86-.44-.14.07-.28.14-.42.22-.92.55-1.48 1.49-1.63 2.53.85.67 1.88 1.15 3.02 1.34.34.06.66.15.96.28.12-.1.27-.17.42-.17h.02c.15 0 .3.07.42.17.3-.13.62-.22.96-.28 1.14-.19 2.17-.67 3.02-1.34-.15-1.04-.71-1.98-1.63-2.53-.14-.08-.28-.15-.44-.22zm4.07-.38c-.28-.16-.59-.28-.92-.34-.33.32-.75.58-1.23.76-.52.2-1.1.32-1.69.32-.59 0-1.17-.12-1.69-.32-.48-.18-.9-.44-1.23-.76-.34.06-.65.18-.94.34-1.04.6-1.67 1.63-1.83 2.77.88.75 1.97 1.3 3.16 1.55.44.09.85.22 1.21.41.28-.18.63-.29 1-.29h.54c.37 0 .72.11 1 .29.36-.19.77-.32 1.21-.41 1.19-.25 2.28-.8 3.16-1.55-.16-1.14-.79-2.17-1.85-2.77z"/>
               </svg>
               <div>
-                <div class="card-title" data-i18n="download.linux.title">Linux</div>
+                <div class="card-title-row">
+                  <span class="card-title" data-i18n="download.linux.title">Linux</span>
+                  <span class="card-version hidden" id="version-linux"></span>
+                </div>
                 <div class="card-subtitle" data-i18n="download.linux.subtitle">Ubuntu 22.04 LTS · x86_64</div>
               </div>
             </div>
@@ -266,6 +281,7 @@
                 class="btn btn--primary"
                 href="https://dl.enjoy.bot/player/"
                 aria-label="Download Enjoy Player AppImage for Linux"
+                data-aria-i18n="download.linux.aria"
               >
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 12l-4.5-4.5 1.06-1.06L7 8.88V2h2v6.88l2.44-2.44L12.5 7.5 8 12zM2 14v-2h12v2H2z"/></svg>
                 <span data-i18n="download.linux.btn">Download for Linux</span>

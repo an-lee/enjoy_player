@@ -25,27 +25,31 @@ const translations = {
     'download.windows.title': 'Windows',
     'download.windows.subtitle': 'Windows 10 / 11 · x64',
     'download.windows.btn': 'Download for Windows',
-    
+    'download.windows.aria': 'Download Enjoy Player installer for Windows',
+
     'download.macos.title': 'macOS',
     'download.macos.subtitle': 'macOS 10.15+ · Universal',
     'download.macos.btn': 'Download for macOS',
-    
+    'download.macos.aria': 'Download Enjoy Player for macOS',
+
     'download.android.title': 'Android',
     'download.android.subtitle': 'Android 8.0+',
     'download.android.btn.apk': 'Download APK',
     'download.android.btn.play': 'Join Play Beta',
+    'download.android.aria': 'Download Enjoy Player APK for Android',
     'download.android.note': 'Tip: installing the APK requires enabling <em>Install unknown apps</em> in your Android settings.',
-    
+
     'download.ios.title': 'iOS',
     'download.ios.subtitle': 'iOS 14.0+',
     'download.ios.btn': 'Join TestFlight',
     'download.ios.note': 'TestFlight public beta is live. App Store release coming soon.',
-    
+
     'download.comingSoon': 'Coming soon',
-    
+
     'download.linux.title': 'Linux',
     'download.linux.subtitle': 'Ubuntu 22.04 LTS · x86_64',
     'download.linux.btn': 'Download for Linux',
+    'download.linux.aria': 'Download Enjoy Player AppImage for Linux',
     'download.linux.note': 'AppImage: <code>chmod +x enjoy-player-*.AppImage && ./enjoy-player-*.AppImage</code>',
     
     'recommended': 'Recommended',
@@ -77,27 +81,31 @@ const translations = {
     'download.windows.title': 'Windows',
     'download.windows.subtitle': 'Windows 10 / 11 · x64',
     'download.windows.btn': '下载 Windows 版',
-    
+    'download.windows.aria': '下载 Enjoy Player Windows 安装包',
+
     'download.macos.title': 'macOS',
     'download.macos.subtitle': 'macOS 10.15+ · Universal',
     'download.macos.btn': '下载 macOS 版',
-    
+    'download.macos.aria': '下载 Enjoy Player macOS 版',
+
     'download.android.title': 'Android',
     'download.android.subtitle': 'Android 8.0+',
     'download.android.btn.apk': '下载 APK',
     'download.android.btn.play': '加入 Play Beta',
+    'download.android.aria': '下载 Enjoy Player Android APK',
     'download.android.note': '提示：安装 APK 需要在 Android 设置中开启<em>允许安装未知应用</em>。',
-    
+
     'download.ios.title': 'iOS',
     'download.ios.subtitle': 'iOS 14.0+',
     'download.ios.btn': '加入 TestFlight',
     'download.ios.note': 'TestFlight 公开测试已上线，App Store 版本即将推出。',
-    
+
     'download.comingSoon': '即将推出',
-    
+
     'download.linux.title': 'Linux',
     'download.linux.subtitle': 'Ubuntu 22.04 LTS · x86_64',
     'download.linux.btn': '下载 Linux 版',
+    'download.linux.aria': '下载 Enjoy Player Linux AppImage',
     'download.linux.note': 'AppImage: <code>chmod +x enjoy-player-*.AppImage && ./enjoy-player-*.AppImage</code>',
     
     'recommended': '推荐',
@@ -109,7 +117,7 @@ function setLanguage(lang) {
   if (!translations[lang]) lang = 'en';
   document.documentElement.lang = lang;
   localStorage.setItem('enjoy_lang', lang);
-  
+
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
     if (translations[lang][key]) {
@@ -120,6 +128,18 @@ function setLanguage(lang) {
         el.textContent = translations[lang][key];
       }
     }
+  });
+
+  // Re-compose aria-labels for elements that opted into data-aria-i18n.
+  // If the element also carries a data-version stamp (set by main.js after
+  // the manifest loads), append a "(vX.Y.Z)" suffix so the screen-reader
+  // text reflects the version this button actually downloads.
+  document.querySelectorAll('[data-aria-i18n]').forEach(el => {
+    const key = el.getAttribute('data-aria-i18n');
+    const base = translations[lang][key];
+    if (!base) return;
+    const version = el.dataset.version;
+    el.setAttribute('aria-label', version ? `${base} (v${version})` : base);
   });
 
   // Update meta tags
