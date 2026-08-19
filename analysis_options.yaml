@@ -7,6 +7,12 @@ analyzer:
     - "**/*.freezed.dart"
     - "packages/azure_speech/test/**"
     - "packages/ffmpeg_kit_flutter_new/**"
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
   errors:
     avoid_print: error
 
