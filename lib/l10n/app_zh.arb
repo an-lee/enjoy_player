@@ -457,6 +457,18 @@
   "@transcriptEnrichFailed": {
     "description": "Inline error on the enrich tile after failure or cancel."
   },
+  "transcriptEnrichWorking": "正在生成…",
+  "@transcriptEnrichWorking": {
+    "description": "Busy enrich tile subtitle before the first cue reports progress."
+  },
+  "transcriptEnrichProgress": "{completed} / {total}",
+  "@transcriptEnrichProgress": {
+    "description": "Busy enrich tile subtitle while aligning cues on a long transcript.",
+    "placeholders": {
+      "completed": { "type": "int", "example": "12" },
+      "total": { "type": "int", "example": "240" }
+    }
+  },
   "settingsRecordingMicTitle": "麦克风",
   "@settingsRecordingMicTitle": {
     "description": "Title of the microphone picker tile in settings."

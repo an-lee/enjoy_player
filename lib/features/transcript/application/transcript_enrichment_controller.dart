@@ -25,29 +25,56 @@ enum TranscriptEnrichmentPhase { idle, running, failed, succeeded }
 
 @immutable
 class TranscriptEnrichmentState {
-  const TranscriptEnrichmentState({required this.phase, this.failureReason});
+  const TranscriptEnrichmentState({
+    required this.phase,
+    this.failureReason,
+    this.completed = 0,
+    this.total = 0,
+  });
 
   const TranscriptEnrichmentState.idle()
     : phase = TranscriptEnrichmentPhase.idle,
-      failureReason = null;
+      failureReason = null,
+      completed = 0,
+      total = 0;
 
-  const TranscriptEnrichmentState.running()
+  const TranscriptEnrichmentState.running({this.completed = 0, this.total = 0})
     : phase = TranscriptEnrichmentPhase.running,
       failureReason = null;
 
   const TranscriptEnrichmentState.succeeded()
     : phase = TranscriptEnrichmentPhase.succeeded,
-      failureReason = null;
+      failureReason = null,
+      completed = 0,
+      total = 0;
 
   const TranscriptEnrichmentState.failed(this.failureReason)
-    : phase = TranscriptEnrichmentPhase.failed;
+    : phase = TranscriptEnrichmentPhase.failed,
+      completed = 0,
+      total = 0;
 
   final TranscriptEnrichmentPhase phase;
   final String? failureReason;
 
+  /// Cues finished in the current run. Meaningful while [isRunning].
+  final int completed;
+
+  /// Cue count for the current run. `0` means progress is still unknown.
+  final int total;
+
   bool get isRunning => phase == TranscriptEnrichmentPhase.running;
   bool get isFailed => phase == TranscriptEnrichmentPhase.failed;
+
+  /// `0…1` while running with a known total; otherwise null (indeterminate).
+  double? get fraction {
+    if (!isRunning || total <= 0) return null;
+    return (completed / total).clamp(0.0, 1.0);
+  }
 }
+
+/// Cue-level progress for a long owned-media align (hundreds of windows).
+typedef EnrichProgressFn =
+    void Function({required int completed, required int total});
 
 typedef DecodeFilePcm16k = Future<Float32List> Function(String pathOrUri);
 
@@ -135,6 +162,7 @@ final class TranscriptEnricher {
     required bool extractable,
     String? localPath,
     AlignmentCancelToken? cancel,
+    EnrichProgressFn? onProgress,
   }) async {
     if (lines.isEmpty) {
       return const TranscriptEnrichmentErr('empty');
@@ -160,6 +188,7 @@ final class TranscriptEnricher {
         lines: lines,
         language: alignmentLanguage,
         cancel: cancel,
+        onProgress: onProgress,
       );
     }
     if (localPath == null || localPath.isEmpty || _looksRemote(localPath)) {
@@ -171,6 +200,7 @@ final class TranscriptEnricher {
       language: alignmentLanguage,
       localPath: localPath,
       cancel: cancel,
+      onProgress: onProgress,
     );
   }
 
@@ -179,7 +209,9 @@ final class TranscriptEnricher {
     required List<TranscriptLine> lines,
     required String language,
     AlignmentCancelToken? cancel,
+    EnrichProgressFn? onProgress,
   }) async {
+    onProgress?.call(completed: 0, total: lines.length);
     late final PhonemizeOutcome outcome;
     try {
       outcome = await _phonemize(
@@ -205,6 +237,7 @@ final class TranscriptEnricher {
       case PhonemizeSuccess(lines: final phonemeLines):
         try {
           final attached = attachPhonemesToLines(lines, phonemeLines);
+          onProgress?.call(completed: lines.length, total: lines.length);
           return await _persistIfChanged(
             transcriptId: transcriptId,
             original: lines,
@@ -226,6 +259,7 @@ final class TranscriptEnricher {
     required String language,
     required String localPath,
     AlignmentCancelToken? cancel,
+    EnrichProgressFn? onProgress,
   }) async {
     final lastEnd = lines
         .map((l) => l.endSeconds)
@@ -237,6 +271,7 @@ final class TranscriptEnricher {
         language: language,
         localPath: localPath,
         cancel: cancel,
+        onProgress: onProgress,
       );
     }
     return _enrichWindows(
@@ -245,6 +280,7 @@ final class TranscriptEnricher {
       language: language,
       localPath: localPath,
       cancel: cancel,
+      onProgress: onProgress,
     );
   }
 
@@ -254,7 +290,9 @@ final class TranscriptEnricher {
     required String language,
     required String localPath,
     AlignmentCancelToken? cancel,
+    EnrichProgressFn? onProgress,
   }) async {
+    onProgress?.call(completed: 0, total: lines.length);
     late final Float32List pcm;
     try {
       pcm = await _decodeFile(localPath);
@@ -305,6 +343,7 @@ final class TranscriptEnricher {
       case AlignmentSuccess(:final result):
         try {
           final attached = attachAlignmentToLines(lines, result);
+          onProgress?.call(completed: lines.length, total: lines.length);
           return await _persistIfChanged(
             transcriptId: transcriptId,
             original: lines,
@@ -326,68 +365,74 @@ final class TranscriptEnricher {
     required String language,
     required String localPath,
     AlignmentCancelToken? cancel,
+    EnrichProgressFn? onProgress,
   }) async {
+    onProgress?.call(completed: 0, total: lines.length);
     final segments = <TimelineEntry>[];
     for (var i = 0; i < lines.length; i++) {
       if (cancel?.isCancelled ?? false) {
         return const TranscriptEnrichmentErr('cancelled');
       }
-      final line = lines[i];
-      if (line.text.trim().isEmpty) continue;
-      final start = math.max(0.0, line.startSeconds - kCuePadSeconds);
-      final duration =
-          (line.endSeconds - line.startSeconds) + (2 * kCuePadSeconds);
-      late final Float32List pcm;
       try {
-        pcm = await _decodeWindow(
-          pathOrUri: localPath,
-          startSeconds: start,
-          durationSeconds: duration <= 0 ? kMinAudioSeconds : duration,
-        );
-      } on Object catch (e, st) {
-        logNamed(
-          'transcript.enrichment',
-        ).warning('window extract failed for cue $i: $e', e, st);
-        continue;
-      }
-      if (pcm.isEmpty) continue;
-
-      late final AlignmentOutcome outcome;
-      try {
-        outcome = await _align(
-          sourcePcm16k: pcm,
-          transcript: line.text,
-          language: language,
-          cancel: cancel,
-          timeOffset: start,
-        );
-      } on Object catch (e, st) {
-        logNamed(
-          'transcript.enrichment',
-        ).warning('align threw for cue $i: $e', e, st);
-        continue;
-      }
-      switch (outcome) {
-        case AlignmentFailed():
-          continue;
-        case AlignmentSuccess(:final result):
-          final tagged = result.timeline.where(
-            (e) => e.type == TimelineEntryType.segment,
+        final line = lines[i];
+        if (line.text.trim().isEmpty) continue;
+        final start = math.max(0.0, line.startSeconds - kCuePadSeconds);
+        final duration =
+            (line.endSeconds - line.startSeconds) + (2 * kCuePadSeconds);
+        late final Float32List pcm;
+        try {
+          pcm = await _decodeWindow(
+            pathOrUri: localPath,
+            startSeconds: start,
+            durationSeconds: duration <= 0 ? kMinAudioSeconds : duration,
           );
-          if (tagged.isEmpty) {
-            segments.add(
-              TimelineEntry(
-                type: TimelineEntryType.segment,
-                text: line.text,
-                startTime: line.startSeconds,
-                endTime: line.endSeconds,
-                id: i,
-                timeline: result.wordTimeline,
-              ),
+        } on Object catch (e, st) {
+          logNamed(
+            'transcript.enrichment',
+          ).warning('window extract failed for cue $i: $e', e, st);
+          continue;
+        }
+        if (pcm.isEmpty) continue;
+
+        late final AlignmentOutcome outcome;
+        try {
+          outcome = await _align(
+            sourcePcm16k: pcm,
+            transcript: line.text,
+            language: language,
+            cancel: cancel,
+            timeOffset: start,
+          );
+        } on Object catch (e, st) {
+          logNamed(
+            'transcript.enrichment',
+          ).warning('align threw for cue $i: $e', e, st);
+          continue;
+        }
+        switch (outcome) {
+          case AlignmentFailed():
+            continue;
+          case AlignmentSuccess(:final result):
+            final tagged = result.timeline.where(
+              (e) => e.type == TimelineEntryType.segment,
             );
-          } else {
-            segments.add(tagged.first.copyWithId(i));
-          }
+            if (tagged.isEmpty) {
+              segments.add(
+                TimelineEntry(
+                  type: TimelineEntryType.segment,
+                  text: line.text,
+                  startTime: line.startSeconds,
+                  endTime: line.endSeconds,
+                  id: i,
+                  timeline: result.wordTimeline,
+                ),
+              );
+            } else {
+              segments.add(tagged.first.copyWithId(i));
+            }
+        }
+      } finally {
+        onProgress?.call(completed: i + 1, total: lines.length);
       }
     }
 
@@ -555,6 +600,7 @@ class TranscriptEnrichmentController extends _$TranscriptEnrichmentController {
         _ => null,
       };
 
+      state = TranscriptEnrichmentState.running(total: lines.length);
       final outcome = await ref
           .read(transcriptEnricherProvider)
           .enrich(
@@ -564,6 +610,13 @@ class TranscriptEnrichmentController extends _$TranscriptEnrichmentController {
             extractable: extractable,
             localPath: localPath,
             cancel: token,
+            onProgress: ({required completed, required total}) {
+              if (!ref.mounted || id != _runId) return;
+              state = TranscriptEnrichmentState.running(
+                completed: completed,
+                total: total,
+              );
+            },
           );
       if (!ref.mounted || id != _runId) return;
       if (token.isCancelled) {

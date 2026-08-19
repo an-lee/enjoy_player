@@ -73,6 +73,7 @@ class TranscriptBusyListTile extends StatefulWidget {
     this.busy,
     this.tapWhenBusy = false,
     this.contentPadding,
+    this.progress,
     super.key,
   });
 
@@ -87,6 +88,9 @@ class TranscriptBusyListTile extends StatefulWidget {
   /// When true, [onTap] stays enabled while busy (cancel / retry).
   final bool tapWhenBusy;
   final EdgeInsetsGeometry? contentPadding;
+
+  /// Determinate `0…1` while [busy]. Null keeps an indeterminate spinner.
+  final double? progress;
 
   @override
   State<TranscriptBusyListTile> createState() => _TranscriptBusyListTileState();
@@ -111,10 +115,11 @@ class _TranscriptBusyListTileState extends State<TranscriptBusyListTile> {
     final showBusy = widget.busy ?? _busy;
     final usesExternalBusy = widget.busy != null;
     final tapEnabled = widget.tapWhenBusy || !showBusy;
-    return ListTile(
+    final progress = showBusy ? widget.progress : null;
+    final tile = ListTile(
       contentPadding: widget.contentPadding,
       leading: showBusy
-          ? LoadingIcon(size: 24, color: cs.primary)
+          ? LoadingIcon(size: 24, color: cs.primary, value: progress)
           : Icon(widget.icon, size: 24, color: cs.onSurfaceVariant),
       title: Text(widget.title),
       subtitle: widget.subtitle == null ? null : Text(widget.subtitle!),
@@ -124,6 +129,14 @@ class _TranscriptBusyListTileState extends State<TranscriptBusyListTile> {
           : usesExternalBusy
           ? widget.onTap
           : _run,
+    );
+    if (progress == null) return tile;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        tile,
+        LinearProgressIndicator(minHeight: 2, value: progress.clamp(0.0, 1.0)),
+      ],
     );
   }
 }

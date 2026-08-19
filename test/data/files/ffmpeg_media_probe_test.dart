@@ -174,4 +174,39 @@ Stream #0:5(en): Subtitle: subrip
       // We don't assert on internal state; just that the seam is callable.
     });
   });
+
+  group('FfmpegMediaProbe.bundledFfmpegCandidatePaths', () {
+    test('Windows looks next to the exe', () {
+      expect(
+        FfmpegMediaProbe.bundledFfmpegCandidatePaths(
+          executableDir: r'C:\Program Files\Enjoy',
+          isWindows: true,
+          isLinux: false,
+        ),
+        [r'C:\Program Files\Enjoy\ffmpeg.exe'],
+      );
+    });
+
+    test('Linux looks next to the exe and under lib/', () {
+      expect(
+        FfmpegMediaProbe.bundledFfmpegCandidatePaths(
+          executableDir: '/opt/enjoy/bin',
+          isWindows: false,
+          isLinux: true,
+        ),
+        ['/opt/enjoy/bin/ffmpeg', '/opt/enjoy/bin/lib/ffmpeg'],
+      );
+    });
+
+    test('Apple and Android have no CLI bundle', () {
+      expect(
+        FfmpegMediaProbe.bundledFfmpegCandidatePaths(
+          executableDir: '/Applications/Enjoy.app',
+          isWindows: false,
+          isLinux: false,
+        ),
+        isEmpty,
+      );
+    });
+  });
 }

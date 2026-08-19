@@ -3,11 +3,17 @@ library;
 
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:typed_data';
 
+import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
+import 'package:ffmpeg_kit_flutter_new/return_code.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:forced_alignment/forced_alignment.dart';
 
+import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/data/files/ffmpeg_media_probe.dart';
+
+final _log = logNamed('audio.pcm16k');
 
 /// Thrown when Craft bytes cannot be decoded to 16 kHz mono PCM.
 final class Pcm16kDecodeException implements Exception {
@@ -21,7 +27,9 @@ final class Pcm16kDecodeException implements Exception {
 /// Turns WAV (or other FFmpeg-decodable) bytes into 16 kHz mono [Float32List].
 ///
 /// PCM WAV is decoded in-process. Other encodings fall back to a temp-file
-/// FFmpeg convert (`pcm_s16le -ar 16000 -ac 1`). Does not import ASR.
+/// FFmpeg convert (`pcm_s16le -ar 16000 -ac 1`): CLI when a binary is on PATH
+/// (Windows bundled / Linux), otherwise FFmpegKit (Android / iOS / macOS).
+/// Does not import ASR.
 Future<Float32List> decodeToPcm16kMono(Uint8List bytes) async {
   final inProcess = decodePcmWavTo16kMono(bytes);
   if (inProcess != null && inProcess.isNotEmpty) {
@@ -41,6 +49,9 @@ Future<Float32List> decodeFileToPcm16kMono(String pathOrUri) async {
 }
 
 /// Decode a time window of a local media file to 16 kHz mono Float32.
+///
+/// Uses **FFmpegKit** on Android / iOS / macOS. Windows and Linux run a CLI
+/// `ffmpeg` (bundled next to the app, or on PATH).
 Future<Float32List> decodeFileWindowToPcm16kMono({
   required String pathOrUri,
   required double startSeconds,
@@ -50,38 +61,18 @@ Future<Float32List> decodeFileWindowToPcm16kMono({
   if (!File(input).existsSync()) {
     throw Pcm16kDecodeException('file does not exist: $input');
   }
-  final ffmpeg = await FfmpegMediaProbe.resolveFfmpegExecutable();
-  if (ffmpeg == null) {
-    throw const Pcm16kDecodeException('ffmpeg unavailable');
-  }
   final start = startSeconds < 0 ? 0.0 : startSeconds;
   final duration = durationSeconds <= 0 ? 0.05 : durationSeconds;
   final dir = await Directory.systemTemp.createTemp('enjoy_pcm16k_win_');
   try {
     final output = File('${dir.path}${Platform.pathSeparator}out.wav');
-    final result = await Process.run(ffmpeg, [
-      '-hide_banner',
-      '-nostdin',
-      '-y',
-      '-ss',
-      start.toStringAsFixed(3),
-      '-t',
-      duration.toStringAsFixed(3),
-      '-i',
-      input,
-      '-ar',
-      '$kAlignmentSampleRate',
-      '-ac',
-      '1',
-      '-c:a',
-      'pcm_s16le',
-      output.path,
-    ]);
-    if (result.exitCode != 0 || !output.existsSync()) {
-      throw Pcm16kDecodeException(
-        'ffmpeg window extract failed (exit ${result.exitCode})',
-      );
-    }
+    await _runFfmpegToWav(
+      input: input,
+      outputPath: output.path,
+      startSeconds: start,
+      durationSeconds: duration,
+      failLabel: 'window extract',
+    );
     final decoded = decodePcmWavTo16kMono(
       Uint8List.fromList(await output.readAsBytes()),
     );
@@ -105,32 +96,16 @@ Float32List? decodePcmWavTo16kMono(Uint8List bytes) {
 }
 
 Future<Float32List> _ffmpegFallback(Uint8List bytes) async {
-  final ffmpeg = await FfmpegMediaProbe.resolveFfmpegExecutable();
-  if (ffmpeg == null) {
-    throw const Pcm16kDecodeException('ffmpeg unavailable');
-  }
   final dir = await Directory.systemTemp.createTemp('enjoy_pcm16k_');
   try {
     final input = File('${dir.path}${Platform.pathSeparator}in.bin');
     final output = File('${dir.path}${Platform.pathSeparator}out.wav');
     await input.writeAsBytes(bytes, flush: true);
-    final result = await Process.run(ffmpeg, [
-      '-hide_banner',
-      '-nostdin',
-      '-y',
-      '-i',
-      input.path,
-      '-ar',
-      '$kAlignmentSampleRate',
-      '-ac',
-      '1',
-      '-c:a',
-      'pcm_s16le',
-      output.path,
-    ]);
-    if (result.exitCode != 0 || !output.existsSync()) {
-      throw Pcm16kDecodeException('ffmpeg failed (exit ${result.exitCode})');
-    }
+    await _runFfmpegToWav(
+      input: input.path,
+      outputPath: output.path,
+      failLabel: 'convert',
+    );
     final outBytes = await output.readAsBytes();
     final decoded = decodePcmWavTo16kMono(Uint8List.fromList(outBytes));
     if (decoded == null || decoded.isEmpty) {
@@ -141,6 +116,77 @@ Future<Float32List> _ffmpegFallback(Uint8List bytes) async {
     try {
       await dir.delete(recursive: true);
     } on Object catch (_) {}
+  }
+}
+
+/// Android / iOS / macOS ship FFmpegKit. Windows / Linux use a CLI binary.
+@visibleForTesting
+bool pcm16kUsesFfmpegKit({
+  required bool isAndroid,
+  required bool isIOS,
+  required bool isMacOS,
+}) => isAndroid || isIOS || isMacOS;
+
+/// Windows/Linux: bundled or PATH `ffmpeg`. Android/iOS/macOS: FFmpegKit
+/// (there is no CLI binary in those app packages).
+Future<void> _runFfmpegToWav({
+  required String input,
+  required String outputPath,
+  required String failLabel,
+  double? startSeconds,
+  double? durationSeconds,
+}) async {
+  final args = <String>[
+    '-hide_banner',
+    '-nostdin',
+    '-y',
+    if (startSeconds != null) ...['-ss', startSeconds.toStringAsFixed(3)],
+    if (durationSeconds != null) ...['-t', durationSeconds.toStringAsFixed(3)],
+    '-i',
+    input,
+    '-vn',
+    '-ar',
+    '$kAlignmentSampleRate',
+    '-ac',
+    '1',
+    '-c:a',
+    'pcm_s16le',
+    outputPath,
+  ];
+
+  if (!pcm16kUsesFfmpegKit(
+    isAndroid: Platform.isAndroid,
+    isIOS: Platform.isIOS,
+    isMacOS: Platform.isMacOS,
+  )) {
+    final ffmpeg = await FfmpegMediaProbe.resolveFfmpegExecutable();
+    if (ffmpeg == null) {
+      throw const Pcm16kDecodeException('ffmpeg unavailable');
+    }
+    final result = await Process.run(ffmpeg, args);
+    if (result.exitCode != 0 || !File(outputPath).existsSync()) {
+      _log.fine('ffmpeg $failLabel failed (exit ${result.exitCode})');
+      throw Pcm16kDecodeException(
+        'ffmpeg $failLabel failed (exit ${result.exitCode})',
+      );
+    }
+    return;
+  }
+
+  try {
+    final session = await FFmpegKit.executeWithArguments(args);
+    final code = await session.getReturnCode();
+    if (!ReturnCode.isSuccess(code) || !File(outputPath).existsSync()) {
+      _log.fine('FFmpegKit $failLabel failed: ${await session.getOutput()}');
+      throw Pcm16kDecodeException(
+        'ffmpeg $failLabel failed (exit ${code?.getValue() ?? -1})',
+      );
+    }
+  } on Pcm16kDecodeException {
+    rethrow;
+  } on MissingPluginException catch (e, st) {
+    _log.fine('FFmpegKit not registered', e, st);
+    throw const Pcm16kDecodeException('ffmpeg unavailable');
   }
 }
 

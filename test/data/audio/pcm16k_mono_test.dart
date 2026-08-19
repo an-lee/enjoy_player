@@ -78,4 +78,23 @@ void main() {
     expect(pcm, isNotEmpty);
     expect(pcm.length, closeTo(1600, 2));
   });
+
+  test('FFmpegKit is used on Android, iOS, and macOS only', () {
+    expect(
+      pcm16kUsesFfmpegKit(isAndroid: true, isIOS: false, isMacOS: false),
+      isTrue,
+    );
+    expect(
+      pcm16kUsesFfmpegKit(isAndroid: false, isIOS: true, isMacOS: false),
+      isTrue,
+    );
+    expect(
+      pcm16kUsesFfmpegKit(isAndroid: false, isIOS: false, isMacOS: true),
+      isTrue,
+    );
+    expect(
+      pcm16kUsesFfmpegKit(isAndroid: false, isIOS: false, isMacOS: false),
+      isFalse,
+    );
+  });
 }
