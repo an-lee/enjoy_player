@@ -23,7 +23,7 @@ fi
 
 jq -s '
   .[0] as $new | .[1] as $remote |
-  if ($remote | type) != "object" then
+  if ($remote | type) != "object" or ($remote.version != $new.version) then
     $new
   else
     $new
