@@ -40,7 +40,7 @@
 </table>
 
 <p align="center">
-  <img src="assets/store/macos_screenshot_1.png" alt="Enjoy Player on macOS — full-window player with transcript sidebar" width="900">
+  <img src="assets/store/macos_player_screenshot.png" alt="Enjoy Player on macOS — full-window player with transcript sidebar" width="900">
 </p>
 
 <p align="center"><sub><b>One experience, every screen.</b> Native on Windows, macOS, Linux, Android and iOS — phone, tablet and desktop.</sub></p>
