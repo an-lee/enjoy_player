@@ -1,13 +1,21 @@
-/// Issue #540 §12 non-regression snapshot, adapted to the shipped gating.
+/// Issue #540 §12 non-regression check, adapted to the shipped gating.
 ///
 /// The global `transcript.timelineEnrichment` toggle was superseded by
 /// ADR-0076/0078 (always-on enrichment + per-consumer karaoke/IPA switches),
 /// so the guarantee to pin is: a cue carrying nested word/phone data renders
 /// byte-identically to a line-only cue while every consumer switch is off.
-/// Both tiles compare against the SAME golden file.
+///
+/// This compares the two renderings directly against each other rather than
+/// against a committed golden PNG. The claim is a relative one (enriched ==
+/// flat), so both frames are rasterized in the same run — there is no stored
+/// reference to drift as fonts, Flutter versions, or host platforms change.
 library;
 
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -27,8 +35,8 @@ class _BlurMode extends TranscriptBlurMode {
   bool build() => _initial;
 }
 
-/// Plain (non-GoogleFonts) typography so the golden is deterministic and the
-/// tile never hits the network-fetching fallback styles.
+/// Plain (non-GoogleFonts) typography so the rasterization is deterministic and
+/// the tile never hits the network-fetching fallback styles.
 const _typography = TranscriptTypographyTokens(
   useSerif: false,
   bodyStyle: TextStyle(fontSize: 16, height: 1.6),
@@ -36,32 +44,60 @@ const _typography = TranscriptTypographyTokens(
   timestampStyle: TextStyle(fontSize: 12),
 );
 
-Widget _harness(Widget child) {
-  return ProviderScope(
-    overrides: [
-      transcriptBlurModeProvider.overrideWith(() => _BlurMode(false)),
-      ...transcriptIpaOverlayOffOverrides(),
-    ],
-    child: MaterialApp(
-      theme: ThemeData(extensions: const [_typography]),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(body: SizedBox(width: 480, child: child)),
+const _captureKey = ValueKey('enrichment-capture');
+
+/// Pumps [line] into the tile harness and returns the rasterized tile as PNG
+/// bytes.
+///
+/// The image work has to run inside [WidgetTester.runAsync]; `toImage` awaits
+/// real engine callbacks that never settle under the default fake-async clock.
+Future<Uint8List> _render(WidgetTester tester, TranscriptLine line) async {
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        transcriptBlurModeProvider.overrideWith(() => _BlurMode(false)),
+        ...transcriptIpaOverlayOffOverrides(),
+      ],
+      child: MaterialApp(
+        theme: ThemeData(extensions: const [_typography]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: SizedBox(
+            width: 480,
+            child: RepaintBoundary(
+              key: _captureKey,
+              child: TranscriptLineTile(
+                line: line,
+                mediaId: 'test',
+                secondaryText: null,
+                isActive: false,
+                inEcho: false,
+                groupedInEcho: false,
+                selectable: false,
+                onTap: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
     ),
   );
-}
 
-TranscriptLineTile _tile(TranscriptLine line) {
-  return TranscriptLineTile(
-    line: line,
-    mediaId: 'test',
-    secondaryText: null,
-    isActive: false,
-    inEcho: false,
-    groupedInEcho: false,
-    selectable: false,
-    onTap: () {},
+  // Guards against the comparison passing vacuously on two empty frames.
+  expect(find.byType(TranscriptLineTile), findsOneWidget);
+  expect(tester.getSize(find.byKey(_captureKey)).height, greaterThan(0));
+
+  final boundary = tester.renderObject<RenderRepaintBoundary>(
+    find.byKey(_captureKey),
   );
+  final bytes = await tester.runAsync(() async {
+    final image = await boundary.toImage(pixelRatio: 1.0);
+    final data = await image.toByteData(format: ui.ImageByteFormat.png);
+    image.dispose();
+    return data!.buffer.asUint8List();
+  });
+  return bytes!;
 }
 
 void main() {
@@ -114,17 +150,10 @@ void main() {
         ],
       );
 
-      await tester.pumpWidget(_harness(_tile(flat)));
-      await expectLater(
-        find.byType(TranscriptLineTile),
-        matchesGoldenFile('goldens/transcript_tile_enrichment_off.png'),
-      );
+      final flatBytes = await _render(tester, flat);
+      final enrichedBytes = await _render(tester, enriched);
 
-      await tester.pumpWidget(_harness(_tile(enriched)));
-      await expectLater(
-        find.byType(TranscriptLineTile),
-        matchesGoldenFile('goldens/transcript_tile_enrichment_off.png'),
-      );
+      expect(enrichedBytes, equals(flatBytes));
     },
   );
 }
