@@ -47,6 +47,45 @@ void _dismissBlockingImportDialogThen(BuildContext context, VoidCallback then) {
   });
 }
 
+/// Blocking progress dialog shown on the root navigator while a file or YouTube
+/// import is in flight. [label] resolves to the localized status string from
+/// the [AppLocalizations] exposed inside the dialog's own [BuildContext], so
+/// callers pass `(l10n) => l10n.importingMedia` (file) or
+/// `(l10n) => l10n.youtubeImporting` (YouTube). Paired with
+/// [_dismissBlockingImportDialogThen] in the success / failure branches so the
+/// dialog always tears down before navigation.
+void _showImportProgressDialog(
+  BuildContext context,
+  String Function(AppLocalizations) label,
+) {
+  unawaited(
+    showEnjoyDialog<void>(
+      context: context,
+      useRootNavigator: true,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        final l10n = AppLocalizations.of(dialogContext)!;
+        return PopScope(
+          canPop: false,
+          child: AlertDialog(
+            content: Row(
+              children: [
+                const SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: CircularProgressIndicator(strokeWidth: 3),
+                ),
+                const SizedBox(width: 24),
+                Expanded(child: Text(label(l10n))),
+              ],
+            ),
+          ),
+        );
+      },
+    ),
+  );
+}
+
 Future<void> importMediaFromPicker(BuildContext context, WidgetRef ref) async {
   final pick = await FilePicker.pickFiles(
     type: FileType.custom,
@@ -64,32 +103,7 @@ Future<void> importMediaFromPicker(BuildContext context, WidgetRef ref) async {
   if (contentLanguage == null || !context.mounted) return;
 
   final l10n = AppLocalizations.of(context)!;
-  unawaited(
-    showEnjoyDialog<void>(
-      context: context,
-      useRootNavigator: true,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        final d = AppLocalizations.of(dialogContext)!;
-        return PopScope(
-          canPop: false,
-          child: AlertDialog(
-            content: Row(
-              children: [
-                const SizedBox(
-                  width: 32,
-                  height: 32,
-                  child: CircularProgressIndicator(strokeWidth: 3),
-                ),
-                const SizedBox(width: 24),
-                Expanded(child: Text(d.importingMedia)),
-              ],
-            ),
-          ),
-        );
-      },
-    ),
-  );
+  _showImportProgressDialog(context, (d) => d.importingMedia);
   // Let the modal route build and paint before starting import (Duration.zero is not enough).
   await WidgetsBinding.instance.endOfFrame;
 
@@ -275,32 +289,7 @@ Future<void> importYoutubeFromDialog(
   );
   if (contentLanguage == null || !context.mounted) return;
 
-  unawaited(
-    showEnjoyDialog<void>(
-      context: context,
-      useRootNavigator: true,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        final d = AppLocalizations.of(dialogContext)!;
-        return PopScope(
-          canPop: false,
-          child: AlertDialog(
-            content: Row(
-              children: [
-                const SizedBox(
-                  width: 32,
-                  height: 32,
-                  child: CircularProgressIndicator(strokeWidth: 3),
-                ),
-                const SizedBox(width: 24),
-                Expanded(child: Text(d.youtubeImporting)),
-              ],
-            ),
-          ),
-        );
-      },
-    ),
-  );
+  _showImportProgressDialog(context, (d) => d.youtubeImporting);
   // Let the modal route build and paint before starting import.
   await WidgetsBinding.instance.endOfFrame;
 
