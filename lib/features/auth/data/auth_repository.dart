@@ -264,7 +264,9 @@ class AuthRepository {
         filename: filename,
         contentType: mime,
       );
-      return await updateProfile(UpdateProfileRequest(avatarSignedId: signedId));
+      return await updateProfile(
+        UpdateProfileRequest(avatarSignedId: signedId),
+      );
     } on ApiException catch (e) {
       if (e.isUnauthorized) {
         await clearSession();
