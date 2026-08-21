@@ -66,7 +66,7 @@ Reference: web app implementation at `~/projects/enjoy/apps/web/src/lib/activest
 | III. — ARB localization | **Pass** | New user-visible strings ("Syncing to cloud", "Synced to cloud", "Cloud sync failed") are added to ARB. |
 | III. — `docs/features/` update | **Pass (required)** | A new or updated `docs/features/craft-studio.md` (or equivalent) documents the cross-platform sync behavior. |
 | IV. Performance Is a Requirement | **Pass** | Performance goals (P-1..P-4) are stated above. Byte read + PUT happens off the main isolate; UI badge reads cached sync state and does not block. |
-| V. Documentation & Traceability | **Pass (required)** | A new ADR (`docs/decisions/0049-crafted-audio-cloud-sync.md`) records the choice of Active Storage direct-upload + per-row binary sync (vs alternatives). |
+| V. Documentation & Traceability | **Pass (required)** | A new ADR (`docs/decisions/0081-crafted-audio-cloud-sync.md`) records the choice of Active Storage direct-upload + per-row binary sync (vs alternatives). |
 
 No constitution violations. The table above also lists the required tests / docs that must be produced alongside the implementation.
 
