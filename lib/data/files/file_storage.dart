@@ -257,8 +257,7 @@ class FileStorage {
         if (length == 0) return null;
         final raf = await file.open();
         try {
-          final bytes = await raf.read(length);
-          return Uint8List.fromList(bytes);
+          return await raf.read(length);
         } finally {
           await raf.close();
         }
