@@ -85,7 +85,8 @@ class CraftAudioCloudUploader {
       bytes = await _fileStorage.readAppManagedMedia(row.localUri);
     } on Object catch (e, st) {
       _log.warning(
-        () => 'craft_audio_upload_failure media_id=$mediaId '
+        () =>
+            'craft_audio_upload_failure media_id=$mediaId '
             'error=read_failed will_retry=${row.syncStatus == "pending"}',
         e,
         st,
@@ -94,14 +95,14 @@ class CraftAudioCloudUploader {
     }
     if (bytes == null) {
       _log.fine(
-        () => 'craft_audio_upload_skipped media_id=$mediaId reason=missing_local',
+        () =>
+            'craft_audio_upload_skipped media_id=$mediaId reason=missing_local',
       );
       return null;
     }
     if (bytes.isEmpty) {
       _log.fine(
-        () =>
-            'craft_audio_upload_skipped media_id=$mediaId reason=zero_length',
+        () => 'craft_audio_upload_skipped media_id=$mediaId reason=zero_length',
       );
       return null;
     }
@@ -121,7 +122,8 @@ class CraftAudioCloudUploader {
     );
     stopwatch.stop();
     _log.info(
-      () => 'craft_audio_upload_success media_id=$mediaId '
+      () =>
+          'craft_audio_upload_success media_id=$mediaId '
           'duration_ms=${stopwatch.elapsedMilliseconds} '
           'signed_id=${_shorten(signedId)}',
     );

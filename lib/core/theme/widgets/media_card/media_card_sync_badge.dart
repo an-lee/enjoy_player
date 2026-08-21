@@ -53,17 +53,18 @@ class MediaCardSyncBadgePill extends StatelessWidget {
 
   Color _backgroundFor(ColorScheme cs) => switch (state) {
     MediaCardSyncBadge.synced => Colors.green.shade700.withValues(alpha: 0.92),
-    MediaCardSyncBadge.pending =>
-      cs.surfaceContainerHighest.withValues(alpha: 0.92),
-    MediaCardSyncBadge.localOnly =>
-      cs.surfaceContainerHighest.withValues(alpha: 0.92),
+    MediaCardSyncBadge.pending => cs.surfaceContainerHighest.withValues(
+      alpha: 0.92,
+    ),
+    MediaCardSyncBadge.localOnly => cs.surfaceContainerHighest.withValues(
+      alpha: 0.92,
+    ),
   };
 
   Color _foregroundFor(ColorScheme cs) => switch (state) {
     MediaCardSyncBadge.synced => Colors.white,
     MediaCardSyncBadge.pending => cs.onSurfaceVariant,
-    MediaCardSyncBadge.localOnly =>
-      cs.onSurfaceVariant.withValues(alpha: 0.85),
+    MediaCardSyncBadge.localOnly => cs.onSurfaceVariant.withValues(alpha: 0.85),
   };
 
   String _tooltipFor(BuildContext context) {
@@ -89,11 +90,7 @@ class MediaCardSyncBadgePill extends StatelessWidget {
           color: _backgroundFor(cs),
           borderRadius: BorderRadius.circular(999),
         ),
-        child: Icon(
-          _icon,
-          size: compact ? 12 : 14,
-          color: _foregroundFor(cs),
-        ),
+        child: Icon(_icon, size: compact ? 12 : 14, color: _foregroundFor(cs)),
       ),
     );
   }

@@ -185,7 +185,8 @@ class _MediaCardTileState extends State<MediaCardTile> {
                         if (widget.cloudSyncBadge != null)
                           Positioned(
                             top: t.space8,
-                            right: widget.onDelete != null &&
+                            right:
+                                widget.onDelete != null &&
                                     showMediaCardPointerDeleteButton()
                                 ? 52 // 40px delete button + 8px gap + 4px pad
                                 : t.space8,

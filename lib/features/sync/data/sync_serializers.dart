@@ -44,10 +44,7 @@ int _recordingWireMsFromJson(dynamic value) {
 /// audio model and populates `mediaUrl` in the response. The web app sends
 /// the same field via `attachMediaBlobToPayload`. Only the Crafted Audio
 /// Cloud Sync flow sends a non-null [signedId].
-Map<String, dynamic> prepareForSyncAudioMap(
-  AudioRow row, {
-  String? signedId,
-}) {
+Map<String, dynamic> prepareForSyncAudioMap(AudioRow row, {String? signedId}) {
   return <String, dynamic>{
     'id': row.id,
     'aid': row.aid,
