@@ -15,7 +15,7 @@
 
 - **[P]**: Can run in parallel (different files, no dependencies on incomplete tasks).
 - **[Story]**: US1, US2, US3, or US4 — maps to the four user stories in `spec.md`.
-- All paths are relative to the repository root `/home/an-lee/projects/enjoy_player/`.
+- All paths are relative to the repository root.
 
 ---
 
