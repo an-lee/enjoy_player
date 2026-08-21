@@ -183,7 +183,7 @@ Response: `200 OK` or `204 No Content`. The server MUST remove the underlying Ac
 - If (b): add a new `DirectUploadsApi.deleteBlob(signedId)` method and call it from `SyncUploadService.deleteAudio` after the row delete succeeds.
 - If (c): best-effort, fire-and-forget a cleanup request via a new server endpoint (or accept that orphaned blobs may exist for a short period).
 
-This contract is intentionally left **TBD in the planning phase** and will be resolved during implementation by reading the web app's delete path and the Rails server's model definition (if accessible). The decision is recorded in `docs/decisions/0049-crafted-audio-cloud-sync.md`.
+This contract is intentionally left **TBD in the planning phase** and will be resolved during implementation by reading the web app's delete path and the Rails server's model definition (if accessible). The decision is recorded in `docs/decisions/0081-crafted-audio-cloud-sync.md`.
 
 ### Client usage (Dart, current)
 
