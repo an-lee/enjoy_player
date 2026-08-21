@@ -23,7 +23,7 @@
 
 **Purpose**: Confirm one open server-side contract before any code is written. This blocks Phase 6 (US4 — delete lifecycle).
 
-- [x] T001 Audit server DELETE contract for crafted audio blobs in `/home/an-lee/projects/enjoy/apps/web/src/db/repositories/audio-repository.ts` and the Rails model (if accessible) to determine which of the three delete cases in `specs/043-craft-cloud-sync/contracts/audio-cloud-sync.md#contract-3` applies — (a) `DELETE /api/v1/mine/audios/:id` cascades to blob via `dependent: :destroy`, (b) a separate `DELETE /api/v1/direct_uploads/:signedId` is required, or (c) blob persists and needs a cleanup job. Record the finding as a one-line note in `docs/decisions/0049-crafted-audio-cloud-sync.md` (file in Phase 7).
+- [x] T001 Audit server DELETE contract for crafted audio blobs in `/home/an-lee/projects/enjoy/apps/web/src/db/repositories/audio-repository.ts` and the Rails model (if accessible) to determine which of the three delete cases in `specs/043-craft-cloud-sync/contracts/audio-cloud-sync.md#contract-3` applies — (a) `DELETE /api/v1/mine/audios/:id` cascades to blob via `dependent: :destroy`, (b) a separate `DELETE /api/v1/direct_uploads/:signedId` is required, or (c) blob persists and needs a cleanup job. Record the finding as a one-line note in `docs/decisions/0081-crafted-audio-cloud-sync.md` (file in Phase 7).
 
 ---
 
