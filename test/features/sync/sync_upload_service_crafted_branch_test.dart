@@ -222,7 +222,7 @@ void main() {
           final audio = body['audio'] as Map<String, dynamic>;
           // CRITICAL: signedId MUST NOT be in the JSON body for user imports.
           expect(
-            audio.containsKey("signed_id"),
+            audio.containsKey('signed_id'),
             isFalse,
             reason: 'user-imported audio must not include a signedId',
           );
@@ -278,7 +278,7 @@ void main() {
           if (req.url.path == '/api/v1/mine/audios' && req.method == 'POST') {
             final body = jsonDecode(req.body) as Map<String, dynamic>;
             final audio = body['audio'] as Map<String, dynamic>;
-            expect(audio.containsKey("signed_id"), isFalse);
+            expect(audio.containsKey('signed_id'), isFalse);
             expect(audio['provider'], 'youtube');
             return http.Response(
               jsonEncode({
@@ -324,7 +324,7 @@ void main() {
           if (req.url.path == '/api/v1/mine/audios' && req.method == 'POST') {
             final body = jsonDecode(req.body) as Map<String, dynamic>;
             final audio = body['audio'] as Map<String, dynamic>;
-            expect(audio.containsKey("signed_id"), isFalse);
+            expect(audio.containsKey('signed_id'), isFalse);
             return http.Response(
               jsonEncode({
                 'audio': {

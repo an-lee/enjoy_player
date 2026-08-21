@@ -1,5 +1,6 @@
 import 'package:enjoy_player/core/application/app_language_catalog.dart';
 import 'package:enjoy_player/features/ai/data/azure_language_mapper.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -305,9 +306,11 @@ void main() {
       expect(kSupportedNativeLanguageTags, contains(coerced));
     });
 
-    test('passes through a valid supported native that differs from learning',
-        () {
-      expect(coerceNativeIfEqualsLearning('zh-CN', 'en-US'), 'zh-CN');
-    });
+    test(
+      'passes through a valid supported native that differs from learning',
+      () {
+        expect(coerceNativeIfEqualsLearning('zh-CN', 'en-US'), 'zh-CN');
+      },
+    );
   });
 }

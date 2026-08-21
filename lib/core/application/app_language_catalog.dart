@@ -418,9 +418,11 @@ String localeToBcp47(Locale locale) => locale.toLanguageTag();
 Locale displayLocaleFromRawOrDefault(String? raw) {
   if (raw == null || raw.trim().isEmpty) return kAppDefaultDisplayLocale;
   final parts = _splitLanguageTag(raw.trim());
+  // Normalize for case-insensitive match against [kAppDisplayLocales] (the
+  // catalog stores BCP-47 canonical form: lowercase language, uppercase region).
   final Locale candidate = parts.length >= 2
-      ? Locale(parts[0], parts[1])
-      : Locale(parts[0]);
+      ? Locale(parts[0].toLowerCase(), parts[1].toUpperCase())
+      : Locale(parts[0].toLowerCase());
   for (final loc in kAppDisplayLocales) {
     if (loc.languageCode == candidate.languageCode &&
         (loc.countryCode ?? '') == (candidate.countryCode ?? '')) {
