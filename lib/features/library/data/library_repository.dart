@@ -18,6 +18,7 @@ import 'package:enjoy_player/core/utils/collections.dart';
 import 'package:enjoy_player/core/utils/youtube_video_identity.dart';
 import 'package:logging/logging.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
+import 'package:enjoy_player/data/db/media_registry.dart';
 import 'package:enjoy_player/data/files/app_managed_media_gc.dart';
 import 'package:enjoy_player/data/files/ffmpeg_media_probe.dart';
 import 'package:enjoy_player/data/files/file_storage.dart';
@@ -29,78 +30,6 @@ import 'package:enjoy_player/features/sync/domain/sync_types.dart';
 import 'package:http/http.dart' as http;
 
 typedef YoutubeMetadataPatch = ({String title, String? thumbnailUrl});
-
-Media _mediaFromVideo(VideoRow row) => _mediaFromLibraryRow(
-  id: row.id,
-  kind: MediaKind.video,
-  title: row.title,
-  localUri: row.localUri,
-  mediaUrl: row.mediaUrl,
-  thumbnailUrl: row.thumbnailUrl,
-  durationSeconds: row.durationSeconds,
-  language: row.language,
-  contentHash: row.vid,
-  size: row.size,
-  source: row.source,
-  provider: row.provider,
-  syncStatus: row.syncStatus,
-  createdAt: row.createdAt,
-  updatedAt: row.updatedAt,
-);
-
-Media _mediaFromAudio(AudioRow row) => _mediaFromLibraryRow(
-  id: row.id,
-  kind: MediaKind.audio,
-  title: row.title,
-  localUri: row.localUri,
-  mediaUrl: row.mediaUrl,
-  thumbnailUrl: row.thumbnailUrl,
-  durationSeconds: row.durationSeconds,
-  language: row.language,
-  contentHash: row.aid,
-  size: row.size,
-  source: row.source,
-  provider: row.provider,
-  syncStatus: row.syncStatus,
-  createdAt: row.createdAt,
-  updatedAt: row.updatedAt,
-);
-
-Media _mediaFromLibraryRow({
-  required String id,
-  required MediaKind kind,
-  required String title,
-  required String? localUri,
-  required String? mediaUrl,
-  required String? thumbnailUrl,
-  required int durationSeconds,
-  required String language,
-  required String contentHash,
-  required int? size,
-  required String? source,
-  required String provider,
-  String? syncStatus,
-  required DateTime createdAt,
-  required DateTime updatedAt,
-}) {
-  return Media(
-    id: id,
-    kind: kind,
-    title: title,
-    sourceUri: localUri ?? mediaUrl ?? '',
-    thumbnailPath: thumbnailUrl,
-    durationMs: durationSeconds * 1000,
-    language: language,
-    contentHash: contentHash,
-    fileSize: size ?? 0,
-    mediaUrl: mediaUrl,
-    source: source,
-    provider: provider,
-    syncStatus: syncStatus,
-    createdAt: createdAt,
-    updatedAt: updatedAt,
-  );
-}
 
 class MediaLibraryRepository {
   MediaLibraryRepository(
@@ -141,8 +70,8 @@ class MediaLibraryRepository {
 
     void emit(StreamController<List<Media>> c) {
       final merged = <Media>[
-        ...videos.map(_mediaFromVideo),
-        ...audios.map(_mediaFromAudio),
+        ...videos.map(mediaFromVideo),
+        ...audios.map(mediaFromAudio),
       ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
       if (lastEmitted != null && listEquals(lastEmitted!, merged)) {
         return;
@@ -851,13 +780,7 @@ class MediaLibraryRepository {
     );
   }
 
-  Future<Media?> getById(String id) async {
-    final v = await _db.videoDao.getById(id);
-    if (v != null) return _mediaFromVideo(v);
-    final a = await _db.audioDao.getById(id);
-    if (a != null) return _mediaFromAudio(a);
-    return null;
-  }
+  Future<Media?> getById(String id) async => MediaRegistry(_db).getById(id);
 
   /// Updates content language on an existing audio or video row.
   Future<void> updateMediaLanguage(String id, String language) async {

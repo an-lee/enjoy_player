@@ -81,6 +81,10 @@ sequenceDiagram
 
 The sync / audit columns (`syncStatus`, `serverUpdatedAt`, `createdAt`, `updatedAt`) that appear on most Drift tables are defined once in [`SyncMetadataColumns`](../lib/data/db/tables/sync_metadata.dart) and applied via `with SyncMetadataColumns on Table`. Tables that are never cloud-synced (e.g. `vocabulary_reviews`) use the narrower [`LocalAuditColumns`](../lib/data/db/tables/sync_metadata.dart) mixin instead (same columns minus `serverUpdatedAt`). This avoids repeating the four-column declaration across the nine tables that share it — see [`sync_metadata.dart`](../lib/data/db/tables/sync_metadata.dart).
 
+### Media registry (videos/audios seam)
+
+Media persists in two sibling tables (`videos` / `audios`), but callers think in terms of one [`Media`](../lib/features/library/domain/media.dart). [`MediaRegistry`](../lib/data/db/media_registry.dart) is the single seam over that split: it owns the video-then-audio probe, the row→`Media` mapping (`mediaFromVideo` / `mediaFromAudio`), and unified lookups (`getById`, `kindOf`, `dexieTargetTypeForId`, `localUriOf`). New code that needs "the media with this id" crosses the registry instead of re-probing both DAOs; [`dexieTargetTypeForId`](../lib/data/db/media_target_resolver.dart) is implemented on top of it. Video-first precedence when an id exists in both tables is defensive and covered by tests. Write-path dispatch (delete/touch/relocate) and the sync entity mapping still branch per table — tracked as follow-ups in issue #593.
+
 ### Per-user database cache
 
 `app_database_provider.dart` keeps the most recent **two** per-user [`AppDatabase`](../lib/data/db/app_database.dart) instances in a bounded `LinkedHashMap`. On sign-in for a third account, the **oldest** entry is closed (and its Drift connections released) before the new one is inserted — see [ADR-0012](decisions/0012-per-user-sqlite-isolation.md) for the per-user isolation rationale. The cap keeps the file-handle / mmap footprint stable across guest ↔ account churn.
