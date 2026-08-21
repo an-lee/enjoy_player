@@ -235,6 +235,7 @@ class YoutubePlayerEngine implements PlayerEngine {
           return;
         }
         _webView.onExplicitPlayAttempt();
+        _session.userPlayInFlight = true;
         // Clear stale buffering so the transport button stays retryable.
         if (_session.buffering && !_session.playing) {
           _session.emitBuffering(false);
@@ -278,6 +279,7 @@ class YoutubePlayerEngine implements PlayerEngine {
           return;
         }
         _webView.onExplicitPlayAttempt();
+        _session.userPlayInFlight = true;
         if (_session.buffering && !_session.playing) {
           _session.emitBuffering(false);
         }

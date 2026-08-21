@@ -71,6 +71,7 @@ class YoutubeWebViewEvents {
         final progressGate = !session.loggedFirstPlaying;
         session.pausedPollStreak = 0;
         session.playbackCompleted = false;
+        session.userPlayInFlight = false;
         session.emitPlaying(true);
         onFirstPlaying();
         session.emitBuffering(false);
@@ -93,6 +94,7 @@ class YoutubeWebViewEvents {
         break;
       case 'playRejected':
         cancelPendingVolumeRestore();
+        session.userPlayInFlight = false;
         session.emitPlaying(false);
         session.emitBuffering(false);
         final reason = args.length > 1 ? '${args[1]}' : 'unknown';
@@ -106,6 +108,7 @@ class YoutubeWebViewEvents {
         break;
       case 'ended':
         session.pausedPollStreak = 0;
+        session.userPlayInFlight = false;
         cancelPendingVolumeRestore();
         session.markCompleted();
         stopPolling();
@@ -134,6 +137,7 @@ class YoutubeWebViewEvents {
       case 'error':
         cancelPendingVolumeRestore();
         _logEvents.warning('YouTube video element error');
+        session.userPlayInFlight = false;
         session.emitPlaying(false);
         session.emitBuffering(false);
         break;
