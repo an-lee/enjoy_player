@@ -104,7 +104,7 @@ If step 7 fails, check:
 1. Sign in to device A. Craft and save an audio. Wait for "Synced to cloud".
 2. Delete the entry from the library.
 3. Confirm via server-side inspection (e.g. `rails runner 'puts ActiveStorage::Attachment.count'` or the equivalent admin UI) that the underlying blob is removed within 5 minutes.
-4. **Expected**: blob is gone. If the contract-3 server behavior is "best-effort orphan cleanup" (case (c) in the contracts), the blob may briefly persist until a cleanup job runs — accept that as a known limitation documented in `docs/decisions/0049-...`.
+4. **Expected**: blob is gone. If the contract-3 server behavior is "best-effort orphan cleanup" (case (c) in the contracts), the blob may briefly persist until a cleanup job runs — accept that as a known limitation documented in `docs/decisions/0081-crafted-audio-cloud-sync.md`.
 
 ### Scenario F — Deduplication (FR-008, SC-007)
 
