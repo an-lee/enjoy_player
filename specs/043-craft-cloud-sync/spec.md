@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: User description: "I craft some audios in my android. Then I want to practice it in my windowws, but it complains that cannot find the audio file. We should fix this. For the craft artifacts, we should upload them with the audio to cloud, so we can use them in every platform. ref to the similar implementation in web app(`~/projects/enjoy`). We don't upload the local files imported, but for the crafted audios, which is not large, we should save them to cloud after users add them into library."
+**Input**: User description: "I craft some audios in my Android. Then I want to practice it in my Windows, but it complains that cannot find the audio file. We should fix this. For the craft artifacts, we should upload them with the audio to cloud, so we can use them in every platform. ref to the similar implementation in web app(`~/projects/enjoy`). We don't upload the local files imported, but for the crafted audios, which is not large, we should save them to cloud after users add them into library."
 
 ## User Scenarios & Testing *(mandatory)*
 
