@@ -132,6 +132,54 @@ final class SyncQueueSnapshotProvider
 
 String _$syncQueueSnapshotHash() => r'f584b6e742df5204218c7e3306e22a500c637000';
 
+@ProviderFor(craftAudioCloudUploader)
+final craftAudioCloudUploaderProvider = CraftAudioCloudUploaderProvider._();
+
+final class CraftAudioCloudUploaderProvider
+    extends
+        $FunctionalProvider<
+          CraftAudioCloudUploader,
+          CraftAudioCloudUploader,
+          CraftAudioCloudUploader
+        >
+    with $Provider<CraftAudioCloudUploader> {
+  CraftAudioCloudUploaderProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'craftAudioCloudUploaderProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$craftAudioCloudUploaderHash();
+
+  @$internal
+  @override
+  $ProviderElement<CraftAudioCloudUploader> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  CraftAudioCloudUploader create(Ref ref) {
+    return craftAudioCloudUploader(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CraftAudioCloudUploader value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CraftAudioCloudUploader>(value),
+    );
+  }
+}
+
+String _$craftAudioCloudUploaderHash() =>
+    r'0bbf571e3adc0eaea6ae16b115279013046ebc7f';
+
 @ProviderFor(syncUploadService)
 final syncUploadServiceProvider = SyncUploadServiceProvider._();
 
@@ -177,7 +225,7 @@ final class SyncUploadServiceProvider
   }
 }
 
-String _$syncUploadServiceHash() => r'c99bee0011ebff2d4192f756146410afc941a98c';
+String _$syncUploadServiceHash() => r'75e54e3904e9fe76d8335a69405eade2a7be84d9';
 
 @ProviderFor(syncDownloadService)
 final syncDownloadServiceProvider = SyncDownloadServiceProvider._();

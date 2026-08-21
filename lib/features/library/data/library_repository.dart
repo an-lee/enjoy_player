@@ -43,6 +43,7 @@ Media _mediaFromVideo(VideoRow row) => _mediaFromLibraryRow(
   size: row.size,
   source: row.source,
   provider: row.provider,
+  syncStatus: row.syncStatus,
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
 );
@@ -60,6 +61,7 @@ Media _mediaFromAudio(AudioRow row) => _mediaFromLibraryRow(
   size: row.size,
   source: row.source,
   provider: row.provider,
+  syncStatus: row.syncStatus,
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
 );
@@ -77,6 +79,7 @@ Media _mediaFromLibraryRow({
   required int? size,
   required String? source,
   required String provider,
+  String? syncStatus,
   required DateTime createdAt,
   required DateTime updatedAt,
 }) {
@@ -93,6 +96,7 @@ Media _mediaFromLibraryRow({
     mediaUrl: mediaUrl,
     source: source,
     provider: provider,
+    syncStatus: syncStatus,
     createdAt: createdAt,
     updatedAt: updatedAt,
   );
@@ -575,6 +579,11 @@ class MediaLibraryRepository {
           size: Value(importResult.fileSize),
           localMtimeMs: Value(importResult.mtimeMs),
           durationSeconds: 0,
+          // Reset the previous cloud URL so CraftAudioCloudUploader re-uploads
+          // the new bytes. Otherwise the upload pre-step in SyncUploadService
+          // would short-circuit (mediaUrl != null) and the cloud copy would
+          // stay stale. See specs/043-craft-cloud-sync/US2.
+          mediaUrl: const Value(null),
           syncStatus: const Value('pending'),
           updatedAt: now,
         ),

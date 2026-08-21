@@ -38,7 +38,16 @@ int _recordingWireMsFromJson(dynamic value) {
 }
 
 /// Payload for [AudioApi.uploadAudio] body (`audio` key added by API).
-Map<String, dynamic> prepareForSyncAudioMap(AudioRow row) {
+///
+/// When [signedId] is non-null and non-empty, it is included so the server
+/// attaches the previously-uploaded blob (via Rails Active Storage) to the
+/// audio model and populates `mediaUrl` in the response. The web app sends
+/// the same field via `attachMediaBlobToPayload`. Only the Crafted Audio
+/// Cloud Sync flow sends a non-null [signedId].
+Map<String, dynamic> prepareForSyncAudioMap(
+  AudioRow row, {
+  String? signedId,
+}) {
   return <String, dynamic>{
     'id': row.id,
     'aid': row.aid,
@@ -56,6 +65,7 @@ Map<String, dynamic> prepareForSyncAudioMap(AudioRow row) {
     if (row.md5 != null) 'md5': row.md5,
     if (row.size != null) 'size': row.size,
     if (row.mediaUrl != null) 'mediaUrl': row.mediaUrl,
+    if (signedId != null && signedId.isNotEmpty) 'signedId': signedId,
     'createdAt': row.createdAt.toUtc().toIso8601String(),
     'updatedAt': row.updatedAt.toUtc().toIso8601String(),
   };

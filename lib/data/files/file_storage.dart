@@ -234,6 +234,41 @@ class FileStorage {
     }
   }
 
+  /// Reads the bytes of an app-managed media file off the main isolate.
+  ///
+  /// Best-effort: returns `null` for null/empty input, non-managed paths,
+  /// zero-length files, and missing files. Used by the Crafted Audio Cloud
+  /// Sync flow to read `localUri` bytes for upload via
+  /// [DirectUploadsApi.uploadBlob] without blocking the main isolate on
+  /// multi-MB reads.
+  ///
+  /// Zero-length files are treated as missing (return `null`) so the caller
+  /// does not upload an empty blob — the row would be falsely marked
+  /// `syncStatus: 'synced'` and short-circuit future re-upload attempts.
+  Future<Uint8List?> readAppManagedMedia(String? fileUri) async {
+    if (fileUri == null || fileUri.isEmpty) return null;
+    if (!await isAppManagedMediaPath(fileUri)) return null;
+    try {
+      final path = Uri.parse(fileUri).toFilePath();
+      return await Isolate.run(() async {
+        final file = File(path);
+        if (!await file.exists()) return null;
+        final length = await file.length();
+        if (length == 0) return null;
+        final raf = await file.open();
+        try {
+          final bytes = await raf.read(length);
+          return Uint8List.fromList(bytes);
+        } finally {
+          await raf.close();
+        }
+      });
+    } on Object {
+      // Best-effort only.
+      return null;
+    }
+  }
+
   /// Writes raw bytes (e.g. synthesized TTS audio) into app media storage
   /// and returns the same [FileImportResult] shape as file-based imports.
   ///

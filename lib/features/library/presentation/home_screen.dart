@@ -16,6 +16,7 @@ import 'package:enjoy_player/core/theme/widgets/editorial_header.dart';
 import 'package:enjoy_player/core/theme/widgets/empty_state.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_page.dart';
 import 'package:enjoy_player/core/theme/widgets/media_card.dart';
+import 'package:enjoy_player/core/theme/widgets/media_card/media_card_sync_badge.dart';
 import 'package:enjoy_player/core/utils/remote_thumbnail_url.dart';
 import 'package:enjoy_player/core/utils/time_format.dart';
 import 'package:enjoy_player/features/auth/application/auth_controller.dart';
@@ -493,6 +494,11 @@ class _HomeMediaTile extends ConsumerWidget {
           : media.provider == 'craft'
           ? l10n.libraryProviderCraftBadge
           : null,
+      cloudSyncBadge: resolveMediaCardSyncBadge(
+        provider: media.provider,
+        mediaUrl: media.mediaUrl,
+        syncStatus: media.syncStatus,
+      ),
       thumbnailNetworkUrl: netThumb,
       coverSeed: media.coverSeed,
       isVideo: isVideo,

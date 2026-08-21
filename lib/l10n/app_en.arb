@@ -1185,6 +1185,18 @@
   "libraryDeleteMediaTooltip": "Delete from library",
   "libraryMediaDeleted": "Removed from library.",
   "libraryDeleteMediaFailed": "Could not remove this item.",
+  "cloudSyncBadgeSynced": "Synced to cloud",
+  "@cloudSyncBadgeSynced": {
+    "description": "Tooltip/label shown on library items whose crafted audio is synced to cloud storage and playable from any signed-in device."
+  },
+  "cloudSyncBadgePending": "Pending sync",
+  "@cloudSyncBadgePending": {
+    "description": "Tooltip/label shown on crafted audios that have been queued for cloud upload but not yet completed (e.g. offline at save time)."
+  },
+  "cloudSyncBadgeLocalOnly": "Local only",
+  "@cloudSyncBadgeLocalOnly": {
+    "description": "Tooltip/label shown on library items that have not been uploaded to cloud storage (e.g. imported user files, pre-feature crafted audios that have not yet been synced)."
+  },
   "settingsSectionDeveloper": "Developer",
   "settingsAiPlaygroundTileTitle": "AI playground",
   "settingsAiPlaygroundTileSubtitle": "Exercise ASR, chat, translation, and dictionary APIs",

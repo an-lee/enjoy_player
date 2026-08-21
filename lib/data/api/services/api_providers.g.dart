@@ -221,3 +221,49 @@ final class CreditsPackagesApiProvider
 
 String _$creditsPackagesApiHash() =>
     r'04dadba8211a4987347f37a2f8ba676e4525111d';
+
+@ProviderFor(directUploadsApi)
+final directUploadsApiProvider = DirectUploadsApiProvider._();
+
+final class DirectUploadsApiProvider
+    extends
+        $FunctionalProvider<
+          DirectUploadsApi,
+          DirectUploadsApi,
+          DirectUploadsApi
+        >
+    with $Provider<DirectUploadsApi> {
+  DirectUploadsApiProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'directUploadsApiProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$directUploadsApiHash();
+
+  @$internal
+  @override
+  $ProviderElement<DirectUploadsApi> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  DirectUploadsApi create(Ref ref) {
+    return directUploadsApi(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(DirectUploadsApi value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<DirectUploadsApi>(value),
+    );
+  }
+}
+
+String _$directUploadsApiHash() => r'dc24719d4ed9b73ca82fe42c5bbf724ff1fd0fac';

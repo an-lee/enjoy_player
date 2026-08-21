@@ -179,6 +179,22 @@ After synthesis, `wordBoundary` events from the Azure Speech SDK produce time-al
 - **`deleteMedia` cleanup**: Deleting a Craft media item removes the audio file, transcript rows, and sync queue entry.
 - **Blank transcript**: Items where TTS synthesis did not produce reliable word boundaries open with an empty transcript panel and an ASR **Generate** affordance (ADR-0063). Learners can generate cues later via the player ASR flow.
 
+## Cross-platform sync (Crafted Audio Cloud Sync, ADR-0081)
+
+Crafted audios are uploaded to cloud storage so the same audio is playable from any device the user signs in on. Imported user files (`provider = 'user'`) and YouTube downloads (`provider = 'youtube'`) are explicitly out of scope — only the small crafted audios are uploaded automatically.
+
+- **Trigger**: `CraftAudioCloudUploader.uploadIfNeeded()` runs as a pre-step inside `SyncUploadService.uploadAudio()`, gated on `row.provider == 'craft'`. The binary is uploaded via the existing `DirectUploadsApi.uploadBlob` (Rails Active Storage direct upload), and the returned `signedId` is included in the JSON payload of `POST /api/v1/mine/audios`. The server attaches the blob and returns a populated `mediaUrl`.
+- **Offline tolerance**: the binary upload is part of the existing sync queue. Crafting while offline saves locally and queues the upload for the next sync drain. The library badge shows **Pending sync** until it succeeds.
+- **Idempotency**: the uploader skips a row when `mediaUrl` is already populated. `MediaLibraryRepository.updateCraftedFromText` resets `mediaUrl` to `null` on every edit so re-crafting always re-uploads the new bytes.
+- **UI badge**: `MediaCardSyncBadgePill` renders on the thumbnail top-right of `MediaCardRow` / `MediaCardTile` for crafted audios. Three states:
+  - **Synced to cloud** (green cloud-check) — `mediaUrl != null`.
+  - **Pending sync** (muted cloud-upload) — `mediaUrl == null && syncStatus == 'pending'`.
+  - **Local only** (muted cloud-off) — everything else.
+- **Delete**: `DELETE /api/v1/mine/audios/:id` is the single delete call. The server cascades to the underlying blob via `dependent: :destroy` (verified against the web app, which uses the same pattern).
+- **Scope guard**: `provider = 'user'` and `provider = 'youtube'` rows DO NOT trigger the uploader — verified by `test/features/sync/sync_upload_service_crafted_branch_test.dart`. Imported 50 MB+ files are not silently uploaded.
+
+See `specs/043-craft-cloud-sync/` for the full spec, plan, contracts, and quickstart validation scenarios.
+
 ## Failure handling
 
 All failures go through the `CraftFailure` sealed hierarchy (`lib/features/craft/domain/craft_failure.dart`):
@@ -240,6 +256,7 @@ No `isWide` width calculations or ad-hoc max widths live in Craft widgets — al
 
 ## Related
 
+- [ADR-0081: Crafted Audio Cloud Sync](../decisions/0081-crafted-audio-cloud-sync.md)
 - [ADR-0061: Craft first-class Home entry, history, edit](../decisions/0061-craft-first-class-history.md)
 - [ADR-0062: Remove Craft history record keeps practice audio](../decisions/0062-craft-history-remove-keeps-audio.md)
 - [ADR-0060: Craft Voice-Express dual-mode redesign](../decisions/0060-craft-voice-express-dual-mode.md)

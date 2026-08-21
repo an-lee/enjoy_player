@@ -2205,6 +2205,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get libraryDeleteMediaFailed => 'Could not remove this item.';
 
   @override
+  String get cloudSyncBadgeSynced => 'Synced to cloud';
+
+  @override
+  String get cloudSyncBadgePending => 'Pending sync';
+
+  @override
+  String get cloudSyncBadgeLocalOnly => 'Local only';
+
+  @override
   String get settingsSectionDeveloper => 'Developer';
 
   @override

@@ -4101,6 +4101,24 @@ abstract class AppLocalizations {
   /// **'Could not remove this item.'**
   String get libraryDeleteMediaFailed;
 
+  /// Tooltip/label shown on library items whose crafted audio is synced to cloud storage and playable from any signed-in device.
+  ///
+  /// In en, this message translates to:
+  /// **'Synced to cloud'**
+  String get cloudSyncBadgeSynced;
+
+  /// Tooltip/label shown on crafted audios that have been queued for cloud upload but not yet completed (e.g. offline at save time).
+  ///
+  /// In en, this message translates to:
+  /// **'Pending sync'**
+  String get cloudSyncBadgePending;
+
+  /// Tooltip/label shown on library items that have not been uploaded to cloud storage (e.g. imported user files, pre-feature crafted audios that have not yet been synced).
+  ///
+  /// In en, this message translates to:
+  /// **'Local only'**
+  String get cloudSyncBadgeLocalOnly;
+
   /// No description provided for @settingsSectionDeveloper.
   ///
   /// In en, this message translates to:

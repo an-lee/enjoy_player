@@ -41,6 +41,7 @@ class Media {
     this.mediaUrl,
     this.source,
     this.provider = 'user',
+    this.syncStatus,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -59,6 +60,12 @@ class Media {
 
   /// Row `provider` — e.g. `user`, `youtube`.
   final String provider;
+
+  /// Sync status from the underlying Drift row (`pending` / `synced` /
+  /// `local` / `null`). Drives the cloud-sync badge UI; see
+  /// `resolveMediaCardSyncBadge` in
+  /// `lib/core/theme/widgets/media_card/media_card_sync_badge.dart`.
+  final String? syncStatus;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -83,6 +90,7 @@ class Media {
         other.mediaUrl == mediaUrl &&
         other.source == source &&
         other.provider == provider &&
+        other.syncStatus == syncStatus &&
         other.createdAt == createdAt &&
         other.updatedAt == updatedAt;
   }
@@ -101,6 +109,7 @@ class Media {
     mediaUrl,
     source,
     provider,
+    syncStatus,
     createdAt,
     updatedAt,
   );
