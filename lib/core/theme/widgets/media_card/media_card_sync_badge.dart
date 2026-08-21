@@ -7,8 +7,8 @@
 ///                  (queued for upload, e.g. crafted offline)
 /// - `localOnly`  — everything else (imported files, never-synced crafted)
 ///
-/// Localized tooltip / label strings are passed in by the caller (resolved
-/// from ARB), keeping this widget free of localization imports.
+/// Localized tooltip / label strings are resolved from ARB inside the widget
+/// via `AppLocalizations.of(context)`.
 library;
 
 import 'package:flutter/material.dart';
