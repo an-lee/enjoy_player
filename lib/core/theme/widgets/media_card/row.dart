@@ -12,6 +12,7 @@ import 'package:enjoy_player/core/platform/mobile_platform.dart';
 import '../../enjoy_tokens.dart';
 import 'badges.dart';
 import 'helpers.dart';
+import 'media_card_sync_badge.dart';
 
 class MediaCardRow extends StatefulWidget {
   const MediaCardRow({
@@ -24,6 +25,7 @@ class MediaCardRow extends StatefulWidget {
     this.subtitle,
     this.badge,
     this.providerBadge,
+    this.cloudSyncBadge,
     this.isVideo = false,
     this.accentColor,
     this.trailing,
@@ -44,6 +46,11 @@ class MediaCardRow extends StatefulWidget {
 
   /// Source label on thumbnail (e.g. YouTube).
   final String? providerBadge;
+
+  /// Cloud-sync state pill rendered on the thumbnail top-right. When set,
+  /// a small icon-only pill indicates whether the audio is synced, queued
+  /// for sync, or local-only.
+  final MediaCardSyncBadge? cloudSyncBadge;
   final bool isVideo;
   final Color? accentColor;
   final Widget? trailing;
@@ -207,6 +214,14 @@ class _MediaCardRowState extends State<MediaCardRow> {
                               child: MediaCardProviderBadgePill(
                                 label: widget.providerBadge!,
                                 compact: true,
+                              ),
+                            ),
+                          if (widget.cloudSyncBadge != null)
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: MediaCardSyncBadgePill(
+                                state: widget.cloudSyncBadge!,
                               ),
                             ),
                         ],

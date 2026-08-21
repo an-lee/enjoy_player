@@ -2111,6 +2111,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get libraryDeleteMediaFailed => '无法移除此项目。';
 
   @override
+  String get cloudSyncBadgeSynced => '已同步至云端';
+
+  @override
+  String get cloudSyncBadgePending => '等待同步';
+
+  @override
+  String get cloudSyncBadgeLocalOnly => '仅本机';
+
+  @override
   String get settingsSectionDeveloper => '开发者';
 
   @override
@@ -5385,6 +5394,15 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get libraryDeleteMediaFailed => '无法移除此项目。';
+
+  @override
+  String get cloudSyncBadgeSynced => '已同步至云端';
+
+  @override
+  String get cloudSyncBadgePending => '等待同步';
+
+  @override
+  String get cloudSyncBadgeLocalOnly => '仅本机';
 
   @override
   String get settingsSectionDeveloper => '开发者';

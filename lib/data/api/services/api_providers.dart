@@ -10,6 +10,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'package:enjoy_player/data/api/api_client_provider.dart';
 import 'package:enjoy_player/data/api/services/credits_packages_api.dart';
+import 'package:enjoy_player/data/api/services/direct_uploads_api.dart';
 import 'package:enjoy_player/data/api/services/stats_api.dart';
 import 'package:enjoy_player/data/api/services/subscription_api.dart';
 import 'package:enjoy_player/data/api/services/transcript_api.dart';
@@ -34,3 +35,7 @@ SubscriptionApi subscriptionApi(Ref ref) =>
 @Riverpod(keepAlive: true)
 CreditsPackagesApi creditsPackagesApi(Ref ref) =>
     CreditsPackagesApi(ref.watch(apiClientProvider));
+
+@Riverpod(keepAlive: true)
+DirectUploadsApi directUploadsApi(Ref ref) =>
+    DirectUploadsApi(ref.watch(apiClientProvider));

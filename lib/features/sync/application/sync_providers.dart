@@ -6,10 +6,13 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:enjoy_player/data/api/api_client_provider.dart';
 import 'package:enjoy_player/data/db/app_database_provider.dart';
 import 'package:enjoy_player/data/db/settings_keys.dart';
+import 'package:enjoy_player/data/api/services/api_providers.dart';
 import 'package:enjoy_player/data/api/services/audio_api.dart';
 import 'package:enjoy_player/data/api/services/recording_api.dart';
 import 'package:enjoy_player/data/api/services/video_api.dart';
 import 'package:enjoy_player/data/api/services/vocabulary_api.dart';
+import 'package:enjoy_player/data/files/file_storage.dart';
+import 'package:enjoy_player/features/craft/application/craft_audio_cloud_uploader.dart';
 import 'package:enjoy_player/features/sync/application/queue_for_sync.dart';
 import 'package:enjoy_player/features/sync/application/sync_engine.dart';
 import 'package:enjoy_player/features/sync/data/recording_target_sync_service.dart';
@@ -35,12 +38,20 @@ Stream<SyncQueueSnapshot> syncQueueSnapshot(Ref ref) =>
     ref.watch(syncQueueRepositoryProvider).watchSnapshot(detailLimit: 50);
 
 @Riverpod(keepAlive: true)
+CraftAudioCloudUploader craftAudioCloudUploader(Ref ref) =>
+    CraftAudioCloudUploader(
+      fileStorage: FileStorage(),
+      directUploadsApi: ref.watch(directUploadsApiProvider),
+    );
+
+@Riverpod(keepAlive: true)
 SyncUploadService syncUploadService(Ref ref) => SyncUploadService(
   db: ref.watch(appDatabaseProvider),
   audioApi: AudioApi(ref.watch(apiClientProvider)),
   videoApi: VideoApi(ref.watch(apiClientProvider)),
   recordingApi: RecordingApi(ref.watch(apiClientProvider)),
   vocabularyApi: VocabularyApi(ref.watch(apiClientProvider)),
+  craftAudioCloudUploader: ref.watch(craftAudioCloudUploaderProvider),
 );
 
 @Riverpod(keepAlive: true)

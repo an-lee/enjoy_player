@@ -12,6 +12,7 @@ import 'package:enjoy_player/core/platform/mobile_platform.dart';
 import '../../enjoy_tokens.dart';
 import 'badges.dart';
 import 'helpers.dart';
+import 'media_card_sync_badge.dart';
 
 class MediaCardTile extends StatefulWidget {
   const MediaCardTile({
@@ -27,6 +28,7 @@ class MediaCardTile extends StatefulWidget {
     this.onDelete,
     this.deleteTooltip,
     this.providerBadge,
+    this.cloudSyncBadge,
     this.durationLabel,
     this.badge,
     this.onBadgeTap,
@@ -58,6 +60,10 @@ class MediaCardTile extends StatefulWidget {
 
   /// e.g. "YouTube" — top-left on artwork.
   final String? providerBadge;
+
+  /// Cloud-sync state pill rendered on the thumbnail top-right.
+  /// See [MediaCardSyncBadgePill].
+  final MediaCardSyncBadge? cloudSyncBadge;
 
   /// When set, shown on the thumbnail (Discover-style) instead of the video icon.
   final String? durationLabel;
@@ -174,6 +180,18 @@ class _MediaCardTileState extends State<MediaCardTile> {
                             left: t.space8,
                             child: MediaCardProviderBadgePill(
                               label: widget.providerBadge!,
+                            ),
+                          ),
+                        if (widget.cloudSyncBadge != null)
+                          Positioned(
+                            top: t.space8,
+                            right:
+                                widget.onDelete != null &&
+                                    showMediaCardPointerDeleteButton()
+                                ? 52 // 40px delete button + 8px gap + 4px pad
+                                : t.space8,
+                            child: MediaCardSyncBadgePill(
+                              state: widget.cloudSyncBadge!,
                             ),
                           ),
                         if (widget.durationLabel != null &&

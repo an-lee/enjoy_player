@@ -11,6 +11,7 @@ import 'package:enjoy_player/core/theme/generative_media_cover.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/widgets/empty_state.dart';
 import 'package:enjoy_player/core/theme/widgets/media_card.dart';
+import 'package:enjoy_player/core/theme/widgets/media_card/media_card_sync_badge.dart';
 import 'package:enjoy_player/core/theme/widgets/skeleton.dart';
 import 'package:enjoy_player/core/utils/remote_thumbnail_url.dart';
 import 'package:enjoy_player/core/utils/time_format.dart';
@@ -174,6 +175,11 @@ class LocalAudioRow extends ConsumerWidget {
           : media.provider == 'craft'
           ? l10n.libraryProviderCraftBadge
           : null,
+      cloudSyncBadge: resolveMediaCardSyncBadge(
+        provider: media.provider,
+        mediaUrl: media.mediaUrl,
+        syncStatus: media.syncStatus,
+      ),
       thumbnailFile: thumb,
       thumbnailNetworkUrl: netThumb,
       coverSeed: media.coverSeed,
@@ -280,6 +286,11 @@ class LocalVideoTile extends ConsumerWidget {
           : media.provider == 'craft'
           ? l10n.libraryProviderCraftBadge
           : null,
+      cloudSyncBadge: resolveMediaCardSyncBadge(
+        provider: media.provider,
+        mediaUrl: media.mediaUrl,
+        syncStatus: media.syncStatus,
+      ),
       thumbnailNetworkUrl: netThumb,
       coverSeed: media.coverSeed,
       isVideo: true,

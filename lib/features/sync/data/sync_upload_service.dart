@@ -10,6 +10,7 @@ import 'package:enjoy_player/data/api/services/audio_api.dart';
 import 'package:enjoy_player/data/api/services/recording_api.dart';
 import 'package:enjoy_player/data/api/services/video_api.dart';
 import 'package:enjoy_player/data/api/services/vocabulary_api.dart';
+import 'package:enjoy_player/features/craft/application/craft_audio_cloud_uploader.dart';
 import 'package:enjoy_player/features/sync/data/sync_serializers.dart';
 
 final _log = logNamed('sync.upload');
@@ -54,6 +55,7 @@ class SyncUploadService {
     required this._videoApi,
     required this._recordingApi,
     required this._vocabularyApi,
+    this._craftAudioCloudUploader,
   });
 
   final AppDatabase _db;
@@ -61,11 +63,24 @@ class SyncUploadService {
   final VideoApi _videoApi;
   final RecordingApi _recordingApi;
   final VocabularyApi _vocabularyApi;
+  final CraftAudioCloudUploader? _craftAudioCloudUploader;
 
   Future<void> uploadAudio(AudioRow row) async {
+    // For crafted audios, upload the binary first so the server can attach
+    // the blob via the `signedId` field on the JSON payload. The web app
+    // does the same via `attachMediaBlobToPayload`. Imported user files
+    // (`provider = 'user'`) and YouTube (`provider = 'youtube'`) skip this
+    // step — they either have no binary or already have a `mediaUrl`.
+    String? signedId;
+    if (row.provider == 'craft' && _craftAudioCloudUploader != null) {
+      signedId = await _craftAudioCloudUploader.uploadIfNeeded(row);
+    }
+
     Map<String, dynamic> inner;
     try {
-      final response = await _audioApi.uploadAudio(prepareForSyncAudioMap(row));
+      final response = await _audioApi.uploadAudio(
+        prepareForSyncAudioMap(row, signedId: signedId),
+      );
       inner = unwrapEntity(response, 'audio');
     } on ApiException catch (e) {
       if (!e.isDuplicateEntity) rethrow;
@@ -80,6 +95,29 @@ class SyncUploadService {
         rethrow;
       }
     }
+
+    // When we sent a `signedId` for a crafted row, the server MUST attach the
+    // blob and return a populated `mediaUrl`. If it doesn't, we cannot trust
+    // the response (the row would falsely appear "Synced to cloud" while the
+    // blob is unattached, or worse — the server-side dedupe path returns the
+    // OLD mediaUrl from a previous version of the audio, orphaning the newly
+    // uploaded blob). Throw so the sync queue retries; we never stamp
+    // `syncStatus: 'synced'` for a crafted row whose blob attach is
+    // unconfirmed.
+    final serverMediaUrl = inner['mediaUrl'] as String? ?? row.mediaUrl;
+    if (row.provider == 'craft' &&
+        signedId != null &&
+        (serverMediaUrl == null || serverMediaUrl.isEmpty)) {
+      _log.warning(
+        'craft_audio_attach_unsupported media_id=${row.id} '
+        'server_returned_no_media_url; row stays pending for retry',
+      );
+      throw StateError(
+        'craft_audio_attach_unsupported media_id=${row.id} '
+        'server_returned_no_media_url',
+      );
+    }
+
     final serverUpdated = _requireServerUpdated(
       inner,
       entity: 'audio',
@@ -89,7 +127,7 @@ class SyncUploadService {
       row.copyWith(
         syncStatus: const Value('synced'),
         serverUpdatedAt: Value(serverUpdated),
-        mediaUrl: Value(inner['mediaUrl'] as String? ?? row.mediaUrl),
+        mediaUrl: Value(serverMediaUrl),
         updatedAt: serverUpdated,
       ),
     );
@@ -275,6 +313,13 @@ class SyncUploadService {
     return parsed;
   }
 
+  /// Deletes an audio row. For crafted audios (`provider = 'craft'`),
+  /// the underlying cloud blob is removed by the server as part of the
+  /// row-delete cascade (`has_one_attached :file` with
+  /// `dependent: :destroy`). The web app uses the same pattern (verified
+  /// during the pre-implementation audit, see ADR-0081 §T001 finding);
+  /// the Flutter player therefore sends only the entity id and does not
+  /// make a separate blob-delete call.
   Future<void> deleteAudio(String id) =>
       _deleteWith404Guard(() => _audioApi.deleteAudio(id));
 
