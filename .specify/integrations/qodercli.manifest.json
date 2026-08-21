@@ -1,17 +1,17 @@
 {
   "integration": "qodercli",
-  "version": "0.15.1",
-  "installed_at": "2026-08-01T10:45:04.625816+00:00",
+  "version": "1.0.1",
+  "installed_at": "2026-08-21T23:20:54.791485+00:00",
   "files": {
-    ".qoder/commands/speckit.analyze.md": "07e1e9f997bce9e06d3823ecf1ed315bb62381b81e7d6a7aef19c5087c320e70",
-    ".qoder/commands/speckit.clarify.md": "ae3efd8a50a67f49ed867eee2c96775928bb4287cc0f195f01a1d53f8a6053b6",
-    ".qoder/commands/speckit.constitution.md": "fb055cd8ca2dc1bf63f978fb33fd4ba74528646879c08cef21902e1d001de088",
-    ".qoder/commands/speckit.implement.md": "6a5713a4db8d48dd7c93e38b9957c6e54b6b7dc899ebab66f9ccb3bce58fdfeb",
-    ".qoder/commands/speckit.converge.md": "e585bc94a3f01cb45eb4f4f6003268a7bc7e1f1685d343c25ad5dc3c484b4816",
-    ".qoder/commands/speckit.plan.md": "ff1809d5d72b399ec364414a150c1a20e782677972d11f0bdf8c65c73f898a71",
-    ".qoder/commands/speckit.checklist.md": "2124a817bddbff7f469fd47b08e43dd9a39b769499d367f6888a74e1e821412d",
-    ".qoder/commands/speckit.specify.md": "4317296c28a8ccdbe41c7769147a6d85090815c91634250330f107485607b246",
-    ".qoder/commands/speckit.tasks.md": "e3569f2fbdb99704b81e3647ce9e52fb812764d6b2590fc497a2c2130b43ba72",
-    ".qoder/commands/speckit.taskstoissues.md": "0a436a42ceca2db309df88985d1939ee7f176c4a7a2d7c7a8d2253006cfe6870"
+    ".qoder/skills/speckit-analyze/SKILL.md": "0b5d1d053de3d181cd5c4d9c307a273abf67fd4be0023e67e0c8082d73baa35b",
+    ".qoder/skills/speckit-clarify/SKILL.md": "e1a1ddba9346721f41e7b8d0ad278b54d69399c0625db9d753756fd33e51a6e1",
+    ".qoder/skills/speckit-constitution/SKILL.md": "442e1c84f9a9f2267700cf08157b2aff65e00abae687689f639ce8f62ff8b6f5",
+    ".qoder/skills/speckit-implement/SKILL.md": "df979ca34543fbde2336626752ef72020aa68f4b38c2d108a2da4473113977db",
+    ".qoder/skills/speckit-converge/SKILL.md": "f73713dcbd10aa7b252bfae1400a63a606f033fe9492b44f77a0cb1ab40ac090",
+    ".qoder/skills/speckit-plan/SKILL.md": "3d13e010accc60766db3549a52f598e643f5f6c26570a475df418c7a74ba4cbb",
+    ".qoder/skills/speckit-checklist/SKILL.md": "057a2bd2cc91184a6a0b3b2e0fcf6704d4ef55cc1c5939b40e1968431ee10061",
+    ".qoder/skills/speckit-specify/SKILL.md": "d0b83970b14be40bd1dcd5d3c15f3186c37ebebbe4617dda7e8d487763b70f79",
+    ".qoder/skills/speckit-tasks/SKILL.md": "24e873a5a7adb75e832b6100d6c9140b0a0df4b9650ba32b8102e37697332beb",
+    ".qoder/skills/speckit-taskstoissues/SKILL.md": "225297f98e77807dd261ea5692ca0a5b286902d7c9b4855fc30b93f4283ce0a6"
   }
 }

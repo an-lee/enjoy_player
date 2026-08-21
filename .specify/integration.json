@@ -1,21 +1,26 @@
 {
-  "version": "0.15.1",
+  "version": "1.0.1",
   "integration_state_schema": 1,
   "installed_integrations": [
     "qodercli",
     "opencode",
-    "cursor-agent"
+    "cursor-agent",
+    "claude"
   ],
   "integration_settings": {
     "qodercli": {
       "script": "sh",
-      "invoke_separator": "."
+      "invoke_separator": "-"
     },
     "opencode": {
       "script": "sh",
       "invoke_separator": "."
     },
     "cursor-agent": {
+      "script": "sh",
+      "invoke_separator": "-"
+    },
+    "claude": {
       "script": "sh",
       "invoke_separator": "-"
     }
