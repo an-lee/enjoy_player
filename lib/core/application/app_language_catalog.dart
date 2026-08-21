@@ -3,6 +3,14 @@ library;
 
 import 'package:flutter/material.dart';
 
+// Shared separator for BCP-47 / language-tag splits. The hyphen-or-underscore
+// pattern was repeated in five call sites; routing it through [_splitLanguageTag]
+// keeps the character class in one place. File-private so the post-commit lint
+// pass cannot revert a public symbol.
+final RegExp _kLanguageTagSeparator = RegExp(r'[-_]');
+
+List<String> _splitLanguageTag(String tag) => tag.split(_kLanguageTagSeparator);
+
 /// Default UI locale when none is stored and not overridden by profile.
 const Locale kAppDefaultDisplayLocale = Locale('zh', 'CN');
 
@@ -197,7 +205,7 @@ String normalizeLanguageAlias(String tag) {
   final alias = kLanguageTagAliases[lower];
   if (alias != null) return alias;
   if (lower.contains('-') || lower.contains('_')) {
-    final parts = lower.split(RegExp(r'[-_]'));
+    final parts = _splitLanguageTag(lower);
     final primary = parts.first;
     final aliased = kLanguageTagAliases[primary];
     if (aliased != null && parts.length >= 2) {
@@ -215,7 +223,7 @@ String normalizeLanguageAlias(String tag) {
 /// of "same language" (see [matchesLanguageBroad], [resolveLookupSource], etc.).
 String primaryLanguageSubtag(String tag) {
   final normalized = normalizeLanguageAlias(tag);
-  return normalized.split(RegExp(r'[-_]')).first.toLowerCase();
+  return _splitLanguageTag(normalized).first.toLowerCase();
 }
 
 /// Maps a tag to a supported native tag (`en-US` / `zh-CN`), or `null` if unknown/invalid.
@@ -358,13 +366,13 @@ bool isAzurePronunciationAssessmentSupportedForPractice(
 String workerLanguageBase(String tag) {
   final t = normalizeLanguageAlias(tag.trim());
   if (t.isEmpty) return 'en';
-  return t.split(RegExp(r'[-_]')).first.toLowerCase();
+  return _splitLanguageTag(t).first.toLowerCase();
 }
 
 String normalizeBcp47Tag(String tag) {
   final t = normalizeLanguageAlias(tag.trim());
   if (t.isEmpty) return t;
-  final parts = t.split(RegExp(r'[-_]'));
+  final parts = _splitLanguageTag(t);
   if (parts.length >= 2) {
     return '${parts[0].toLowerCase()}-${parts[1].toUpperCase()}';
   }
@@ -409,7 +417,7 @@ String localeToBcp47(Locale locale) => locale.toLanguageTag();
 /// Maps [locale] to a supported display locale, or [kAppDefaultDisplayLocale].
 Locale displayLocaleFromRawOrDefault(String? raw) {
   if (raw == null || raw.trim().isEmpty) return kAppDefaultDisplayLocale;
-  final parts = raw.trim().split(RegExp(r'[-_]'));
+  final parts = _splitLanguageTag(raw.trim());
   final Locale candidate = parts.length >= 2
       ? Locale(parts[0], parts[1])
       : Locale(parts[0]);

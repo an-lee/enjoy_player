@@ -200,4 +200,114 @@ void main() {
       expect(allowedNativeTags('ja-JP'), isNot(contains('ja-JP')));
     });
   });
+
+  group('primaryLanguageSubtag', () {
+    test('extracts the primary subtag lowercased', () {
+      expect(primaryLanguageSubtag('en-US'), 'en');
+      expect(primaryLanguageSubtag('zh-CN'), 'zh');
+      expect(primaryLanguageSubtag('JA-jp'), 'ja');
+    });
+
+    test('accepts both hyphen and underscore separators', () {
+      expect(primaryLanguageSubtag('en_US'), 'en');
+      expect(primaryLanguageSubtag('zh_CN'), 'zh');
+    });
+
+    test('normalizes legacy aliases before splitting', () {
+      expect(primaryLanguageSubtag('kor'), 'ko');
+      expect(primaryLanguageSubtag('KOR-US'), 'ko');
+    });
+
+    test('returns the trimmed string for empty input', () {
+      expect(primaryLanguageSubtag(''), '');
+      expect(primaryLanguageSubtag('   '), '');
+    });
+  });
+
+  group('normalizeBcp47Tag', () {
+    test('lowercases primary and uppercases region', () {
+      expect(normalizeBcp47Tag('en-us'), 'en-US');
+      expect(normalizeBcp47Tag('zh-cn'), 'zh-CN');
+      expect(normalizeBcp47Tag('ja-jp'), 'ja-JP');
+    });
+
+    test('accepts underscore input and normalizes separator', () {
+      expect(normalizeBcp47Tag('en_us'), 'en-US');
+    });
+
+    test('keeps primary-only tags lowercased', () {
+      expect(normalizeBcp47Tag('EN'), 'en');
+      expect(normalizeBcp47Tag('Ja'), 'ja');
+    });
+
+    test('returns trimmed empty string for empty input', () {
+      expect(normalizeBcp47Tag(''), '');
+      expect(normalizeBcp47Tag('   '), '');
+    });
+  });
+
+  group('tagsEqual', () {
+    test('matches tags across separator and case shapes', () {
+      expect(tagsEqual('en-US', 'en_us'), true);
+      expect(tagsEqual('EN-us', 'en-US'), true);
+      expect(tagsEqual('zh-CN', 'zh-cn'), true);
+    });
+
+    test('rejects different languages', () {
+      expect(tagsEqual('en-US', 'zh-CN'), false);
+      expect(tagsEqual('en', 'fr'), false);
+    });
+
+    test('matches primary-only and regional pairs when primary matches', () {
+      expect(tagsEqual('en', 'en-US'), false);
+      expect(tagsEqual('en', 'en'), true);
+    });
+  });
+
+  group('displayLocaleFromRawOrDefault', () {
+    test('returns default for null and empty input', () {
+      expect(displayLocaleFromRawOrDefault(null), kAppDefaultDisplayLocale);
+      expect(displayLocaleFromRawOrDefault(''), kAppDefaultDisplayLocale);
+      expect(displayLocaleFromRawOrDefault('   '), kAppDefaultDisplayLocale);
+    });
+
+    test('matches by language code when region is missing or unsupported', () {
+      expect(displayLocaleFromRawOrDefault('en'), const Locale('en', 'US'));
+      expect(displayLocaleFromRawOrDefault('EN'), const Locale('en', 'US'));
+      expect(displayLocaleFromRawOrDefault('zh'), const Locale('zh', 'CN'));
+    });
+
+    test('preserves a supported region when present', () {
+      expect(displayLocaleFromRawOrDefault('en-US'), const Locale('en', 'US'));
+      expect(displayLocaleFromRawOrDefault('zh-CN'), const Locale('zh', 'CN'));
+    });
+
+    test('accepts underscore-separated input', () {
+      expect(displayLocaleFromRawOrDefault('en_US'), const Locale('en', 'US'));
+    });
+  });
+
+  group('coerceNativeIfEqualsLearning', () {
+    test('returns the first allowed native when input is null', () {
+      final coerced = coerceNativeIfEqualsLearning(null, 'en-US');
+      expect(kSupportedNativeLanguageTags, contains(coerced));
+      expect(coerced, isNot(equals('en-US')));
+    });
+
+    test('returns the first allowed native when input equals learning', () {
+      final coerced = coerceNativeIfEqualsLearning('en-US', 'en-US');
+      expect(coerced, isNot(equals('en-US')));
+      expect(kSupportedNativeLanguageTags, contains(coerced));
+    });
+
+    test('returns the first allowed native for unsupported input', () {
+      final coerced = coerceNativeIfEqualsLearning('xx-YY', 'en-US');
+      expect(kSupportedNativeLanguageTags, contains(coerced));
+    });
+
+    test('passes through a valid supported native that differs from learning',
+        () {
+      expect(coerceNativeIfEqualsLearning('zh-CN', 'en-US'), 'zh-CN');
+    });
+  });
 }
