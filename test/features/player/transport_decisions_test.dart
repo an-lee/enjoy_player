@@ -219,4 +219,59 @@ void main() {
       expect(d, isA<LoopSegment>());
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // D8 — decideImmediatePauseRetry
+  // ---------------------------------------------------------------------------
+  group('decideImmediatePauseRetry', () {
+    test('retries once for an immediate pause with an in-flight user play', () {
+      final d = decideImmediatePauseRetry(
+        immediate: true,
+        userPlayInFlight: true,
+        disposed: false,
+        playbackCompleted: false,
+      );
+      expect(d, isA<RetryPlayOnce>());
+    });
+
+    test('surfaces a pause that is not immediate', () {
+      final d = decideImmediatePauseRetry(
+        immediate: false,
+        userPlayInFlight: true,
+        disposed: false,
+        playbackCompleted: false,
+      );
+      expect(d, isA<SurfacePause>());
+    });
+
+    test('surfaces when no user play is in flight', () {
+      final d = decideImmediatePauseRetry(
+        immediate: true,
+        userPlayInFlight: false,
+        disposed: false,
+        playbackCompleted: false,
+      );
+      expect(d, isA<SurfacePause>());
+    });
+
+    test('never retries when disposed', () {
+      final d = decideImmediatePauseRetry(
+        immediate: true,
+        userPlayInFlight: true,
+        disposed: true,
+        playbackCompleted: false,
+      );
+      expect(d, isA<SurfacePause>());
+    });
+
+    test('never retries after end-of-media', () {
+      final d = decideImmediatePauseRetry(
+        immediate: true,
+        userPlayInFlight: true,
+        disposed: false,
+        playbackCompleted: true,
+      );
+      expect(d, isA<SurfacePause>());
+    });
+  });
 }

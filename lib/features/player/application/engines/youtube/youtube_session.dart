@@ -42,6 +42,13 @@ class YoutubeSession {
   /// User (or app) requested play; cancels autoplay assist and arms recovery UX.
   bool explicitPlayAttempted = false;
 
+  /// An explicit user play has not yet resolved (playing/rejected/error).
+  /// Grants the poll loop exactly one automatic retry when a pause is
+  /// confirmed almost immediately after playback started — the page player
+  /// state machine can "correct" a freshly started video back to paused
+  /// before it settles; one retry after it settles recovers without UX.
+  bool userPlayInFlight = false;
+
   /// First-play unmute is deferred until [currentTime] advances (or fallback).
   bool volumeRestorePending = false;
   Duration? volumeRestoreBaselinePosition;
@@ -102,6 +109,7 @@ class YoutubeSession {
     nonWatchRecoveryScheduled = false;
     firstBufferingOffReceived = false;
     explicitPlayAttempted = false;
+    userPlayInFlight = false;
     clearVolumeRestorePending();
     lastPlayingAt = null;
     videoId = newVideoId;
@@ -116,6 +124,7 @@ class YoutubeSession {
     _cancelHint();
     tapToPlayHintActive = false;
     explicitPlayAttempted = false;
+    userPlayInFlight = false;
     clearVolumeRestorePending();
     lastPlayingAt = null;
     videoId = '';

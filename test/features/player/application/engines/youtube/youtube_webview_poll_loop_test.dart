@@ -232,5 +232,93 @@ void main() {
 
       loop.stop();
     });
+
+    test('immediate pause with in-flight user play retries once', () async {
+      final driver = _FakePollDriver();
+      var retryCalls = 0;
+      session.emitPlaying(true);
+      session.lastPlayingAt = DateTime.now();
+      session.userPlayInFlight = true;
+
+      final loop = YoutubeWebViewPollLoop(
+        session: session,
+        webController: () => null,
+        onFirstPlaying: () {},
+        pollFn: driver.poll,
+        retryPlay: (_) async => retryCalls++,
+      );
+
+      loop.start();
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      for (var i = 0; i < YoutubeSession.pauseConfirmPollTicks; i++) {
+        driver.emit(position: Duration(milliseconds: i * 10), jsPaused: true);
+      }
+
+      expect(retryCalls, 1);
+      expect(session.userPlayInFlight, isFalse);
+      expect(session.playing, isFalse);
+
+      loop.stop();
+    });
+
+    test('second immediate pause is not retried (one-shot budget)', () async {
+      final driver = _FakePollDriver();
+      var retryCalls = 0;
+      session.emitPlaying(true);
+      session.lastPlayingAt = DateTime.now();
+      session.userPlayInFlight = true;
+
+      final loop = YoutubeWebViewPollLoop(
+        session: session,
+        webController: () => null,
+        onFirstPlaying: () {},
+        pollFn: driver.poll,
+        retryPlay: (_) async => retryCalls++,
+      );
+
+      loop.start();
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      for (var round = 0; round < 2; round++) {
+        for (var i = 0; i < YoutubeSession.pauseConfirmPollTicks; i++) {
+          driver.emit(
+            position: Duration(milliseconds: round * 100 + i * 10),
+            jsPaused: true,
+          );
+        }
+      }
+
+      expect(retryCalls, 1);
+      expect(session.playing, isFalse);
+
+      loop.stop();
+    });
+
+    test(
+      'immediate pause without in-flight user play does not retry',
+      () async {
+        final driver = _FakePollDriver();
+        var retryCalls = 0;
+        session.emitPlaying(true);
+        session.lastPlayingAt = DateTime.now();
+
+        final loop = YoutubeWebViewPollLoop(
+          session: session,
+          webController: () => null,
+          onFirstPlaying: () {},
+          pollFn: driver.poll,
+          retryPlay: (_) async => retryCalls++,
+        );
+
+        loop.start();
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        for (var i = 0; i < YoutubeSession.pauseConfirmPollTicks; i++) {
+          driver.emit(position: Duration(milliseconds: i * 10), jsPaused: true);
+        }
+
+        expect(retryCalls, 0);
+
+        loop.stop();
+      },
+    );
   });
 }

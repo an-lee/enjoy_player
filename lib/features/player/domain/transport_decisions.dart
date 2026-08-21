@@ -220,7 +220,6 @@ PollTransitionDecision decidePollTransition({
 // ---------------------------------------------------------------------------
 // D7 — media-end action (RepeatMode consumer)
 // ---------------------------------------------------------------------------
-
 sealed class MediaEndDecision {
   const MediaEndDecision();
 
@@ -256,4 +255,42 @@ MediaEndDecision decideOnMediaEnd({required RepeatMode repeatMode}) {
     case RepeatMode.segment:
       return MediaEndDecision.loopSegment;
   }
+}
+
+// ---------------------------------------------------------------------------
+// D8 — YouTube immediate-pause retry
+// ---------------------------------------------------------------------------
+
+sealed class ImmediatePauseRetryDecision {
+  const ImmediatePauseRetryDecision();
+
+  static const ImmediatePauseRetryDecision retry = RetryPlayOnce();
+  static const ImmediatePauseRetryDecision surface = SurfacePause();
+}
+
+final class RetryPlayOnce extends ImmediatePauseRetryDecision {
+  const RetryPlayOnce();
+}
+
+final class SurfacePause extends ImmediatePauseRetryDecision {
+  const SurfacePause();
+}
+
+/// When a pause is confirmed almost immediately after playback started
+/// ([immediate]) and an explicit user play is still unresolved
+/// ([userPlayInFlight]), grant exactly one automatic retry: the page player
+/// state machine can "correct" a freshly started video back to paused before
+/// it settles, and re-playing after it settles recovers without user-facing
+/// recovery UX. Every other confirmed pause surfaces normally (recovery hint
+/// is the consumer's decision).
+ImmediatePauseRetryDecision decideImmediatePauseRetry({
+  required bool immediate,
+  required bool userPlayInFlight,
+  required bool disposed,
+  required bool playbackCompleted,
+}) {
+  if (immediate && userPlayInFlight && !disposed && !playbackCompleted) {
+    return ImmediatePauseRetryDecision.retry;
+  }
+  return ImmediatePauseRetryDecision.surface;
 }

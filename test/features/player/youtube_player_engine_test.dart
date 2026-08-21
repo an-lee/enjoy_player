@@ -297,6 +297,39 @@ void main() {
       events.cancelPendingVolumeRestore();
       await session.closeStreams();
     });
+
+    test('playing and playRejected resolve an in-flight user play', () async {
+      final session = YoutubeSession()..resetForOpen('abc12345678');
+      final events = buildEvents(
+        session,
+        onFirstPlaying: () {},
+        startPolling: () {},
+        stopPolling: () {},
+        reapplyVolume: () async {},
+      );
+
+      session.userPlayInFlight = true;
+      events.handle(['playing']);
+      expect(session.userPlayInFlight, isFalse);
+
+      session.userPlayInFlight = true;
+      events.handle(['playRejected', 'NotAllowedError']);
+      expect(session.userPlayInFlight, isFalse);
+
+      events.cancelPendingVolumeRestore();
+      await session.closeStreams();
+    });
+
+    test('resetForOpen and resetForClear reset userPlayInFlight', () {
+      final session = YoutubeSession()..resetForOpen('abc12345678');
+      session.userPlayInFlight = true;
+      session.resetForOpen('other123456');
+      expect(session.userPlayInFlight, isFalse);
+
+      session.userPlayInFlight = true;
+      session.resetForClear();
+      expect(session.userPlayInFlight, isFalse);
+    });
   });
 
   group('YoutubeSession volume restore progress', () {

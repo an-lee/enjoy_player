@@ -74,5 +74,44 @@ void main() {
       expect(YoutubeWebViewBridge.playOrPauseScript, contains('v.pause()'));
       expect(YoutubeWebViewBridge.playOrPauseScript, contains('playRejected'));
     });
+
+    test('play scripts route through the page player API when available', () {
+      // Mutating the raw element behind the page's back lets YouTube's
+      // autoplay policy re-pause the video; the page player object must win.
+      for (final script in [
+        YoutubeWebViewBridge.playScript,
+        YoutubeWebViewBridge.playOrPauseScript,
+      ]) {
+        expect(script, contains('#movie_player'));
+        expect(script, contains('.html5-video-player'));
+        expect(script, contains('mp.playVideo()'));
+        expect(script, contains('mp.mute()'));
+      }
+      expect(YoutubeWebViewBridge.playOrPauseScript, contains('mp.pauseVideo'));
+      expect(YoutubeWebViewBridge.playOrPauseScript, contains('mp.isPaused'));
+    });
+  });
+
+  group('setVolumeScript', () {
+    test('unmute prefers the page player API over element muted=false', () {
+      final script = YoutubeWebViewBridge.setVolumeScript(1.0);
+      expect(script, contains('mp.unMute'));
+      expect(script, contains('mp.setVolume(Math.round(vol*100))'));
+      // Element mutation remains only as the no-API fallback.
+      expect(script, contains('v.muted=(vol<=0.001)'));
+    });
+
+    test('zero volume mutes through the page player API', () {
+      final script = YoutubeWebViewBridge.setVolumeScript(0);
+      expect(script, contains('mp.mute'));
+      expect(script, contains('mp.setVolume(0)'));
+    });
+
+    test('interpolates the requested volume', () {
+      expect(
+        YoutubeWebViewBridge.setVolumeScript(0.25),
+        contains('var vol=0.25;'),
+      );
+    });
   });
 }
