@@ -159,8 +159,8 @@ void main() {
             );
             // Provider must remain 'craft'.
             expect(audio['provider'], 'craft');
-            // mediaUrl in payload should be null (we haven't synced yet).
-            expect(audio.containsKey('mediaUrl'), isFalse);
+            // media_url in payload should be absent (we haven't synced yet).
+            expect(audio.containsKey('media_url'), isFalse);
             return http.Response(
               jsonEncode({
                 'audio': {
