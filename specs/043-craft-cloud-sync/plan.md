@@ -133,7 +133,7 @@ test/
 
 docs/
 ├── features/craft-studio.md                 # UPDATE: document cross-platform sync
-└── decisions/0049-crafted-audio-cloud-sync.md   # NEW ADR
+└── decisions/0081-crafted-audio-cloud-sync.md   # NEW ADR
 ```
 
 **Structure Decision**: Single Flutter project (Option 1 in the template) — this is the standard for `enjoy_player`. New code is added inside the existing feature-first layout, no new top-level directories.
