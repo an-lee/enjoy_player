@@ -76,6 +76,53 @@ class FakePlayerEngine implements PlayerEngine {
   @override
   bool get supportsSubtitleDisabling => true;
 
+  bool supportsYouTubePlaybackValue = false;
+
+  @override
+  bool get supportsYouTubePlayback => supportsYouTubePlaybackValue;
+
+  @override
+  Future<void> awaitSurfaceReady() async {}
+
+  String? posterUrlValue;
+
+  @override
+  String? get posterUrl => posterUrlValue;
+
+  @override
+  void setPosterUrl(String? url) {
+    posterUrlValue = url;
+  }
+
+  String currentVideoIdValue = '';
+
+  @override
+  String get currentVideoId => currentVideoIdValue;
+
+  int markOpenTimingStartCallCount = 0;
+
+  @override
+  void markOpenTimingStart() {
+    markOpenTimingStartCallCount++;
+  }
+
+  int resetCompletionFlagCallCount = 0;
+
+  @override
+  void resetCompletionFlag() {
+    resetCompletionFlagCallCount++;
+  }
+
+  int teardownAfterClearCallCount = 0;
+  bool? lastTeardownKeepSurfaceMounted;
+
+  @override
+  Future<void> teardownAfterClear({required bool keepSurfaceMounted}) async {
+    teardownAfterClearCallCount++;
+    lastTeardownKeepSurfaceMounted = keepSurfaceMounted;
+    await stop();
+  }
+
   @override
   bool get keepSurfaceWhenParked => true;
 

@@ -36,32 +36,6 @@ SeekRoutingDecision decideSeekRouting({required bool echoActive}) {
 }
 
 // ---------------------------------------------------------------------------
-// D2 — teardown path (YouTube idle vs generic stop)
-// ---------------------------------------------------------------------------
-
-sealed class TeardownPathDecision {
-  const TeardownPathDecision();
-
-  static const TeardownPathDecision idleAfterClear = TeardownIdle();
-  static const TeardownPathDecision stop = TeardownStop();
-}
-
-final class TeardownIdle extends TeardownPathDecision {
-  const TeardownIdle();
-}
-
-final class TeardownStop extends TeardownPathDecision {
-  const TeardownStop();
-}
-
-/// YouTube engines keep the WebView alive through clear (idle), while native
-/// engines are fully stopped.
-TeardownPathDecision decideTeardownPath({required bool isYoutubeEngine}) {
-  if (isYoutubeEngine) return TeardownPathDecision.idleAfterClear;
-  return TeardownPathDecision.stop;
-}
-
-// ---------------------------------------------------------------------------
 // D3 — replay target (echo start vs active-line start)
 // ---------------------------------------------------------------------------
 

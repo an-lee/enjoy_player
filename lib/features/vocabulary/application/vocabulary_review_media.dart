@@ -2,7 +2,6 @@
 library;
 
 import 'package:enjoy_player/features/player/application/echo_mode_provider.dart';
-import 'package:enjoy_player/features/player/application/engines/youtube/youtube_player_engine.dart';
 import 'package:enjoy_player/features/player/application/player_controller.dart';
 import 'package:enjoy_player/features/player/domain/open_media_options.dart';
 import 'package:enjoy_player/features/vocabulary/domain/vocabulary_models.dart';
@@ -40,10 +39,7 @@ Future<void> openVocabularyClipWindow({
   echo.deactivate();
   await player.openMedia(mediaId, options: OpenMediaOptions.explicitLaunch);
 
-  final engine = player.activeEngine;
-  if (engine is YoutubePlayerEngine) {
-    await engine.awaitWebViewMounted();
-  }
+  await player.activeEngine.awaitSurfaceReady();
 
   await player.seekToSeconds(startSec);
 

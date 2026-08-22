@@ -43,6 +43,36 @@ abstract class PlayerEngine {
   /// engines have no embedded subtitle track to disable.
   bool get supportsSubtitleDisabling;
 
+  /// Whether this engine plays YouTube sources (WebView-backed). Capability
+  /// flag so call sites never need to know the concrete engine class.
+  bool get supportsYouTubePlayback;
+
+  /// Completes when the engine's video surface is usable after `open`.
+  /// Native engines are ready immediately; the WebView engine awaits mount.
+  Future<void> awaitSurfaceReady();
+
+  /// Poster shown while the surface is loading/buffering; `null` for engines
+  /// that render decoded frames directly.
+  String? get posterUrl;
+
+  void setPosterUrl(String? url);
+
+  /// Id of the currently-open YouTube video; empty when not applicable.
+  String get currentVideoId;
+
+  /// Marks the start of open-time init instrumentation. Engines without init
+  /// timing treat this as a no-op.
+  void markOpenTimingStart();
+
+  /// Clears any end-of-media latch so the next [play] drives the loaded
+  /// media directly instead of restarting from the beginning. Engines
+  /// without a completion latch treat this as a no-op (ADR-0044).
+  void resetCompletionFlag();
+
+  /// Teardown used by `PlayerController.clear`. The WebView engine idles and
+  /// keeps its process alive (optionally still mounted); native engines stop.
+  Future<void> teardownAfterClear({required bool keepSurfaceMounted});
+
   /// Current transport flags for seeding [StreamProvider]s.
   ({bool playing, bool buffering}) get transportSnapshot;
 
@@ -182,6 +212,30 @@ class MediaKitPlayerEngine implements PlayerEngine {
 
   @override
   bool get supportsSubtitleDisabling => true;
+
+  @override
+  bool get supportsYouTubePlayback => false;
+
+  @override
+  Future<void> awaitSurfaceReady() async {}
+
+  @override
+  String? get posterUrl => null;
+
+  @override
+  void setPosterUrl(String? url) {}
+
+  @override
+  String get currentVideoId => '';
+
+  @override
+  void markOpenTimingStart() {}
+
+  @override
+  void resetCompletionFlag() {}
+
+  @override
+  Future<void> teardownAfterClear({required bool keepSurfaceMounted}) => stop();
 
   @override
   ({bool playing, bool buffering}) get transportSnapshot =>

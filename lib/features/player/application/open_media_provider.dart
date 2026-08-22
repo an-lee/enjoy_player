@@ -4,7 +4,6 @@ library;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:enjoy_player/features/player/application/echo_mode_provider.dart';
-import 'package:enjoy_player/features/player/application/engines/youtube/youtube_player_engine.dart';
 import 'package:enjoy_player/features/player/application/player_controller.dart';
 import 'package:enjoy_player/features/player/domain/open_media_options.dart';
 import 'package:enjoy_player/features/player/domain/player_launch_request.dart';
@@ -40,10 +39,7 @@ final openMediaLaunchProvider = FutureProvider.autoDispose
         await player.openMedia(request.mediaId);
       }
 
-      final engine = player.activeEngine;
-      if (engine is YoutubePlayerEngine) {
-        await engine.awaitWebViewMounted();
-      }
+      await player.activeEngine.awaitSurfaceReady();
 
       final start = request.startSec;
       if (start != null) {

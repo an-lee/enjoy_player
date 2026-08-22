@@ -10,7 +10,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:enjoy_player/core/interaction/haptics.dart';
 import 'package:enjoy_player/core/interaction/mouse_tracker_safe.dart';
 import 'package:enjoy_player/core/platform/player_content_layout.dart';
-import 'package:enjoy_player/features/player/application/engines/youtube/youtube_player_engine.dart';
 import 'package:enjoy_player/features/player/application/player_collapse.dart';
 import 'package:enjoy_player/features/player/application/player_controller.dart';
 import 'package:enjoy_player/features/player/application/player_engine.dart';
@@ -397,8 +396,7 @@ class _VideoStageWithChrome extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isYoutube = engine is YoutubePlayerEngine;
-    final yt = isYoutube ? engine as YoutubePlayerEngine : null;
+    final isYoutube = engine.supportsYouTubePlayback;
 
     return PlayerSurfaceTarget(
       id: PlayerSurfaceIds.expandedPlayer,
@@ -449,9 +447,9 @@ class _VideoStageWithChrome extends ConsumerWidget {
       ),
       child: ColoredBox(
         color: Colors.black,
-        child: yt == null
+        child: !isYoutube
             ? const SizedBox.expand()
-            : YoutubeVideoPoster(primaryUrl: yt.posterUrl, visible: true),
+            : YoutubeVideoPoster(primaryUrl: engine.posterUrl, visible: true),
       ),
     );
   }

@@ -19,21 +19,6 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // D2 — decideTeardownPath
-  // ---------------------------------------------------------------------------
-  group('decideTeardownPath', () {
-    test('idles YouTube engine after clear', () {
-      final d = decideTeardownPath(isYoutubeEngine: true);
-      expect(d, isA<TeardownIdle>());
-    });
-
-    test('stops non-YouTube engine after clear', () {
-      final d = decideTeardownPath(isYoutubeEngine: false);
-      expect(d, isA<TeardownStop>());
-    });
-  });
-
-  // ---------------------------------------------------------------------------
   // D3 — decideReplayTarget
   // ---------------------------------------------------------------------------
   group('decideReplayTarget', () {

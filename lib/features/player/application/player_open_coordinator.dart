@@ -2,7 +2,6 @@
 library;
 
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,7 +10,6 @@ import 'package:enjoy_player/core/utils/remote_thumbnail_url.dart';
 import 'package:enjoy_player/data/db/app_database_provider.dart';
 import 'package:enjoy_player/features/library/domain/media.dart';
 import 'package:enjoy_player/features/player/application/echo_mode_provider.dart';
-import 'package:enjoy_player/features/player/application/engines/youtube/youtube_player_engine.dart';
 import 'package:enjoy_player/features/player/application/player_engine.dart';
 import 'package:enjoy_player/features/player/application/playback_open_resolver.dart';
 import 'package:enjoy_player/features/player/application/player_engine_binding.dart';
@@ -87,23 +85,17 @@ Future<void> runPlayerOpen(
   final language = resolved.language;
   final durationSec = resolved.durationSeconds;
 
-  if (playable is YoutubePlayableSource && engine is YoutubePlayerEngine) {
-    engine.markOpenTimingStart();
-    engine.setPosterUrl(
-      remoteThumbnailForCard(
-        thumb,
-        youtubeVideoId: playable.videoId,
-        mediaUrl: video?.mediaUrl,
-      ),
+  String? openPosterUrl;
+  if (playable is YoutubePlayableSource) {
+    openPosterUrl = remoteThumbnailForCard(
+      thumb,
+      youtubeVideoId: playable.videoId,
+      mediaUrl: video?.mediaUrl,
     );
-    engine.ensureWebViewAttached();
   }
-
-  if (kind == MediaKind.video &&
-      engine is MediaKitPlayerEngine &&
-      (Platform.isWindows || Platform.isMacOS)) {
-    engine.warmVideoSurface();
-  }
+  engine.markOpenTimingStart();
+  engine.setPosterUrl(openPosterUrl);
+  engine.warmVideoSurface();
 
   await host.positionTracker.cancel();
 

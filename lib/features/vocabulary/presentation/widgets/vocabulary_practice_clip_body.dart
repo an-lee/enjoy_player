@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:enjoy_player/core/interaction/enjoy_tappable.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
-import 'package:enjoy_player/features/player/application/engines/youtube/youtube_player_engine.dart';
 import 'package:enjoy_player/features/player/application/player_controller.dart';
 import 'package:enjoy_player/features/player/application/player_state_providers.dart';
 import 'package:enjoy_player/features/player/application/player_surface_registry.dart';
@@ -44,14 +43,11 @@ class VocabularyPracticeClipBody extends ConsumerWidget {
       vocabularyReviewSessionProvider.select((s) => s.mediaError),
     );
     final engine = player.ownedEngine;
-    final isYoutube = engine is YoutubePlayerEngine;
     final claimSurface = phase == ReviewPracticePhase.clipReady;
     final opening = phase == ReviewPracticePhase.clipOpening;
 
     final poster = YoutubeVideoPoster(
-      primaryUrl: isYoutube
-          ? (engine.posterUrl ?? session?.thumbnailUrl)
-          : session?.thumbnailUrl,
+      primaryUrl: engine?.posterUrl ?? session?.thumbnailUrl,
       visible: true,
     );
 
