@@ -4,7 +4,6 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:enjoy_player/features/player/application/engines/youtube/youtube_player_engine.dart';
 import 'package:enjoy_player/features/player/application/player_engine_provider.dart';
 import 'package:enjoy_player/features/player/application/player_surface_registry.dart';
 import 'package:enjoy_player/features/player/application/youtube_open_preview_provider.dart';
@@ -34,7 +33,7 @@ class _YoutubeLoadingVideoStageState
   String? _lastPosterUrl;
   bool _attachScheduled = false;
 
-  void _scheduleAttach(YoutubePlayerEngine yt, String? thumb) {
+  void _scheduleAttach(String? thumb) {
     if (_lastPosterUrl != thumb) {
       // Poster is a plain field — safe to update outside the build callback
       // body as soon as we know the value, but keep it in the post-frame
@@ -47,10 +46,11 @@ class _YoutubeLoadingVideoStageState
       _attachScheduled = false;
       if (!mounted) return;
       final engine = ref.read(playerEngineProvider);
-      if (engine is! YoutubePlayerEngine) return;
+      if (!engine.supportsYouTubePlayback) return;
       engine.setPosterUrl(_lastPosterUrl);
-      // requestMount is idempotent + build-safe; still never call from build.
-      engine.ensureWebViewAttached();
+      // warmVideoSurface is idempotent + build-safe; still never call from
+      // build.
+      engine.warmVideoSurface();
     });
   }
 
@@ -58,21 +58,21 @@ class _YoutubeLoadingVideoStageState
   Widget build(BuildContext context) {
     final preview = ref.watch(youtubeOpenPreviewProvider(widget.mediaId));
     final engine = ref.watch(playerEngineProvider);
-    final yt = engine is YoutubePlayerEngine ? engine : null;
+    final isYoutube = engine.supportsYouTubePlayback;
 
     final thumb = preview.maybeWhen(
       data: (p) => p?.thumbnailUrl,
       orElse: () => null,
     );
 
-    if (yt != null) {
-      _scheduleAttach(yt, thumb);
+    if (isYoutube) {
+      _scheduleAttach(thumb);
     }
 
     // Claim the loading portal whenever a YouTube engine is active — same
     // pattern as [_LocalLoadingVideoStage]. WebView visibility is gated by
     // [YoutubePlayerEngine.shouldMountWebView] inside the surface host.
-    final showSurface = yt != null;
+    final showSurface = isYoutube;
 
     return SafeArea(
       top: true,

@@ -224,16 +224,14 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
     }
   }
 
-  /// Seeks to [target] and resumes playback after end-of-media. For the
-  /// YouTube engine, the internal `playbackCompleted` flag is reset first so
-  /// `play()` drives the `<video>` directly instead of reloading the watch
-  /// page (which would discard the seek). Late generation changes are caught
-  /// by the caller's post-await re-check.
+  /// Seeks to [target] and resumes playback after end-of-media. The engine's
+  /// end-of-media latch is cleared first so `play()` drives the loaded media
+  /// directly instead of restarting from the beginning (which would discard
+  /// the seek). Late generation changes are caught by the caller's post-await
+  /// re-check.
   Future<void> _replayFrom(Duration target, int gen) async {
     final engine = activeEngine;
-    if (engine is YoutubePlayerEngine) {
-      engine.resetCompletionFlag();
-    }
+    engine.resetCompletionFlag();
     await engine.seek(target);
     if (gen != _playbackGen || _disposed) return;
     await engine.play();
@@ -393,29 +391,20 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
     _openGeneration++;
 
     final engine = activeEngine;
-    final ownedEngine = _ownedEngine;
-    final isYoutubeEngine =
-        ref.read(playerEngineTestDoubleProvider) == null &&
-        ownedEngine is YoutubePlayerEngine;
 
     ref.read(echoModeProvider.notifier).deactivate();
     ref.read(transcriptBlurModeProvider.notifier).deactivate();
     state = null;
 
-    final teardown = decideTeardownPath(isYoutubeEngine: isYoutubeEngine);
-    final ytEngine = ownedEngine is YoutubePlayerEngine ? ownedEngine : null;
-    switch (teardown) {
-      case TeardownIdle():
-        await ytEngine!.idleAfterClear(keepMounted: keepVideoSurface);
-      case TeardownStop():
-        await engine.stop();
-    }
+    // WebView engines idle and keep their process alive across clear; native
+    // engines stop — the policy lives behind the engine seam (issue #595).
+    await engine.teardownAfterClear(keepSurfaceMounted: keepVideoSurface);
   }
 
   void warmYoutubeSurface() {
     if (ref.read(playerEngineTestDoubleProvider) != null) return;
     final owned = _ownedEngine;
-    if (owned is YoutubePlayerEngine) {
+    if (owned != null && owned.supportsYouTubePlayback) {
       owned.warmVideoSurface();
       return;
     }

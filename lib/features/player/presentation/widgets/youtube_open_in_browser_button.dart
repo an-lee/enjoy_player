@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:enjoy_player/core/logging/log.dart';
-import 'package:enjoy_player/features/player/application/engines/youtube/youtube_player_engine.dart';
 import 'package:enjoy_player/features/player/application/player_engine_provider.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
@@ -15,8 +14,6 @@ class YoutubeOpenInBrowserButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final engine = ref.watch(playerEngineProvider);
-    if (engine is! YoutubePlayerEngine) return const SizedBox.shrink();
-
     final videoId = engine.currentVideoId;
     if (videoId.isEmpty) return const SizedBox.shrink();
 

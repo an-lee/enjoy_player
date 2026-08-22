@@ -38,37 +38,21 @@ Future<void> ensureEngineForPlayableSource(
 
   final wantYt = playable is YoutubePlayableSource;
   final owned = getOwnedEngine();
-  final haveYt = owned is YoutubePlayerEngine;
+  final haveYt = owned?.supportsYouTubePlayback ?? false;
 
-  if (wantYt && !haveYt) {
-    if (currentOpenGeneration() != openGeneration) return;
-    final next = YoutubePlayerEngine();
-    setOwnedEngine(next);
-    ref.read(playerEngineRevProvider.notifier).bump();
-    // Let PlayerSurfaceHost drop the old ObjectKey stage before teardown.
-    await Future<void>.delayed(Duration.zero);
-    if (currentOpenGeneration() != openGeneration) {
-      await next.dispose();
-      return;
-    }
-    if (owned != null) {
-      await owned.dispose();
-    }
+  if (owned != null && haveYt == wantYt) return;
+  if (currentOpenGeneration() != openGeneration) return;
+
+  final next = wantYt ? YoutubePlayerEngine() : MediaKitPlayerEngine();
+  setOwnedEngine(next);
+  ref.read(playerEngineRevProvider.notifier).bump();
+  // Let PlayerSurfaceHost drop the old ObjectKey stage before teardown.
+  await Future<void>.delayed(Duration.zero);
+  if (currentOpenGeneration() != openGeneration) {
+    await next.dispose();
     return;
   }
-
-  if (!wantYt && owned is! MediaKitPlayerEngine) {
-    if (currentOpenGeneration() != openGeneration) return;
-    final next = MediaKitPlayerEngine();
-    setOwnedEngine(next);
-    ref.read(playerEngineRevProvider.notifier).bump();
-    await Future<void>.delayed(Duration.zero);
-    if (currentOpenGeneration() != openGeneration) {
-      await next.dispose();
-      return;
-    }
-    if (owned != null) {
-      await owned.dispose();
-    }
+  if (owned != null) {
+    await owned.dispose();
   }
 }

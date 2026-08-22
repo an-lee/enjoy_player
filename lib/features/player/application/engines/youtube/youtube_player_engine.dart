@@ -53,11 +53,18 @@ class YoutubePlayerEngine implements PlayerEngine {
 
   GlobalKey get webViewHostKey => _session.webViewHostKey;
   ValueNotifier<int> get mountTick => _session.mountTick;
+
+  @override
   String get currentVideoId => _session.videoId;
+
+  @override
   String? get posterUrl => _session.posterUrl;
   bool get webViewMounted => _session.webViewMounted;
   bool get shouldMountWebView => _session.shouldMountWebView;
   bool get tapToPlayHintActive => _session.tapToPlayHintActive;
+
+  @override
+  bool get supportsYouTubePlayback => true;
 
   @override
   Stream<Duration> get position => _session.position;
@@ -93,14 +100,17 @@ class YoutubePlayerEngine implements PlayerEngine {
   @override
   Stream<double> get videoAspectRatioStream => _session.aspectStream;
 
+  @override
   void setPosterUrl(String? url) => _session.setPosterUrl(url);
 
   /// Clears the internal [YoutubeSession.playbackCompleted] flag so the next
   /// [play] call drives the `<video>` directly instead of reloading the watch
   /// page. Used by the deterministic completion loop (ADR-0044) to seek + play
   /// from an arbitrary position after end-of-media.
+  @override
   void resetCompletionFlag() => _session.playbackCompleted = false;
 
+  @override
   void markOpenTimingStart() => _webView.markOpenTimingStart();
 
   void ensureWebViewAttached() {
@@ -121,6 +131,13 @@ class YoutubePlayerEngine implements PlayerEngine {
     }
     return webViewMounted;
   }
+
+  @override
+  Future<void> awaitSurfaceReady() => awaitWebViewMounted().then((_) {});
+
+  @override
+  Future<void> teardownAfterClear({required bool keepSurfaceMounted}) =>
+      idleAfterClear(keepMounted: keepSurfaceMounted);
 
   Widget buildWebViewHost() {
     return YoutubeWebViewHost(key: _session.webViewHostKey, engine: this);
