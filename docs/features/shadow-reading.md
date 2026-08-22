@@ -13,6 +13,17 @@ The recording bus is the single source of truth for "is the user recording right
 - `ShadowReadingHotkeyBus` (a singleton bus, generated from `shadow_reading_hotkey_bus.dart`) emits typed events (`ShadowRecordingHotkeyEvent`) when the user presses the global shortcut, toggling the panel's idle toolbar state. The bus decouples the hotkey layer (which knows nothing about the panel) from the UI.
 - Mic selection is persisted in `SettingsKeys.prefsRecordingInputDeviceId` and re-read on every take via `recordingInputDeviceCtrlProvider`. Unknown / virtual devices are skipped by `pickPreferredInputDeviceId` (GlideX Shared Audio, VoiceMeeter, VB-Audio CABLE, NVIDIA Broadcast, etc.) so Windows defaults don't silently capture only zeros.
 
+## Take capture & persistence (ShadowTakeStore)
+
+Mic capture and take persistence live in [`ShadowTakeStore`](../../lib/features/shadow_reading/application/shadow_take_store.dart) (issue #597) — the panel is view + callbacks only. Interface: `start(device:)` / `cancel()` / `stopAndPersist(region:)` / `deleteTake(row)` / `dispose()`.
+
+- **Capture**: mic permission gate, `{appSupport}/recordings/{uuid}.wav` paths, and the 16 kHz mono PCM16 WAV config (`buildShadowRecordConfig`, aligned with web + Azure Speech).
+- **Recorder lifecycle**: the `MicRecorder` port wraps `package:record`'s `AudioRecorder`; the recorder is **recreated after every `stop()`** — `record` on Windows keeps stale Media Foundation state on the same instance, so reusing it silently produces a zero-sample WAV ("second take won't record").
+- **Persistence**: `stopAndPersist` reads the WAV, computes sha256 + duration, applies the **silence heuristic** (RMS < 0.001 or non-zero ratio < 1% → `looksSilent` verdict surfaced by the panel as a warning; the row is persisted regardless), builds the `RecordingRow`, inserts via `recordingDao` (ADR-0002), then enqueues sync create through the injected `SyncEnqueueFn` (ADR-0013).
+- **Deletion**: `deleteTake` enqueues sync delete, removes the WAV file, then deletes the DAO row. Stopping preview playback of the take first is the panel's job (a presentation concern).
+
+Craft's `CaptureStage` still owns its own capture loop (it needs the amplitude stream and does not persist takes); migrating it onto the shared `MicRecorder` port is a follow-up.
+
 ## Idle toolbar (centered FAB)
 
 - The panel shows an **idle toolbar** with the **pitch icon**, a centered **FAB** (start recording), **play**, and **pronunciation assess**. Delete moves into a **more** menu gated by a confirmation dialog.
