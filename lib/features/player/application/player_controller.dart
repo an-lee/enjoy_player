@@ -6,8 +6,8 @@ import 'dart:async';
 import 'package:cross_file/cross_file.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/features/library/application/library_repository_provider.dart';
+import 'package:enjoy_player/features/player/application/completion_loop.dart';
 import 'package:enjoy_player/features/player/application/echo_mode_provider.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_player_engine.dart';
 import 'package:enjoy_player/features/player/application/player_engine.dart';
@@ -20,15 +20,12 @@ import 'package:enjoy_player/features/player/domain/echo_window.dart';
 import 'package:enjoy_player/features/player/domain/open_media_options.dart';
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
 import 'package:enjoy_player/features/player/domain/player_launch_request.dart';
-import 'package:enjoy_player/features/player/domain/player_settings.dart';
 import 'package:enjoy_player/features/player/domain/transport_decisions.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_blur_mode_provider.dart';
 import 'open_media_provider.dart';
 import 'playback_session_persister.dart';
 
 part 'player_controller.g.dart';
-
-final _log = logNamed('PlayerController');
 
 /// Deterministic end-of-media completion loop (ADR-0044).
 ///
@@ -53,21 +50,19 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
   /// Incremented on each [openMedia] call; stale async work bails out.
   int _openGeneration = 0;
 
-  /// Incremented on every event that invalidates the current playback stint
-  /// (openMedia, clear, abandonPendingOpen, user seek). The completion loop
-  /// captures this at start and re-checks after every `await` — a stale
-  /// completion that observes `gen != _playbackGen` is a no-op (ADR-0044).
-  int _playbackGen = 0;
-
-  /// Completer used to cancel the in-flight `completed.first` await when the
-  /// generation changes under the loop. Created per-iteration, completed by
-  /// [_bumpPlaybackGen], and cleared after the await resolves.
-  Completer<void>? _completionCancel;
-
-  /// True while the completion loop is between its top-of-loop gen check and a
-  /// `return`. Used by [play] to know whether to start a fresh loop after the
-  /// user manually resumes from a completed (RepeatMode.none) media.
-  bool _completionLoopActive = false;
+  /// Deterministic end-of-media loop (ADR-0044). Owns the playback
+  /// generation counter, the cancelable `completed` await, and the repeat
+  /// decision — see [CompletionLoop].
+  late final CompletionLoop _completionLoop = CompletionLoop(
+    engine: () => activeEngine,
+    activeMediaId: () => state?.mediaId,
+    isDisposed: () => _disposed,
+    repeatMode: () => ref.read(playerPreferencesCtrlProvider).repeatMode,
+    echoSnapshot: () {
+      final echo = ref.read(echoModeProvider);
+      return (active: echo.active, startTimeSeconds: echo.startTimeSeconds);
+    },
+  );
 
   bool _disposed = false;
 
@@ -148,124 +143,10 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
   Future<void> _disposeResources(PlaybackSessionPersister persister) async {
     if (_disposed) return;
     _disposed = true;
-    _bumpPlaybackGen();
+    _completionLoop.bump();
     persister.cancel();
     await _positionTracker.cancel();
     await _ownedEngine?.dispose();
-  }
-
-  // ── Deterministic completion loop (ADR-0044) ──────────────────────────────
-
-  /// Bumps [_playbackGen] and cancels any in-flight completion await. Called
-  /// on openMedia, clear, abandonPendingOpen, user seek, and disposal — every
-  /// event that invalidates "the current playback stint."
-  void _bumpPlaybackGen() {
-    _playbackGen++;
-    _cancelCompletionAwait();
-  }
-
-  void _cancelCompletionAwait() {
-    final c = _completionCancel;
-    _completionCancel = null;
-    if (c != null && !c.isCompleted) c.complete();
-  }
-
-  /// Starts (or restarts) the completion loop for the current playback stint.
-  /// Safe to call unconditionally — if a loop is already running for the
-  /// current generation it is a no-op.
-  void _startCompletionLoop() {
-    if (_disposed) return;
-    if (state == null) return;
-    if (_completionLoopActive) return;
-    unawaited(_runCompletionLoop(_playbackGen));
-  }
-
-  /// The deterministic await-completion playback loop.
-  ///
-  /// Waits for `engine.completed` to fire, then applies the current
-  /// [RepeatMode]:
-  /// - [RepeatMode.none] — stop the loop (media is at the end; user can
-  ///   manually press play to restart).
-  /// - [RepeatMode.single] — seek to zero, play, re-await.
-  /// - [RepeatMode.segment] — seek to the echo window start, play, re-await.
-  ///   Falls back to [RepeatMode.none] when echo is not active.
-  ///
-  /// Every `await` is followed by a generation re-check so a stale completion
-  /// (media switched, user seeked, controller disposed) is a silent no-op.
-  Future<void> _runCompletionLoop(int gen) async {
-    _completionLoopActive = true;
-    try {
-      while (gen == _playbackGen && !_disposed) {
-        final session = state;
-        if (session == null) return;
-        if (session.mediaId != state?.mediaId) return;
-
-        final completed = await _awaitCompletionOrCancel(gen);
-        if (!completed || gen != _playbackGen || _disposed) return;
-        if (state?.mediaId != session.mediaId) return;
-
-        final repeat = ref.read(playerPreferencesCtrlProvider).repeatMode;
-        _log.fine('completion fired for ${session.mediaId}; repeat=$repeat');
-        switch (repeat) {
-          case RepeatMode.none:
-            return;
-          case RepeatMode.single:
-            await _replayFrom(Duration.zero, gen);
-            if (gen != _playbackGen || _disposed) return;
-          case RepeatMode.segment:
-            final echo = ref.read(echoModeProvider);
-            if (!echo.active) return;
-            await _replayFrom(durationFromSeconds(echo.startTimeSeconds), gen);
-            if (gen != _playbackGen || _disposed) return;
-        }
-      }
-    } finally {
-      if (gen == _playbackGen) _completionLoopActive = false;
-    }
-  }
-
-  /// Seeks to [target] and resumes playback after end-of-media. The engine's
-  /// end-of-media latch is cleared first so `play()` drives the loaded media
-  /// directly instead of restarting from the beginning (which would discard
-  /// the seek). Late generation changes are caught by the caller's post-await
-  /// re-check.
-  Future<void> _replayFrom(Duration target, int gen) async {
-    final engine = activeEngine;
-    engine.resetCompletionFlag();
-    await engine.seek(target);
-    if (gen != _playbackGen || _disposed) return;
-    await engine.play();
-  }
-
-  /// Races `engine.completed.first` against a cancellation completer that is
-  /// completed by [_bumpPlaybackGen]. Returns `true` on real completion,
-  /// `false` on cancel / stream close.
-  Future<bool> _awaitCompletionOrCancel(int gen) async {
-    final engine = activeEngine;
-    final completer = Completer<bool>();
-    late StreamSubscription<void> sub;
-
-    _completionCancel = Completer<void>();
-    final cancel = _completionCancel!;
-
-    void resolve(bool value) {
-      if (!completer.isCompleted) completer.complete(value);
-    }
-
-    sub = engine.completed.listen(
-      (_) => resolve(true),
-      onDone: () => resolve(false),
-      onError: (Object _, StackTrace _) => resolve(false),
-    );
-
-    unawaited(cancel.future.then((_) => resolve(false)));
-
-    try {
-      return await completer.future;
-    } finally {
-      _completionCancel = null;
-      await sub.cancel();
-    }
   }
 
   Future<void> relocateAndOpen(String mediaId, XFile picked) async {
@@ -297,7 +178,7 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
     }
 
     final gen = ++_openGeneration;
-    _bumpPlaybackGen();
+    _completionLoop.bump();
 
     await runPlayerOpenGuarded(
       this,
@@ -315,7 +196,7 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
     // (ADR-0044). Only when the open actually landed (state's mediaId matches
     // and the generation is still current).
     if (!_disposed && gen == _openGeneration && state?.mediaId == mediaId) {
-      _startCompletionLoop();
+      _completionLoop.arm();
       // Promote to Home "Recent media" even if playback is still starting.
       unawaited(
         ref.read(mediaLibraryRepositoryProvider).touchMediaUpdatedAt(mediaId),
@@ -330,7 +211,7 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
     // Invalidate any in-flight completion await so a stale `completed` event
     // from mpv (fired before the seek took effect) cannot trigger a stray
     // repeat/advance (ADR-0044 edge case).
-    _bumpPlaybackGen();
+    _completionLoop.bump();
     final echo = ref.read(echoModeProvider);
     final seconds = secondsFromDuration(target);
     final routing = decideSeekRouting(echoActive: echo.active);
@@ -344,7 +225,7 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
         await activeEngine.seek(durationFromSeconds(seconds));
     }
     // Re-arm the completion loop for the post-seek playback stint.
-    _startCompletionLoop();
+    _completionLoop.arm();
   }
 
   Future<void> seekToSeconds(
@@ -361,7 +242,7 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
     await activeEngine.playOrPause();
     // Re-arm the loop in case playback was resumed from a completed state
     // (no-op if the loop is already active).
-    _startCompletionLoop();
+    _completionLoop.arm();
   }
 
   Future<void> play() async {
@@ -369,11 +250,11 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
     // If the completion loop has ended (e.g. RepeatMode.none and the media
     // completed), start a fresh loop so repeat/stop behavior is active for the
     // new playback stint (ADR-0044).
-    _startCompletionLoop();
+    _completionLoop.arm();
   }
 
   Future<void> clear({bool keepVideoSurface = false}) async {
-    _bumpPlaybackGen();
+    _completionLoop.bump();
     await _positionTracker.cancel();
 
     final current = state;
@@ -410,9 +291,7 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
     }
     // Swap + bump first (ADR-0057) so PlayerSurfaceHost drops the old stage
     // before the previous engine is disposed.
-    _ownedEngine = YoutubePlayerEngine(
-      repeatMode: () => ref.read(playerPreferencesCtrlProvider).repeatMode,
-    );
+    _ownedEngine = YoutubePlayerEngine();
     ref.read(playerEngineRevProvider.notifier).bump();
     if (owned != null) {
       unawaited(owned.dispose());
@@ -422,7 +301,7 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
 
   void abandonPendingOpen() {
     _openGeneration++;
-    _bumpPlaybackGen();
+    _completionLoop.bump();
   }
 
   /// Called by [PlayerMetadataNotifier] after lazy title/thumbnail refresh.
