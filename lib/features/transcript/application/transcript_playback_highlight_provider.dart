@@ -51,7 +51,7 @@ TranscriptPlaybackHighlight transcriptPlaybackHighlight(
           echo,
           transcriptActiveIndex(lines, timeSec),
         );
-  if (cueIndex < 0 || cueIndex >= lines.length) {
+  if (cueIndex < 0) {
     return (cueIndex: cueIndex, wordIndex: null);
   }
 
