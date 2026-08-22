@@ -1,18 +1,14 @@
 /// Copies a remote row into local Drift so it appears in the Library.
 library;
 
-import 'dart:async';
-
 import 'package:enjoy_player/data/db/app_database.dart';
 import 'package:enjoy_player/features/cloud/domain/remote_library_item.dart';
-import 'package:enjoy_player/features/library/data/library_repository.dart';
 import 'package:enjoy_player/features/sync/data/sync_serializers.dart';
 
 class CloudAddToLibrary {
-  CloudAddToLibrary(this._db, this._mediaLibrary);
+  CloudAddToLibrary(this._db);
 
   final AppDatabase _db;
-  final MediaLibraryRepository _mediaLibrary;
 
   Future<bool> isInLibrary(RemoteLibraryItem item) async {
     if (item.isVideo) {
@@ -26,7 +22,6 @@ class CloudAddToLibrary {
     if (item.isVideo) {
       final row = videoRowFromServerJson(item.rawJson);
       await _db.videoDao.insertRow(row);
-      unawaited(_mediaLibrary.ensureVideoPosterAfterMetadataInsert(row));
       return;
     }
     final row = audioRowFromServerJson(item.rawJson);

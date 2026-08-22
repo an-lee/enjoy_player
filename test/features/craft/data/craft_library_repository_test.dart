@@ -2,16 +2,15 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:cross_file/cross_file.dart';
 import 'package:drift/native.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
 import 'package:enjoy_player/data/files/file_storage.dart';
-import 'package:enjoy_player/features/library/data/library_repository.dart';
+import 'package:enjoy_player/features/craft/data/craft_library_repository.dart';
+import 'package:enjoy_player/features/sync/domain/sync_types.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:path/path.dart' as p;
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 
-import '../../support/test_path_provider.dart';
+import '../../../support/test_path_provider.dart';
 
 const _testUserId = 'test-user';
 
@@ -22,18 +21,18 @@ String _solidTimeline([String text = 'Hello world.']) => jsonEncode([
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('MediaLibraryRepository.importCraftedFromText', () {
+  group('CraftLibraryRepository.importCraftedFromText', () {
     late PathProviderPlatform original;
     late Directory root;
     late AppDatabase db;
-    late MediaLibraryRepository repo;
+    late CraftLibraryRepository repo;
 
     setUp(() {
       original = PathProviderPlatform.instance;
       root = Directory.systemTemp.createTempSync('enjoy_craft_repo_test');
       PathProviderPlatform.instance = TestPathProvider(root.path);
       db = AppDatabase(executor: NativeDatabase.memory());
-      repo = MediaLibraryRepository(db, FileStorage());
+      repo = CraftLibraryRepository(db, FileStorage());
     });
 
     tearDown(() async {
@@ -234,18 +233,18 @@ void main() {
     );
   });
 
-  group('MediaLibraryRepository.getCraftEditSource', () {
+  group('CraftLibraryRepository.getCraftEditSource', () {
     late PathProviderPlatform original;
     late Directory root;
     late AppDatabase db;
-    late MediaLibraryRepository repo;
+    late CraftLibraryRepository repo;
 
     setUp(() {
       original = PathProviderPlatform.instance;
       root = Directory.systemTemp.createTempSync('enjoy_craft_edit_test');
       PathProviderPlatform.instance = TestPathProvider(root.path);
       db = AppDatabase(executor: NativeDatabase.memory());
-      repo = MediaLibraryRepository(db, FileStorage());
+      repo = CraftLibraryRepository(db, FileStorage());
     });
 
     tearDown(() async {
@@ -262,11 +261,31 @@ void main() {
     });
 
     test('returns null for a non-craft media row', () async {
-      final src = File(p.join(root.path, 'clip.mp3'))
-        ..writeAsBytesSync([1, 2, 3]);
-      final id = await repo.importMedia(
-        XFile(src.path, name: 'clip.mp3'),
-        signedInUserId: _testUserId,
+      final now = DateTime.now();
+      const id = 'a-user-1';
+      await db.audioDao.insertRow(
+        AudioRow(
+          id: id,
+          aid: 'aid-1',
+          provider: 'user',
+          title: 'User audio',
+          description: null,
+          thumbnailUrl: null,
+          durationSeconds: 0,
+          language: 'en-US',
+          translationKey: null,
+          sourceText: null,
+          voice: null,
+          source: null,
+          localUri: null,
+          md5: null,
+          size: null,
+          mediaUrl: null,
+          syncStatus: null,
+          serverUpdatedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        ),
       );
       final source = await repo.getCraftEditSource(id);
       expect(source, isNull);
@@ -324,18 +343,18 @@ void main() {
     );
   });
 
-  group('MediaLibraryRepository.updateCraftedFromText', () {
+  group('CraftLibraryRepository.updateCraftedFromText', () {
     late PathProviderPlatform original;
     late Directory root;
     late AppDatabase db;
-    late MediaLibraryRepository repo;
+    late CraftLibraryRepository repo;
 
     setUp(() {
       original = PathProviderPlatform.instance;
       root = Directory.systemTemp.createTempSync('enjoy_craft_update_test');
       PathProviderPlatform.instance = TestPathProvider(root.path);
       db = AppDatabase(executor: NativeDatabase.memory());
-      repo = MediaLibraryRepository(db, FileStorage());
+      repo = CraftLibraryRepository(db, FileStorage());
     });
 
     tearDown(() async {
@@ -465,18 +484,18 @@ void main() {
     });
   });
 
-  group('MediaLibraryRepository.removeCraftHistoryRecord', () {
+  group('CraftLibraryRepository.removeCraftHistoryRecord', () {
     late PathProviderPlatform original;
     late Directory root;
     late AppDatabase db;
-    late MediaLibraryRepository repo;
+    late CraftLibraryRepository repo;
 
     setUp(() {
       original = PathProviderPlatform.instance;
       root = Directory.systemTemp.createTempSync('enjoy_craft_remove_test');
       PathProviderPlatform.instance = TestPathProvider(root.path);
       db = AppDatabase(executor: NativeDatabase.memory());
-      repo = MediaLibraryRepository(db, FileStorage());
+      repo = CraftLibraryRepository(db, FileStorage());
     });
 
     tearDown(() async {
@@ -525,6 +544,226 @@ void main() {
         repo.removeCraftHistoryRecord('missing'),
         throwsStateError,
       );
+    });
+  });
+
+  group('CraftLibraryRepository additional coverage', () {
+    late PathProviderPlatform original;
+    late Directory root;
+    late AppDatabase db;
+    late CraftLibraryRepository repo;
+
+    setUp(() {
+      original = PathProviderPlatform.instance;
+      root = Directory.systemTemp.createTempSync('enjoy_craft_repo_extra');
+      PathProviderPlatform.instance = TestPathProvider(root.path);
+      db = AppDatabase(executor: NativeDatabase.memory());
+      repo = CraftLibraryRepository(db, FileStorage());
+    });
+
+    tearDown(() async {
+      PathProviderPlatform.instance = original;
+      await db.close();
+      if (root.existsSync()) {
+        root.deleteSync(recursive: true);
+      }
+    });
+
+    group('CraftLibraryRepository.importCraftedFromText (additional)', () {
+      test('uses provided primaryTimelineJson', () async {
+        final timeline = jsonEncode([
+          {'text': 'Hello', 'start': 0, 'duration': 500},
+          {'text': 'world', 'start': 500, 'duration': 400},
+        ]);
+
+        final id = await repo.importCraftedFromText(
+          audioBytes: Uint8List.fromList([1, 2, 3]),
+          audioFormat: 'wav',
+          learningLanguage: 'en',
+          text: 'Hello world',
+          normalizedText: 'Hello world',
+          primaryTimelineJson: timeline,
+          sourceFlag: 'craft-direct',
+          signedInUserId: _testUserId,
+        );
+
+        final transcripts = await db.transcriptDao.listForTarget('Audio', id);
+        expect(transcripts, hasLength(1));
+        expect(transcripts.first.timelineJson, timeline);
+      });
+
+      test('omits transcript when primaryTimelineJson is null', () async {
+        final id = await repo.importCraftedFromText(
+          audioBytes: Uint8List.fromList([4, 5, 6]),
+          audioFormat: 'wav',
+          learningLanguage: 'en',
+          text: 'Blank timeline',
+          normalizedText: 'Blank timeline',
+          primaryTimelineJson: null,
+          sourceFlag: 'craft-direct',
+          signedInUserId: _testUserId,
+        );
+
+        final transcripts = await db.transcriptDao.listForTarget('Audio', id);
+        expect(transcripts, isEmpty);
+        final audio = await db.audioDao.getById(id);
+        expect(audio, isNotNull);
+      });
+
+      test('voice participates in dedupe key', () async {
+        final audioBytes = Uint8List.fromList([7, 8, 9]);
+
+        final id1 = await repo.importCraftedFromText(
+          audioBytes: audioBytes,
+          audioFormat: 'wav',
+          learningLanguage: 'en',
+          text: 'Voice test',
+          normalizedText: 'Voice test',
+          voice: 'alloy',
+          sourceFlag: 'craft-direct',
+          signedInUserId: _testUserId,
+        );
+
+        final id2 = await repo.importCraftedFromText(
+          audioBytes: audioBytes,
+          audioFormat: 'wav',
+          learningLanguage: 'en',
+          text: 'Voice test',
+          normalizedText: 'Voice test',
+          voice: 'nova',
+          sourceFlag: 'craft-direct',
+          signedInUserId: _testUserId,
+        );
+
+        expect(id1, isNot(id2));
+      });
+
+      test('same voice dedupes correctly', () async {
+        final audioBytes = Uint8List.fromList([10, 11]);
+
+        final id1 = await repo.importCraftedFromText(
+          audioBytes: audioBytes,
+          audioFormat: 'wav',
+          learningLanguage: 'en',
+          text: 'Same voice',
+          normalizedText: 'Same voice',
+          voice: 'alloy',
+          sourceFlag: 'craft-direct',
+          signedInUserId: _testUserId,
+        );
+
+        final id2 = await repo.importCraftedFromText(
+          audioBytes: audioBytes,
+          audioFormat: 'wav',
+          learningLanguage: 'en',
+          text: 'Same voice',
+          normalizedText: 'Same voice',
+          voice: 'alloy',
+          sourceFlag: 'craft-direct',
+          signedInUserId: _testUserId,
+        );
+
+        expect(id1, id2);
+      });
+
+      test('enqueues sync create', () async {
+        final syncLog = <(SyncEntityType, String, SyncAction)>[];
+        final syncRepo = CraftLibraryRepository(
+          db,
+          FileStorage(),
+          enqueueSync: (type, id, action) async {
+            syncLog.add((type, id, action));
+          },
+        );
+
+        final id = await syncRepo.importCraftedFromText(
+          audioBytes: Uint8List.fromList([20]),
+          audioFormat: 'wav',
+          learningLanguage: 'en',
+          text: 'Sync craft',
+          normalizedText: 'Sync craft',
+          sourceFlag: 'craft-direct',
+          signedInUserId: _testUserId,
+        );
+
+        expect(
+          syncLog,
+          contains((SyncEntityType.audio, id, SyncAction.create)),
+        );
+      });
+
+      test('title is not truncated when text is short', () async {
+        final shortText = 'Short';
+        final id = await repo.importCraftedFromText(
+          audioBytes: Uint8List.fromList([30]),
+          audioFormat: 'wav',
+          learningLanguage: 'en',
+          text: shortText,
+          normalizedText: shortText,
+          sourceFlag: 'craft-direct',
+          signedInUserId: _testUserId,
+        );
+
+        final row = await db.audioDao.getById(id);
+        expect(row!.title, shortText);
+      });
+    });
+
+    group('CraftLibraryRepository.findExistingCrafted', () {
+      test('voice differentiates lookup', () async {
+        await repo.importCraftedFromText(
+          audioBytes: Uint8List.fromList([40]),
+          audioFormat: 'wav',
+          learningLanguage: 'en',
+          text: 'Voice find',
+          normalizedText: 'Voice find',
+          voice: 'alloy',
+          sourceFlag: 'craft-direct',
+          signedInUserId: _testUserId,
+        );
+
+        final withSameVoice = await repo.findExistingCrafted(
+          learningLanguage: 'en',
+          normalizedText: 'Voice find',
+          sourceFlag: 'craft-direct',
+          voice: 'alloy',
+        );
+        expect(withSameVoice, isNotNull);
+
+        final withDifferentVoice = await repo.findExistingCrafted(
+          learningLanguage: 'en',
+          normalizedText: 'Voice find',
+          sourceFlag: 'craft-direct',
+          voice: 'nova',
+        );
+        expect(withDifferentVoice, isNull);
+      });
+
+      test('sourceFlag differentiates lookup', () async {
+        await repo.importCraftedFromText(
+          audioBytes: Uint8List.fromList([50]),
+          audioFormat: 'wav',
+          learningLanguage: 'en',
+          text: 'Flag test',
+          normalizedText: 'Flag test',
+          sourceFlag: 'craft-direct',
+          signedInUserId: _testUserId,
+        );
+
+        final sameFlag = await repo.findExistingCrafted(
+          learningLanguage: 'en',
+          normalizedText: 'Flag test',
+          sourceFlag: 'craft-direct',
+        );
+        expect(sameFlag, isNotNull);
+
+        final differentFlag = await repo.findExistingCrafted(
+          learningLanguage: 'en',
+          normalizedText: 'Flag test',
+          sourceFlag: 'craft-translate',
+        );
+        expect(differentFlag, isNull);
+      });
     });
   });
 }

@@ -18,7 +18,7 @@ See [spec.md](../../../specs/010-craft-from-text/spec.md) and
 | Domain | `domain/craft_mode.dart`, `domain/craft_failure.dart`, `domain/craft_request.dart` |
 | Application | `application/craft_controller.dart` |
 | Presentation | `presentation/craft_sheet.dart` |
-| Integration | `lib/features/library/data/library_repository.dart` (`importCraftedFromText`) |
+| Integration | `lib/features/craft/data/craft_library_repository.dart` (`importCraftedFromText`) |
 | AI wiring | `lib/features/ai/data/enjoy/enjoy_tts_capability.dart` |
 
 ## ADR

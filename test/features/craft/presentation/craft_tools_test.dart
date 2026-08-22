@@ -15,8 +15,8 @@ import 'package:enjoy_player/features/craft/domain/craft_translator.dart';
 import 'package:enjoy_player/features/craft/domain/translation_style.dart';
 import 'package:enjoy_player/features/craft/presentation/synthesize_tool.dart';
 import 'package:enjoy_player/features/craft/presentation/translate_tool.dart';
-import 'package:enjoy_player/features/library/application/library_repository_provider.dart';
-import 'package:enjoy_player/features/library/data/library_repository.dart';
+import 'package:enjoy_player/features/craft/application/craft_library_repository_provider.dart';
+import 'package:enjoy_player/features/craft/data/craft_library_repository.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
 // === Fakes ===
@@ -62,7 +62,7 @@ class _FakeSynthesizer implements CraftSynthesizer {
 }
 
 /// Minimal fake that satisfies the provider type without a real DB.
-class _FakeLibraryRepository implements MediaLibraryRepository {
+class _FakeLibraryRepository implements CraftLibraryRepository {
   @override
   dynamic noSuchMethod(Invocation invocation) => null;
 }
@@ -85,7 +85,7 @@ List<Override> _baseOverrides() => [
   appPreferencesCtrlProvider.overrideWith(_FakePrefsCtrl.new),
   craftTranslatorProvider.overrideWithValue(_FakeTranslator()),
   craftSynthesizerProvider.overrideWithValue(_FakeSynthesizer()),
-  mediaLibraryRepositoryProvider.overrideWithValue(_FakeLibraryRepository()),
+  craftLibraryRepositoryProvider.overrideWithValue(_FakeLibraryRepository()),
 ];
 
 void main() {

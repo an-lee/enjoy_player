@@ -1,6 +1,6 @@
-// Tests for `lib/features/library/domain/craft_edit_source.dart` — immutable
+// Tests for `lib/features/craft/domain/craft_edit_source.dart` — immutable
 // snapshot DTO with `==` / `hashCode` covering every constructor field.
-import 'package:enjoy_player/features/library/domain/craft_edit_source.dart';
+import 'package:enjoy_player/features/craft/domain/craft_edit_source.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

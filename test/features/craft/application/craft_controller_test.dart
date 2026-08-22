@@ -23,9 +23,9 @@ import 'package:enjoy_player/features/craft/domain/craft_translator.dart';
 import 'package:enjoy_player/features/craft/domain/translation_style.dart';
 import 'package:enjoy_player/features/craft/domain/craft_screen_mode.dart';
 import 'package:enjoy_player/features/craft/domain/craft_stage.dart';
-import 'package:enjoy_player/features/library/application/library_repository_provider.dart';
-import 'package:enjoy_player/features/library/data/library_repository.dart';
-import 'package:enjoy_player/features/library/domain/craft_edit_source.dart';
+import 'package:enjoy_player/features/craft/application/craft_library_repository_provider.dart';
+import 'package:enjoy_player/features/craft/data/craft_library_repository.dart';
+import 'package:enjoy_player/features/craft/domain/craft_edit_source.dart';
 import 'package:forced_alignment/forced_alignment.dart';
 
 // === Fakes ===
@@ -119,7 +119,7 @@ class _FakeSynthesizer implements CraftSynthesizer {
   }
 }
 
-class _FakeLibraryRepository extends MediaLibraryRepository {
+class _FakeLibraryRepository extends CraftLibraryRepository {
   _FakeLibraryRepository(super.db, super.storage);
 
   String? existingId;
@@ -290,7 +290,7 @@ void main() {
         craftTranslatorProvider.overrideWithValue(translator),
         craftSynthesizerProvider.overrideWithValue(synthesizer),
         craftTranscriberProvider.overrideWithValue(transcriber),
-        mediaLibraryRepositoryProvider.overrideWithValue(repo),
+        craftLibraryRepositoryProvider.overrideWithValue(repo),
         craftTimelineEnricherProvider.overrideWithValue(
           CraftTimelineEnricher(enabled: false),
         ),
@@ -781,7 +781,7 @@ void main() {
         overrides: [
           craftTranslatorProvider.overrideWithValue(translator),
           craftSynthesizerProvider.overrideWithValue(synthesizer),
-          mediaLibraryRepositoryProvider.overrideWithValue(repo),
+          craftLibraryRepositoryProvider.overrideWithValue(repo),
           craftTimelineEnricherProvider.overrideWithValue(
             CraftTimelineEnricher(enabled: false),
           ),
@@ -947,7 +947,7 @@ void main() {
             craftTranslatorProvider.overrideWithValue(translator),
             craftSynthesizerProvider.overrideWithValue(synthesizer),
             craftTranscriberProvider.overrideWithValue(transcriber),
-            mediaLibraryRepositoryProvider.overrideWithValue(repo),
+            craftLibraryRepositoryProvider.overrideWithValue(repo),
             craftTimelineEnricherProvider.overrideWithValue(enricher),
             authCtrlProvider.overrideWith(() => _SignedInAuthCtrl(_profile)),
           ],
@@ -996,7 +996,7 @@ void main() {
             craftTranslatorProvider.overrideWithValue(translator),
             craftSynthesizerProvider.overrideWithValue(synthesizer),
             craftTranscriberProvider.overrideWithValue(transcriber),
-            mediaLibraryRepositoryProvider.overrideWithValue(repo),
+            craftLibraryRepositoryProvider.overrideWithValue(repo),
             craftTimelineEnricherProvider.overrideWithValue(enricher),
             authCtrlProvider.overrideWith(() => _SignedInAuthCtrl(_profile)),
           ],

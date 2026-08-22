@@ -16,6 +16,7 @@ import 'package:enjoy_player/features/auth/domain/auth_state.dart';
 import 'package:enjoy_player/features/craft/data/craft_asr_service_transcriber.dart';
 import 'package:enjoy_player/features/craft/data/craft_translation_service_translator.dart';
 import 'package:enjoy_player/features/craft/data/craft_tts_service_synthesizer.dart';
+import 'package:enjoy_player/features/craft/application/craft_library_repository_provider.dart';
 import 'package:enjoy_player/features/craft/application/craft_timeline_enricher.dart';
 import 'package:enjoy_player/features/craft/domain/azure_voice.dart';
 import 'package:enjoy_player/features/craft/domain/craft_failure.dart';
@@ -29,8 +30,7 @@ import 'package:enjoy_player/features/craft/domain/craft_transcriber.dart';
 import 'package:enjoy_player/features/craft/domain/craft_translator.dart';
 import 'package:enjoy_player/features/craft/domain/translation_style.dart';
 import 'package:enjoy_player/features/craft/domain/word_boundary_segmenter.dart';
-import 'package:enjoy_player/features/library/application/library_repository_provider.dart';
-import 'package:enjoy_player/features/library/domain/craft_edit_source.dart';
+import 'package:enjoy_player/features/craft/domain/craft_edit_source.dart';
 
 /// Provider for the Craft synthesizer (wraps TtsService).
 final craftSynthesizerProvider = Provider<CraftSynthesizer>((ref) {
@@ -245,7 +245,7 @@ class CraftController extends Notifier<CraftJobState> {
           ? (state.rawTranscript ?? state.synthText)
           : state.synthText;
 
-      final repo = ref.read(mediaLibraryRepositoryProvider);
+      final repo = ref.read(craftLibraryRepositoryProvider);
 
       // Editing an existing Craft item (from Craft history) — update it in
       // place instead of creating a new library entry. Skip dedupe: the
@@ -345,7 +345,7 @@ class CraftController extends Notifier<CraftJobState> {
   /// another device) — callers should surface a "no longer available"
   /// message and avoid navigating to the Craft screen.
   Future<bool> loadForEdit(String mediaId) async {
-    final repo = ref.read(mediaLibraryRepositoryProvider);
+    final repo = ref.read(craftLibraryRepositoryProvider);
     final CraftEditSource? source = await repo.getCraftEditSource(mediaId);
     if (source == null) return false;
 
