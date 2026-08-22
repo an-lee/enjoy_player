@@ -75,7 +75,7 @@ them as:
 A user-picked primary already on the session is **always preserved** —
 `_pickYoutubePrimary` short-circuits when `echoSessionDao.transcriptId`
 points at a row that still exists. This is the language-aware counterpart
-to the source-only `ensurePrimaryTranscript` used for non-YouTube media.
+to the source-only `_ensurePrimaryTranscript` used for non-YouTube media.
 
 ### Client profiles
 
