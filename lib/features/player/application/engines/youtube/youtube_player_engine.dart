@@ -14,7 +14,6 @@ import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/core/platform/linux_platform_availability.dart';
 import 'package:enjoy_player/features/player/application/player_engine.dart';
 import 'package:enjoy_player/features/player/domain/playable_source.dart';
-import 'package:enjoy_player/features/player/domain/player_settings.dart';
 import 'package:enjoy_player/features/player/domain/transport_decisions.dart';
 import 'package:enjoy_player/features/player/presentation/widgets/youtube_video_poster.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
@@ -27,25 +26,12 @@ final _logYoutube = logNamed('YouTubePlayerEngine');
 
 /// See [YoutubeWebViewBridge.watchUri] — not iframe embed.
 class YoutubePlayerEngine implements PlayerEngine {
-  YoutubePlayerEngine({this.repeatMode}) : _session = YoutubeSession() {
+  YoutubePlayerEngine() : _session = YoutubeSession() {
     _webView = YoutubeWebViewController(
       session: _session,
       onStallRecovery: () => _webView.recoverStalledPlayback(),
       onLogInitPhase: (phase) => _session.logInitPhase(phase, _logYoutube.info),
-      repeatMode: repeatMode,
-      onMediaEnd: _onMediaLoop,
     );
-  }
-
-  /// Resolve the current [RepeatMode] at media-end time so the poll loop can
-  /// decide whether to stop, loop, or segment-loop.
-  final RepeatMode Function()? repeatMode;
-
-  void _onMediaLoop() {
-    _webView.prepareWatchReload(resetFirstPlaying: true);
-    _session.emitBuffering(true);
-    _session.emitPlaying(false);
-    unawaited(_webView.loadCurrentVideoIfAttached());
   }
 
   final YoutubeSession _session;

@@ -9,11 +9,9 @@ import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_session.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_state_poller.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_webview_bridge.dart';
-import 'package:enjoy_player/features/player/domain/player_settings.dart';
 import 'package:enjoy_player/features/player/domain/transport_decisions.dart';
 
 typedef YoutubeFirstPlayingFn = void Function();
-typedef YoutubeMediaEndFn = void Function();
 typedef YoutubePlaybackProgressFn = void Function(Duration position);
 
 /// Injectable poll body for unit tests (defaults to [YoutubeStatePoller.poll]).
@@ -42,8 +40,6 @@ class YoutubeWebViewPollLoop {
     required this.session,
     required this.webController,
     required this.onFirstPlaying,
-    this.repeatMode,
-    this.onMediaEnd,
     this.onPlaybackProgress,
     YoutubePollFn? pollFn,
     YoutubeRetryPlayFn? retryPlay,
@@ -53,14 +49,6 @@ class YoutubeWebViewPollLoop {
   final YoutubeSession session;
   final InAppWebViewController? Function() webController;
   final YoutubeFirstPlayingFn onFirstPlaying;
-
-  /// Resolve the current repeat mode so [decideOnMediaEnd] can choose between
-  /// stop, loop, and segment-loop when the video finishes.
-  final RepeatMode Function()? repeatMode;
-
-  /// Called when [decideOnMediaEnd] requests a loop — the consumer (engine)
-  /// reloads the watch page so playback restarts from the beginning.
-  final YoutubeMediaEndFn? onMediaEnd;
 
   /// Notifies when position advances (volume-restore progress gate).
   final YoutubePlaybackProgressFn? onPlaybackProgress;
@@ -130,23 +118,15 @@ class YoutubeWebViewPollLoop {
             );
             switch (transition) {
               case MediaJustEnded():
+                // Surface the transition only — the transport's CompletionLoop
+                // is the single consumer of `completed` for repeat policy
+                // (ADR-0044). Stop polling; the loop's replay re-arms it via
+                // the explicit-play path.
                 session.pausedPollStreak = 0;
                 session.markCompleted();
-                final endDecision = decideOnMediaEnd(
-                  repeatMode: repeatMode?.call() ?? RepeatMode.none,
-                );
-                switch (endDecision) {
-                  case StopAtEnd():
-                    stop();
-                    session.emitPlaying(false);
-                    session.emitBuffering(false);
-                  case LoopMedia():
-                    session.emitPlaying(false);
-                    onMediaEnd?.call();
-                  case LoopSegment():
-                    session.emitPlaying(false);
-                    onMediaEnd?.call();
-                }
+                stop();
+                session.emitPlaying(false);
+                session.emitBuffering(false);
               case PauseStreaking(:final confirmed, :final newStreak):
                 session.pausedPollStreak = newStreak;
                 if (confirmed) {

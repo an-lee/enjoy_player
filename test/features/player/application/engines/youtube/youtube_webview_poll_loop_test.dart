@@ -1,6 +1,5 @@
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_session.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_webview_poll_loop.dart';
-import 'package:enjoy_player/features/player/domain/player_settings.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -113,23 +112,42 @@ void main() {
       expect(firstPlayingCalls, 0);
     });
 
-    test('repeatMode callback is invoked when media ends (RepeatMode)', () {
-      RepeatMode? captured;
-      final loop = YoutubeWebViewPollLoop(
-        session: session,
-        webController: () => null,
-        onFirstPlaying: () {},
-        repeatMode: () {
-          captured = RepeatMode.single;
-          return RepeatMode.single;
-        },
-        onMediaEnd: () {},
-      );
+    test(
+      'media end stops polling and surfaces completion (ADR-0044)',
+      () async {
+        // Repeat policy is NOT decided here — the transport's CompletionLoop is
+        // the single consumer of `completed`.
+        final driver = _FakePollDriver();
+        final completedEvents = <void>[];
+        final sub = session.completed.listen(completedEvents.add);
+        session.emitPlaying(true);
 
-      expect(loop, isNotNull);
-      expect(captured, isNull);
-      loop.stop();
-    });
+        final loop = YoutubeWebViewPollLoop(
+          session: session,
+          webController: () => null,
+          onFirstPlaying: () {},
+          pollFn: driver.poll,
+        );
+
+        loop.start();
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        driver.emit(
+          position: const Duration(seconds: 60),
+          jsPaused: true,
+          jsEnded: true,
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        expect(session.playbackCompleted, isTrue);
+        expect(completedEvents, hasLength(1));
+        expect(session.playing, isFalse);
+        expect(session.buffering, isFalse);
+        expect(loop.isRunning, isFalse);
+
+        await sub.cancel();
+        loop.stop();
+      },
+    );
 
     test('does not start the poll timer when session is disposed', () async {
       var firstPlayingCalls = 0;
