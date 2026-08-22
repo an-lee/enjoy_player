@@ -8,6 +8,8 @@ import 'package:enjoy_player/data/subtitle/transcript_display_readiness.dart';
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_enrichment_controller.dart';
 
+import 'fake_enrichment_backend.dart';
+
 const _lineOnly = [
   TranscriptLine(text: 'Hello world', startMs: 0, durationMs: 700),
 ];
@@ -49,32 +51,57 @@ AlignmentSuccess _successFor(List<AlignmentSegment> segments) {
   );
 }
 
+AlignmentSuccess _windowSuccess({
+  required String transcript,
+  required String language,
+  required double timeOffset,
+}) {
+  return AlignmentSuccess(
+    AlignmentResult(
+      timeline: [
+        TimelineEntry(
+          type: TimelineEntryType.segment,
+          text: transcript,
+          startTime: timeOffset,
+          endTime: timeOffset + 0.7,
+          timeline: [
+            TimelineEntry(
+              type: TimelineEntryType.word,
+              text: 'Hello',
+              startTime: timeOffset,
+              endTime: timeOffset + 0.7,
+              timeline: [
+                TimelineEntry(
+                  type: TimelineEntryType.phone,
+                  text: 'h',
+                  startTime: timeOffset,
+                  endTime: timeOffset + 0.7,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+      wordTimeline: const [],
+      transcript: transcript,
+      language: language,
+      durationSeconds: 1,
+    ),
+  );
+}
+
 Future<Float32List> _dummyPcm(String _) async =>
     Float32List(kAlignmentSampleRate);
 
 void main() {
   test('owned success persists timed words and phones', () async {
     List<TranscriptLine>? saved;
-    var pcmCalls = 0;
-    final enricher = TranscriptEnricher(
-      replaceTimeline: ({required transcriptId, required lines}) async {
-        saved = lines;
-        return true;
-      },
-      decodeFile: (path) async {
-        pcmCalls++;
+    final backend = FakeEnrichmentBackend()
+      ..decodeFileFn = (path) async {
         expect(path, '/tmp/owned.wav');
         return _dummyPcm(path);
-      },
-      decodeWindow:
-          ({
-            required pathOrUri,
-            required startSeconds,
-            required durationSeconds,
-          }) async {
-            fail('short files must not window-extract');
-          },
-      alignSegmentsFn:
+      }
+      ..alignSegmentsFn =
           ({
             required sourcePcm16k,
             required language,
@@ -84,10 +111,13 @@ void main() {
           }) async {
             expect(language, 'en-US');
             return _successFor(segments);
-          },
-      phonemizeFn: ({required texts, required language, cancel}) async {
-        fail('owned path must not phonemize');
+          };
+    final enricher = TranscriptEnricher(
+      replaceTimeline: ({required transcriptId, required lines}) async {
+        saved = lines;
+        return true;
       },
+      backend: backend,
     );
 
     final outcome = await enricher.enrich(
@@ -99,7 +129,9 @@ void main() {
     );
 
     expect(outcome, isA<TranscriptEnrichmentOk>());
-    expect(pcmCalls, 1);
+    expect(backend.decodeFileCalls, 1);
+    expect(backend.decodeWindowCalls, 0);
+    expect(backend.phonemizeCalls, 0);
     expect(saved, isNotNull);
     expect(saved!.single.text, 'Hello world');
     expect(saved!.single.startMs, 0);
@@ -118,15 +150,11 @@ void main() {
         required bool extractable,
         String? path,
         AlignmentCancelToken? cancel,
-        DecodeFilePcm16k? decodeFile,
+        DecodeFileHook? decodeFile,
       }) {
-        return TranscriptEnricher(
-          replaceTimeline: ({required transcriptId, required lines}) async {
-            replaceCalls++;
-            return true;
-          },
-          decodeFile: decodeFile ?? _dummyPcm,
-          alignSegmentsFn:
+        final backend = FakeEnrichmentBackend()
+          ..decodeFileFn = decodeFile ?? _dummyPcm
+          ..alignSegmentsFn =
               ({
                 required sourcePcm16k,
                 required language,
@@ -135,10 +163,13 @@ void main() {
                 cancel,
               }) async {
                 return _successFor(segments);
-              },
-          phonemizeFn: ({required texts, required language, cancel}) async {
-            fail('should not phonemize');
+              };
+        return TranscriptEnricher(
+          replaceTimeline: ({required transcriptId, required lines}) async {
+            replaceCalls++;
+            return true;
           },
+          backend: backend,
         ).enrich(
           transcriptId: 't1',
           lines: _lineOnly,
@@ -185,6 +216,7 @@ void main() {
               replaceCalls++;
               return true;
             },
+            backend: FakeEnrichmentBackend(),
           ),
         ),
       ],
@@ -203,24 +235,17 @@ void main() {
       const TranscriptLine(text: 'Hello', startMs: 0, durationMs: 1000),
       const TranscriptLine(text: 'Later', startMs: 91000, durationMs: 1000),
     ];
-    var windowCalls = 0;
-    final enricher = TranscriptEnricher(
-      replaceTimeline: ({required transcriptId, required lines}) async {
-        saved = lines;
-        return true;
-      },
-      decodeFile: (path) async => fail('long files must not decode whole clip'),
-      decodeWindow:
+    final backend = FakeEnrichmentBackend()
+      ..decodeWindowFn =
           ({
             required pathOrUri,
             required startSeconds,
             required durationSeconds,
           }) async {
-            windowCalls++;
             if (startSeconds > 10) throw StateError('window missing');
             return Float32List(kAlignmentSampleRate);
-          },
-      alignFn:
+          }
+      ..alignFn =
           ({
             required sourcePcm16k,
             required transcript,
@@ -228,42 +253,18 @@ void main() {
             cancel,
             required timeOffset,
           }) async {
-            return AlignmentSuccess(
-              AlignmentResult(
-                timeline: [
-                  TimelineEntry(
-                    type: TimelineEntryType.segment,
-                    text: transcript,
-                    startTime: timeOffset,
-                    endTime: timeOffset + 0.7,
-                    timeline: [
-                      TimelineEntry(
-                        type: TimelineEntryType.word,
-                        text: 'Hello',
-                        startTime: timeOffset,
-                        endTime: timeOffset + 0.7,
-                        timeline: [
-                          TimelineEntry(
-                            type: TimelineEntryType.phone,
-                            text: 'h',
-                            startTime: timeOffset,
-                            endTime: timeOffset + 0.7,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-                wordTimeline: const [],
-                transcript: transcript,
-                language: language,
-                durationSeconds: 1,
-              ),
+            return _windowSuccess(
+              transcript: transcript,
+              language: language,
+              timeOffset: timeOffset,
             );
-          },
-      phonemizeFn: ({required texts, required language, cancel}) async {
-        fail('owned path must not phonemize');
+          };
+    final enricher = TranscriptEnricher(
+      replaceTimeline: ({required transcriptId, required lines}) async {
+        saved = lines;
+        return true;
       },
+      backend: backend,
     );
 
     final outcome = await enricher.enrich(
@@ -274,7 +275,9 @@ void main() {
       localPath: '/tmp/long.wav',
     );
     expect(outcome, isA<TranscriptEnrichmentOk>());
-    expect(windowCalls, 2);
+    expect(backend.decodeWindowCalls, 2);
+    expect(backend.decodeFileCalls, 0);
+    expect(backend.phonemizeCalls, 0);
     expect(saved, hasLength(2));
     expect(saved!.first.timeline, isNotNull);
     expect(saved!.last.timeline, isNull);
@@ -291,25 +294,16 @@ void main() {
   test('owned HTTP URL downloads then aligns locally', () async {
     var decoded = '';
     var downloaded = '';
-    final enricher = TranscriptEnricher(
-      replaceTimeline: ({required transcriptId, required lines}) async => true,
-      downloadHttp: (url, {cancel}) async {
+    final backend = FakeEnrichmentBackend()
+      ..downloadHttpFn = (url, {cancel}) async {
         downloaded = url;
         return '/tmp/downloaded.mp3';
-      },
-      decodeFile: (path) async {
+      }
+      ..decodeFileFn = (path) async {
         decoded = path;
         return _dummyPcm(path);
-      },
-      decodeWindow:
-          ({
-            required pathOrUri,
-            required startSeconds,
-            required durationSeconds,
-          }) async {
-            fail('short files must not window-extract');
-          },
-      alignSegmentsFn:
+      }
+      ..alignSegmentsFn =
           ({
             required sourcePcm16k,
             required language,
@@ -318,10 +312,10 @@ void main() {
             cancel,
           }) async {
             return _successFor(segments);
-          },
-      phonemizeFn: ({required texts, required language, cancel}) async {
-        fail('owned remote URL must not phonemize');
-      },
+          };
+    final enricher = TranscriptEnricher(
+      replaceTimeline: ({required transcriptId, required lines}) async => true,
+      backend: backend,
     );
 
     final outcome = await enricher.enrich(
@@ -335,6 +329,7 @@ void main() {
     expect(outcome, isA<TranscriptEnrichmentOk>());
     expect(downloaded, 'https://cdn.example/owned.mp3');
     expect(decoded, '/tmp/downloaded.mp3');
+    expect(backend.phonemizeCalls, 0);
   });
 
   test('window path reports cue progress including failed cues', () async {
@@ -343,10 +338,8 @@ void main() {
       const TranscriptLine(text: 'Hello', startMs: 0, durationMs: 1000),
       const TranscriptLine(text: 'Later', startMs: 91000, durationMs: 1000),
     ];
-    final enricher = TranscriptEnricher(
-      replaceTimeline: ({required transcriptId, required lines}) async => true,
-      decodeFile: (path) async => fail('long files must not decode whole clip'),
-      decodeWindow:
+    final backend = FakeEnrichmentBackend()
+      ..decodeWindowFn =
           ({
             required pathOrUri,
             required startSeconds,
@@ -354,8 +347,8 @@ void main() {
           }) async {
             if (startSeconds > 10) throw StateError('window missing');
             return Float32List(kAlignmentSampleRate);
-          },
-      alignFn:
+          }
+      ..alignFn =
           ({
             required sourcePcm16k,
             required transcript,
@@ -363,34 +356,15 @@ void main() {
             cancel,
             required timeOffset,
           }) async {
-            return AlignmentSuccess(
-              AlignmentResult(
-                timeline: [
-                  TimelineEntry(
-                    type: TimelineEntryType.segment,
-                    text: transcript,
-                    startTime: timeOffset,
-                    endTime: timeOffset + 0.7,
-                    timeline: [
-                      TimelineEntry(
-                        type: TimelineEntryType.word,
-                        text: 'Hello',
-                        startTime: timeOffset,
-                        endTime: timeOffset + 0.7,
-                      ),
-                    ],
-                  ),
-                ],
-                wordTimeline: const [],
-                transcript: transcript,
-                language: language,
-                durationSeconds: 1,
-              ),
+            return _windowSuccess(
+              transcript: transcript,
+              language: language,
+              timeOffset: timeOffset,
             );
-          },
-      phonemizeFn: ({required texts, required language, cancel}) async {
-        fail('owned path must not phonemize');
-      },
+          };
+    final enricher = TranscriptEnricher(
+      replaceTimeline: ({required transcriptId, required lines}) async => true,
+      backend: backend,
     );
 
     await enricher.enrich(
