@@ -212,7 +212,7 @@ extension _TranscriptRepositoryYoutubeFetch on TranscriptRepository {
   ///
   /// Honors an existing user-picked primary: when the session already
   /// references a row that still exists, it is preserved (mirrors the
-  /// guard in [ensurePrimaryTranscript]).
+  /// guard in [_ensurePrimaryTranscript]).
   Future<void> _pickYoutubePrimary({
     required String mediaId,
     required String? videoLanguage,

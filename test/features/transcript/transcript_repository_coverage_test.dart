@@ -777,7 +777,7 @@ void main() {
     );
   });
 
-  group('ensurePrimaryTranscript edge cases', () {
+  group('resolveOnOpen edge cases', () {
     late AppDatabase db;
     late TranscriptRepository repo;
 
@@ -788,24 +788,30 @@ void main() {
 
     tearDown(() => db.close());
 
-    test('returns false for unknown media id', () async {
-      final result = await repo.ensurePrimaryTranscript('ghost');
-      expect(result, isFalse);
+    test('reports no tracks for unknown media id', () async {
+      final result = await repo.resolveOnOpen('ghost', fetchCloud: false);
+      expect(result.hasTracks, isFalse);
     });
 
-    test('returns false when no tracks exist', () async {
+    test('reports no tracks when none exist', () async {
       await _insertAudio(db, 'g1');
-      final result = await repo.ensurePrimaryTranscript('g1');
-      expect(result, isFalse);
+      final result = await repo.resolveOnOpen('g1', fetchCloud: false);
+      expect(result.hasTracks, isFalse);
+
+      final session = await db.echoSessionDao.getLatestForTarget('Audio', 'g1');
+      expect(session?.transcriptId, isNull);
     });
 
-    test('returns false when session already has valid primary', () async {
+    test('keeps a valid existing primary', () async {
       await _insertAudio(db, 'g2');
       await _insertTranscriptRow(db, id: 'tr-g2', targetId: 'g2');
       await repo.setActiveTranscript('g2', 'tr-g2');
 
-      final result = await repo.ensurePrimaryTranscript('g2');
-      expect(result, isFalse);
+      final result = await repo.resolveOnOpen('g2', fetchCloud: false);
+      expect(result.hasTracks, isTrue);
+
+      final session = await db.echoSessionDao.getLatestForTarget('Audio', 'g2');
+      expect(session?.transcriptId, 'tr-g2');
     });
   });
 

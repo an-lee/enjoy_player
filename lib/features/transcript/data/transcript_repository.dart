@@ -1,17 +1,16 @@
 /// Local transcript repository: track watching, resolution on open, cloud /
 /// YouTube fetching, subtitle import, and auto-translate track management.
 ///
-/// The implementation is split across part files by responsibility (see the
-/// `part` directives below). Methods declared in the public extensions —
-/// [TranscriptRepositorySubtitleImport] and
-/// [TranscriptRepositoryAutoTranslate] — are part of the repository's API
-/// surface but use static extension dispatch, so they cannot be overridden
-/// in subclasses.
+/// The YouTube fetch chain and worker-cache plumbing live in private part
+/// extensions (`_TranscriptRepositoryYoutubeFetch`,
+/// `_TranscriptRepositoryYoutubeWorkerCache`); every public member is a
+/// class method so fakes can override any part of the surface.
 library;
 
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:async/async.dart';
 import 'package:crypto/crypto.dart';
 import 'package:cross_file/cross_file.dart';
 import 'package:drift/drift.dart' show InsertMode, Value;
@@ -41,8 +40,6 @@ import 'sidecar_subtitle_discovery.dart';
 import 'transcript_timeline_parse.dart';
 import 'youtube_caption_fetcher.dart';
 
-part 'transcript_repository_auto_translate.dart';
-part 'transcript_repository_subtitle_import.dart';
 part 'transcript_repository_youtube_fetch.dart';
 part 'transcript_repository_youtube_worker_cache.dart';
 
@@ -54,6 +51,10 @@ class _LinesCacheEntry {
 
 String _timelineJsonHash(String timelineJson) =>
     sha1.convert(utf8.encode(timelineJson)).toString().substring(0, 16);
+
+/// Timelines larger than this are decoded in a background isolate before
+/// [TranscriptRepository.linesForRow] serves them synchronously.
+const int _kPreloadTimelineJsonBytes = 16 * 1024;
 
 List<TranscriptLine> _decodeTimeline(String timelineJson) {
   final decoded = (jsonDecode(timelineJson) as List)
@@ -124,9 +125,6 @@ final RegExp _youtubeWorkerVideoIdRe = RegExp(r'^[a-zA-Z0-9_-]{11}$');
 /// Owns transcript rows for a media target: watching tracks, resolving the
 /// primary transcript on open, fetching cloud / YouTube transcripts,
 /// importing subtitles, and managing active tracks.
-///
-/// Subtitle import and auto-translate methods are declared in the public
-/// extensions of this library's part files and are non-virtual.
 class TranscriptRepository {
   TranscriptRepository(
     this._db, [
@@ -156,14 +154,71 @@ class TranscriptRepository {
   }
 
   /// Pre-decodes [row.timelineJson] in a background isolate and caches the
-  /// result. Call before [linesForRow] to offload the initial parse of large
-  /// transcripts (often 100+ KB) off the UI isolate.
-  Future<void> preloadLinesForRow(TranscriptRow row) async {
+  /// result when the payload is large enough ([_kPreloadTimelineJsonBytes])
+  /// to justify leaving the UI isolate.
+  Future<void> _preloadLinesForRow(TranscriptRow row) async {
     final hash = _timelineJsonHash(row.timelineJson);
     final hit = _linesCache[row.id];
     if (hit != null && hit.hash == hash) return;
+    if (row.timelineJson.length <= _kPreloadTimelineJsonBytes) return;
     final decoded = await compute(_decodeTimeline, row.timelineJson);
     _linesCache[row.id] = _LinesCacheEntry(hash, decoded);
+  }
+
+  /// Reactive lines for the active primary (shadow-reading) transcript.
+  Stream<List<TranscriptLine>> watchPrimaryLines(String mediaId) =>
+      _watchLines(mediaId, primary: true);
+
+  /// Reactive lines for the active secondary (translation) transcript.
+  Stream<List<TranscriptLine>> watchSecondaryLines(String mediaId) =>
+      _watchLines(mediaId, primary: false);
+
+  Stream<List<TranscriptLine>> _watchLines(
+    String mediaId, {
+    required bool primary,
+  }) {
+    return Stream.fromFuture(dexieTargetTypeForId(_db, mediaId)).asyncExpand((
+      tt,
+    ) {
+      if (tt == null) {
+        return Stream.value(<TranscriptLine>[]);
+      }
+      return Stream.fromFuture(
+        _computeActiveLines(tt, mediaId, primary: primary),
+      ).asyncExpand((initial) async* {
+        yield initial;
+        yield* StreamGroup.merge([
+          _db.echoSessionDao
+              .watchLatestForTarget(tt, mediaId)
+              .asyncMap(
+                (_) => _computeActiveLines(tt, mediaId, primary: primary),
+              ),
+          _db.transcriptDao
+              .watchAllForTarget(tt, mediaId)
+              .asyncMap(
+                (_) => _computeActiveLines(tt, mediaId, primary: primary),
+              ),
+        ]).distinctBy(listEquals);
+      });
+    });
+  }
+
+  Future<List<TranscriptLine>> _computeActiveLines(
+    String tt,
+    String mediaId, {
+    required bool primary,
+  }) async {
+    final echo = await _db.echoSessionDao.getLatestForTarget(tt, mediaId);
+    final id = primary ? echo?.transcriptId : echo?.secondaryTranscriptId;
+    if (id == null) return <TranscriptLine>[];
+    // Fetch only the active row, not the entire transcript list. Avoids
+    // reading every transcript's timeline_json blob on every Drift tick —
+    // a frequent no-op tick when an in-active transcript row changes or
+    // when echo session aggregates (recordingsCount, lastActiveAt, …) bump.
+    final row = await _db.transcriptDao.getById(id);
+    if (row == null) return <TranscriptLine>[];
+    await _preloadLinesForRow(row);
+    return linesForRow(row);
   }
 
   Future<TranscriptRow?> primaryTranscriptRowForMedia(String mediaId) async {
@@ -212,13 +267,13 @@ class TranscriptRepository {
       return const TranscriptResolveResult(hasTracks: false);
     }
 
-    await ensurePrimaryTranscript(mediaId, targetType: tt);
+    await _ensurePrimaryTranscript(mediaId, targetType: tt);
     try {
-      await importSidecarSubtitles(mediaId);
+      await _importSidecarSubtitles(mediaId);
     } on Object catch (e, st) {
-      _log.warning('importSidecarSubtitles failed for $mediaId', e, st);
+      _log.warning('sidecar subtitle import failed for $mediaId', e, st);
     }
-    await ensurePrimaryTranscript(mediaId, targetType: tt);
+    await _ensurePrimaryTranscript(mediaId, targetType: tt);
 
     TranscriptCloudFetchResult cloud = const TranscriptCloudFetchResult(
       status: TranscriptCloudFetchStatus.skipped,
@@ -230,7 +285,7 @@ class TranscriptRepository {
         nativeLanguage: nativeLanguage,
         learningLanguage: learningLanguage,
       );
-      await ensurePrimaryTranscript(mediaId, targetType: tt);
+      await _ensurePrimaryTranscript(mediaId, targetType: tt);
     }
 
     final hasTracks = (await _db.transcriptDao.listForTarget(
@@ -252,12 +307,13 @@ class TranscriptRepository {
     return result;
   }
 
-  /// Assigns primary transcript when tracks exist but session has none.
+  /// Internal step of [resolveOnOpen]: assigns the primary transcript when
+  /// tracks exist but the session has none.
   ///
   /// When [targetType] is provided, skips the `dexieTargetTypeForId`
   /// lookup (issue #481 — avoids redundant queries when the caller
   /// already resolved the type).
-  Future<bool> ensurePrimaryTranscript(
+  Future<bool> _ensurePrimaryTranscript(
     String mediaId, {
     String? targetType,
   }) async {
@@ -396,7 +452,7 @@ class TranscriptRepository {
       }
 
       if (storedCount > 0) {
-        await ensurePrimaryTranscript(mediaId, targetType: tt);
+        await _ensurePrimaryTranscript(mediaId, targetType: tt);
         return TranscriptCloudFetchResult(
           status: TranscriptCloudFetchStatus.success,
           storedCount: storedCount,
@@ -627,5 +683,246 @@ class TranscriptRepository {
     if (remaining.isEmpty) return null;
     _sortTranscriptRows(remaining);
     return remaining.first.id;
+  }
+
+  // ---------------------------------------------------------------------
+  // Subtitle import
+  // ---------------------------------------------------------------------
+
+  /// Internal step of [resolveOnOpen]: imports matching sidecar subtitle
+  /// files next to a local media file.
+  ///
+  /// Returns the number of newly imported sidecar files.
+  Future<int> _importSidecarSubtitles(String mediaId) async {
+    final uri = await resolvePlayableSourceUri(_db, mediaId);
+    if (uri == null) return 0;
+
+    final tt = await dexieTargetTypeForId(_db, mediaId);
+    if (tt == null) return 0;
+
+    final sidecars = discoverSidecarSubtitleFiles(uri);
+    if (sidecars.isEmpty) return 0;
+
+    var imported = 0;
+    for (final file in sidecars) {
+      final name = p.basename(file.path);
+      final language = languageHintFromSubtitleFileName(name);
+      const source = 'user';
+      final id = enjoyTranscriptId(
+        targetType: tt,
+        targetId: mediaId,
+        language: language,
+        source: source,
+      );
+      if (await _db.transcriptDao.getById(id) != null) continue;
+
+      await importSubtitle(
+        mediaId: mediaId,
+        file: XFile(file.path, name: name),
+        language: language,
+        label: p.basenameWithoutExtension(name),
+      );
+      imported++;
+    }
+    return imported;
+  }
+
+  /// Imports a user-supplied `.srt` / `.vtt` file as a `source: user` track.
+  Future<void> importSubtitle({
+    required String mediaId,
+    required XFile file,
+    required String language,
+    String? label,
+  }) async {
+    final tt = await dexieTargetTypeForId(_db, mediaId);
+    if (tt == null) return;
+    final text = await file.readAsString();
+    final lines = const SubtitleParserFacade().parseWithHint(
+      text,
+      fileName: file.name,
+    );
+    final json = jsonEncode(lines.map((e) => e.toJson()).toList());
+    const source = 'user';
+    final id = enjoyTranscriptId(
+      targetType: tt,
+      targetId: mediaId,
+      language: language,
+      source: source,
+    );
+    final now = DateTime.now();
+    await _db.transcriptDao.upsert(
+      TranscriptRow(
+        id: id,
+        targetType: tt,
+        targetId: mediaId,
+        language: language,
+        source: source,
+        timelineJson: json,
+        referenceId: null,
+        label: label ?? p.basenameWithoutExtension(file.name),
+        trackIndex: null,
+        syncStatus: 'local',
+        serverUpdatedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    final session = await _db.echoSessionDao.getLatestForTarget(tt, mediaId);
+    if (session?.transcriptId == null) {
+      await _db.echoSessionDao.updatePrimaryTranscriptForTarget(
+        tt,
+        mediaId,
+        id,
+      );
+    }
+  }
+
+  /// Extracts embedded subtitle streams via ffmpeg; stored as `source: user`.
+  ///
+  /// Returns the number of new/updated transcript rows written.
+  ///
+  /// [playerSubtitleTracks] may be empty: subtitle streams are then discovered
+  /// via `ffmpeg -i` (see [EmbeddedSubtitleService.extractTracks]).
+  Future<int> extractEmbeddedTracks({
+    required String mediaId,
+    required String sourceUri,
+    List<mk.SubtitleTrack> playerSubtitleTracks = const [],
+  }) async {
+    final tt = await dexieTargetTypeForId(_db, mediaId);
+    if (tt == null) return 0;
+
+    final existing = await _db.transcriptDao.listForTarget(tt, mediaId);
+    final existingIndices = existing
+        .where((r) => r.trackIndex != null)
+        .map((r) => r.trackIndex!)
+        .toSet();
+
+    final extracted = await const EmbeddedSubtitleService().extractTracks(
+      targetId: mediaId,
+      targetTypeDexie: tt,
+      mediaSourceUri: sourceUri,
+      tracks: playerSubtitleTracks,
+      existingTrackIndices: existingIndices,
+    );
+
+    if (extracted.isEmpty) return 0;
+
+    for (final row in extracted) {
+      await _db.transcriptDao.upsert(row);
+    }
+
+    final session = await _db.echoSessionDao.getLatestForTarget(tt, mediaId);
+    if (session?.transcriptId == null) {
+      await _db.echoSessionDao.updatePrimaryTranscriptForTarget(
+        tt,
+        mediaId,
+        extracted.first.id,
+      );
+    }
+
+    return extracted.length;
+  }
+
+  // ---------------------------------------------------------------------
+  // Auto-translate track management
+  // ---------------------------------------------------------------------
+
+  /// Ensures a durable `source: ai` track exists with a timing skeleton for
+  /// auto-translate. Returns the track id, or null when the target is unknown.
+  ///
+  /// When a non-stale AI track already exists for the same primary, its
+  /// translated texts are **preserved** (no rewrite). Stale tracks are rebuilt
+  /// as an empty skeleton so mismatched bilingual pairs are never shown.
+  Future<String?> ensureAutoTranslateTrack({
+    required String mediaId,
+    required String primaryTranscriptId,
+    required String targetLanguage,
+    required List<TranscriptLine> primaryLines,
+  }) async {
+    final tt = await dexieTargetTypeForId(_db, mediaId);
+    if (tt == null || primaryLines.isEmpty) return null;
+
+    final id = autoTranslateAiTrackId(
+      targetType: tt,
+      mediaId: mediaId,
+      targetLanguage: targetLanguage,
+    );
+    final existing = await _db.transcriptDao.getById(id);
+    if (existing != null &&
+        !isAutoTranslateTrackStale(
+          aiRow: existing,
+          primaryId: primaryTranscriptId,
+          primaryLines: primaryLines,
+        )) {
+      return id;
+    }
+
+    final skeleton = buildAutoTranslateSkeleton(primaryLines);
+    final json = jsonEncode(skeleton.map((e) => e.toJson()).toList());
+    final now = DateTime.now();
+
+    await _db.transcriptDao.upsert(
+      TranscriptRow(
+        id: id,
+        targetType: tt,
+        targetId: mediaId,
+        language: targetLanguage,
+        source: 'ai',
+        timelineJson: json,
+        referenceId: primaryTranscriptId,
+        label: existing?.label.isNotEmpty == true
+            ? existing!.label
+            : 'Auto translate ($targetLanguage)',
+        trackIndex: null,
+        syncStatus: 'local',
+        serverUpdatedAt: null,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+      ),
+    );
+    _linesCache.remove(id);
+    return id;
+  }
+
+  /// Writes one translated line into the AI track timeline.
+  Future<void> updateAutoTranslateLineText({
+    required String aiTranscriptId,
+    required int lineIndex,
+    required String text,
+    String? sourceKey,
+  }) async {
+    final row = await _db.transcriptDao.getById(aiTranscriptId);
+    if (row == null) return;
+    final lines = List<TranscriptLine>.from(linesForRow(row));
+    if (lineIndex < 0 || lineIndex >= lines.length) return;
+    lines[lineIndex] = TranscriptLine(
+      text: text,
+      startMs: lines[lineIndex].startMs,
+      durationMs: lines[lineIndex].durationMs,
+      sourceKey: text.trim().isEmpty ? null : sourceKey,
+    );
+    final now = DateTime.now();
+    await _db.transcriptDao.upsert(
+      row.copyWith(
+        timelineJson: jsonEncode(lines.map((e) => e.toJson()).toList()),
+        updatedAt: now,
+      ),
+    );
+    _linesCache.remove(aiTranscriptId);
+  }
+
+  /// Whether the AI track is out of sync with the current primary transcript.
+  bool isAutoTranslateTrackStale({
+    required TranscriptRow aiRow,
+    required String primaryId,
+    required List<TranscriptLine> primaryLines,
+  }) {
+    final aiLines = linesForRow(aiRow);
+    return isAutoTranslateTimelineStale(
+      referencePrimaryId: aiRow.referenceId,
+      primaryId: primaryId,
+      primaryLines: primaryLines,
+      aiLines: aiLines,
+    );
   }
 }

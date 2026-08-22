@@ -373,7 +373,7 @@ void main() {
     );
   });
 
-  group('fetchCloudTranscripts', () {
+  group('resolveOnOpen orchestration', () {
     late AppDatabase db;
 
     setUp(() {
@@ -384,7 +384,7 @@ void main() {
       await db.close();
     });
 
-    test('ensurePrimaryTranscript picks highest-priority track', () async {
+    test('resolveOnOpen assigns highest-priority track as primary', () async {
       final now = DateTime.now();
       await db.audioDao.insertRow(
         AudioRow(
@@ -451,20 +451,92 @@ void main() {
       );
 
       final repo = TranscriptRepository(db);
-      final assigned = await repo.ensurePrimaryTranscript('m1');
-      expect(assigned, isTrue);
+      final result = await repo.resolveOnOpen('m1', fetchCloud: false);
+      expect(result.hasTracks, isTrue);
 
       final session = await db.echoSessionDao.getLatestForTarget('Audio', 'm1');
       expect(session?.transcriptId, 'tr-official');
     });
 
-    test(
-      'ensurePrimaryTranscript reassigns stale session transcript id',
-      () async {
+    test('resolveOnOpen reassigns stale session transcript id', () async {
+      final now = DateTime.now();
+      await db.audioDao.insertRow(
+        AudioRow(
+          id: 'm1',
+          aid: 'f',
+          provider: 'user',
+          title: 't',
+          description: null,
+          thumbnailUrl: null,
+          durationSeconds: 0,
+          language: 'und',
+          translationKey: null,
+          sourceText: null,
+          voice: null,
+          source: null,
+          localUri: 'file:///a.mp3',
+          md5: null,
+          size: 1,
+          mediaUrl: null,
+          syncStatus: null,
+          serverUpdatedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      final timelineJson = jsonEncode([
+        const TranscriptLine(text: 'x', startMs: 0, durationMs: 100).toJson(),
+      ]);
+
+      await db.transcriptDao.upsert(
+        TranscriptRow(
+          id: 'tr-official',
+          targetType: 'Audio',
+          targetId: 'm1',
+          language: 'en',
+          source: 'official',
+          timelineJson: timelineJson,
+          referenceId: null,
+          label: 'official',
+          trackIndex: null,
+          syncStatus: null,
+          serverUpdatedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      await db.echoSessionDao.updatePrimaryTranscriptForTarget(
+        'Audio',
+        'm1',
+        'tr-missing',
+      );
+
+      final repo = TranscriptRepository(db);
+      final result = await repo.resolveOnOpen('m1', fetchCloud: false);
+      expect(result.hasTracks, isTrue);
+
+      final session = await db.echoSessionDao.getLatestForTarget('Audio', 'm1');
+      expect(session?.transcriptId, 'tr-official');
+    });
+
+    test('resolveOnOpen imports adjacent srt for local media', () async {
+      final tempDir = await Directory.systemTemp.createTemp(
+        'enjoy_repo_sidecar_',
+      );
+      try {
+        final mediaFile = File(p.join(tempDir.path, 'clip.mp3'));
+        await mediaFile.writeAsString('audio');
+        await File(
+          p.join(tempDir.path, 'clip.en.srt'),
+        ).writeAsString('1\n00:00:00,000 --> 00:00:01,000\nHello');
+
         final now = DateTime.now();
+        final mediaStat = await mediaFile.stat();
         await db.audioDao.insertRow(
           AudioRow(
-            id: 'm1',
+            id: 'm-sidecar',
             aid: 'f',
             provider: 'user',
             title: 't',
@@ -476,9 +548,10 @@ void main() {
             sourceText: null,
             voice: null,
             source: null,
-            localUri: 'file:///a.mp3',
+            localUri: mediaFile.uri.toString(),
             md5: null,
-            size: 1,
+            size: mediaStat.size,
+            localMtimeMs: mediaStat.modified.millisecondsSinceEpoch,
             mediaUrl: null,
             syncStatus: null,
             serverUpdatedAt: null,
@@ -487,103 +560,18 @@ void main() {
           ),
         );
 
-        final timelineJson = jsonEncode([
-          const TranscriptLine(text: 'x', startMs: 0, durationMs: 100).toJson(),
-        ]);
-
-        await db.transcriptDao.upsert(
-          TranscriptRow(
-            id: 'tr-official',
-            targetType: 'Audio',
-            targetId: 'm1',
-            language: 'en',
-            source: 'official',
-            timelineJson: timelineJson,
-            referenceId: null,
-            label: 'official',
-            trackIndex: null,
-            syncStatus: null,
-            serverUpdatedAt: null,
-            createdAt: now,
-            updatedAt: now,
-          ),
-        );
-
-        await db.echoSessionDao.updatePrimaryTranscriptForTarget(
-          'Audio',
-          'm1',
-          'tr-missing',
-        );
-
         final repo = TranscriptRepository(db);
-        final assigned = await repo.ensurePrimaryTranscript('m1');
-        expect(assigned, isTrue);
+        final result = await repo.resolveOnOpen('m-sidecar', fetchCloud: false);
+        expect(result.hasTracks, isTrue);
 
-        final session = await db.echoSessionDao.getLatestForTarget(
-          'Audio',
-          'm1',
-        );
-        expect(session?.transcriptId, 'tr-official');
-      },
-    );
-
-    test(
-      'importSidecarSubtitles imports adjacent srt for local media',
-      () async {
-        final tempDir = await Directory.systemTemp.createTemp(
-          'enjoy_repo_sidecar_',
-        );
-        try {
-          final mediaFile = File(p.join(tempDir.path, 'clip.mp3'));
-          await mediaFile.writeAsString('audio');
-          await File(
-            p.join(tempDir.path, 'clip.en.srt'),
-          ).writeAsString('1\n00:00:00,000 --> 00:00:01,000\nHello');
-
-          final now = DateTime.now();
-          final mediaStat = await mediaFile.stat();
-          await db.audioDao.insertRow(
-            AudioRow(
-              id: 'm-sidecar',
-              aid: 'f',
-              provider: 'user',
-              title: 't',
-              description: null,
-              thumbnailUrl: null,
-              durationSeconds: 0,
-              language: 'und',
-              translationKey: null,
-              sourceText: null,
-              voice: null,
-              source: null,
-              localUri: mediaFile.uri.toString(),
-              md5: null,
-              size: mediaStat.size,
-              localMtimeMs: mediaStat.modified.millisecondsSinceEpoch,
-              mediaUrl: null,
-              syncStatus: null,
-              serverUpdatedAt: null,
-              createdAt: now,
-              updatedAt: now,
-            ),
-          );
-
-          final repo = TranscriptRepository(db);
-          final imported = await repo.importSidecarSubtitles('m-sidecar');
-          expect(imported, 1);
-
-          final rows = await db.transcriptDao.listForTarget(
-            'Audio',
-            'm-sidecar',
-          );
-          expect(rows, hasLength(1));
-          expect(rows.single.language, 'en');
-        } finally {
-          if (tempDir.existsSync()) {
-            await tempDir.delete(recursive: true);
-          }
+        final rows = await db.transcriptDao.listForTarget('Audio', 'm-sidecar');
+        expect(rows, hasLength(1));
+        expect(rows.single.language, 'en');
+      } finally {
+        if (tempDir.existsSync()) {
+          await tempDir.delete(recursive: true);
         }
-      },
-    );
+      }
+    });
   });
 }

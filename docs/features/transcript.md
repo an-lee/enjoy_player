@@ -92,22 +92,33 @@ empty-tracks hint plus primary + translation section headers for a single
 track). The split is also recorded as
 [`2026-07-07-subtitle-track-picker-split-design.md`](../superpowers/specs/2026-07-07-subtitle-track-picker-split-design.md).
 
-### Transcript repository split
+### Transcript repository shape
 
 [`TranscriptRepository`](../../lib/features/transcript/data/transcript_repository.dart)
-grew beyond a single file; three focused Dart part files are imported via
-`part` directives to keep the main class definition readable:
+owns the transcript surface for a media target. Every public member is a
+class method (virtual, overridable by test fakes); the YouTube internals are
+the only part-file extensions, both private:
 
 | Part file | Responsibility |
 |-----------|----------------|
-| [`transcript_repository_auto_translate.dart`](../../lib/features/transcript/data/transcript_repository_auto_translate.dart) | Auto-translate track management: `_fetchAndCacheAutoTranslate`, inline refresh, viewport-driven line translation |
-| [`transcript_repository_subtitle_import.dart`](../../lib/features/transcript/data/transcript_repository_subtitle_import.dart) | Subtitle file import (SRT/VTT), embedded subtitle extraction (FFmpeg), sidecar discovery |
-| [`transcript_repository_youtube_fetch.dart`](../../lib/features/transcript/data/transcript_repository_youtube_fetch.dart) | YouTube transcript fetch orchestration: worker cache lookup, InnerTube direct fallback, worker upload, bilingual fetch |
-| [`transcript_repository_youtube_worker_cache.dart`](../../lib/features/transcript/data/transcript_repository_youtube_worker_cache.dart) | Worker cache-only API interaction (`GET /youtube/transcripts`, `POST /youtube/transcripts`, `GET /youtube/client-profiles`) |
+| [`transcript_repository_youtube_fetch.dart`](../../lib/features/transcript/data/transcript_repository_youtube_fetch.dart) | YouTube transcript fetch orchestration: worker cache lookup, InnerTube direct fallback, worker upload, post-fetch primary picker |
+| [`transcript_repository_youtube_worker_cache.dart`](../../lib/features/transcript/data/transcript_repository_youtube_worker_cache.dart) | Worker cache-only API interaction (`GET /youtube/transcripts`, `POST /youtube/transcripts`) |
 
-The main `transcript_repository.dart` retains the public API surface;
-`watchTracks`, `upsertAsrGeneratedTrack`, `resolveOnOpen`, and all other
-public methods are unchanged.
+Interface notes:
+
+- `resolveOnOpen` is the single public entry for the open path. Its steps —
+  primary auto-select and sidecar import — are private
+  (`_ensurePrimaryTranscript`, `_importSidecarSubtitles`); callers never
+  orchestrate them.
+- Subtitle import (`importSubtitle`, `extractEmbeddedTracks`) and
+  auto-translate track management (`ensureAutoTranslateTrack`,
+  `updateAutoTranslateLineText`, `isAutoTranslateTrackStale`) are class
+  methods alongside the rest of the surface.
+- Reactive lines are repo-owned: `watchPrimaryLines(mediaId)` /
+  `watchSecondaryLines(mediaId)` hide target-type resolution, the
+  active-row-only fetch, the 16 KB isolate-preload threshold, and the
+  merge/distinct of echo-session + transcript watches. The Riverpod
+  providers in `transcript_lines_provider.dart` are thin wrappers.
 
 ## Blur practice (listening-focus) mode
 
