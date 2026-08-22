@@ -50,9 +50,13 @@ This ADR does **not** rewrite ADR-0070–0074.
    `/pronounce`.
 6. **No `package:forced_alignment/`** from transcript, settings, player, or
    l10n. Do **not** change `kPositionBucketDisplayMs`. Karaoke still uses
-   the 50 ms bucket; practice icons use `activeCueWordIndexProvider` (50 ms
-   only when karaoke **or** practice is on). Inactive tiles must not watch
-   that provider. Isolated widget tests override the new notifiers to off.
+   the 50 ms bucket; the current-word index is carried by
+   `transcriptPlaybackHighlightProvider` (a record of `cueIndex` +
+   `wordIndex`), which subscribes to the 50 ms stream only after the
+   karaoke gate passes. The separate `activeCueWordIndexProvider` was an
+   orphan with no call sites and was removed with that consolidation
+   (#607). Inactive tiles must not watch that provider. Isolated widget
+   tests override the notifiers to off.
 
 ## Consequences
 

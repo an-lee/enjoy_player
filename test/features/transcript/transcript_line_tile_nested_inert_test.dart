@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
-import 'package:enjoy_player/features/transcript/application/karaoke_word_index_provider.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_blur_mode_provider.dart';
+import 'package:enjoy_player/features/transcript/application/transcript_playback_highlight_provider.dart';
 import 'package:enjoy_player/features/transcript/presentation/transcript_line_tile.dart';
 import 'package:enjoy_player/features/transcript/presentation/transcript_markup.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
@@ -140,7 +140,9 @@ void main() {
       ProviderScope(
         overrides: [
           transcriptBlurModeProvider.overrideWith(() => _BlurMode(false)),
-          karaokeWordIndexProvider('test').overrideWithValue(null),
+          transcriptPlaybackHighlightProvider(
+            'test',
+          ).overrideWithValue((cueIndex: 0, wordIndex: null)),
           ...transcriptWordPracticeOffOverrides(),
         ],
         child: MaterialApp(

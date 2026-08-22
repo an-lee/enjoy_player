@@ -234,6 +234,33 @@ Coverage lives under
 - `transcript_blur_long_list_perf_test.dart` — 10 000-line smoke
   under `ImageFiltered`; per-frame budget assertion.
 
+## Karaoke highlight
+
+The "what is highlighted right now" question has a single owner:
+[`transcriptPlaybackHighlightProvider`](../../lib/features/transcript/application/transcript_playback_highlight_provider.dart)
+returns a record of `({int cueIndex, int? wordIndex})` per media id:
+
+- `cueIndex` — the echo-aware active cue (`-1` when there are no lines),
+  quantized on the 400 ms display position bucket.
+- `wordIndex` — the karaoke current-word index on that cue, or `null`
+  when karaoke is off / still loading, `karaokeSwitchEnabled` is false
+  (no timed words on owned media), the cue is out of range, or the
+  position is in a word gap. This is gated by the
+  `transcript.karaokeHighlight` setting **and** display readiness
+  ([ADR-0074](../decisions/0074-karaoke-word-highlight.md),
+  [ADR-0078](../decisions/0078-on-demand-transcript-enrichment.md)).
+
+The 50 ms karaoke position stream is watched **only after** the karaoke
+gate passes, so karaoke-off transcripts never subscribe to the word tick
+stream. Consumers that only need the cue index must use
+`.select((h) => h.cueIndex)` on the watch / `ref.listen` (and plain
+`.cueIndex` on reads) so they are not rebuilt on the 50 ms word ticks;
+only the active transcript tile watches the full record (for the
+in-place word paint). The separate `karaokeWordIndexProvider` /
+`activeCueWordIndexProvider` providers were folded into this one (the
+latter was an orphan with no call sites). Provider tests live in
+[`transcript_playback_highlight_provider_test.dart`](../../test/features/transcript/application/transcript_playback_highlight_provider_test.dart).
+
 ## Alignment engine (Craft save + on-demand enrich)
 
 `packages/forced_alignment` maps known text + 16 kHz extractable PCM to

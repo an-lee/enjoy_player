@@ -4,6 +4,7 @@ library;
 import 'dart:async';
 import 'dart:collection';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -54,11 +55,14 @@ class AutoTranslateCtrl extends _$AutoTranslateCtrl {
 
     // On seek / active-cue change, prefer the new viewport over a FIFO backlog
     // of earlier lines that were requested while scrolled at the top.
-    ref.listen(transcriptPlaybackHighlightProvider(mediaId), (prev, next) {
-      if (prev == next) return;
-      if (state.status != AutoTranslateStatus.active) return;
-      _reprioritizeWaiting(anchor: next);
-    });
+    ref.listen(
+      transcriptPlaybackHighlightProvider(mediaId).select((h) => h.cueIndex),
+      (prev, next) {
+        if (prev == next) return;
+        if (state.status != AutoTranslateStatus.active) return;
+        _reprioritizeWaiting(anchor: next);
+      },
+    );
 
     unawaited(_hydrateIfAiSecondaryActive());
     return const AutoTranslateUiState();
@@ -454,7 +458,8 @@ class AutoTranslateCtrl extends _$AutoTranslateCtrl {
   void _reprioritizeWaiting({int? anchor}) {
     if (_waiting.isEmpty) return;
     final int raw =
-        anchor ?? ref.read(transcriptPlaybackHighlightProvider(mediaId));
+        anchor ??
+        ref.read(transcriptPlaybackHighlightProvider(mediaId)).cueIndex;
     final focus = raw < 0 ? 0 : raw;
     // Drop backlog far from the cue so a mid-video seek does not keep
     // draining early lines that were queued from the list cache extent.

@@ -4,8 +4,8 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
-import 'package:enjoy_player/features/transcript/application/karaoke_word_index_provider.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_blur_mode_provider.dart';
+import 'package:enjoy_player/features/transcript/application/transcript_playback_highlight_provider.dart';
 import 'package:enjoy_player/features/transcript/presentation/transcript_line_tile.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
@@ -114,7 +114,9 @@ void main() {
       await tester.pumpWidget(
         _harness(
           extraOverrides: [
-            karaokeWordIndexProvider('test').overrideWithValue(0),
+            transcriptPlaybackHighlightProvider(
+              'test',
+            ).overrideWithValue((cueIndex: 0, wordIndex: 0)),
           ],
           child: Column(
             children: [
@@ -173,7 +175,11 @@ void main() {
   ) async {
     await tester.pumpWidget(
       _harness(
-        extraOverrides: [karaokeWordIndexProvider('test').overrideWithValue(0)],
+        extraOverrides: [
+          transcriptPlaybackHighlightProvider(
+            'test',
+          ).overrideWithValue((cueIndex: 0, wordIndex: 0)),
+        ],
         child: Column(
           children: [
             TranscriptLineTile(
