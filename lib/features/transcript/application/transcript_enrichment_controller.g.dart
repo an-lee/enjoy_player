@@ -55,7 +55,7 @@ final class TranscriptEnricherProvider
 }
 
 String _$transcriptEnricherHash() =>
-    r'842cc15d5b7d044d1095f8d45b94cdb6c4f276c2';
+    r'2de1e4884094f26def55abd9b9a0143a5af86aef';
 
 @ProviderFor(TranscriptEnrichmentController)
 final transcriptEnrichmentControllerProvider =

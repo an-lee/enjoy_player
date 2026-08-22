@@ -19,6 +19,8 @@ import 'package:enjoy_player/data/subtitle/subtitle_markup_parser.dart';
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
 import 'package:enjoy_player/features/player/domain/playable_source.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_repository_provider.dart';
+import 'package:enjoy_player/features/transcript/data/forced_alignment_enrichment_backend.dart';
+import 'package:enjoy_player/features/transcript/domain/enrichment_backend.dart';
 
 part 'transcript_enrichment_controller.g.dart';
 
@@ -77,40 +79,6 @@ class TranscriptEnrichmentState {
 typedef EnrichProgressFn =
     void Function({required int completed, required int total});
 
-typedef DecodeFilePcm16k = Future<Float32List> Function(String pathOrUri);
-
-typedef DecodeFileWindowPcm16k =
-    Future<Float32List> Function({
-      required String pathOrUri,
-      required double startSeconds,
-      required double durationSeconds,
-    });
-
-typedef AlignSegmentsFn =
-    Future<AlignmentOutcome> Function({
-      required Float32List sourcePcm16k,
-      required String language,
-      required List<AlignmentSegment> segments,
-      required AlignmentGranularity granularity,
-      AlignmentCancelToken? cancel,
-    });
-
-typedef AlignFn =
-    Future<AlignmentOutcome> Function({
-      required Float32List sourcePcm16k,
-      required String transcript,
-      required String language,
-      AlignmentCancelToken? cancel,
-      required double timeOffset,
-    });
-
-typedef PhonemizeLinesFn =
-    Future<PhonemizeOutcome> Function({
-      required List<String> texts,
-      required String language,
-      AlignmentCancelToken? cancel,
-    });
-
 typedef ReplaceTimelineFn =
     Future<bool> Function({
       required String transcriptId,
@@ -133,33 +101,14 @@ final class TranscriptEnrichmentErr extends TranscriptEnrichmentOutcome {
   final String reason;
 }
 
-typedef DownloadHttpMedia =
-    Future<String> Function(String url, {AlignmentCancelToken? cancel});
-
 /// Injectable owned-align / YouTube-phonemize worker. No work until [enrich].
 final class TranscriptEnricher {
-  TranscriptEnricher({
-    required this.replaceTimeline,
-    DecodeFilePcm16k? decodeFile,
-    DecodeFileWindowPcm16k? decodeWindow,
-    AlignSegmentsFn? alignSegmentsFn,
-    AlignFn? alignFn,
-    PhonemizeLinesFn? phonemizeFn,
-    DownloadHttpMedia? downloadHttp,
-  }) : _decodeFile = decodeFile ?? decodeFileToPcm16kMono,
-       _decodeWindow = decodeWindow ?? decodeFileWindowToPcm16kMono,
-       _alignSegments = alignSegmentsFn ?? _productionAlignSegments,
-       _align = alignFn ?? _productionAlign,
-       _phonemize = phonemizeFn ?? _productionPhonemize,
-       _downloadHttp = downloadHttp ?? downloadHttpMediaToTemp;
+  TranscriptEnricher({required this.replaceTimeline, required this.backend});
 
   final ReplaceTimelineFn replaceTimeline;
-  final DecodeFilePcm16k _decodeFile;
-  final DecodeFileWindowPcm16k _decodeWindow;
-  final AlignSegmentsFn _alignSegments;
-  final AlignFn _align;
-  final PhonemizeLinesFn _phonemize;
-  final DownloadHttpMedia _downloadHttp;
+
+  /// Decode / align / phonemize / download machinery for this run.
+  final EnrichmentBackend backend;
 
   /// Owned media: timed words + phones. YouTube: untimed IPA labels.
   Future<TranscriptEnrichmentOutcome> enrich({
@@ -205,7 +154,7 @@ final class TranscriptEnricher {
     String? downloaded;
     if (pcm16kInputIsRemoteHttp(ownedPath)) {
       try {
-        downloaded = await _downloadHttp(ownedPath, cancel: cancel);
+        downloaded = await backend.downloadHttp(ownedPath, cancel: cancel);
         ownedPath = downloaded;
       } on Object catch (e, st) {
         if (cancel?.isCancelled ?? false) {
@@ -243,7 +192,7 @@ final class TranscriptEnricher {
     onProgress?.call(completed: 0, total: lines.length);
     late final PhonemizeOutcome outcome;
     try {
-      outcome = await _phonemize(
+      outcome = await backend.phonemize(
         texts: [
           for (final line in lines) plainTextFromSubtitleMarkup(line.text),
         ],
@@ -324,7 +273,7 @@ final class TranscriptEnricher {
     onProgress?.call(completed: 0, total: lines.length);
     late final Float32List pcm;
     try {
-      pcm = await _decodeFile(localPath);
+      pcm = await backend.decodeFile(localPath);
     } on Object catch (e, st) {
       logNamed(
         'transcript.enrichment',
@@ -350,7 +299,7 @@ final class TranscriptEnricher {
 
     late final AlignmentOutcome outcome;
     try {
-      outcome = await _alignSegments(
+      outcome = await backend.alignSegments(
         sourcePcm16k: pcm,
         language: language,
         segments: segments,
@@ -410,7 +359,7 @@ final class TranscriptEnricher {
             (line.endSeconds - line.startSeconds) + (2 * kCuePadSeconds);
         late final Float32List pcm;
         try {
-          pcm = await _decodeWindow(
+          pcm = await backend.decodeWindow(
             pathOrUri: localPath,
             startSeconds: start,
             durationSeconds: duration <= 0 ? kMinAudioSeconds : duration,
@@ -425,7 +374,7 @@ final class TranscriptEnricher {
 
         late final AlignmentOutcome outcome;
         try {
-          outcome = await _align(
+          outcome = await backend.align(
             sourcePcm16k: pcm,
             transcript: line.text,
             language: language,
@@ -530,46 +479,6 @@ extension on TimelineEntry {
   }
 }
 
-Future<AlignmentOutcome> _productionAlignSegments({
-  required Float32List sourcePcm16k,
-  required String language,
-  required List<AlignmentSegment> segments,
-  required AlignmentGranularity granularity,
-  AlignmentCancelToken? cancel,
-}) {
-  return alignSegments(
-    sourcePcm16k: sourcePcm16k,
-    language: language,
-    segments: segments,
-    granularity: granularity,
-    cancel: cancel,
-  );
-}
-
-Future<AlignmentOutcome> _productionAlign({
-  required Float32List sourcePcm16k,
-  required String transcript,
-  required String language,
-  AlignmentCancelToken? cancel,
-  required double timeOffset,
-}) {
-  return align(
-    sourcePcm16k: sourcePcm16k,
-    transcript: transcript,
-    language: language,
-    cancel: cancel,
-    timeOffset: timeOffset,
-  );
-}
-
-Future<PhonemizeOutcome> _productionPhonemize({
-  required List<String> texts,
-  required String language,
-  AlignmentCancelToken? cancel,
-}) {
-  return phonemizeLines(texts: texts, language: language, cancel: cancel);
-}
-
 @Riverpod(keepAlive: true)
 TranscriptEnricher transcriptEnricher(Ref ref) {
   final repo = ref.watch(transcriptRepositoryProvider);
@@ -577,6 +486,7 @@ TranscriptEnricher transcriptEnricher(Ref ref) {
     replaceTimeline: ({required transcriptId, required lines}) {
       return repo.replaceTimeline(transcriptId: transcriptId, lines: lines);
     },
+    backend: const ForcedAlignmentEnrichmentBackend(),
   );
 }
 
