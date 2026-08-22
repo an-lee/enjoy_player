@@ -29,15 +29,15 @@ Flows as a full-screen route; back returns to wherever the user came from.
 
 An in-app-bar history `IconButton` (tooltip `craftHistoryTooltip`) on the Craft screen opens `CraftHistoryScreen`, which lists every media item where `Audios.provider == 'craft'`, newest-updated first (`craftHistoryProvider` — a thin `StreamProvider` over the existing `mediaLibraryRepositoryProvider.watchAll()`, no new query or schema). Empty state uses `craftHistoryEmptyTitle` / `craftHistoryEmptyHint` / `craftHistoryEmptyAction`.
 
-Each row can **Remove Craft record** (`MediaLibraryRepository.removeCraftHistoryRecord`): clears Craft provenance by setting `Audios.provider` from `'craft'` to `'user'`. The same media id, audio file, and transcript stay in the library for practice (no Craft badge). This is not a library delete and not a soft-hide list. If the removed item is the active edit session (`editingMediaId`), the controller resets via `resetForNextCapture`.
+Each row can **Remove Craft record** (`CraftLibraryRepository.removeCraftHistoryRecord`): clears Craft provenance by setting `Audios.provider` from `'craft'` to `'user'`. The same media id, audio file, and transcript stay in the library for practice (no Craft badge). This is not a library delete and not a soft-hide list. If the removed item is the active edit session (`editingMediaId`), the controller resets via `resetForNextCapture`.
 
 ### Edit an existing Craft item
 
 Tapping a history item calls `CraftController.loadForEdit(mediaId)`:
 
-- Loads a `CraftEditSource` snapshot (`lib/features/library/domain/craft_edit_source.dart`) via `MediaLibraryRepository.getCraftEditSource` — returns `null` (surfaced as `craftEditUnavailable`) if the item no longer exists.
+- Loads a `CraftEditSource` snapshot (`lib/features/craft/domain/craft_edit_source.dart`) via `CraftLibraryRepository.getCraftEditSource` — returns `null` (surfaced as `craftEditUnavailable`) if the item no longer exists.
 - Prefills **Express** mode (stage `rewrite`) when the item's `sourceFlag == 'craft-express'` and it has a native-language transcript; otherwise prefills **Advanced** mode with the reconstructed practice text loaded into the Synthesize tool.
-- Sets `CraftJobState.editingMediaId`, which routes the next `saveToLibrary` call to `MediaLibraryRepository.updateCraftedFromText` (update the same media id, replacing audio + primary transcript) instead of `importCraftedFromText` — editing never creates a duplicate library entry. `editingMediaId` is cleared by `setScreenMode` and `resetForNextCapture`.
+- Sets `CraftJobState.editingMediaId`, which routes the next `saveToLibrary` call to `CraftLibraryRepository.updateCraftedFromText` (update the same media id, replacing audio + primary transcript) instead of `CraftLibraryRepository.importCraftedFromText` — editing never creates a duplicate library entry. `editingMediaId` is cleared by `setScreenMode` and `resetForNextCapture`.
 
 ## Express mode
 
@@ -185,7 +185,7 @@ Crafted audios are uploaded to cloud storage so the same audio is playable from 
 
 - **Trigger**: `CraftAudioCloudUploader.uploadIfNeeded()` runs as a pre-step inside `SyncUploadService.uploadAudio()`, gated on `row.provider == 'craft'`. The binary is uploaded via the existing `DirectUploadsApi.uploadBlob` (Rails Active Storage direct upload), and the returned `signedId` is included in the JSON payload of `POST /api/v1/mine/audios`. The server attaches the blob and returns a populated `mediaUrl`.
 - **Offline tolerance**: the binary upload is part of the existing sync queue. Crafting while offline saves locally and queues the upload for the next sync drain. The library badge shows **Pending sync** until it succeeds.
-- **Idempotency**: the uploader skips a row when `mediaUrl` is already populated. `MediaLibraryRepository.updateCraftedFromText` resets `mediaUrl` to `null` on every edit so re-crafting always re-uploads the new bytes.
+- **Idempotency**: the uploader skips a row when `mediaUrl` is already populated. `CraftLibraryRepository.updateCraftedFromText` resets `mediaUrl` to `null` on every edit so re-crafting always re-uploads the new bytes.
 - **UI badge**: `MediaCardSyncBadgePill` renders on the thumbnail top-right of `MediaCardRow` / `MediaCardTile` for crafted audios. Three states:
   - **Synced to cloud** (green cloud-check) — `mediaUrl != null`.
   - **Pending sync** (muted cloud-upload) — `mediaUrl == null && syncStatus == 'pending'`.
@@ -250,7 +250,7 @@ No `isWide` width calculations or ad-hoc max widths live in Craft widgets — al
 
 - Unit tests: `test/features/craft/` — covers `CraftFailure` messages, `WordBoundarySegmenter` grouping, dedup hashing, `TranscriptTimestampEstimator` (retained for legacy non-Craft uses), Auto-style prompt, Express capture/rewrite/save/reset flow, ASR + empty-transcript failure mapping, `loadForEdit` mode inference + editing save path (`craft_controller_test.dart`), `craftHistoryProvider` filter/sort (`craft_history_provider_test.dart`).
 - Widget tests: `test/features/craft/` — covers CraftScreen mode toggle, CaptureStage idle state, RewriteStage editable target + actions, AudioStage preview + actions, AdvancedTools responsive layout, TranslateTool / SynthesizeTool.
-- Repository tests: `test/features/library/library_repository_craft_test.dart` — `getCraftEditSource` timeline reconstruction, `updateCraftedFromText` same-id update + stale-file cleanup.
+- Repository tests: `test/features/craft/data/craft_library_repository_test.dart` — `getCraftEditSource` timeline reconstruction, `updateCraftedFromText` same-id update + stale-file cleanup.
 - Home / hotkey tests: `test/features/library/home_screen_test.dart` (Craft header action navigation), `test/features/hotkeys/global_craft_hotkey_test.dart` (hotkey registration).
 - Integration test surface: Craft import flow is exercised in the import-chooser integration test suite.
 

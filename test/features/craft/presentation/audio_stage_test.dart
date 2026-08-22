@@ -16,8 +16,8 @@ import 'package:enjoy_player/features/craft/domain/craft_transcriber.dart';
 import 'package:enjoy_player/features/craft/domain/craft_translator.dart';
 import 'package:enjoy_player/features/craft/domain/translation_style.dart';
 import 'package:enjoy_player/features/craft/presentation/audio_stage.dart';
-import 'package:enjoy_player/features/library/application/library_repository_provider.dart';
-import 'package:enjoy_player/features/library/data/library_repository.dart';
+import 'package:enjoy_player/features/craft/application/craft_library_repository_provider.dart';
+import 'package:enjoy_player/features/craft/data/craft_library_repository.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
 // === Fakes ===
@@ -85,7 +85,7 @@ class _FakeTranscriber implements CraftTranscriber {
   }) async => 'I had a great day today.';
 }
 
-class _FakeLibraryRepository implements MediaLibraryRepository {
+class _FakeLibraryRepository implements CraftLibraryRepository {
   @override
   dynamic noSuchMethod(Invocation invocation) => null;
 }
@@ -109,7 +109,7 @@ List<Override> _baseOverrides() => [
   craftTranslatorProvider.overrideWithValue(_FakeTranslator()),
   craftSynthesizerProvider.overrideWithValue(_FakeSynthesizer()),
   craftTranscriberProvider.overrideWithValue(_FakeTranscriber()),
-  mediaLibraryRepositoryProvider.overrideWithValue(_FakeLibraryRepository()),
+  craftLibraryRepositoryProvider.overrideWithValue(_FakeLibraryRepository()),
 ];
 
 void main() {
@@ -171,7 +171,7 @@ void main() {
           ),
           craftSynthesizerProvider.overrideWithValue(_FakeSynthesizer()),
           craftTranscriberProvider.overrideWithValue(_FakeTranscriber()),
-          mediaLibraryRepositoryProvider.overrideWithValue(
+          craftLibraryRepositoryProvider.overrideWithValue(
             _FakeLibraryRepository(),
           ),
         ],

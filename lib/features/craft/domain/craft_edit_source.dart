@@ -1,6 +1,6 @@
 /// Editable snapshot of an existing `provider = 'craft'` media item.
 ///
-/// Loaded by [MediaLibraryRepository.getCraftEditSource] and consumed by
+/// Loaded by `CraftLibraryRepository.getCraftEditSource` and consumed by
 /// `CraftController.loadForEdit` to prefill the Craft screen for editing.
 library;
 

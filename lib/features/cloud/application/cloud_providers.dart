@@ -9,7 +9,6 @@ import 'package:enjoy_player/data/api/services/video_api.dart';
 import 'package:enjoy_player/data/db/app_database_provider.dart';
 import 'package:enjoy_player/features/cloud/application/cloud_add_to_library.dart';
 import 'package:enjoy_player/features/cloud/data/cloud_index_repository.dart';
-import 'package:enjoy_player/features/library/application/library_repository_provider.dart';
 
 final cloudIndexRepositoryProvider = Provider<CloudIndexRepository>((ref) {
   return CloudIndexRepository(
@@ -19,8 +18,5 @@ final cloudIndexRepositoryProvider = Provider<CloudIndexRepository>((ref) {
 });
 
 final cloudAddToLibraryProvider = Provider<CloudAddToLibrary>((ref) {
-  return CloudAddToLibrary(
-    ref.watch(appDatabaseProvider),
-    ref.watch(mediaLibraryRepositoryProvider),
-  );
+  return CloudAddToLibrary(ref.watch(appDatabaseProvider));
 });

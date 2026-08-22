@@ -2,12 +2,8 @@
 library;
 
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
-import 'dart:isolate';
 
 import 'package:cross_file/cross_file.dart';
-import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
 
 import 'package:enjoy_player/core/application/app_language_catalog.dart';
@@ -20,10 +16,9 @@ import 'package:logging/logging.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
 import 'package:enjoy_player/data/db/media_registry.dart';
 import 'package:enjoy_player/data/files/app_managed_media_gc.dart';
-import 'package:enjoy_player/data/files/ffmpeg_media_probe.dart';
 import 'package:enjoy_player/data/files/file_storage.dart';
+import 'package:enjoy_player/data/files/media_duration_probe.dart';
 import 'package:enjoy_player/data/files/media_resolver.dart';
-import 'package:enjoy_player/features/library/domain/craft_edit_source.dart';
 import 'package:enjoy_player/features/library/domain/media.dart';
 import 'package:enjoy_player/features/library/data/youtube_oembed_api.dart';
 import 'package:enjoy_player/features/sync/domain/sync_types.dart';
@@ -261,328 +256,6 @@ class MediaLibraryRepository {
     return rowId;
   }
 
-  /// Imports synthesized TTS audio + transcript(s) from the Craft from text
-  /// flow. Dedupes by content hash over (sourceFlag|learningLanguage|normalizedText).
-  ///
-  /// [sourceFlag] is `'craft-translate'` or `'craft-direct'` — avoids importing
-  /// CraftMode from the craft feature module so this repository stays
-  /// decoupled.
-  ///
-  /// When [sourceLanguage] is non-null (Translate then speak), a secondary
-  /// transcript row is created so bilingual overlay works on first play.
-  Future<String> importCraftedFromText({
-    required Uint8List audioBytes,
-    required String audioFormat,
-    required String learningLanguage,
-    String? sourceLanguage,
-    required String text,
-    required String normalizedText,
-    String? primaryTimelineJson,
-    String? voice,
-    required String sourceFlag,
-    required String signedInUserId,
-  }) async {
-    final voiceKey = voice ?? '';
-    final dedupeKey = '$sourceFlag|$learningLanguage|$normalizedText|$voiceKey';
-    final contentHash = sha256.convert(utf8.encode(dedupeKey)).toString();
-
-    // Dedupe: if the same content hash exists, return the existing id.
-    final existing = await _db.audioDao.getByMd5(contentHash);
-    if (existing != null) {
-      return existing.id;
-    }
-
-    // Write audio bytes to local storage.
-    final importResult = await _storage.importBytes(
-      audioBytes,
-      extension: audioFormat,
-      title: _craftTitle(normalizedText),
-    );
-
-    final aid = enjoyLocalAudioAid(
-      contentHashHex: contentHash,
-      userId: signedInUserId,
-    );
-    final id = enjoyAudioId(aid: aid);
-    final now = DateTime.now();
-    final canonicalLearning = canonicalMediaLanguageTag(learningLanguage);
-
-    // Solid timeline → AI transcript row. Null → blank (no fabricated cues);
-    // learner generates via STT in the player.
-    final primaryTranscriptId = enjoyTranscriptId(
-      targetType: 'Audio',
-      targetId: id,
-      language: canonicalLearning,
-      source: 'ai',
-    );
-
-    // Single transaction: audio row + optional primary transcript.
-    // We do NOT save a secondary source-text transcript — without word-level
-    // alignment between source and synthesized target text, a secondary
-    // transcript with fabricated timestamps is worse than no secondary.
-    await _db.transaction(() async {
-      final audioRow = AudioRow(
-        id: id,
-        aid: aid,
-        provider: 'craft',
-        title: importResult.title,
-        // Full practice/synth text for edit when the timed transcript is blank
-        // (Express stores native ASR in [sourceText], not practice wording).
-        description: normalizedText,
-        thumbnailUrl: null,
-        durationSeconds: 0,
-        language: canonicalLearning,
-        translationKey: canonicalLearning,
-        sourceText: text,
-        voice: voice,
-        source: sourceFlag,
-        localUri: importResult.fileUri,
-        md5: contentHash,
-        size: importResult.fileSize,
-        localMtimeMs: importResult.mtimeMs,
-        mediaUrl: null,
-        syncStatus: 'pending',
-        serverUpdatedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      );
-      await _db.audioDao.insertRow(audioRow);
-
-      if (primaryTimelineJson != null) {
-        final primaryRow = TranscriptRow(
-          id: primaryTranscriptId,
-          targetType: 'Audio',
-          targetId: id,
-          language: canonicalLearning,
-          source: 'ai',
-          timelineJson: primaryTimelineJson,
-          referenceId: null,
-          label: '',
-          trackIndex: null,
-          syncStatus: 'local',
-          serverUpdatedAt: null,
-          createdAt: now,
-          updatedAt: now,
-        );
-        await _db.transcriptDao.upsert(primaryRow);
-      }
-    });
-
-    // Probe duration asynchronously (same path as importMedia).
-    unawaited(_probeAndPatchDuration(id, importResult.localPath, video: false));
-
-    // Enqueue sync.
-    await _enqueueSync?.call(SyncEntityType.audio, id, SyncAction.create);
-    return id;
-  }
-
-  /// Trims normalized text to ~40 chars for the audio title.
-  String _craftTitle(String normalizedText) {
-    if (normalizedText.length <= 40) return normalizedText;
-    return '${normalizedText.substring(0, 40)}…';
-  }
-
-  /// Checks whether a Crafted audio with the same content hash already exists.
-  /// Returns the existing media id, or `null` if no match.
-  ///
-  /// Called by the Craft controller BEFORE any AI calls to enable dedupe
-  /// without wasting translate / synthesize requests.
-  Future<String?> findExistingCrafted({
-    required String learningLanguage,
-    required String normalizedText,
-    required String sourceFlag,
-    String? voice,
-  }) async {
-    final voiceKey = voice ?? '';
-    final dedupeKey = '$sourceFlag|$learningLanguage|$normalizedText|$voiceKey';
-    final contentHash = sha256.convert(utf8.encode(dedupeKey)).toString();
-    final existing = await _db.audioDao.getByMd5(contentHash);
-    return existing?.id;
-  }
-
-  /// Loads an editable snapshot of an existing Crafted audio item.
-  ///
-  /// Returns `null` when [mediaId] does not exist or is not a
-  /// `provider = 'craft'` row — callers should treat this as "no longer
-  /// available" (e.g. deleted from another device).
-  Future<CraftEditSource?> getCraftEditSource(String mediaId) async {
-    final row = await _db.audioDao.getById(mediaId);
-    if (row == null || row.provider != 'craft') return null;
-
-    final transcripts = await _db.transcriptDao.listForTarget('Audio', mediaId);
-    // Prefer timed AI cues; else description (full practice text); else
-    // sourceText (Advanced speak-direct / legacy rows).
-    final practiceText =
-        _joinTimelineText(transcripts) ??
-        row.description ??
-        row.sourceText ??
-        '';
-
-    return CraftEditSource(
-      mediaId: mediaId,
-      practiceText: practiceText,
-      sourceText: row.sourceText,
-      language: row.language,
-      voice: row.voice,
-      sourceFlag: row.source,
-    );
-  }
-
-  /// Reconstructs the practice text by joining the primary transcript's
-  /// timeline segment text fields. Returns `null` when no transcript rows
-  /// exist or the timeline JSON cannot be parsed.
-  String? _joinTimelineText(List<TranscriptRow> transcripts) {
-    if (transcripts.isEmpty) return null;
-    final primary = transcripts.firstWhere(
-      (t) => t.source == 'ai',
-      orElse: () => transcripts.first,
-    );
-    try {
-      final decoded = jsonDecode(primary.timelineJson);
-      if (decoded is! List) return null;
-      final joined = decoded
-          .map((e) => (e is Map ? e['text'] : null)?.toString() ?? '')
-          .where((s) => s.isNotEmpty)
-          .join(' ');
-      return joined.isEmpty ? null : joined;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// Updates an existing Crafted audio item in place — same media id, new
-  /// audio bytes + transcript. Used when editing an existing Craft item
-  /// from Craft history instead of creating a new library entry.
-  ///
-  /// Throws [StateError] when [mediaId] does not exist or is not a
-  /// `provider = 'craft'` row.
-  Future<String> updateCraftedFromText({
-    required String mediaId,
-    required Uint8List audioBytes,
-    required String audioFormat,
-    required String learningLanguage,
-    required String text,
-    required String normalizedText,
-    String? primaryTimelineJson,
-    String? voice,
-    required String sourceFlag,
-  }) async {
-    final existing = await _db.audioDao.getById(mediaId);
-    if (existing == null || existing.provider != 'craft') {
-      throw StateError('Craft media not found or not editable: $mediaId');
-    }
-
-    final previousUri = existing.localUri;
-    final importResult = await _storage.importBytes(
-      audioBytes,
-      extension: audioFormat,
-      title: _craftTitle(normalizedText),
-    );
-
-    final now = DateTime.now();
-    final canonicalLearning = canonicalMediaLanguageTag(learningLanguage);
-    final voiceKey = voice ?? '';
-    final dedupeKey =
-        '$sourceFlag|$canonicalLearning|$normalizedText|$voiceKey';
-    final contentHash = sha256.convert(utf8.encode(dedupeKey)).toString();
-
-    final primaryTranscriptId = enjoyTranscriptId(
-      targetType: 'Audio',
-      targetId: mediaId,
-      language: canonicalLearning,
-      source: 'ai',
-    );
-
-    await _db.transaction(() async {
-      await _db.audioDao.insertRow(
-        existing.copyWith(
-          title: importResult.title,
-          language: canonicalLearning,
-          translationKey: Value(canonicalLearning),
-          description: Value(normalizedText),
-          sourceText: Value(text),
-          voice: Value(voice),
-          source: Value(sourceFlag),
-          localUri: Value(importResult.fileUri),
-          md5: Value(contentHash),
-          size: Value(importResult.fileSize),
-          localMtimeMs: Value(importResult.mtimeMs),
-          durationSeconds: 0,
-          // Reset the previous cloud URL so CraftAudioCloudUploader re-uploads
-          // the new bytes. Otherwise the upload pre-step in SyncUploadService
-          // would short-circuit (mediaUrl != null) and the cloud copy would
-          // stay stale. See specs/043-craft-cloud-sync/US2.
-          mediaUrl: const Value(null),
-          syncStatus: const Value('pending'),
-          updatedAt: now,
-        ),
-      );
-
-      // Drop all prior transcripts for this media — solid rewrite replaces
-      // the primary track; blank clears estimated/stale cues entirely.
-      // Single bulk DELETE instead of per-row loop (issue #468).
-      await _db.customStatement(
-        'DELETE FROM transcripts WHERE target_type = ? AND target_id = ?',
-        ['Audio', mediaId],
-      );
-
-      if (primaryTimelineJson != null) {
-        await _db.transcriptDao.upsert(
-          TranscriptRow(
-            id: primaryTranscriptId,
-            targetType: 'Audio',
-            targetId: mediaId,
-            language: canonicalLearning,
-            source: 'ai',
-            timelineJson: primaryTimelineJson,
-            referenceId: null,
-            label: '',
-            trackIndex: null,
-            syncStatus: 'local',
-            serverUpdatedAt: null,
-            createdAt: now,
-            updatedAt: now,
-          ),
-        );
-      }
-    });
-
-    if (previousUri != null && previousUri != importResult.fileUri) {
-      await _maybeDeleteAppManagedMedia(previousUri);
-    }
-
-    unawaited(
-      _probeAndPatchDuration(mediaId, importResult.localPath, video: false),
-    );
-
-    await _enqueueSync?.call(SyncEntityType.audio, mediaId, SyncAction.update);
-    return mediaId;
-  }
-
-  /// Removes a Craft history record without deleting the practice audio.
-  ///
-  /// Clears Craft provenance (`provider` → `user`) so the item no longer
-  /// appears in Craft history or with a Craft badge, while keeping the
-  /// same media id, file, transcript, and library presence.
-  ///
-  /// Throws [StateError] when [mediaId] is missing or not `provider = 'craft'`.
-  Future<void> removeCraftHistoryRecord(String mediaId) async {
-    final existing = await _db.audioDao.getById(mediaId);
-    if (existing == null || existing.provider != 'craft') {
-      throw StateError('Craft history record not found: $mediaId');
-    }
-
-    final now = DateTime.now();
-    await _db.audioDao.insertRow(
-      existing.copyWith(
-        provider: 'user',
-        syncStatus: const Value('pending'),
-        updatedAt: now,
-      ),
-    );
-    await _enqueueSync?.call(SyncEntityType.audio, mediaId, SyncAction.update);
-  }
-
   /// Re-fetches oEmbed when title/thumbnail are still import placeholders.
   Future<YoutubeMetadataPatch?> refreshYoutubeMetadataIfNeeded(
     String mediaId,
@@ -675,54 +348,6 @@ class MediaLibraryRepository {
     if (status == null || status.isEmpty) return;
     await _enqueueSync?.call(SyncEntityType.video, row.id, SyncAction.update);
   }
-
-  /// Fills `duration_seconds` when still zero after import, using `ffmpeg -i`.
-  ///
-  /// The probe is dispatched to a worker isolate so a multi-GB video
-  /// import does not block the UI thread for several seconds. The
-  /// Isolate.run pattern mirrors `lib/data/files/file_storage.dart:128`
-  /// (chunked SHA-256 hashing) so the platform-channel hop is amortised
-  /// across the import.
-  Future<void> _probeAndPatchDuration(
-    String mediaId,
-    String fileUri, {
-    required bool video,
-  }) async {
-    final ffmpeg = await FfmpegMediaProbe.resolveFfmpegExecutable();
-    if (ffmpeg == null) return;
-    final input = FfmpegMediaProbe.mediaInputForFfmpeg(fileUri);
-
-    Duration? sec;
-    try {
-      sec = await Isolate.run(
-        () => _probeDurationInIsolate(ffmpeg, input),
-        debugName: 'ffmpeg-duration-probe',
-      );
-    } catch (_) {
-      return;
-    }
-    if (sec == null) return;
-
-    if (video) {
-      final row = await _db.videoDao.getById(mediaId);
-      if (row == null || row.durationSeconds != 0) return;
-      await _db.videoDao.insertRow(
-        row.copyWith(durationSeconds: sec.inSeconds, updatedAt: DateTime.now()),
-      );
-    } else {
-      final row = await _db.audioDao.getById(mediaId);
-      if (row == null || row.durationSeconds != 0) return;
-      await _db.audioDao.insertRow(
-        row.copyWith(durationSeconds: sec.inSeconds, updatedAt: DateTime.now()),
-      );
-    }
-  }
-
-  /// Video posters are captured from the active [PlayerController] via media_kit
-  /// screenshot; FFmpeg background extraction was removed.
-  ///
-  /// Kept as a stable hook for call sites (e.g. cloud add-to-library) — no-op.
-  Future<void> ensureVideoPosterAfterMetadataInsert(VideoRow _) async {}
 
   /// Bumps library-row [updatedAt] so Home "Recent media" ranks recently opened
   /// items without enqueueing a cloud sync update.
@@ -871,7 +496,7 @@ class MediaLibraryRepository {
     if (previousUri != null && previousUri != fileUri) {
       await _maybeDeleteAppManagedMedia(previousUri);
     }
-    unawaited(_probeAndPatchDuration(id, fileUri, video: video));
+    unawaited(probeAndPatchMediaDuration(_db, id, fileUri, video: video));
     await _enqueueSync?.call(
       entityType,
       id,
@@ -904,23 +529,4 @@ class MediaLibraryRepository {
     }
     await _enqueueSync?.call(entityType, mediaId, SyncAction.update);
   }
-}
-
-/// Top-level so it can be sent to a worker isolate via [Isolate.run].
-/// Returns the parsed duration in seconds, or `null` when ffmpeg is
-/// missing / the input is unreadable / the stderr does not contain a
-/// `Duration:` line.
-Duration? _probeDurationInIsolate(String ffmpeg, String input) {
-  // Run synchronously inside the worker isolate; ffmpeg `-i` only
-  // inspects metadata so this typically returns in < 2s.
-  final result = Process.runSync(ffmpeg, ['-hide_banner', '-i', input]);
-  if (result.exitCode != 0 && result.exitCode != 1) {
-    return null;
-  }
-  final stderr = result.stderr is String
-      ? result.stderr as String
-      : String.fromCharCodes((result.stderr as List<int>?) ?? const <int>[]);
-  final sec = FfmpegMediaProbe.parseDurationSeconds(stderr);
-  if (sec == null || sec <= 0) return null;
-  return Duration(seconds: sec);
 }

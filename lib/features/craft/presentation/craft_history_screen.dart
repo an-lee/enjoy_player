@@ -15,7 +15,7 @@ import 'package:enjoy_player/core/theme/widgets/enjoy_page.dart';
 import 'package:enjoy_player/core/theme/widgets/skeleton.dart';
 import 'package:enjoy_player/features/craft/application/craft_controller.dart';
 import 'package:enjoy_player/features/craft/application/craft_history_provider.dart';
-import 'package:enjoy_player/features/library/application/library_repository_provider.dart';
+import 'package:enjoy_player/features/craft/application/craft_library_repository_provider.dart';
 import 'package:enjoy_player/features/library/domain/media.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
@@ -110,7 +110,7 @@ class CraftHistoryScreen extends ConsumerWidget {
     final editingId = ref.read(craftControllerProvider).editingMediaId;
     try {
       await ref
-          .read(mediaLibraryRepositoryProvider)
+          .read(craftLibraryRepositoryProvider)
           .removeCraftHistoryRecord(media.id);
     } catch (_) {
       if (context.mounted) {

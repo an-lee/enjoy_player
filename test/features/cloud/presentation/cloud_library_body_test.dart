@@ -4,7 +4,6 @@ import 'package:enjoy_player/data/api/services/audio_api.dart';
 import 'package:enjoy_player/data/api/services/video_api.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
 import 'package:enjoy_player/data/db/app_database_provider.dart';
-import 'package:enjoy_player/data/files/file_storage.dart';
 import 'package:enjoy_player/features/auth/application/auth_controller.dart';
 import 'package:enjoy_player/features/auth/domain/auth_state.dart';
 import 'package:enjoy_player/features/auth/domain/user_profile.dart';
@@ -14,7 +13,6 @@ import 'package:enjoy_player/features/cloud/application/cloud_providers.dart';
 import 'package:enjoy_player/features/cloud/data/cloud_index_repository.dart';
 import 'package:enjoy_player/features/cloud/domain/remote_library_item.dart';
 import 'package:enjoy_player/features/cloud/presentation/cloud_library_body.dart';
-import 'package:enjoy_player/features/library/data/library_repository.dart';
 import 'package:enjoy_player/features/player/application/player_controller.dart';
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
@@ -173,9 +171,7 @@ void main() {
       cloudIndexRepositoryProvider.overrideWithValue(
         _FakeCloudIndexRepository(fakeAudios: audios, fakeVideos: videos),
       ),
-      cloudAddToLibraryProvider.overrideWithValue(
-        CloudAddToLibrary(db, MediaLibraryRepository(db, FileStorage())),
-      ),
+      cloudAddToLibraryProvider.overrideWithValue(CloudAddToLibrary(db)),
     ];
   }
 
