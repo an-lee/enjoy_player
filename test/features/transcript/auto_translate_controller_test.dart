@@ -1361,7 +1361,9 @@ void main() {
           translationCapabilityProvider.overrideWithValue(fake),
           authCtrlProvider.overrideWith(_SignedInAuthCtrl.new),
           appPreferencesCtrlProvider.overrideWith(_ZhNativePrefsCtrl.new),
-          transcriptPlaybackHighlightProvider(mediaId).overrideWithValue(0),
+          transcriptPlaybackHighlightProvider(
+            mediaId,
+          ).overrideWithValue((cueIndex: 0, wordIndex: null)),
         ],
       );
       await container.read(authCtrlProvider.future);
@@ -1393,7 +1395,9 @@ void main() {
           translationCapabilityProvider.overrideWithValue(fake),
           authCtrlProvider.overrideWith(_SignedInAuthCtrl.new),
           appPreferencesCtrlProvider.overrideWith(_ZhNativePrefsCtrl.new),
-          transcriptPlaybackHighlightProvider(mediaId).overrideWithValue(50),
+          transcriptPlaybackHighlightProvider(
+            mediaId,
+          ).overrideWithValue((cueIndex: 50, wordIndex: null)),
         ],
       );
       await container.read(authCtrlProvider.future);

@@ -78,7 +78,7 @@ List<Override> _scrollTestOverrides({
       ).overrideWithValue(recordingCounts ?? const {}),
     transcriptPlaybackHighlightProvider(
       _mediaId,
-    ).overrideWith((ref) => highlightIndex),
+    ).overrideWith((ref) => (cueIndex: highlightIndex, wordIndex: null)),
   ];
 }
 
@@ -95,9 +95,10 @@ List<Override> _scrollTestOverridesWithMutableHighlight({
       _mediaId,
     ).overrideWith((ref) => Stream.value(const <TranscriptLine>[])),
     transcriptLineRecordingCountsProvider(_mediaId).overrideWithValue(const {}),
-    transcriptPlaybackHighlightProvider(
-      _mediaId,
-    ).overrideWith((ref) => ref.watch(_testHighlightIndexProvider)),
+    transcriptPlaybackHighlightProvider(_mediaId).overrideWith(
+      (ref) =>
+          (cueIndex: ref.watch(_testHighlightIndexProvider), wordIndex: null),
+    ),
   ];
 }
 

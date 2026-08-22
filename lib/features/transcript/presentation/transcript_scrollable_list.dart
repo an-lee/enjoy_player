@@ -203,9 +203,9 @@ class _TranscriptScrollableListState
       if (notification.direction == ScrollDirection.idle) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
-          final activeIdx = ref.read(
-            transcriptPlaybackHighlightProvider(widget.mediaId),
-          );
+          final activeIdx = ref
+              .read(transcriptPlaybackHighlightProvider(widget.mediaId))
+              .cueIndex;
           if (!_isActiveCueVisible(activeIdx)) {
             _suppressAutoScroll = false;
           }
@@ -308,9 +308,9 @@ class _TranscriptScrollableListState
       return;
     }
 
-    final active = ref.read(
-      transcriptPlaybackHighlightProvider(widget.mediaId),
-    );
+    final active = ref
+        .read(transcriptPlaybackHighlightProvider(widget.mediaId))
+        .cueIndex;
     if (active < 0) return;
 
     final activeKey = _scrollKeyForActiveLine(active);
@@ -356,9 +356,9 @@ class _TranscriptScrollableListState
           widget.lines.length,
         ) ??
         EchoState.inactive;
-    final activeForUi = ref.read(
-      transcriptPlaybackHighlightProvider(widget.mediaId),
-    );
+    final activeForUi = ref
+        .read(transcriptPlaybackHighlightProvider(widget.mediaId))
+        .cueIndex;
 
     if (echo.active) {
       if (!force &&
@@ -394,7 +394,9 @@ class _TranscriptScrollableListState
         ) ??
         EchoState.inactive;
     final activeForUi = ref.watch(
-      transcriptPlaybackHighlightProvider(widget.mediaId).select((i) => i),
+      transcriptPlaybackHighlightProvider(
+        widget.mediaId,
+      ).select((h) => h.cueIndex),
     );
     final density = TranscriptDensity.of(context);
     final secondaryAsync = ref.watch(
@@ -429,21 +431,23 @@ class _TranscriptScrollableListState
       autoTranslateCtrlProvider(widget.mediaId),
     );
 
-    ref.listen(transcriptPlaybackHighlightProvider(widget.mediaId), (
-      prev,
-      next,
-    ) {
-      if (prev == next) return;
-      final echoNow = ref.read(echoModeProvider);
-      if (echoNow.active &&
-          (next < echoNow.startLineIndex || next > echoNow.endLineIndex)) {
-        return;
-      }
-      if (prev == null || (next - prev).abs() > 1) {
-        _suppressAutoScroll = false;
-      }
-      _scheduleTranscriptScrollIntoView(force: true);
-    });
+    ref.listen(
+      transcriptPlaybackHighlightProvider(
+        widget.mediaId,
+      ).select((h) => h.cueIndex),
+      (prev, next) {
+        if (prev == next) return;
+        final echoNow = ref.read(echoModeProvider);
+        if (echoNow.active &&
+            (next < echoNow.startLineIndex || next > echoNow.endLineIndex)) {
+          return;
+        }
+        if (prev == null || (next - prev).abs() > 1) {
+          _suppressAutoScroll = false;
+        }
+        _scheduleTranscriptScrollIntoView(force: true);
+      },
+    );
     ref.listen(playerIsPlayingProvider, (_, _) {
       _scheduleTranscriptScrollIntoView(force: true);
     });
@@ -526,9 +530,11 @@ class _TranscriptScrollableListState
                     _shouldRequestAutoTranslate(lineIndex, activeForUi)) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (!mounted) return;
-                    final highlight = ref.read(
-                      transcriptPlaybackHighlightProvider(widget.mediaId),
-                    );
+                    final highlight = ref
+                        .read(
+                          transcriptPlaybackHighlightProvider(widget.mediaId),
+                        )
+                        .cueIndex;
                     if (!_shouldRequestAutoTranslate(lineIndex, highlight)) {
                       return;
                     }

@@ -8,27 +8,59 @@ part of 'transcript_playback_highlight_provider.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Current cue index for transcript highlighting (echo-aware).
+/// Current cue index (echo-aware) and karaoke current-word index.
 ///
-/// Depends on [displayPositionProvider] but consumers should use
-/// `.select((i) => i)` so widgets rebuild only when the index **changes**.
+/// `cueIndex` is `-1` when there are no lines. `wordIndex` is null when
+/// karaoke is off / still loading, `karaokeSwitchEnabled` is false (no timed
+/// words on owned media), the cue is out of range, or the position is in a
+/// gap.
+///
+/// The 50 ms karaoke position stream is watched **only after** the karaoke
+/// gate passes, so karaoke-off transcripts never subscribe to the word tick
+/// stream. Consumers that only need the cue index must use
+/// `.select((h) => h.cueIndex)` (or select on a listener) so they are not
+/// rebuilt on the 50 ms word ticks; only the active transcript tile should
+/// watch the full record.
 
 @ProviderFor(transcriptPlaybackHighlight)
 final transcriptPlaybackHighlightProvider =
     TranscriptPlaybackHighlightFamily._();
 
-/// Current cue index for transcript highlighting (echo-aware).
+/// Current cue index (echo-aware) and karaoke current-word index.
 ///
-/// Depends on [displayPositionProvider] but consumers should use
-/// `.select((i) => i)` so widgets rebuild only when the index **changes**.
+/// `cueIndex` is `-1` when there are no lines. `wordIndex` is null when
+/// karaoke is off / still loading, `karaokeSwitchEnabled` is false (no timed
+/// words on owned media), the cue is out of range, or the position is in a
+/// gap.
+///
+/// The 50 ms karaoke position stream is watched **only after** the karaoke
+/// gate passes, so karaoke-off transcripts never subscribe to the word tick
+/// stream. Consumers that only need the cue index must use
+/// `.select((h) => h.cueIndex)` (or select on a listener) so they are not
+/// rebuilt on the 50 ms word ticks; only the active transcript tile should
+/// watch the full record.
 
 final class TranscriptPlaybackHighlightProvider
-    extends $FunctionalProvider<int, int, int>
-    with $Provider<int> {
-  /// Current cue index for transcript highlighting (echo-aware).
+    extends
+        $FunctionalProvider<
+          TranscriptPlaybackHighlight,
+          TranscriptPlaybackHighlight,
+          TranscriptPlaybackHighlight
+        >
+    with $Provider<TranscriptPlaybackHighlight> {
+  /// Current cue index (echo-aware) and karaoke current-word index.
   ///
-  /// Depends on [displayPositionProvider] but consumers should use
-  /// `.select((i) => i)` so widgets rebuild only when the index **changes**.
+  /// `cueIndex` is `-1` when there are no lines. `wordIndex` is null when
+  /// karaoke is off / still loading, `karaokeSwitchEnabled` is false (no timed
+  /// words on owned media), the cue is out of range, or the position is in a
+  /// gap.
+  ///
+  /// The 50 ms karaoke position stream is watched **only after** the karaoke
+  /// gate passes, so karaoke-off transcripts never subscribe to the word tick
+  /// stream. Consumers that only need the cue index must use
+  /// `.select((h) => h.cueIndex)` (or select on a listener) so they are not
+  /// rebuilt on the 50 ms word ticks; only the active transcript tile should
+  /// watch the full record.
   TranscriptPlaybackHighlightProvider._({
     required TranscriptPlaybackHighlightFamily super.from,
     required String super.argument,
@@ -52,20 +84,21 @@ final class TranscriptPlaybackHighlightProvider
 
   @$internal
   @override
-  $ProviderElement<int> $createElement($ProviderPointer pointer) =>
-      $ProviderElement(pointer);
+  $ProviderElement<TranscriptPlaybackHighlight> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
 
   @override
-  int create(Ref ref) {
+  TranscriptPlaybackHighlight create(Ref ref) {
     final argument = this.argument as String;
     return transcriptPlaybackHighlight(ref, argument);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(int value) {
+  Override overrideWithValue(TranscriptPlaybackHighlight value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<int>(value),
+      providerOverride: $SyncValueProvider<TranscriptPlaybackHighlight>(value),
     );
   }
 
@@ -82,15 +115,24 @@ final class TranscriptPlaybackHighlightProvider
 }
 
 String _$transcriptPlaybackHighlightHash() =>
-    r'4ecad8c0a674b26abee5c33a5950b306520fa633';
+    r'2a0d19784bd3e6aa60115c8b57ae0449d424e971';
 
-/// Current cue index for transcript highlighting (echo-aware).
+/// Current cue index (echo-aware) and karaoke current-word index.
 ///
-/// Depends on [displayPositionProvider] but consumers should use
-/// `.select((i) => i)` so widgets rebuild only when the index **changes**.
+/// `cueIndex` is `-1` when there are no lines. `wordIndex` is null when
+/// karaoke is off / still loading, `karaokeSwitchEnabled` is false (no timed
+/// words on owned media), the cue is out of range, or the position is in a
+/// gap.
+///
+/// The 50 ms karaoke position stream is watched **only after** the karaoke
+/// gate passes, so karaoke-off transcripts never subscribe to the word tick
+/// stream. Consumers that only need the cue index must use
+/// `.select((h) => h.cueIndex)` (or select on a listener) so they are not
+/// rebuilt on the 50 ms word ticks; only the active transcript tile should
+/// watch the full record.
 
 final class TranscriptPlaybackHighlightFamily extends $Family
-    with $FunctionalFamilyOverride<int, String> {
+    with $FunctionalFamilyOverride<TranscriptPlaybackHighlight, String> {
   TranscriptPlaybackHighlightFamily._()
     : super(
         retry: null,
@@ -100,10 +142,19 @@ final class TranscriptPlaybackHighlightFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// Current cue index for transcript highlighting (echo-aware).
+  /// Current cue index (echo-aware) and karaoke current-word index.
   ///
-  /// Depends on [displayPositionProvider] but consumers should use
-  /// `.select((i) => i)` so widgets rebuild only when the index **changes**.
+  /// `cueIndex` is `-1` when there are no lines. `wordIndex` is null when
+  /// karaoke is off / still loading, `karaokeSwitchEnabled` is false (no timed
+  /// words on owned media), the cue is out of range, or the position is in a
+  /// gap.
+  ///
+  /// The 50 ms karaoke position stream is watched **only after** the karaoke
+  /// gate passes, so karaoke-off transcripts never subscribe to the word tick
+  /// stream. Consumers that only need the cue index must use
+  /// `.select((h) => h.cueIndex)` (or select on a listener) so they are not
+  /// rebuilt on the 50 ms word ticks; only the active transcript tile should
+  /// watch the full record.
 
   TranscriptPlaybackHighlightProvider call(String mediaId) =>
       TranscriptPlaybackHighlightProvider._(argument: mediaId, from: this);

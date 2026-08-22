@@ -16,9 +16,9 @@ import 'package:enjoy_player/data/subtitle/current_transcript_word.dart';
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
 import 'package:enjoy_player/features/player/application/player_interactions.dart';
 import 'package:enjoy_player/features/settings/application/ipa_overlay_settings.dart';
-import 'package:enjoy_player/features/transcript/application/karaoke_word_index_provider.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_blur_mode_provider.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_cue_reveal_provider.dart';
+import 'package:enjoy_player/features/transcript/application/transcript_playback_highlight_provider.dart';
 import 'package:enjoy_player/features/transcript/application/tap_reveal_hold_provider.dart';
 import 'package:enjoy_player/features/transcript/domain/transcript_blur.dart';
 import 'package:enjoy_player/features/transcript/presentation/transcript_blur_text.dart';
@@ -164,7 +164,9 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
     WordTextRange? karaokeRange;
     int? karaokeWordIndex;
     if (widget.isActive) {
-      karaokeWordIndex = ref.watch(karaokeWordIndexProvider(widget.mediaId));
+      karaokeWordIndex = ref
+          .watch(transcriptPlaybackHighlightProvider(widget.mediaId))
+          .wordIndex;
       if (!useAligned && karaokeWordIndex != null) {
         karaokeRange = wordHighlightRange(
           primaryPlain,

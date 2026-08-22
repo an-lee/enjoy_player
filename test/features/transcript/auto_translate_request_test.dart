@@ -353,7 +353,9 @@ void main() {
           translationCapabilityProvider.overrideWithValue(fake),
           authCtrlProvider.overrideWith(_SignedInAuthCtrl.new),
           appPreferencesCtrlProvider.overrideWith(_ZhNativePrefsCtrl.new),
-          transcriptPlaybackHighlightProvider(mediaId).overrideWithValue(2),
+          transcriptPlaybackHighlightProvider(
+            mediaId,
+          ).overrideWithValue((cueIndex: 2, wordIndex: null)),
         ],
       );
       await container.read(authCtrlProvider.future);
