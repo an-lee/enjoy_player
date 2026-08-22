@@ -9,12 +9,10 @@ import 'package:enjoy_player/data/files/security_scoped_bookmark.dart';
 import 'package:enjoy_player/features/player/domain/playable_source.dart';
 
 import 'app_database.dart';
+import 'media_registry.dart';
 
-Future<String?> dexieTargetTypeForId(AppDatabase db, String id) async {
-  if (await db.videoDao.getById(id) != null) return 'Video';
-  if (await db.audioDao.getById(id) != null) return 'Audio';
-  return null;
-}
+Future<String?> dexieTargetTypeForId(AppDatabase db, String id) =>
+    MediaRegistry(db).dexieTargetTypeForId(id);
 
 /// Same resolution as [PlayerController.openMedia] — returns structured source.
 Future<PlayableSource?> resolvePlayableSource(

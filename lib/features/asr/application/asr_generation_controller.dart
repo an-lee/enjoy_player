@@ -26,6 +26,7 @@ import 'package:enjoy_player/core/errors/app_failure.dart';
 import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/core/riverpod/async_value_x.dart';
 import 'package:enjoy_player/data/db/app_database_provider.dart';
+import 'package:enjoy_player/data/db/media_registry.dart';
 import 'package:enjoy_player/data/db/media_target_resolver.dart';
 import 'package:enjoy_player/features/ai/application/ai_services.dart';
 import 'package:enjoy_player/features/ai/domain/byok_not_configured_failure.dart';
@@ -137,15 +138,9 @@ class AsrGenerationController extends _$AsrGenerationController {
   Future<String?> _resolveLanguage(String? override, String mediaId) async {
     if (override != null && override.isNotEmpty) return override;
     final db = ref.read(appDatabaseProvider);
-    final tt = await dexieTargetTypeForId(db, mediaId);
-    if (tt == null) return null;
-    if (tt == 'Video') {
-      final v = await db.videoDao.getById(mediaId);
-      if (v != null && v.language.isNotEmpty) return v.language;
-    } else if (tt == 'Audio') {
-      final a = await db.audioDao.getById(mediaId);
-      if (a != null && a.language.isNotEmpty) return a.language;
-    }
+    final media = await MediaRegistry(db).getById(mediaId);
+    if (media == null) return null;
+    if (media.language.isNotEmpty) return media.language;
     return 'en';
   }
 
@@ -385,17 +380,8 @@ class AsrGenerationController extends _$AsrGenerationController {
   Future<int> _resolveMediaDurationMs(String? mediaSourceUri) async {
     if (mediaSourceUri == null || mediaSourceUri.isEmpty) return 0;
     final db = ref.read(appDatabaseProvider);
-    final tt = await dexieTargetTypeForId(db, mediaId);
-    if (tt == 'Video') {
-      final video = await db.videoDao.getById(mediaId);
-      if (video != null && video.durationSeconds > 0) {
-        return video.durationSeconds * 1000;
-      }
-    }
-    if (tt == 'Audio') {
-      final a = await db.audioDao.getById(mediaId);
-      if (a != null && a.durationSeconds > 0) return a.durationSeconds * 1000;
-    }
+    final media = await MediaRegistry(db).getById(mediaId);
+    if (media != null && media.durationMs > 0) return media.durationMs;
     return 0;
   }
 
