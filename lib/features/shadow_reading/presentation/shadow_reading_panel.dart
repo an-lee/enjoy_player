@@ -4,18 +4,11 @@ library;
 import 'dart:async';
 import 'dart:io';
 
-import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
-import 'package:record/record.dart';
-import 'package:uuid/uuid.dart';
 
 import 'package:enjoy_player/core/audio/recording_preview_player_provider.dart';
-import 'package:enjoy_player/core/audio/wav_duration_ms.dart';
-import 'package:enjoy_player/core/audio/wav_signal_peak.dart';
 import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/core/notices/app_notice.dart';
 import 'package:enjoy_player/core/riverpod/async_value_x.dart';
@@ -27,10 +20,10 @@ import 'package:enjoy_player/data/db/media_registry.dart';
 import 'package:enjoy_player/features/hotkeys/presentation/hotkey_tooltip_label.dart';
 import 'package:enjoy_player/features/shadow_reading/application/recording_input_device_controller.dart';
 import 'package:enjoy_player/features/shadow_reading/application/shadow_reading_hotkey_bus.dart';
+import 'package:enjoy_player/features/shadow_reading/application/shadow_take_store.dart';
 import 'package:enjoy_player/features/shadow_reading/presentation/recording_assessment_flow.dart';
 import 'package:enjoy_player/features/share_poster/presentation/share_practice_poster_button.dart';
 import 'package:enjoy_player/features/sync/application/sync_providers.dart';
-import 'package:enjoy_player/features/sync/domain/sync_types.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
 import 'pitch_contour_section.dart';
@@ -100,29 +93,18 @@ class ShadowReadingPanel extends ConsumerStatefulWidget {
   ConsumerState<ShadowReadingPanel> createState() => _ShadowReadingPanelState();
 }
 
-/// Capture config aligned with the web client and Azure Speech expectations.
-///
-/// 16 kHz mono PCM16 WAV avoids stereo downmix loss (one mic channel + one
-/// silent / out-of-phase channel cancelling each other to zero) and matches
-/// what the Azure Speech SDK accepts directly without downstream re-encoding.
-///
-/// `device` is filled in at call site from
-/// [recordingInputDeviceCtrlProvider] so we capture from the user's chosen
-/// (or auto-picked, non-virtual) microphone — this is what stops Windows from
-/// silently picking GlideX / VoiceMeeter / Stereo-Mix loopback devices.
-RecordConfig _buildShadowRecordConfig(InputDevice? device) => RecordConfig(
-  encoder: AudioEncoder.wav,
-  sampleRate: 16000,
-  numChannels: 1,
-  device: device,
-);
+/// Capture config aligned with the web client and Azure Speech expectations
+/// lives in [buildShadowRecordConfig] (shadow_take_store.dart).
 
 class _ShadowReadingPanelState extends ConsumerState<ShadowReadingPanel>
     with TickerProviderStateMixin {
-  /// Recreated after every `stop()` — `record` on Windows can keep stale Media
-  /// Foundation state on the same instance, so a second `start()` quietly
-  /// produces a zero-sample WAV ("second take won't record").
-  AudioRecorder _recorder = AudioRecorder();
+  ShadowTakeStore? _takeStoreInstance;
+
+  ShadowTakeStore get _takeStore => _takeStoreInstance ??= ShadowTakeStore(
+    db: ref.read(appDatabaseProvider),
+    enqueueSync: ref.read(syncEnqueueProvider),
+  );
+
   bool _recording = false;
   bool _recordingPending = false;
   String? _selectedRecordingId;
@@ -219,25 +201,11 @@ class _ShadowReadingPanelState extends ConsumerState<ShadowReadingPanel>
       if (mounted) setState(() {});
       return;
     }
-    String? path;
-    try {
-      path = await _recorder.stop();
-    } catch (e, st) {
-      _log.warning('microphone stop (cancel recording) failed', e, st);
-    }
+    await _takeStore.cancel();
     _recording = false;
     _recordingPending = false;
     _clearRecordingTiming();
     _setRecordingActiveOnBus(false);
-    await _resetRecorderInstance();
-    if (path != null && path.isNotEmpty) {
-      try {
-        final f = File(path);
-        if (await f.exists()) await f.delete();
-      } catch (e, st) {
-        _log.fine('delete cancelled recording wav failed', e, st);
-      }
-    }
     if (mounted) setState(() {});
   }
 
@@ -251,23 +219,10 @@ class _ShadowReadingPanelState extends ConsumerState<ShadowReadingPanel>
       _recordingPending = false;
       _setRecordingActiveOnBus(false);
     }
-    unawaited(() async {
-      if (wasRecording) {
-        try {
-          final path = await _recorder.stop();
-          if (path != null && path.isNotEmpty) {
-            try {
-              await File(path).delete();
-            } catch (_) {}
-          }
-        } catch (e, st) {
-          _log.fine('recorder stop on dispose', e, st);
-        }
-      }
-      try {
-        await _recorder.dispose();
-      } catch (_) {}
-    }());
+    final store = _takeStoreInstance;
+    if (store != null) {
+      unawaited(store.dispose());
+    }
     super.dispose();
   }
 
@@ -288,50 +243,31 @@ class _ShadowReadingPanelState extends ConsumerState<ShadowReadingPanel>
     return (t - widget.startSec).clamp(0.0, widget.endSec - widget.startSec);
   }
 
-  Future<void> _resetRecorderInstance() async {
-    final old = _recorder;
-    _recorder = AudioRecorder();
-    try {
-      await old.dispose();
-    } catch (e, st) {
-      _log.fine('audio recorder dispose after stop failed', e, st);
-    }
-  }
-
   Future<void> _toggleRecord(AppLocalizations l10n) async {
     if (!widget.echoActive) return;
     if (_recording) {
-      String? path;
-      try {
-        path = await _recorder.stop();
-      } catch (e, st) {
-        _log.warning('microphone stop failed', e, st);
-        _recording = false;
-        _recordingPending = false;
-        _setRecordingActiveOnBus(false);
-        _clearRecordingTiming();
-        await _resetRecorderInstance();
-        if (mounted) setState(() {});
-        if (mounted) {
-          AppNotice.error(
-            context,
-            l10n.shadowRecordingSaveFailed(_shortSaveError(e)),
-          );
-        }
-        return;
-      }
       _recording = false;
       _recordingPending = false;
       _setRecordingActiveOnBus(false);
       _clearRecordingTiming();
-      await _resetRecorderInstance();
       setState(() {});
-      if (path == null || path.isEmpty) {
-        _log.warning('recorder.stop returned no path');
+      TakePersistResult outcome;
+      try {
+        outcome = await _takeStore.stopAndPersist(region: _takeRegion);
+      } catch (e) {
+        if (mounted) {
+          final message = e is TakeFileMissingException
+              ? l10n.shadowRecordingFileNotFound
+              : l10n.shadowRecordingSaveFailed(_shortSaveError(e));
+          AppNotice.error(context, message);
+        }
         return;
       }
-      _log.fine('recorder.stop wrote $path');
-      await _persistRecording(path, l10n);
+      if (!mounted) return;
+      if (outcome.looksSilent) {
+        AppNotice.warning(context, l10n.shadowRecordingSilentWarning);
+      }
+      setState(() => _selectedRecordingId = outcome.row.id);
       return;
     }
 
@@ -340,51 +276,26 @@ class _ShadowReadingPanelState extends ConsumerState<ShadowReadingPanel>
     _setRecordingActiveOnBus(true);
     _recordingPending = true;
 
-    final support = await getApplicationSupportDirectory();
-    final dir = Directory(p.join(support.path, 'recordings'));
-    await dir.create(recursive: true);
-    final id = const Uuid().v4();
-    final outPath = p.join(dir.path, '$id.wav');
+    // Refresh so a USB mic plugged in since app start is considered by the
+    // auto-pick heuristic (selection is then read from the provider state).
+    await ref.read(recordingInputDeviceCtrlProvider.notifier).refresh();
+    final deviceState = ref.read(recordingInputDeviceCtrlProvider).valueOrNull;
+    final selectedDevice = deviceState?.selectedDevice;
 
-    bool granted;
     try {
-      granted = await _recorder.hasPermission();
-    } catch (e, st) {
-      _log.warning('recorder.hasPermission failed', e, st);
-      _recordingPending = false;
-      _setRecordingActiveOnBus(false);
-      if (mounted) {
-        AppNotice.error(
-          context,
-          l10n.shadowRecordingSaveFailed(_shortSaveError(e)),
-        );
-      }
-      return;
-    }
-    if (!granted) {
+      await _takeStore.start(device: selectedDevice);
+    } on MicPermissionDeniedException {
       _recordingPending = false;
       _setRecordingActiveOnBus(false);
       if (mounted) {
         AppNotice.warning(context, l10n.shadowRecordingMicDenied);
       }
       return;
-    }
-
-    // Refresh so a USB mic plugged in since app start is considered by the
-    // auto-pick heuristic (selection is then read from the provider state).
-    await ref.read(recordingInputDeviceCtrlProvider.notifier).refresh();
-    final deviceState = ref.read(recordingInputDeviceCtrlProvider).valueOrNull;
-    final selectedDevice = deviceState?.selectedDevice;
-    final config = _buildShadowRecordConfig(selectedDevice);
-
-    try {
-      await _recorder.start(config, path: outPath);
     } catch (e, st) {
-      _log.warning('recorder.start failed at $outPath', e, st);
+      _log.warning('take start failed', e, st);
       _recordingPending = false;
       _setRecordingActiveOnBus(false);
       _clearRecordingTiming();
-      await _resetRecorderInstance();
       if (mounted) setState(() {});
       if (mounted) {
         AppNotice.error(
@@ -395,9 +306,7 @@ class _ShadowReadingPanelState extends ConsumerState<ShadowReadingPanel>
       return;
     }
     _log.fine(
-      'recorder.start ok path=$outPath '
-      'sampleRate=${config.sampleRate} numChannels=${config.numChannels} '
-      'device="${selectedDevice?.label ?? "<os-default>"}"'
+      'take start device="${selectedDevice?.label ?? "<os-default>"}"'
       '${deviceState?.autoPicked == false ? " (user)" : " (auto)"}',
     );
     _recording = true;
@@ -409,106 +318,14 @@ class _ShadowReadingPanelState extends ConsumerState<ShadowReadingPanel>
     setState(() {});
   }
 
-  Future<void> _persistRecording(String wavPath, AppLocalizations l10n) async {
-    try {
-      final file = File(wavPath);
-      if (!await file.exists()) {
-        _log.warning('recording wav missing at path: $wavPath');
-        if (mounted) {
-          AppNotice.error(
-            context,
-            l10n.shadowRecordingSaveFailed(l10n.shadowRecordingFileNotFound),
-          );
-        }
-        return;
-      }
-      final bytes = await file.readAsBytes();
-      final hash = sha256.convert(bytes).toString();
-
-      final parsedMs = wavDurationMsFromBytes(bytes);
-      final durationMs = parsedMs ?? 0;
-      if (parsedMs == null && bytes.isNotEmpty) {
-        _log.warning(
-          'could not parse WAV duration ($wavPath, ${bytes.length} bytes)',
-        );
-      }
-
-      final peak = scanWavDataPeakFromBytes(bytes);
-      if (peak != null) {
-        _log.fine(
-          'recording wav fmt=${peak.fmt.audioFormat} '
-          'ch=${peak.fmt.numChannels} ${peak.fmt.sampleRate}Hz '
-          '${peak.fmt.bitsPerSample}bit '
-          'peak≈${peak.peakNormalized.toStringAsFixed(5)} '
-          'rms≈${peak.rmsNormalized.toStringAsFixed(6)} '
-          'nonZero=${(peak.nonZeroRatio * 100).toStringAsFixed(2)}% '
-          'samples=${peak.totalSamples} '
-          'bytes=${bytes.length} durMs=$durationMs',
-        );
-        // Real speech captured at moderate volume gives RMS in the rough
-        // 0.02-0.3 range. RMS below ~0.001 with non-zero ratio under ~1% means
-        // the WAV is essentially silent even when peak looks healthy.
-        const minRms = 0.001;
-        const minNonZeroRatio = 0.01;
-        final looksSilent =
-            peak.rmsNormalized < minRms || peak.nonZeroRatio < minNonZeroRatio;
-        if (looksSilent) {
-          _log.warning(
-            'recording wav appears silent '
-            '(peak≈${peak.peakNormalized.toStringAsFixed(6)} '
-            'rms≈${peak.rmsNormalized.toStringAsFixed(6)} '
-            'nonZero=${(peak.nonZeroRatio * 100).toStringAsFixed(2)}%). '
-            'Check Windows microphone privacy / default input device.',
-          );
-          if (mounted) {
-            AppNotice.warning(context, l10n.shadowRecordingSilentWarning);
-          }
-        }
-      }
-
-      final db = ref.read(appDatabaseProvider);
-      final id = p.basenameWithoutExtension(wavPath);
-      final now = DateTime.now();
-      final startMs = (widget.startSec * 1000).round();
-      final durMs = ((widget.endSec - widget.startSec) * 1000).round();
-      final row = RecordingRow(
-        id: id,
-        targetType: widget.targetType,
-        targetId: widget.mediaId,
-        referenceStart: startMs,
-        referenceDuration: durMs,
-        referenceText: widget.referenceText,
-        language: widget.language,
-        duration: durationMs,
-        md5: hash,
-        audioUrl: null,
-        pronunciationScore: null,
-        assessmentJson: null,
-        localPath: wavPath,
-        syncStatus: 'local',
-        serverUpdatedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      );
-      await db.recordingDao.insertRow(row);
-      await ref.read(syncEnqueueProvider)(
-        SyncEntityType.recording,
-        id,
-        SyncAction.create,
-      );
-      if (mounted) {
-        setState(() => _selectedRecordingId = id);
-      }
-    } catch (e, st) {
-      _log.warning('save recording failed', e, st);
-      if (mounted) {
-        AppNotice.error(
-          context,
-          l10n.shadowRecordingSaveFailed(_shortSaveError(e)),
-        );
-      }
-    }
-  }
+  TakeRegion get _takeRegion => TakeRegion(
+    targetType: widget.targetType,
+    targetId: widget.mediaId,
+    language: widget.language,
+    referenceText: widget.referenceText,
+    startSec: widget.startSec,
+    endSec: widget.endSec,
+  );
 
   Future<void> _playOrPauseTake(String path) async {
     try {
@@ -522,11 +339,7 @@ class _ShadowReadingPanelState extends ConsumerState<ShadowReadingPanel>
   }
 
   Future<void> _deleteRecording(RecordingRow r) async {
-    await ref.read(syncEnqueueProvider)(
-      SyncEntityType.recording,
-      r.id,
-      SyncAction.delete,
-    );
+    // Stop preview playback of this take before its file is removed.
     final preview = ref.read(recordingPreviewPlayerProvider);
     final lp = r.localPath;
     if (lp != null && lp.isNotEmpty) {
@@ -534,10 +347,9 @@ class _ShadowReadingPanelState extends ConsumerState<ShadowReadingPanel>
         if (preview.loadedPath == File(lp).absolute.path) {
           await preview.stop();
         }
-        await File(lp).delete();
       } catch (_) {}
     }
-    await ref.read(appDatabaseProvider).recordingDao.deleteId(r.id);
+    await _takeStore.deleteTake(r);
     if (mounted) {
       setState(() => _selectedRecordingId = null);
     }
