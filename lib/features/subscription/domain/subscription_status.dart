@@ -23,7 +23,7 @@ class SubscriptionStatus {
     return SubscriptionStatus(
       subscriptionActive: json['subscriptionActive'] == true,
       subscriptionTier:
-          _subscriptionTierFromJson(json['subscriptionTier']) ??
+          subscriptionTierFromJson(json['subscriptionTier']) ??
           SubscriptionTier.free,
       subscriptionExpireDate: json['subscriptionExpireDate'] as String?,
       autoRenew: autoRenew,
@@ -61,12 +61,4 @@ class SubscriptionStatus {
       if (autoRenew != null) 'autoRenew': autoRenew!.toJson(),
     };
   }
-}
-
-SubscriptionTier? _subscriptionTierFromJson(Object? value) {
-  if (value == null) return null;
-  final s = value.toString().toLowerCase();
-  if (s == 'pro') return SubscriptionTier.pro;
-  if (s == 'lite') return SubscriptionTier.lite;
-  return SubscriptionTier.free;
 }

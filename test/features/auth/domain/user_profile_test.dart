@@ -149,6 +149,24 @@ void main() {
     });
   });
 
+  group('subscriptionTierFromJson', () {
+    test('decodes pro and lite case-insensitively', () {
+      expect(subscriptionTierFromJson('PRO'), SubscriptionTier.pro);
+      expect(subscriptionTierFromJson('Lite'), SubscriptionTier.lite);
+      expect(subscriptionTierFromJson('free'), SubscriptionTier.free);
+    });
+
+    test('falls back to free for unknown strings', () {
+      expect(subscriptionTierFromJson('enterprise'), SubscriptionTier.free);
+      expect(subscriptionTierFromJson(''), SubscriptionTier.free);
+    });
+
+    test('returns null only for explicit null input', () {
+      expect(subscriptionTierFromJson(null), isNull);
+      expect(subscriptionTierFromJson(0), SubscriptionTier.free);
+    });
+  });
+
   group('UserProfile.toJson', () {
     test('omits null fields', () {
       const p = UserProfile(id: '1', email: 'e@x.com', name: 'N');
