@@ -5,7 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/data/subtitle/transcript_display_readiness.dart';
+import 'package:enjoy_player/features/player/application/player_interactions.dart';
 import 'package:enjoy_player/features/settings/application/karaoke_highlight_settings.dart';
+import 'package:enjoy_player/features/transcript/application/transcript_blur_mode_provider.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_enrichment_controller.dart';
 import 'package:enjoy_player/features/transcript/presentation/subtitle_track_picker_primitives.dart';
 import 'package:enjoy_player/features/transcript/presentation/transcript_busy_action.dart';
@@ -23,6 +25,13 @@ class _SpyKaraoke extends KaraokeHighlightSettingsOverride {
   Future<void> setEnabled(bool enabled) async {
     writes += 1;
     await super.setEnabled(enabled);
+  }
+}
+
+class _ToggleBlurInteractions extends PlayerInteractions {
+  @override
+  Future<void> toggleBlur() async {
+    ref.read(transcriptBlurModeProvider.notifier).toggle();
   }
 }
 
@@ -83,15 +92,49 @@ void main() {
     await tester.pumpAndSettle();
 
     final switches = tester.widgetList<Switch>(find.byType(Switch)).toList();
-    expect(switches, hasLength(2));
-    expect(switches.every((s) => s.onChanged == null), isTrue);
-    expect(switches.every((s) => s.value == false), isTrue);
+    expect(switches, hasLength(3));
+    expect(switches.first.onChanged, isNotNull);
+    expect(switches[1].onChanged, isNull);
+    expect(switches[2].onChanged, isNull);
+    expect(find.text(l10n.transcriptBlurDisplayTitle), findsOneWidget);
     expect(find.byType(TranscriptBusyListTile), findsOneWidget);
     expect(find.text(l10n.transcriptEnrichOwnedTitle), findsOneWidget);
 
     await tester.tap(find.byType(SubtitleToggleTile).first);
     await tester.pump();
     expect(karaoke.writes, 0);
+  });
+
+  testWidgets('blur switch flips transcriptBlurModeProvider', (tester) async {
+    await tester.pumpWidget(
+      _harness(
+        karaoke: KaraokeHighlightSettingsOverride(false),
+        extraOverrides: [
+          playerInteractionsProvider.overrideWith(
+            () => _ToggleBlurInteractions(),
+          ),
+        ],
+        readiness: const TranscriptDisplayReadiness(
+          hasNestedWords: false,
+          hasTimedWords: false,
+          hasPhones: false,
+          canTrustWordTimes: true,
+          karaokeSwitchEnabled: false,
+          ipaSwitchEnabled: false,
+          showEnrich: false,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(TranscriptDisplaySettingsSection)),
+    );
+    expect(container.read(transcriptBlurModeProvider), isFalse);
+
+    await tester.tap(find.byType(SubtitleToggleTile).first);
+    await tester.pumpAndSettle();
+    expect(container.read(transcriptBlurModeProvider), isTrue);
   });
 
   testWidgets('timed+phones+owned enables switches and hides enrich', (
@@ -114,8 +157,9 @@ void main() {
     await tester.pumpAndSettle();
 
     final switches = tester.widgetList<Switch>(find.byType(Switch)).toList();
-    expect(switches.first.onChanged, isNotNull);
-    expect(switches.first.value, isTrue);
+    expect(switches, hasLength(3));
+    expect(switches[1].onChanged, isNotNull);
+    expect(switches[1].value, isTrue);
     expect(find.byType(TranscriptBusyListTile), findsNothing);
   });
 

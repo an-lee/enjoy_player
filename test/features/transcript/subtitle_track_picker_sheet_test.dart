@@ -180,8 +180,9 @@ void main() {
       expect(find.text(l10n.subtitlesTranslation), findsOneWidget);
       expect(find.byType(TranscriptDisplaySettingsSection), findsOneWidget);
       expect(find.byType(SubtitlePickerCard), findsWidgets);
-      expect(find.byType(SubtitleToggleTile), findsNWidgets(2));
+      expect(find.byType(SubtitleToggleTile), findsNWidgets(3));
       expect(find.text(l10n.transcriptDisplaySettingsTitle), findsOneWidget);
+      expect(find.text(l10n.transcriptBlurDisplayTitle), findsOneWidget);
       expect(find.text(l10n.settingsTranscriptKaraokeTitle), findsOneWidget);
       expect(find.text(l10n.settingsTranscriptIpaOverlayTitle), findsOneWidget);
     },

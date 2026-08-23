@@ -3239,6 +3239,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSectionNeedsAttention => 'Needs attention';
 
   @override
+  String get transcriptBlurDisplayTitle => 'Hide transcript text';
+
+  @override
   String get transcriptBlurToggleTooltip =>
       'Blur practice (focus on listening)';
 

@@ -5991,6 +5991,12 @@ abstract class AppLocalizations {
   /// **'Needs attention'**
   String get settingsSectionNeedsAttention;
 
+  /// No description provided for @transcriptBlurDisplayTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide transcript text'**
+  String get transcriptBlurDisplayTitle;
+
   /// No description provided for @transcriptBlurToggleTooltip.
   ///
   /// In en, this message translates to:

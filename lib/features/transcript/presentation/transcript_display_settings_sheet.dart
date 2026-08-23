@@ -1,4 +1,4 @@
-/// Karaoke + IPA toggles for the subtitle track picker (not Settings hub).
+/// Blur, karaoke, and IPA toggles for the subtitle track picker (not Settings hub).
 library;
 
 import 'dart:async';
@@ -9,14 +9,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:enjoy_player/core/riverpod/async_value_x.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/data/subtitle/transcript_display_readiness.dart';
+import 'package:enjoy_player/features/player/application/player_interactions.dart';
 import 'package:enjoy_player/features/settings/application/ipa_overlay_settings.dart';
 import 'package:enjoy_player/features/settings/application/karaoke_highlight_settings.dart';
+import 'package:enjoy_player/features/transcript/application/transcript_blur_mode_provider.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_enrichment_controller.dart';
 import 'package:enjoy_player/features/transcript/presentation/subtitle_track_picker_primitives.dart';
 import 'package:enjoy_player/features/transcript/presentation/transcript_busy_action.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
-/// Karaoke / IPA switches embedded in the CC subtitle sheet or dialog.
+/// Blur / karaoke / IPA switches embedded in the CC subtitle sheet or dialog.
 ///
 /// Uses the same rounded card + compact list-row chrome as track sections and
 /// action tiles so the picker reads as one composition. Switch **value** is
@@ -49,7 +51,18 @@ class TranscriptDisplaySettingsSection extends ConsumerWidget {
     final karaokeOn = karaokePref && readiness.karaokeSwitchEnabled;
     final ipaOn = ipaPref && readiness.ipaSwitchEnabled;
 
+    final blurOn = ref.watch(transcriptBlurModeProvider);
+
     final tiles = <Widget>[
+      SubtitleToggleTile(
+        icon: Icons.visibility_off_outlined,
+        title: l10n.transcriptBlurDisplayTitle,
+        subtitle: l10n.transcriptBlurToggleTooltip,
+        value: blurOn,
+        onChanged: (_) {
+          unawaited(ref.read(playerInteractionsProvider.notifier).toggleBlur());
+        },
+      ),
       SubtitleToggleTile(
         icon: Icons.highlight_outlined,
         title: l10n.settingsTranscriptKaraokeTitle,

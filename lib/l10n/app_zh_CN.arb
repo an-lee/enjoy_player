@@ -1163,6 +1163,7 @@
   "settingsSectionCollapseSemantics": "收起分组",
   "settingsSectionNeedsAttention": "需要注意",
 
+  "transcriptBlurDisplayTitle": "隐藏字幕文本",
   "transcriptBlurToggleTooltip": "听写练习（专注听力）",
   "transcriptBlurToggleOn": "已开启专注听力模式",
   "transcriptBlurToggleOff": "已关闭专注听力模式",

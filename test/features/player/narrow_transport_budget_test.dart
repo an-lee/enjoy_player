@@ -24,7 +24,7 @@ void main() {
           showFullscreenTransport: false,
         );
         expect(budget.showEcho, isTrue, reason: 'echo always-on');
-        expect(budget.showBlur, isTrue, reason: 'blur always-on');
+        expect(budget.showBlur, isFalse, reason: 'blur is in the CC sheet');
         expect(budget.showCc, isTrue, reason: 'cc always-on');
         expect(budget.showSpeed, isTrue, reason: 'speed always-on');
       });
@@ -67,26 +67,26 @@ void main() {
     });
 
     test('previous drops before next', () {
-      final b = at(340);
+      final b = at(318);
       expect(b.showVolume, isTrue);
       expect(b.showNext, isTrue);
       expect(b.showPrevious, isFalse, reason: 'previous drops before next');
     });
 
     test('next drops before volume', () {
-      final b = at(296);
+      final b = at(254);
       expect(b.showVolume, isTrue);
       expect(b.showNext, isFalse, reason: 'next drops before volume');
       expect(b.showPrevious, isFalse);
     });
 
     test('volume drops last among the droppables', () {
-      final b = at(254);
+      final b = at(220);
       expect(b.showVolume, isFalse);
       expect(b.showNext, isFalse);
       expect(b.showPrevious, isFalse);
       expect(b.showEcho, isTrue);
-      expect(b.showBlur, isTrue);
+      expect(b.showBlur, isFalse);
       expect(b.showCc, isTrue);
       expect(b.showSpeed, isTrue);
     });
@@ -159,7 +159,7 @@ void main() {
   group('resolveNarrowTransportBudget fullscreen priority (desktop video)', () {
     test('fullscreen is highest priority (last to drop)', () {
       final b = resolveNarrowTransportBudget(
-        278,
+        250,
         hasTranscriptLines: true,
         showFullscreenTransport: true,
       );

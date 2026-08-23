@@ -1612,6 +1612,7 @@
   "settingsSectionCollapseSemantics": "Collapse section",
   "settingsSectionNeedsAttention": "Needs attention",
 
+  "transcriptBlurDisplayTitle": "Hide transcript text",
   "transcriptBlurToggleTooltip": "Blur practice (focus on listening)",
   "transcriptBlurToggleOn": "Listening-focus mode on",
   "transcriptBlurToggleOff": "Listening-focus mode off",

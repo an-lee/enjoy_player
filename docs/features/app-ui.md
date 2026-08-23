@@ -4,7 +4,7 @@
 
 ## Design direction
 
-**Style**: Cinematic Editorial — confident hero typography, generous whitespace, ambient artwork-derived color, selective glass only on the floating transport bar.
+**Style**: Cinematic Editorial — confident hero typography, generous whitespace, ambient artwork-derived color, selective glass on the floating player transport and [`EnjoyBottomNav`](../../lib/core/theme/widgets/enjoy_bottom_nav.dart).
 
 **Color**:
 - **Neutrals** — zinc-style dark ramp only: base `#09090B`, containers through `#3F3F46` (see `AppColors` in `lib/core/theme/colors.dart`).
@@ -23,7 +23,7 @@
 - Type scale: `12 / 13 / 14 / 16 / 18 / 22 / 28 / 36 / 48`.
 
 **Effects**:
-- Glass: **transport bar only** (`GlassSurface`). Sidebar is flat tonal; content cards are flat.
+- Glass: **floating capsules only** — player transport (`GlassSurface` with corner radius) and [`EnjoyBottomNav`](../../lib/core/theme/widgets/enjoy_bottom_nav.dart). Sidebar is flat tonal; content cards are flat.
 - Elevation scale: `0 / 1 / 3 / 8` (cards / sheets / modals).
 - Radius scale: `8 / 12 / 16 / 20 / ∞`. `20` is the new default for cards and hero artwork.
 - Ambient backdrop: very-low-opacity (~7%) radial tint from artwork dominant color behind player content.
@@ -72,7 +72,7 @@ Use `EnjoyPage` + `EnjoyPageMetrics` (or `pageGutterOf`) — never invent per-sc
 | `ExpandedPlayerScreen` | `PlayerAmbientBackdrop` around scaffold; video: no AppBar (stage overlay); audio: no AppBar — collapse chevron in `AudioPlayerLayout` ([ADR-0077](../decisions/0077-audio-reserved-collapse-chrome.md)) |
 | `AudioPlayerLayout` | Compact top-left collapse chevron + transcript-first body (`contentMaxWidth`); no HeroArtwork stage |
 | `VideoPlayerLayout` | Side-by-side when layout is landscape (`width > height`); stacked 16:9 video over transcript in portrait/square ([ADR-0059](../decisions/0059-phone-tablet-orientation-and-player-aspect-layout.md)). Split: draggable transcript column (**≥360** px min, max 50% width), persisted `splitPx` preference, dark zinc panel, 1px left border; top **SafeArea** on video when expanded chrome hides the app bar. Transport packing still uses `breakpointTranscriptSideBySide` (720). |
-| `GlobalTransportBar` | Player route only ([ADR-0082](../decisions/0082-home-continue-no-mini-player.md)); glass kept; dynamic-accent play ring; tabular timestamps; narrow ≤720px: prev/next always when transcript loaded (replay via line tap) |
+| `GlobalTransportBar` | Player route only ([ADR-0082](../decisions/0082-home-continue-no-mini-player.md)); inset floating glass capsule; dynamic-accent play ring; tabular timestamps; narrow ≤720px: play/echo/cc/speed always-on, blur/hide in the CC sheet |
 | `TranscriptPanel` | Source Serif 4 body; editorial left-rail active line; neutral echo card with 8px orange rail |
 | `ShadowReadingPanel` | Idle: three-zone bar (pitch icon, centered 44pt FAB / 56pt hit, play + more; delete in menu); recording: centered FAB + countdown |
 | `SettingsScreen` | iOS-style grouped `_SettingsCard`; **Appearance & Language** rows open pickers for display + native language (learning fixed en-US); guest vs signed-in copy for language sync |
@@ -115,7 +115,7 @@ Focus ring: 2px (custom nav / sidebars)
 | `MediaCardRow` | `core/theme/widgets/media_card.dart` (barrel → `media_card/`) | List row (audio) |
 | `HeroArtwork` | `core/theme/widgets/hero_artwork.dart` | Artwork + rim light + shadow |
 | `EmptyState` | `core/theme/widgets/empty_state.dart` | Editorial empty state |
-| `GlassSurface` | `core/theme/widgets/glass_surface.dart` | **Transport bar only** |
+| `GlassSurface` | `core/theme/widgets/glass_surface.dart` | **Floating transport capsule** (optional `borderRadius`) |
 | `Skeleton` (+ `.box` / `.line` / `.circle`) | `core/theme/widgets/skeleton.dart` | Single shimmer placeholder primitive; see [skeleton-loading.md](skeleton-loading.md) |
 | `SkeletonAppBootstrap` | same | Full-viewport app-bootstrap loading shell |
 | `SkeletonMediaList` / `SkeletonMediaGrid` | same | Library / Home tab body loading states (sliver-safe) |

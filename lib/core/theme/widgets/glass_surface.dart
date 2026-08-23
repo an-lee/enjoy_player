@@ -14,6 +14,7 @@ class GlassSurface extends StatelessWidget {
     required this.child,
     this.sigma,
     this.padding,
+    this.borderRadius = 0,
     super.key,
   });
 
@@ -21,12 +22,17 @@ class GlassSurface extends StatelessWidget {
   final double? sigma;
   final EdgeInsetsGeometry? padding;
 
+  /// Corner radius. `0` keeps the historical square clip used by full-bleed
+  /// callers; the floating transport passes [EnjoyThemeTokens.radiusXl].
+  final double borderRadius;
+
   @override
   Widget build(BuildContext context) {
     final t = EnjoyThemeTokens.of(context);
     final cs = Theme.of(context).colorScheme;
     final blurRaw = sigma ?? t.miniBarBlurSigma;
     final blur = _effectiveTransportBlur(blurRaw);
+    final radius = BorderRadius.circular(borderRadius);
 
     Widget inner = Material(color: Colors.transparent, child: child);
 
@@ -39,18 +45,21 @@ class GlassSurface extends StatelessWidget {
         decoration: BoxDecoration(
           color: cs.surfaceContainerHigh.withValues(alpha: 0.92),
           border: Border.all(color: t.glassBorder),
+          borderRadius: radius,
         ),
         child: inner,
       );
     }
 
-    return ClipRect(
+    return ClipRRect(
+      borderRadius: radius,
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: t.glassTint,
             border: Border.all(color: t.glassBorder),
+            borderRadius: radius,
           ),
           child: inner,
         ),
