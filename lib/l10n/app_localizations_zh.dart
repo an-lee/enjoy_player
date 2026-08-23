@@ -2851,6 +2851,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get vocabularyFlipHint => '点击翻转';
 
   @override
+  String get vocabularyPronounce => '发音';
+
+  @override
+  String get vocabularyFlipHintShortcuts => '空格翻转 · 1 / 2 / 3 评分';
+
+  @override
   String get vocabularyPlaySegment => '播放片段';
 
   @override
@@ -6127,6 +6133,12 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get vocabularyFlipHint => '点击翻转';
+
+  @override
+  String get vocabularyPronounce => '发音';
+
+  @override
+  String get vocabularyFlipHintShortcuts => '空格翻转 · 1 / 2 / 3 评分';
 
   @override
   String get vocabularyPlaySegment => '播放片段';

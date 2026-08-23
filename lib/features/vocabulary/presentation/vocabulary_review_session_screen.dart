@@ -11,10 +11,10 @@ import 'package:go_router/go_router.dart';
 import 'package:enjoy_player/core/interaction/enjoy_tappable.dart';
 import 'package:enjoy_player/core/routing/player_navigation.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
+import 'package:enjoy_player/core/theme/typography.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_button.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_card.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_modal.dart';
-import 'package:enjoy_player/core/window/desktop_window.dart';
 import 'package:enjoy_player/features/auth/application/auth_controller.dart';
 import 'package:enjoy_player/features/auth/domain/auth_state.dart';
 import 'package:enjoy_player/features/player/domain/player_launch_request.dart';
@@ -23,8 +23,10 @@ import 'package:enjoy_player/features/vocabulary/application/vocabulary_review_s
 import 'package:enjoy_player/features/vocabulary/domain/vocabulary_explanation_codec.dart';
 import 'package:enjoy_player/features/vocabulary/domain/vocabulary_models.dart';
 import 'package:enjoy_player/features/vocabulary/domain/vocabulary_review_practice.dart';
+import 'package:enjoy_player/features/pronounce/application/pronounce_playback_controller.dart';
 import 'package:enjoy_player/features/vocabulary/presentation/vocabulary_flashcard.dart';
 import 'package:enjoy_player/features/vocabulary/presentation/widgets/vocabulary_practice_sheet.dart';
+import 'package:enjoy_player/features/vocabulary/presentation/widgets/vocabulary_rating_bar.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
 class VocabularyReviewSessionScreen extends ConsumerStatefulWidget {
@@ -213,7 +215,6 @@ class _VocabularyReviewSessionScreenState
     final l10n = AppLocalizations.of(context)!;
     final t = EnjoyThemeTokens.of(context);
     final session = ref.watch(vocabularyReviewSessionProvider);
-    final cs = Theme.of(context).colorScheme;
 
     ref.listen(vocabularyReviewSessionProvider, (prev, next) {
       if (next.flipped && prev?.flipped != true) {
@@ -263,130 +264,114 @@ class _VocabularyReviewSessionScreenState
                               horizontal: t.space16,
                               vertical: t.space8,
                             ),
-                            child: LayoutBuilder(
-                              builder: (context, constraints) {
-                                final stageWidth = constraints.maxWidth.clamp(
-                                  0.0,
-                                  t.contentMaxWidth,
-                                );
-                                // Immersive shell frees vertical space (no mini
-                                // transport / nav); use more of the stage height.
-                                final compact = constraints.maxHeight < 640;
-                                final stageHeight = compact
-                                    ? constraints.maxHeight.clamp(0.0, 560.0)
-                                    : (constraints.maxHeight * 0.88).clamp(
-                                        420.0,
-                                        constraints.maxHeight,
-                                      );
-                                return Center(
-                                  child: SizedBox(
-                                    width: stageWidth,
-                                    height: stageHeight,
-                                    child: VocabularyFlashcard(
-                                      item: session.currentItem!,
-                                      primaryContext:
-                                          session.currentPrimaryContext,
-                                      flipped: session.flipped,
-                                      ratingInFlight: session.ratingInFlight,
-                                      dictionaryFetchInFlight:
-                                          session.dictionaryFetchInFlight,
-                                      contextualFetchInFlight:
-                                          session.contextualFetchInFlight,
-                                      clipPlayInFlight:
-                                          session.clipPlayInFlight,
-                                      dictionaryError: session.dictionaryError,
-                                      contextualError: session.contextualError,
-                                      mediaError: session.mediaError,
-                                      contextsCount:
-                                          session.currentContextsCount,
-                                      activeContextIndex:
-                                          session.currentActiveContextIndex,
-                                      actionsEnabled:
-                                          !session.practiceSheetOpen,
-                                      onPreviousContext: () => unawaited(
-                                        ref
-                                            .read(
-                                              vocabularyReviewSessionProvider
-                                                  .notifier,
-                                            )
-                                            .selectPreviousContext(),
-                                      ),
-                                      onNextContext: () => unawaited(
-                                        ref
-                                            .read(
-                                              vocabularyReviewSessionProvider
-                                                  .notifier,
-                                            )
-                                            .selectNextContext(),
-                                      ),
-                                      onFlip: () => ref
-                                          .read(
-                                            vocabularyReviewSessionProvider
-                                                .notifier,
-                                          )
-                                          .flip(),
-                                      onUnflip: () => ref
-                                          .read(
-                                            vocabularyReviewSessionProvider
-                                                .notifier,
-                                          )
-                                          .unflip(),
-                                      onRate: (r) => unawaited(
-                                        ref
-                                            .read(
-                                              vocabularyReviewSessionProvider
-                                                  .notifier,
-                                            )
-                                            .rate(r),
-                                      ),
-                                      onFetchDictionary: () => unawaited(
-                                        ref
-                                            .read(
-                                              vocabularyReviewSessionProvider
-                                                  .notifier,
-                                            )
-                                            .fetchDictionary(),
-                                      ),
-                                      onFetchContextual: () => unawaited(
-                                        ref
-                                            .read(
-                                              vocabularyReviewSessionProvider
-                                                  .notifier,
-                                            )
-                                            .fetchContextualTranslation(),
-                                      ),
-                                      onPlayClip: () => unawaited(
-                                        _openPractice(ReviewPracticeMode.clip),
-                                      ),
-                                      onOpenInPlayer: () =>
-                                          unawaited(_confirmOpenInPlayer()),
-                                      onShadowReading: () => unawaited(
-                                        _openPractice(ReviewPracticeMode.echo),
-                                      ),
-                                    ),
+                            child: Center(
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxWidth: t.contentMaxWidth,
+                                ),
+                                child: VocabularyFlashcard(
+                                  item: session.currentItem!,
+                                  primaryContext: session.currentPrimaryContext,
+                                  flipped: session.flipped,
+                                  dictionaryFetchInFlight:
+                                      session.dictionaryFetchInFlight,
+                                  contextualFetchInFlight:
+                                      session.contextualFetchInFlight,
+                                  clipPlayInFlight: session.clipPlayInFlight,
+                                  dictionaryError: session.dictionaryError,
+                                  contextualError: session.contextualError,
+                                  mediaError: session.mediaError,
+                                  contextsCount: session.currentContextsCount,
+                                  activeContextIndex:
+                                      session.currentActiveContextIndex,
+                                  actionsEnabled: !session.practiceSheetOpen,
+                                  onPreviousContext: () => unawaited(
+                                    ref
+                                        .read(
+                                          vocabularyReviewSessionProvider
+                                              .notifier,
+                                        )
+                                        .selectPreviousContext(),
                                   ),
-                                );
-                              },
+                                  onNextContext: () => unawaited(
+                                    ref
+                                        .read(
+                                          vocabularyReviewSessionProvider
+                                              .notifier,
+                                        )
+                                        .selectNextContext(),
+                                  ),
+                                  onFlip: () => ref
+                                      .read(
+                                        vocabularyReviewSessionProvider
+                                            .notifier,
+                                      )
+                                      .flip(),
+                                  onUnflip: () => ref
+                                      .read(
+                                        vocabularyReviewSessionProvider
+                                            .notifier,
+                                      )
+                                      .unflip(),
+                                  onFetchDictionary: () => unawaited(
+                                    ref
+                                        .read(
+                                          vocabularyReviewSessionProvider
+                                              .notifier,
+                                        )
+                                        .fetchDictionary(),
+                                  ),
+                                  onFetchContextual: () => unawaited(
+                                    ref
+                                        .read(
+                                          vocabularyReviewSessionProvider
+                                              .notifier,
+                                        )
+                                        .fetchContextualTranslation(),
+                                  ),
+                                  onPlayClip: () => unawaited(
+                                    _openPractice(ReviewPracticeMode.clip),
+                                  ),
+                                  onOpenInPlayer: () =>
+                                      unawaited(_confirmOpenInPlayer()),
+                                  onShadowReading: () => unawaited(
+                                    _openPractice(ReviewPracticeMode.echo),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                        if (isDesktop)
+                        if (session.flipped)
                           Padding(
                             padding: EdgeInsets.fromLTRB(
+                              t.space20,
+                              t.space8,
+                              t.space20,
                               t.space16,
-                              t.space4,
-                              t.space16,
-                              t.space12,
                             ),
-                            child: Text(
-                              l10n.vocabularyKeyboardShortcuts,
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.labelSmall
-                                  ?.copyWith(
-                                    color: cs.onSurfaceVariant.withValues(
-                                      alpha: 0.55,
-                                    ),
-                                  ),
+                            child: VocabularyRatingBar(
+                              ratingInFlight:
+                                  session.ratingInFlight ||
+                                  session.practiceSheetOpen,
+                              onRate: (r) {
+                                unawaited(
+                                  ref
+                                      .read(
+                                        pronouncePlaybackControllerProvider
+                                            .notifier,
+                                      )
+                                      .stop(),
+                                );
+                                unawaited(
+                                  ref
+                                      .read(
+                                        vocabularyReviewSessionProvider
+                                            .notifier,
+                                      )
+                                      .rate(r),
+                                );
+                              },
                             ),
                           )
                         else
@@ -427,67 +412,65 @@ class _SessionHeader extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final t = EnjoyThemeTokens.of(context);
     final cs = Theme.of(context).colorScheme;
+    final type = TranscriptTypographyTokens.of(context);
     final progress = total <= 0 ? 0.0 : current / total;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(t.space8, t.space8, t.space8, t.space4),
-      child: Column(
+      child: Row(
         children: [
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.close_rounded),
-                tooltip: l10n.vocabularyExitReview,
-                onPressed: onClose,
-              ),
-              Expanded(
-                child: Text(
-                  l10n.vocabularyProgress(current, total),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-              ),
-              TextButton(
-                style: TextButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  foregroundColor: cs.onSurfaceVariant,
-                ),
-                onPressed: ratingInFlight ? null : onSkip,
-                child: Text(l10n.vocabularySkip),
-              ),
-              if (canUndo)
-                EnjoyTappableIcon(
-                  icon: Icons.undo_rounded,
-                  tooltip: l10n.vocabularyUndo,
-                  onPressed: onUndo,
-                ),
-            ],
+          IconButton(
+            icon: const Icon(Icons.close_rounded),
+            tooltip: l10n.vocabularyExitReview,
+            onPressed: onClose,
           ),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: t.space16),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(t.radiusFull),
-              child: TweenAnimationBuilder<double>(
-                tween: Tween<double>(begin: 0, end: progress),
-                duration: t.motionStandard,
-                curve: Curves.easeOutCubic,
-                builder: (context, value, _) {
-                  return LinearProgressIndicator(
-                    value: value,
-                    minHeight: 5,
-                    backgroundColor: cs.surfaceContainerHighest.withValues(
-                      alpha: 0.55,
-                    ),
-                    color: cs.primary,
-                  );
-                },
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: t.space12),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween<double>(begin: 0, end: progress),
+                  duration: t.motionStandard,
+                  curve: Curves.easeOutCubic,
+                  builder: (context, value, _) {
+                    return LinearProgressIndicator(
+                      value: value,
+                      minHeight: 5,
+                      backgroundColor: cs.surfaceContainerHighest.withValues(
+                        alpha: 0.55,
+                      ),
+                      color: cs.primary,
+                    );
+                  },
+                ),
               ),
             ),
           ),
+          Text(
+            l10n.vocabularyProgress(current, total),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: type.monoStyle.copyWith(
+              fontSize: 12,
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              foregroundColor: cs.onSurfaceVariant,
+              textStyle: Theme.of(context).textTheme.labelMedium,
+            ),
+            onPressed: ratingInFlight ? null : onSkip,
+            child: Text(l10n.vocabularySkip),
+          ),
+          if (canUndo)
+            EnjoyTappableIcon(
+              icon: Icons.undo_rounded,
+              tooltip: l10n.vocabularyUndo,
+              onPressed: onUndo,
+            ),
         ],
       ),
     );

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:enjoy_player/core/interaction/haptics.dart';
+import 'package:enjoy_player/core/interaction/enjoy_tappable.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/lookup_markdown_style.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_button.dart';
@@ -91,11 +91,6 @@ class FlashcardContextTab extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SectionHeading(
-          icon: Icons.format_quote_rounded,
-          label: l10n.vocabularyContext,
-        ),
-        SizedBox(height: t.space16),
         DecoratedBox(
           decoration: BoxDecoration(
             border: Border(
@@ -128,62 +123,61 @@ class FlashcardContextTab extends ConsumerWidget {
             onNext: actionsEnabled ? onNextContext : null,
           ),
         ],
-        SizedBox(height: t.space32),
-        _SectionHeading(
-          icon: Icons.movie_outlined,
-          label: l10n.vocabularySourceLabel,
-        ),
         SizedBox(height: t.space16),
         if (titleAsync.isLoading && sourceTitle == null)
-          Text('…', style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant))
+          Text('…', style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant))
         else
           Text(
             sourceTitle ?? l10n.vocabularyUnknownSource,
-            maxLines: 3,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: tt.bodyLarge?.copyWith(
-              color: cs.onSurface,
+            style: tt.bodySmall?.copyWith(
+              color: cs.onSurfaceVariant,
               height: 1.4,
-              fontWeight: FontWeight.w500,
-              letterSpacing: -0.1,
             ),
           ),
         if (locator != null) ...[
-          SizedBox(height: t.space8),
+          SizedBox(height: t.space4),
           Text(
             l10n.vocabularyLocatorLabel(
               (locator.start / 1000).toStringAsFixed(1),
               (locator.duration / 1000).toStringAsFixed(1),
             ),
             style: tt.labelSmall?.copyWith(
-              color: cs.onSurfaceVariant.withValues(alpha: 0.85),
+              color: cs.onSurfaceVariant.withValues(alpha: 0.75),
               letterSpacing: 0.1,
             ),
           ),
         ],
         if (canMedia) ...[
           SizedBox(height: t.space8),
-          Wrap(
-            spacing: t.space4,
-            runSpacing: t.space4,
+          Row(
             children: [
-              _MediaAction(
+              EnjoyTappableIcon(
                 icon: Icons.play_arrow_rounded,
-                label: clipPlayInFlight
+                tooltip: clipPlayInFlight
                     ? l10n.vocabularyFetching
                     : l10n.vocabularyPlaySegment,
+                semanticLabel: clipPlayInFlight
+                    ? l10n.vocabularyFetching
+                    : l10n.vocabularyPlaySegment,
+                color: cs.primary,
                 onPressed: (!actionsEnabled || clipPlayInFlight)
                     ? null
                     : onPlayClip,
               ),
-              _MediaAction(
+              EnjoyTappableIcon(
                 icon: Icons.open_in_new_rounded,
-                label: l10n.vocabularyOpenInPlayer,
+                tooltip: l10n.vocabularyOpenInPlayer,
+                semanticLabel: l10n.vocabularyOpenInPlayer,
+                color: cs.primary,
                 onPressed: actionsEnabled ? onOpenInPlayer : null,
               ),
-              _MediaAction(
+              EnjoyTappableIcon(
                 icon: Icons.record_voice_over_rounded,
-                label: l10n.vocabularyEchoReading,
+                tooltip: l10n.vocabularyEchoReading,
+                semanticLabel: l10n.vocabularyEchoReading,
+                color: cs.primary,
                 onPressed: actionsEnabled ? onShadowReading : null,
               ),
             ],
@@ -199,12 +193,9 @@ class FlashcardContextTab extends ConsumerWidget {
           SizedBox(height: t.space8),
           FlashcardSoftError(message: l10n.vocabularyMediaPlayFailed),
         ],
-        SizedBox(height: t.space32),
-        _SectionHeading(
-          icon: Icons.translate_rounded,
-          label: l10n.vocabularyContextualTranslation,
-        ),
-        SizedBox(height: t.space16),
+        SizedBox(height: t.space20),
+        _DetailLabel(l10n.vocabularyContextualTranslation),
+        SizedBox(height: t.space8),
         if (translation != null)
           _StructuredContextualMarkdown(markdown: translation.translatedText)
         else if (!signedIn)
@@ -252,37 +243,6 @@ class FlashcardContextTab extends ConsumerWidget {
   }
 }
 
-class _SectionHeading extends StatelessWidget {
-  const _SectionHeading({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = EnjoyThemeTokens.of(context);
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: cs.primary.withValues(alpha: 0.9)),
-        SizedBox(width: t.space8),
-        Expanded(
-          child: Text(
-            label,
-            style: tt.titleSmall?.copyWith(
-              color: cs.onSurface,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.1,
-              height: 1.2,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _DetailLabel extends StatelessWidget {
   const _DetailLabel(this.text);
 
@@ -298,37 +258,6 @@ class _DetailLabel extends StatelessWidget {
         fontWeight: FontWeight.w600,
         letterSpacing: 0.35,
         height: 1.2,
-      ),
-    );
-  }
-}
-
-class _MediaAction extends StatelessWidget {
-  const _MediaAction({
-    required this.icon,
-    required this.label,
-    required this.onPressed,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = EnjoyThemeTokens.of(context);
-    return TextButton.icon(
-      onPressed: onPressed == null
-          ? null
-          : () {
-              Haptics.selection(context);
-              onPressed!();
-            },
-      icon: Icon(icon, size: 18),
-      label: Text(label),
-      style: TextButton.styleFrom(
-        minimumSize: const Size(48, 48),
-        padding: EdgeInsets.symmetric(horizontal: t.space12),
       ),
     );
   }

@@ -7,13 +7,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:enjoy_player/core/interaction/enjoy_tappable.dart';
-import 'package:enjoy_player/core/interaction/haptics.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
+import 'package:enjoy_player/core/theme/typography.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_card.dart';
+import 'package:enjoy_player/core/window/desktop_window.dart';
 import 'package:enjoy_player/features/pronounce/application/pronounce_playback_controller.dart';
 import 'package:enjoy_player/features/pronounce/domain/pronounce_target.dart';
 import 'package:enjoy_player/features/pronounce/presentation/pronounce_icon_button.dart';
+import 'package:enjoy_player/features/vocabulary/domain/vocabulary_explanation_codec.dart';
 import 'package:enjoy_player/features/vocabulary/domain/vocabulary_models.dart';
+import 'package:enjoy_player/features/vocabulary/presentation/vocabulary_ipa_formatter.dart';
 import 'package:enjoy_player/features/vocabulary/presentation/vocabulary_text_style.dart';
 import 'package:enjoy_player/features/vocabulary/presentation/widgets/vocabulary_flashcard_context_tab.dart';
 import 'package:enjoy_player/features/vocabulary/presentation/widgets/vocabulary_flashcard_dictionary_tab.dart';
@@ -27,7 +30,6 @@ class VocabularyFlashcard extends ConsumerWidget {
     required this.item,
     required this.primaryContext,
     required this.flipped,
-    required this.ratingInFlight,
     required this.dictionaryFetchInFlight,
     required this.contextualFetchInFlight,
     required this.clipPlayInFlight,
@@ -36,7 +38,6 @@ class VocabularyFlashcard extends ConsumerWidget {
     this.mediaError,
     required this.onFlip,
     required this.onUnflip,
-    required this.onRate,
     required this.onFetchDictionary,
     required this.onFetchContextual,
     required this.onPlayClip,
@@ -52,7 +53,6 @@ class VocabularyFlashcard extends ConsumerWidget {
   final VocabularyItem item;
   final VocabularyContext? primaryContext;
   final bool flipped;
-  final bool ratingInFlight;
   final bool dictionaryFetchInFlight;
   final bool contextualFetchInFlight;
   final bool clipPlayInFlight;
@@ -61,7 +61,6 @@ class VocabularyFlashcard extends ConsumerWidget {
   final String? mediaError;
   final VoidCallback onFlip;
   final VoidCallback onUnflip;
-  final ValueChanged<VocabularyRating> onRate;
   final VoidCallback onFetchDictionary;
   final VoidCallback onFetchContextual;
   final VoidCallback onPlayClip;
@@ -76,7 +75,6 @@ class VocabularyFlashcard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = EnjoyThemeTokens.of(context);
-    // Card source language (may be bare ISO 639-1; resolvePronounceLocale maps).
     final localeTag = item.language;
 
     void stopPronounce() {
@@ -104,7 +102,6 @@ class VocabularyFlashcard extends ConsumerWidget {
                 item: item,
                 primaryContext: primaryContext,
                 localeTag: localeTag,
-                ratingInFlight: ratingInFlight,
                 dictionaryFetchInFlight: dictionaryFetchInFlight,
                 contextualFetchInFlight: contextualFetchInFlight,
                 clipPlayInFlight: clipPlayInFlight,
@@ -114,10 +111,6 @@ class VocabularyFlashcard extends ConsumerWidget {
                 onUnflip: () {
                   stopPronounce();
                   onUnflip();
-                },
-                onRate: (r) {
-                  stopPronounce();
-                  onRate(r);
                 },
                 onFetchDictionary: onFetchDictionary,
                 onFetchContextual: onFetchContextual,
@@ -136,6 +129,7 @@ class VocabularyFlashcard extends ConsumerWidget {
               child: _FlashcardFront(
                 word: item.word,
                 localeTag: localeTag,
+                explanation: item.explanation,
                 contextText: primaryContext?.text,
                 onFlip: actionsEnabled
                     ? () {
@@ -153,12 +147,14 @@ class _FlashcardFront extends StatelessWidget {
   const _FlashcardFront({
     required this.word,
     required this.localeTag,
+    required this.explanation,
     required this.contextText,
     required this.onFlip,
   });
 
   final String word;
   final String localeTag;
+  final String? explanation;
   final String? contextText;
   final VoidCallback onFlip;
 
@@ -167,16 +163,32 @@ class _FlashcardFront extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final t = EnjoyThemeTokens.of(context);
     final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-    final contextBase = tt.bodyMedium?.copyWith(
-      color: cs.onSurfaceVariant.withValues(alpha: 0.9),
-      height: 1.45,
+    final type = TranscriptTypographyTokens.of(context);
+    final dictionary = decodeDictionaryExplanation(explanation);
+    final ipa = dictionary?.ipa == null
+        ? ''
+        : formatVocabularyIpa(dictionary!.ipa!);
+    final pos = dictionary?.senses
+        .map((s) => s.partOfSpeech?.trim())
+        .whereType<String>()
+        .where((s) => s.isNotEmpty)
+        .firstOrNull;
+    final metaParts = <String>[if (ipa.isNotEmpty) ipa, if (pos != null) pos];
+    final contextBase = type.bodyStyle.copyWith(
+      fontSize: 15.5,
+      height: 1.6,
+      fontStyle: FontStyle.italic,
+      color: cs.onSurfaceVariant,
     );
-    final contextHighlight = contextBase?.copyWith(
-      color: cs.onSurface,
+    final contextHighlight = contextBase.copyWith(
+      fontStyle: FontStyle.italic,
       fontWeight: FontWeight.w700,
-      backgroundColor: cs.primary.withValues(alpha: 0.18),
+      color: cs.onSurface,
+      backgroundColor: t.accentSoft,
     );
+    final hint = isDesktop
+        ? l10n.vocabularyFlipHintShortcuts
+        : l10n.vocabularyFlipHint;
 
     return SizedBox.expand(
       child: EnjoyCard(
@@ -194,38 +206,44 @@ class _FlashcardFront extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              word,
-                              textAlign: TextAlign.center,
-                              style: tt.headlineLarge?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: -1.0,
-                                height: 1.1,
-                                color: cs.onSurface,
-                              ),
-                            ),
-                          ),
-                          PronounceIconButton(
-                            text: word,
-                            localeTag: localeTag,
-                            surfaceId: PronounceSurfaceId.flashcard,
-                            compact: true,
-                          ),
-                        ],
+                      Text(
+                        word,
+                        textAlign: TextAlign.center,
+                        style: type.displaySerifStyle.copyWith(
+                          fontSize: 40,
+                          fontWeight: FontWeight.w500,
+                          height: 1.1,
+                          letterSpacing: -0.6,
+                          color: cs.onSurface,
+                        ),
                       ),
-                      SizedBox(height: t.space20),
+                      if (metaParts.isNotEmpty) ...[
+                        SizedBox(height: t.space8),
+                        Text(
+                          metaParts.join(' · '),
+                          textAlign: TextAlign.center,
+                          style: type.monoStyle.copyWith(
+                            fontSize: 12.5,
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                      PronounceIconButton(
+                        text: word,
+                        localeTag: localeTag,
+                        surfaceId: PronounceSurfaceId.flashcard,
+                        compact: true,
+                        label: l10n.vocabularyPronounce,
+                      ),
+                      SizedBox(height: t.space16),
                       if (contextText != null && contextText!.isNotEmpty)
                         Text.rich(
                           TextSpan(
                             children: highlightVocabularyWord(
                               text: contextText!,
                               word: word,
-                              base: contextBase ?? const TextStyle(),
-                              highlight: contextHighlight ?? const TextStyle(),
+                              base: contextBase,
+                              highlight: contextHighlight,
                             ),
                           ),
                           textAlign: TextAlign.center,
@@ -242,26 +260,12 @@ class _FlashcardFront extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: cs.primaryContainer.withValues(alpha: 0.45),
-                    borderRadius: BorderRadius.circular(t.radiusFull),
-                    border: Border.all(
-                      color: cs.primary.withValues(alpha: 0.35),
-                    ),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: t.space20,
-                      vertical: t.space12,
-                    ),
-                    child: Text(
-                      l10n.vocabularyFlipHint,
-                      style: tt.labelLarge?.copyWith(
-                        color: cs.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                Text(
+                  hint,
+                  textAlign: TextAlign.center,
+                  style: type.monoStyle.copyWith(
+                    fontSize: 11.5,
+                    color: cs.onSurfaceVariant.withValues(alpha: 0.55),
                   ),
                 ),
               ],
@@ -278,7 +282,6 @@ class _FlashcardBack extends StatelessWidget {
     required this.item,
     required this.primaryContext,
     required this.localeTag,
-    required this.ratingInFlight,
     required this.dictionaryFetchInFlight,
     required this.contextualFetchInFlight,
     required this.clipPlayInFlight,
@@ -286,7 +289,6 @@ class _FlashcardBack extends StatelessWidget {
     this.contextualError,
     this.mediaError,
     required this.onUnflip,
-    required this.onRate,
     required this.onFetchDictionary,
     required this.onFetchContextual,
     required this.onPlayClip,
@@ -302,7 +304,6 @@ class _FlashcardBack extends StatelessWidget {
   final VocabularyItem item;
   final VocabularyContext? primaryContext;
   final String localeTag;
-  final bool ratingInFlight;
   final bool dictionaryFetchInFlight;
   final bool contextualFetchInFlight;
   final bool clipPlayInFlight;
@@ -310,7 +311,6 @@ class _FlashcardBack extends StatelessWidget {
   final String? contextualError;
   final String? mediaError;
   final VoidCallback onUnflip;
-  final ValueChanged<VocabularyRating> onRate;
   final VoidCallback onFetchDictionary;
   final VoidCallback onFetchContextual;
   final VoidCallback onPlayClip;
@@ -327,305 +327,130 @@ class _FlashcardBack extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final t = EnjoyThemeTokens.of(context);
     final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
+    final type = TranscriptTypographyTokens.of(context);
 
     return SizedBox.expand(
       child: EnjoyCard(
-        child: DefaultTabController(
-          length: 2,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  t.space24,
-                  t.space20,
-                  t.space24,
-                  0,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        item.word,
-                        style: tt.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.4,
-                        ),
-                      ),
-                    ),
-                    PronounceIconButton(
-                      text: item.word,
-                      localeTag: localeTag,
-                      surfaceId: PronounceSurfaceId.flashcard,
-                      compact: true,
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: t.space12),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: t.space24),
-                child: Material(
-                  color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(t.radiusMd),
-                  child: TabBar(
-                    dividerColor: Colors.transparent,
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    indicator: BoxDecoration(
-                      color: cs.primaryContainer.withValues(alpha: 0.55),
-                      borderRadius: BorderRadius.circular(t.radiusSm),
-                    ),
-                    labelColor: cs.onSurface,
-                    unselectedLabelColor: cs.onSurfaceVariant,
-                    labelStyle: tt.labelMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                    unselectedLabelStyle: tt.labelMedium,
-                    labelPadding: EdgeInsets.symmetric(horizontal: t.space8),
-                    tabs: [
-                      Tab(height: 40, text: l10n.vocabularyContext),
-                      Tab(height: 40, text: l10n.vocabularyDictionary),
-                    ],
-                  ),
-                ),
-              ),
-              Expanded(
-                child: ScrollbarTheme(
-                  data: ScrollbarThemeData(
-                    thickness: WidgetStateProperty.all(4),
-                    radius: Radius.circular(t.radiusFull),
-                    thumbColor: WidgetStateProperty.all(
-                      cs.onSurfaceVariant.withValues(alpha: 0.35),
-                    ),
-                  ),
-                  child: TabBarView(
-                    children: [
-                      _TabBody(
-                        child: FlashcardContextTab(
-                          word: item.word,
-                          primaryContext: primaryContext,
-                          contextualFetchInFlight: contextualFetchInFlight,
-                          clipPlayInFlight: clipPlayInFlight,
-                          contextualError: contextualError,
-                          mediaError: mediaError,
-                          onFetchContextual: onFetchContextual,
-                          onPlayClip: onPlayClip,
-                          onOpenInPlayer: onOpenInPlayer,
-                          onShadowReading: onShadowReading,
-                          contextsCount: contextsCount,
-                          activeContextIndex: activeContextIndex,
-                          onPreviousContext: onPreviousContext,
-                          onNextContext: onNextContext,
-                          actionsEnabled: actionsEnabled,
-                        ),
-                      ),
-                      _TabBody(
-                        child: FlashcardDictionaryTab(
-                          key: ValueKey('dict-${item.id}'),
-                          explanation: item.explanation,
-                          fetchInFlight: dictionaryFetchInFlight,
-                          error: dictionaryError,
-                          onFetch: onFetchDictionary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Divider(
-                height: 1,
-                color: cs.outlineVariant.withValues(alpha: 0.28),
-              ),
-              SafeArea(
-                top: false,
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    t.space12,
-                    t.space8,
-                    t.space12,
-                    t.space8,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        l10n.vocabularyHowWellDoYouKnow,
-                        textAlign: TextAlign.center,
-                        style: tt.labelSmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      SizedBox(height: t.space8),
-                      _RatingBar(
-                        ratingInFlight: ratingInFlight || !actionsEnabled,
-                        onRate: onRate,
-                      ),
-                      TextButton(
-                        style: TextButton.styleFrom(
-                          minimumSize: const Size(44, 36),
-                          visualDensity: VisualDensity.compact,
-                          padding: EdgeInsets.symmetric(horizontal: t.space12),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        onPressed: (ratingInFlight || !actionsEnabled)
-                            ? null
-                            : () {
-                                Haptics.selection(context);
-                                onUnflip();
-                              },
-                        child: Text(l10n.vocabularyFlipBack),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Compact rating pills — sized for small screens, capped on wide layouts.
-class _RatingBar extends StatelessWidget {
-  const _RatingBar({required this.ratingInFlight, required this.onRate});
-
-  static const double _maxWidth = 360;
-
-  final bool ratingInFlight;
-  final ValueChanged<VocabularyRating> onRate;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final t = EnjoyThemeTokens.of(context);
-    final cs = Theme.of(context).colorScheme;
-    final gap = MediaQuery.sizeOf(context).width < 360 ? t.space4 : t.space8;
-
-    return Align(
-      alignment: Alignment.center,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: _maxWidth),
-        child: Row(
-          children: [
-            Expanded(
-              child: _RatingChip(
-                label: l10n.vocabularyDontKnow,
-                icon: Icons.close_rounded,
-                background: cs.error.withValues(alpha: 0.12),
-                foreground: cs.error,
-                border: cs.error.withValues(alpha: 0.35),
-                emphasized: false,
-                onPressed: ratingInFlight
-                    ? null
-                    : () => onRate(VocabularyRating.dontKnow),
-              ),
-            ),
-            SizedBox(width: gap),
-            Expanded(
-              child: _RatingChip(
-                label: l10n.vocabularyKnow,
-                icon: Icons.check_rounded,
-                background: cs.primary.withValues(alpha: 0.18),
-                foreground: cs.primary,
-                border: cs.primary.withValues(alpha: 0.45),
-                emphasized: true,
-                onPressed: ratingInFlight
-                    ? null
-                    : () => onRate(VocabularyRating.know),
-              ),
-            ),
-            SizedBox(width: gap),
-            Expanded(
-              child: _RatingChip(
-                label: l10n.vocabularyKnowWell,
-                icon: Icons.check_circle_rounded,
-                background: cs.tertiary.withValues(alpha: 0.16),
-                foreground: cs.tertiary,
-                border: cs.tertiary.withValues(alpha: 0.45),
-                emphasized: false,
-                onPressed: ratingInFlight
-                    ? null
-                    : () => onRate(VocabularyRating.knowWell),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Compact outlined rating pill (~36px tall).
-class _RatingChip extends StatelessWidget {
-  const _RatingChip({
-    required this.label,
-    required this.icon,
-    required this.background,
-    required this.foreground,
-    required this.border,
-    required this.emphasized,
-    required this.onPressed,
-  });
-
-  final String label;
-  final IconData icon;
-  final Color background;
-  final Color foreground;
-  final Color border;
-  final bool emphasized;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = EnjoyThemeTokens.of(context);
-    final enabled = onPressed != null;
-    final radius = BorderRadius.circular(t.radiusFull);
-
-    return Semantics(
-      button: true,
-      enabled: enabled,
-      label: label,
-      child: Material(
-        color: enabled ? background : background.withValues(alpha: 0.35),
-        shape: RoundedRectangleBorder(
-          borderRadius: radius,
-          side: BorderSide(
-            color: enabled ? border : border.withValues(alpha: 0.25),
-            width: emphasized ? 1.25 : 1,
-          ),
-        ),
-        child: InkWell(
-          onTap: enabled
-              ? () {
-                  Haptics.selection(context);
-                  onPressed!();
-                }
-              : null,
-          borderRadius: radius,
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: t.space8,
-              vertical: t.space8,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: actionsEnabled ? onUnflip : null,
+          child: DefaultTabController(
+            length: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Icon(icon, size: 16, color: foreground),
-                SizedBox(width: t.space4),
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: foreground,
-                      fontWeight: FontWeight.w600,
-                      height: 1.15,
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    t.space24,
+                    t.space20,
+                    t.space16,
+                    0,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.word,
+                          style: type.displaySerifStyle.copyWith(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: -0.3,
+                            height: 1.15,
+                            color: cs.onSurface,
+                          ),
+                        ),
+                      ),
+                      PronounceIconButton(
+                        text: item.word,
+                        localeTag: localeTag,
+                        surfaceId: PronounceSurfaceId.flashcard,
+                        compact: true,
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: t.space12),
+                Align(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: cs.outlineVariant.withValues(alpha: 0.45),
+                      ),
+                      borderRadius: BorderRadius.circular(t.radiusFull),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(3),
+                      child: TabBar(
+                        isScrollable: true,
+                        tabAlignment: TabAlignment.center,
+                        dividerColor: Colors.transparent,
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        indicator: BoxDecoration(
+                          color: cs.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(t.radiusFull),
+                        ),
+                        labelColor: cs.onSurface,
+                        unselectedLabelColor: cs.onSurfaceVariant,
+                        labelStyle: Theme.of(context).textTheme.labelSmall
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                        unselectedLabelStyle: Theme.of(
+                          context,
+                        ).textTheme.labelSmall,
+                        labelPadding: EdgeInsets.symmetric(
+                          horizontal: t.space12,
+                        ),
+                        overlayColor: const WidgetStatePropertyAll(
+                          Colors.transparent,
+                        ),
+                        splashFactory: NoSplash.splashFactory,
+                        tabs: [
+                          Tab(height: 28, text: l10n.vocabularyContext),
+                          Tab(height: 28, text: l10n.vocabularyDictionary),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: ScrollbarTheme(
+                    data: ScrollbarThemeData(
+                      thickness: WidgetStateProperty.all(4),
+                      radius: Radius.circular(t.radiusFull),
+                      thumbColor: WidgetStateProperty.all(
+                        cs.onSurfaceVariant.withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: TabBarView(
+                      children: [
+                        _TabBody(
+                          child: FlashcardContextTab(
+                            word: item.word,
+                            primaryContext: primaryContext,
+                            contextualFetchInFlight: contextualFetchInFlight,
+                            clipPlayInFlight: clipPlayInFlight,
+                            contextualError: contextualError,
+                            mediaError: mediaError,
+                            onFetchContextual: onFetchContextual,
+                            onPlayClip: onPlayClip,
+                            onOpenInPlayer: onOpenInPlayer,
+                            onShadowReading: onShadowReading,
+                            contextsCount: contextsCount,
+                            activeContextIndex: activeContextIndex,
+                            onPreviousContext: onPreviousContext,
+                            onNextContext: onNextContext,
+                            actionsEnabled: actionsEnabled,
+                          ),
+                        ),
+                        _TabBody(
+                          child: FlashcardDictionaryTab(
+                            key: ValueKey('dict-${item.id}'),
+                            explanation: item.explanation,
+                            fetchInFlight: dictionaryFetchInFlight,
+                            error: dictionaryError,
+                            onFetch: onFetchDictionary,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

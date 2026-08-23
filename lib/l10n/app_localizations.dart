@@ -5517,6 +5517,18 @@ abstract class AppLocalizations {
   /// **'Tap to flip'**
   String get vocabularyFlipHint;
 
+  /// No description provided for @vocabularyPronounce.
+  ///
+  /// In en, this message translates to:
+  /// **'Pronounce'**
+  String get vocabularyPronounce;
+
+  /// No description provided for @vocabularyFlipHintShortcuts.
+  ///
+  /// In en, this message translates to:
+  /// **'Space to flip · 1 / 2 / 3 to rate'**
+  String get vocabularyFlipHintShortcuts;
+
   /// No description provided for @vocabularyPlaySegment.
   ///
   /// In en, this message translates to:

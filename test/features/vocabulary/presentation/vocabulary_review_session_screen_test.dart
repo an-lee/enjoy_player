@@ -132,6 +132,13 @@ void main() {
 
     // The header should be rendered with an icon button for closing.
     expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+    expect(find.text("Don't Know"), findsNothing);
+
+    await tester.tap(find.text('Tap to flip'));
+    await tester.pumpAndSettle();
+    expect(find.text("Don't Know"), findsOneWidget);
+    expect(find.text('Know'), findsOneWidget);
+    expect(find.text('Know Well'), findsOneWidget);
   });
 
   testWidgets('renders the completed body when session is done', (

@@ -88,13 +88,11 @@ void main() {
           item: _item(),
           primaryContext: _context(),
           flipped: false,
-          ratingInFlight: false,
           dictionaryFetchInFlight: false,
           contextualFetchInFlight: false,
           clipPlayInFlight: false,
           onFlip: () {},
           onUnflip: () {},
-          onRate: (_) {},
           onFetchDictionary: () {},
           onFetchContextual: () {},
           onPlayClip: () {},
@@ -109,7 +107,7 @@ void main() {
     expect(find.text('hello'), findsOneWidget);
   });
 
-  testWidgets('flip back triggers pronounce stop', (tester) async {
+  testWidgets('unflip from back stops pronounce', (tester) async {
     var unflipped = false;
     await tester.pumpWidget(
       wrap(
@@ -117,13 +115,11 @@ void main() {
           item: _item(),
           primaryContext: _context(),
           flipped: true,
-          ratingInFlight: false,
           dictionaryFetchInFlight: false,
           contextualFetchInFlight: false,
           clipPlayInFlight: false,
           onFlip: () {},
           onUnflip: () => unflipped = true,
-          onRate: (_) {},
           onFetchDictionary: () {},
           onFetchContextual: () {},
           onPlayClip: () {},
@@ -136,7 +132,7 @@ void main() {
 
     expect(find.byType(PronounceIconButton), findsOneWidget);
 
-    await tester.tap(find.text('Flip back'));
+    await tester.tap(find.text('hello'));
     await tester.pump();
     expect(unflipped, isTrue);
     expect(playback.stopCount, greaterThan(0));

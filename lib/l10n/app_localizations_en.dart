@@ -2981,6 +2981,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vocabularyFlipHint => 'Tap to flip';
 
   @override
+  String get vocabularyPronounce => 'Pronounce';
+
+  @override
+  String get vocabularyFlipHintShortcuts => 'Space to flip · 1 / 2 / 3 to rate';
+
+  @override
   String get vocabularyPlaySegment => 'Play segment';
 
   @override

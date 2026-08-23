@@ -1515,6 +1515,8 @@
     }
   },
   "vocabularyFlipHint": "Tap to flip",
+  "vocabularyPronounce": "Pronounce",
+  "vocabularyFlipHintShortcuts": "Space to flip · 1 / 2 / 3 to rate",
   "vocabularyPlaySegment": "Play segment",
   "vocabularyOpenInPlayer": "Open in player",
   "vocabularyOpenInPlayerDescription": "Opening the player will end this review session. Your ratings so far are saved.",
