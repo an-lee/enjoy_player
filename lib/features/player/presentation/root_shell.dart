@@ -1,5 +1,7 @@
-/// Application shell: adaptive navigation + page stack + global transport.
+/// Application shell: adaptive navigation + page stack + player-route transport.
 library;
+
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +20,7 @@ import 'package:enjoy_player/features/update/application/update_controller.dart'
 import 'package:enjoy_player/features/vocabulary/application/vocabulary_review_session.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
+import '../application/leave_player_session.dart';
 import '../application/player_controller.dart';
 import 'widgets/app_sidebar.dart';
 import 'widgets/global_transport_bar.dart';
@@ -73,9 +76,9 @@ class _RootShellState extends ConsumerState<RootShell> {
     final l10n = AppLocalizations.of(context)!;
     final path = GoRouterState.of(context).uri.path;
     final onPlayer = path.startsWith('/player/');
-    // Immersive flashcard review: hide shell chrome (sidebar / bottom nav /
-    // mini transport) while `/vocabulary/review` is active — same path-flag
-    // family as `/player/` nav hiding (specs/033-immersive-flashcard-review).
+    // Immersive flashcard review: hide shell chrome (sidebar / bottom nav)
+    // while `/vocabulary/review` is active — same path-flag family as
+    // `/player/` nav hiding (specs/033-immersive-flashcard-review).
     final onReview = path.startsWith('/vocabulary/review');
 
     return OnboardingShowcaseHost(
@@ -129,27 +132,29 @@ class _RootShellState extends ConsumerState<RootShell> {
               /// space via [bottomNavigationBar] instead.
               final playerWithTransport = sessionActive && onPlayer;
 
-              final showMiniTransport =
-                  sessionActive &&
-                  !playerWithTransport &&
-                  !suppressTransportForVocabularyPractice &&
-                  !onReview;
+              if (shouldClearLiveSessionOnRouteChange(
+                onPlayerRoute: onPlayer,
+                hasLiveSession: sessionActive,
+                practiceOwnsVideoStage: suppressTransportForVocabularyPractice,
+              )) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted) return;
+                  unawaited(
+                    clearLivePlaybackSessionIfNeeded(ref, onPlayerRoute: false),
+                  );
+                });
+              }
 
               final pageColumn = Column(
                 children: [
                   Expanded(child: widget.child),
-                  if (showMiniTransport) const GlobalTransportBar(),
                   ?bottomNav,
                 ],
               );
 
-              final bottomClearance =
-                  (showMiniTransport
-                      ? kRootShellTransportSnackClearance
-                      : 0.0) +
-                  (!useSidebar && !onPlayer && !onReview
-                      ? rootShellBottomNavClearance(context)
-                      : 0.0);
+              final bottomClearance = !useSidebar && !onPlayer && !onReview
+                  ? rootShellBottomNavClearance(context)
+                  : 0.0;
 
               Widget mobileShellScaffold() {
                 if (playerWithTransport) {

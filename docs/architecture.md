@@ -99,7 +99,7 @@ Media persists in two sibling tables (`videos` / `audios`), but callers think in
 
 ## Routing
 
-[`GoRouter`](../lib/core/routing/app_router.dart) + [`ShellRoute`](../lib/features/player/presentation/root_shell.dart): routes render beside an extended sidebar at wide breakpoints; [`GlobalTransportBar`](../lib/features/player/presentation/widgets/global_transport_bar.dart) spans the bottom when a playback session exists. An **`errorBuilder`** at the router root renders [`NotFoundScreen`](../lib/core/routing/not_found_screen.dart) (localized en / zh / zh-CN) for unknown locations; the screen surfaces the attempted URI and offers a single primary action to return to `/`.
+[`GoRouter`](../lib/core/routing/app_router.dart) + [`ShellRoute`](../lib/features/player/presentation/root_shell.dart): routes render beside an extended sidebar at wide breakpoints; [`GlobalTransportBar`](../lib/features/player/presentation/widgets/global_transport_bar.dart) is the player-route transport only ([ADR-0082](decisions/0082-home-continue-no-mini-player.md)). An **`errorBuilder`** at the router root renders [`NotFoundScreen`](../lib/core/routing/not_found_screen.dart) (localized en / zh / zh-CN) for unknown locations; the screen surfaces the attempted URI and offers a single primary action to return to `/`.
 
 ### Player surface host (ADR-0057)
 

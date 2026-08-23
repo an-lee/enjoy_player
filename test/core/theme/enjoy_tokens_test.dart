@@ -18,10 +18,10 @@ void main() {
       expect(tokens.space32, 32);
       expect(tokens.space40, 40);
 
-      expect(tokens.radiusSm, 8);
-      expect(tokens.radiusMd, 12);
-      expect(tokens.radiusLg, 16);
-      expect(tokens.radiusXl, 20);
+      expect(tokens.radiusSm, 10);
+      expect(tokens.radiusMd, 14);
+      expect(tokens.radiusLg, 18);
+      expect(tokens.radiusXl, 24);
       expect(tokens.radiusFull, 999);
 
       expect(tokens.elevationNone, 0);
@@ -43,6 +43,13 @@ void main() {
 
       expect(tokens.echoActive, AppColors.echoActive);
       expect(tokens.blurActive, AppColors.blurActive);
+      expect(tokens.scoreGood, AppColors.scoreGood);
+      expect(tokens.scoreWarn, AppColors.scoreWarn);
+      expect(tokens.scoreBad, AppColors.scoreBad);
+      expect(tokens.scoreGoodContainer, AppColors.scoreGoodContainer);
+      expect(tokens.scoreWarnContainer, AppColors.scoreWarnContainer);
+      expect(tokens.scoreBadContainer, AppColors.scoreBadContainer);
+      expect(tokens.accentSoft, AppColors.accentSoft);
       expect(tokens.ccBadge, scheme.primary);
       expect(tokens.contentMaxWidth, 720);
       expect(tokens.formMaxWidth, 680);
@@ -163,6 +170,13 @@ void main() {
         gradientStart: const Color(0xFF222222),
         gradientEnd: const Color(0xFF333333),
         blurActive: const Color(0xFF445566),
+        scoreGood: const Color(0xFF119955),
+        scoreWarn: const Color(0xFF996611),
+        scoreBad: const Color(0xFF991122),
+        scoreGoodContainer: const Color(0x33119955),
+        scoreWarnContainer: const Color(0x33996611),
+        scoreBadContainer: const Color(0x33991122),
+        accentSoft: const Color(0x337B61FF),
         ccBadge: const Color(0xFF778899),
         transcriptLinePadding: const EdgeInsets.all(20),
         space8: 18,
@@ -216,6 +230,13 @@ void main() {
       expect(copy.gradientStart, const Color(0xFF222222));
       expect(copy.gradientEnd, const Color(0xFF333333));
       expect(copy.blurActive, const Color(0xFF445566));
+      expect(copy.scoreGood, const Color(0xFF119955));
+      expect(copy.scoreWarn, const Color(0xFF996611));
+      expect(copy.scoreBad, const Color(0xFF991122));
+      expect(copy.scoreGoodContainer, const Color(0x33119955));
+      expect(copy.scoreWarnContainer, const Color(0x33996611));
+      expect(copy.scoreBadContainer, const Color(0x33991122));
+      expect(copy.accentSoft, const Color(0x337B61FF));
       expect(copy.ccBadge, const Color(0xFF778899));
       expect(copy.transcriptLinePadding, const EdgeInsets.all(20));
       expect(copy.space8, 18);
@@ -281,6 +302,13 @@ void main() {
         motionMedium: const Duration(milliseconds: 440),
         echoActive: const Color(0xFF0000FF),
         blurActive: const Color(0xFF00FF00),
+        scoreGood: const Color(0xFF00EE88),
+        scoreWarn: const Color(0xFFEEAA00),
+        scoreBad: const Color(0xFFEE2233),
+        scoreGoodContainer: const Color(0x4000EE88),
+        scoreWarnContainer: const Color(0x40EEAA00),
+        scoreBadContainer: const Color(0x40EE2233),
+        accentSoft: const Color(0x407B61FF),
         ccBadge: const Color(0xFFFF0000),
         transcriptLinePadding: const EdgeInsets.symmetric(
           horizontal: 32,
@@ -336,10 +364,10 @@ void main() {
       expect(result.space32, 48); // lerp(32, 64, 0.5)
       expect(result.space40, 60); // lerp(40, 80, 0.5)
 
-      expect(result.radiusSm, 12); // lerp(8, 16, 0.5)
-      expect(result.radiusMd, 18); // lerp(12, 24, 0.5)
-      expect(result.radiusLg, 24); // lerp(16, 32, 0.5)
-      expect(result.radiusXl, 30); // lerp(20, 40, 0.5)
+      expect(result.radiusSm, 13); // lerp(10, 16, 0.5)
+      expect(result.radiusMd, 19); // lerp(14, 24, 0.5)
+      expect(result.radiusLg, 25); // lerp(18, 32, 0.5)
+      expect(result.radiusXl, 32); // lerp(24, 40, 0.5)
       expect(result.radiusFull, 1498.5); // lerp(999, 1998, 0.5)
 
       expect(result.elevationNone, 0); // lerp(0, 0, 0.5)
@@ -396,6 +424,22 @@ void main() {
 
       expect(result.echoActive, Color.lerp(a.echoActive, b.echoActive, 0.5));
       expect(result.blurActive, Color.lerp(a.blurActive, b.blurActive, 0.5));
+      expect(result.scoreGood, Color.lerp(a.scoreGood, b.scoreGood, 0.5));
+      expect(result.scoreWarn, Color.lerp(a.scoreWarn, b.scoreWarn, 0.5));
+      expect(result.scoreBad, Color.lerp(a.scoreBad, b.scoreBad, 0.5));
+      expect(
+        result.scoreGoodContainer,
+        Color.lerp(a.scoreGoodContainer, b.scoreGoodContainer, 0.5),
+      );
+      expect(
+        result.scoreWarnContainer,
+        Color.lerp(a.scoreWarnContainer, b.scoreWarnContainer, 0.5),
+      );
+      expect(
+        result.scoreBadContainer,
+        Color.lerp(a.scoreBadContainer, b.scoreBadContainer, 0.5),
+      );
+      expect(result.accentSoft, Color.lerp(a.accentSoft, b.accentSoft, 0.5));
       expect(result.ccBadge, Color.lerp(a.ccBadge, b.ccBadge, 0.5));
       expect(result.glassTint, Color.lerp(a.glassTint, b.glassTint, 0.5));
       expect(result.glassBorder, Color.lerp(a.glassBorder, b.glassBorder, 0.5));
@@ -431,7 +475,7 @@ void main() {
 
       expect(result.space4, 5); // lerp(4, 8, 0.25) = 5
       expect(result.space40, 50); // lerp(40, 80, 0.25) = 50
-      expect(result.radiusSm, 10); // lerp(8, 16, 0.25) = 10
+      expect(result.radiusSm, 11.5); // lerp(10, 16, 0.25) = 11.5
       expect(result.focusRingWidth, 2.5); // lerp(2, 4, 0.25) = 2.5
     });
   });

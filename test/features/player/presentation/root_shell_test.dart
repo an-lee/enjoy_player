@@ -75,10 +75,16 @@ class _NullPlayerController extends PlayerController {
 class _SessionPlayerController extends PlayerController {
   _SessionPlayerController(this._session);
 
-  final PlaybackSession _session;
+  PlaybackSession? _session;
 
   @override
   PlaybackSession? build() => _session;
+
+  @override
+  Future<void> clear({bool keepVideoSurface = false}) async {
+    _session = null;
+    state = null;
+  }
 }
 
 class _BlurModeOff extends TranscriptBlurMode {
@@ -493,6 +499,43 @@ void main() {
       expect(find.byIcon(Icons.person_outlined), findsWidgets);
     });
 
+    testWidgets('shows transport on /player/ with an active session', (
+      tester,
+    ) async {
+      final router = _router(initial: '/player/$_kShellMediaId');
+      await _pump(
+        tester,
+        router: router,
+        overrides: _shellOverrides(
+          db,
+          playerSession: _shellSession(),
+          playerEngine: fakeEngine,
+        ),
+        surface: const Size(400, 900),
+      );
+
+      expect(find.text('player-page'), findsOneWidget);
+      expect(find.byType(GlobalTransportBar), findsOneWidget);
+    });
+
+    testWidgets('does not show mini transport on / even with a session', (
+      tester,
+    ) async {
+      final router = _router(initial: '/');
+      await _pump(
+        tester,
+        router: router,
+        overrides: _shellOverrides(
+          db,
+          playerSession: _shellSession(),
+          playerEngine: fakeEngine,
+        ),
+        surface: const Size(400, 900),
+      );
+      await tester.pump();
+      expect(find.byType(GlobalTransportBar), findsNothing);
+    });
+
     testWidgets('does not show mini transport bar when no player session', (
       tester,
     ) async {
@@ -504,7 +547,6 @@ void main() {
         surface: const Size(400, 900),
       );
 
-      // GlobalTransportBar is suppressed when there is no active session.
       expect(find.byIcon(Icons.play_arrow_rounded), findsNothing);
       expect(find.byIcon(Icons.mic_none_rounded), findsNothing);
     });
@@ -523,10 +565,10 @@ void main() {
     });
   });
 
-  // Chrome matrix: specs/033-immersive-flashcard-review/contracts/immersive-review-shell.md
-  // - /vocabulary/review → hide sidebar, bottom nav, mini transport
-  // - /vocabulary (hub) → normal chrome; mini transport when session active
-  // - leave review → chrome restored (path-derived)
+  // Chrome matrix: specs/033-immersive-flashcard-review
+  // - /vocabulary/review → hide sidebar, bottom nav, transport
+  // - /vocabulary (hub) → normal chrome; no mini transport
+  // - leave review → nav chrome restored (path-derived); still no mini bar
   // - resize while on review → chrome stays hidden
   group('RootShell immersive vocabulary review', () {
     testWidgets('hides AppSidebar on /vocabulary/review (wide)', (
@@ -582,25 +624,25 @@ void main() {
       },
     );
 
-    testWidgets('shows mini transport on /vocabulary hub with active session', (
-      tester,
-    ) async {
-      final router = _router(initial: '/vocabulary');
-      await _pump(
-        tester,
-        router: router,
-        overrides: _shellOverrides(
-          db,
-          playerSession: _shellSession(),
-          playerEngine: fakeEngine,
-        ),
-        surface: const Size(1100, 900),
-      );
+    testWidgets(
+      'does not show mini transport on /vocabulary hub with session',
+      (tester) async {
+        final router = _router(initial: '/vocabulary');
+        await _pump(
+          tester,
+          router: router,
+          overrides: _shellOverrides(
+            db,
+            playerSession: _shellSession(),
+            playerEngine: fakeEngine,
+          ),
+          surface: const Size(1100, 900),
+        );
 
-      expect(find.text('vocabulary-page'), findsOneWidget);
-      expect(find.byType(GlobalTransportBar), findsOneWidget);
-      expect(find.byIcon(Icons.play_arrow_rounded), findsOneWidget);
-    });
+        expect(find.text('vocabulary-page'), findsOneWidget);
+        expect(find.byType(GlobalTransportBar), findsNothing);
+      },
+    );
 
     testWidgets('restores sidebar after leaving /vocabulary/review (wide)', (
       tester,
@@ -624,7 +666,7 @@ void main() {
     });
 
     testWidgets(
-      'restores mini transport after leaving review with active session',
+      'does not restore mini transport after leaving review with a session',
       (tester) async {
         final router = _router(initial: '/vocabulary/review');
         await _pump(
@@ -645,8 +687,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 50));
 
         expect(find.text('library-page'), findsOneWidget);
-        expect(find.byType(GlobalTransportBar), findsOneWidget);
-        expect(find.byIcon(Icons.play_arrow_rounded), findsOneWidget);
+        expect(find.byType(GlobalTransportBar), findsNothing);
       },
     );
 

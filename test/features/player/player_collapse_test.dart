@@ -1,6 +1,9 @@
 import 'package:enjoy_player/core/window/window_fullscreen_provider.dart';
 import 'package:enjoy_player/features/player/application/player_collapse.dart';
+import 'package:enjoy_player/features/player/application/player_controller.dart';
 import 'package:enjoy_player/features/player/application/player_ui_provider.dart';
+import 'package:enjoy_player/features/player/domain/playback_session.dart';
+import 'package:enjoy_player/features/vocabulary/application/vocabulary_review_session.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -19,11 +22,49 @@ class _RecordingFullscreen extends WindowFullscreen {
   }
 }
 
+PlaybackSession _session() {
+  final now = DateTime.utc(2026, 1, 1);
+  return PlaybackSession(
+    mediaId: 'test-media',
+    dexieTargetType: 'Audio',
+    mediaType: 'audio',
+    mediaTitle: 't',
+    durationSeconds: 10,
+    currentTimeSeconds: 1,
+    currentSegmentIndex: 0,
+    language: 'en',
+    startedAt: now,
+    lastActiveAt: now,
+  );
+}
+
+class _SessionPlayerController extends PlayerController {
+  _SessionPlayerController(this._session);
+  PlaybackSession? _session;
+
+  @override
+  PlaybackSession? build() => _session;
+
+  @override
+  Future<void> clear({bool keepVideoSurface = false}) async {
+    _session = null;
+    state = null;
+  }
+
+  @override
+  void abandonPendingOpen() {}
+}
+
+class _EmptyVocabSession extends VocabularyReviewSession {
+  @override
+  ReviewSessionState build() => const ReviewSessionState(queue: []);
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(
-    'collapseExpandedPlayer exits fullscreen, collapses UI, pops route',
+    'collapseExpandedPlayer exits fullscreen, clears session, pops route',
     (tester) async {
       final fullscreen = _RecordingFullscreen();
       late ProviderContainer container;
@@ -65,7 +106,15 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [windowFullscreenProvider.overrideWith(() => fullscreen)],
+          overrides: [
+            windowFullscreenProvider.overrideWith(() => fullscreen),
+            playerControllerProvider.overrideWith(
+              () => _SessionPlayerController(_session()),
+            ),
+            vocabularyReviewSessionProvider.overrideWith(
+              _EmptyVocabSession.new,
+            ),
+          ],
           child: MaterialApp.router(routerConfig: router),
         ),
       );
@@ -77,12 +126,14 @@ void main() {
 
       container.read(playerUiProvider.notifier).expand();
       expect(container.read(playerUiProvider).mode, PlayerChromeMode.expanded);
+      expect(container.read(playerControllerProvider), isNotNull);
 
       await tester.tap(find.text('collapse'));
       await tester.pumpAndSettle();
 
       expect(fullscreen.setFullscreenCalled, isTrue);
       expect(container.read(playerUiProvider).mode, PlayerChromeMode.mini);
+      expect(container.read(playerControllerProvider), isNull);
       expect(router.state.uri.path, '/');
     },
   );

@@ -1,4 +1,4 @@
-/// Home: editorial header + hero last-played card + recent media grid.
+/// Home: editorial header + Continue practicing hero + recent media grid.
 library;
 
 import 'package:flutter/material.dart';
@@ -6,7 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:go_router/go_router.dart';
 
+import 'package:enjoy_player/core/application/app_preferences_provider.dart';
 import 'package:enjoy_player/core/presentation/language_labels.dart';
+import 'package:enjoy_player/core/riverpod/async_value_x.dart';
 import 'package:enjoy_player/core/routing/player_navigation.dart';
 import 'package:enjoy_player/core/utils/sliver_key_index.dart';
 import 'package:enjoy_player/core/theme/generative_media_cover.dart';
@@ -27,13 +29,14 @@ import 'package:enjoy_player/features/onboarding/application/onboarding_controll
 import 'package:enjoy_player/features/onboarding/domain/onboarding_tip_id.dart';
 import 'package:enjoy_player/features/onboarding/domain/tip_eligibility.dart';
 import 'package:enjoy_player/features/onboarding/presentation/onboarding_target.dart';
-import 'package:enjoy_player/features/player/application/player_controller.dart';
 import 'package:enjoy_player/features/player/application/youtube_warm.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
+import '../application/home_continue_practice_provider.dart';
 import '../application/library_media_provider.dart';
 import '../domain/media.dart';
 import 'library_actions.dart';
+import 'widgets/continue_practice_card.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -62,6 +65,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final mediaAsync = ref.watch(libraryHomeRecentsProvider);
+    final continueResume = ref.watch(homeContinuePracticeProvider);
+    final nativeLanguage = ref
+        .watch(appPreferencesCtrlProvider)
+        .valueOrNull
+        ?.effectiveNativeLanguage;
     final l10n = AppLocalizations.of(context)!;
     final t = EnjoyThemeTokens.of(context);
 
@@ -89,6 +97,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 // replaced by the empty state, so returning users still
                 // see their streak/community progress on a fresh library.
                 const SliverToBoxAdapter(child: _HomeInsightCards()),
+
+                if (continueResume != null) ...[
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(gutter, 0, gutter, t.space12),
+                    sliver: SliverToBoxAdapter(
+                      child: Text(
+                        l10n.homeContinuePracticing,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w500,
+                            ),
+                      ),
+                    ),
+                  ),
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(gutter, 0, gutter, t.space24),
+                    sliver: SliverToBoxAdapter(
+                      child: ContinuePracticeCard(
+                        resume: continueResume,
+                        nativeLanguage: nativeLanguage,
+                      ),
+                    ),
+                  ),
+                ],
 
                 if (recent.isEmpty)
                   SliverFillRemaining(
@@ -465,9 +500,6 @@ class _HomeMediaTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
-    final playingId = ref.watch(
-      playerControllerProvider.select((s) => s?.mediaId),
-    );
     final isVideo = media.kind == MediaKind.video;
     final thumb = localThumbnailFileForMedia(media);
     final netThumb = networkThumbnailForMedia(media);
@@ -503,7 +535,7 @@ class _HomeMediaTile extends ConsumerWidget {
       coverSeed: media.coverSeed,
       isVideo: isVideo,
       accentColor: accent,
-      heroArtworkMediaId: playingId == media.id ? null : media.id,
+      heroArtworkMediaId: media.id,
       deleteTooltip: l10n.libraryDeleteMediaTooltip,
       onDelete: () => confirmAndDeleteMedia(context, ref, media),
       onTap: () {

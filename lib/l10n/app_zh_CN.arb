@@ -11,6 +11,19 @@
   "homeTitle": "首页",
   "homeRecentMedia": "最近媒体",
   "homeEmptyTitle": "暂无最近媒体",
+  "homeContinuePracticing": "继续练习",
+  "homeContinueProgressSemantics": "已完成 {percent}%",
+  "@homeContinueProgressSemantics": {
+    "placeholders": {
+      "percent": {"type": "int"}
+    }
+  },
+  "homeContinueOpenSemantics": "继续练习，{title}",
+  "@homeContinueOpenSemantics": {
+    "placeholders": {
+      "title": {"type": "String"}
+    }
+  },
   "homeEmptyHint": "导入媒体或将文件拖放到此处开始。",
   "libraryTabAudio": "音频",
   "libraryTabVideo": "视频",
@@ -145,8 +158,6 @@
   "transportExitFullscreen": "退出全屏",
   "transportMore": "更多",
   "transportCollapse": "收起播放器",
-  "transportExpand": "展开播放器",
-  "transportDismissPlayer": "关闭播放器",
   "settingsTitle": "设置",
   "importMedia": "导入媒体",
   "importingMedia": "正在导入媒体…",
@@ -180,7 +191,6 @@
   "importSubtitle": "导入字幕",
   "noTranscript": "暂无字幕稿",
   "importSrtOrVtt": "导入 .srt 或 .vtt 文件",
-  "miniPlayerOpen": "打开播放器",
   "loading": "加载中…",
   "error": "错误",
   "playerOpenGenericError": "无法打开此项目。",

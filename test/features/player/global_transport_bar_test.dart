@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:drift/native.dart';
-import 'package:enjoy_player/core/interaction/enjoy_tappable.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
 import 'package:enjoy_player/data/db/app_database_provider.dart';
@@ -11,7 +10,6 @@ import 'package:enjoy_player/features/player/application/player_engine_test_doub
 import 'package:enjoy_player/features/player/application/player_state_providers.dart';
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
 import 'package:enjoy_player/features/player/presentation/widgets/global_transport_bar.dart';
-import 'package:enjoy_player/features/player/presentation/widgets/transport/transport_progress_strip.dart';
 import 'package:enjoy_player/features/transcript/application/all_transcripts_provider.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_blur_mode_provider.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_fetch_controller.dart';
@@ -212,45 +210,6 @@ GoRouter _playerRouter() {
   );
 }
 
-GoRouter _libraryRouter() {
-  return GoRouter(
-    initialLocation: '/library',
-    routes: [
-      GoRoute(
-        path: '/library',
-        builder: (_, _) => const Scaffold(
-          bottomNavigationBar: GlobalTransportBar(),
-          body: SizedBox.shrink(),
-        ),
-      ),
-    ],
-  );
-}
-
-/// Router with both shell and player routes so tap-to-expand navigation can be
-/// observed via the body marker text.
-GoRouter _expandableRouter() {
-  return GoRouter(
-    initialLocation: '/library',
-    routes: [
-      GoRoute(
-        path: '/library',
-        builder: (_, _) => const Scaffold(
-          bottomNavigationBar: GlobalTransportBar(),
-          body: Center(child: Text('library-route')),
-        ),
-      ),
-      GoRoute(
-        path: '/player/:mediaId',
-        builder: (_, _) => const Scaffold(
-          bottomNavigationBar: GlobalTransportBar(),
-          body: Center(child: Text('player-route')),
-        ),
-      ),
-    ],
-  );
-}
-
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -318,27 +277,13 @@ void main() {
       }
       expect(find.byIcon(Icons.replay_rounded), findsNothing);
     });
-
-    testWidgets('mini at 320px renders all five always-on controls', (
-      tester,
-    ) async {
-      await pumpTransport(tester, router: _libraryRouter(), width: 320);
-
-      for (final icon in alwaysOnIcons) {
-        expect(find.byIcon(icon), findsOneWidget, reason: '$icon visible');
-      }
-    });
   });
 
   group('GlobalTransportBar narrow drop sequence (US2)', () {
-    // Inner width = device width - 2 * space12 (24). Budget thresholds:
-    //   volume alone  -> 274 <= inner < 318
-    //   volume + next -> 318 <= inner < 362
-    //   + previous    -> 362 <= inner < 402
-    testWidgets('mini at 320px drops previous and next, keeps volume', (
+    testWidgets('player at 320px drops previous and next, keeps volume', (
       tester,
     ) async {
-      await pumpTransport(tester, router: _libraryRouter(), width: 320);
+      await pumpTransport(tester, router: _playerRouter(), width: 320);
 
       expect(find.byIcon(Icons.skip_previous_rounded), findsNothing);
       expect(find.byIcon(Icons.skip_next_rounded), findsNothing);
@@ -352,99 +297,25 @@ void main() {
       expect(find.byIcon(Icons.skip_next_rounded), findsOneWidget);
     });
 
-    testWidgets('mini at 430px keeps previous and next', (tester) async {
-      await pumpTransport(tester, router: _libraryRouter(), width: 430);
+    testWidgets('player at 430px keeps previous and next', (tester) async {
+      await pumpTransport(tester, router: _playerRouter(), width: 430);
 
       expect(find.byIcon(Icons.skip_previous_rounded), findsOneWidget);
       expect(find.byIcon(Icons.skip_next_rounded), findsOneWidget);
     });
   });
 
-  group('GlobalTransportBar collapsed expand (US3)', () {
-    testWidgets('tapping neutral area expands mini at 320px', (tester) async {
-      await pumpTransport(tester, router: _expandableRouter(), width: 320);
-
-      // Expand icon is dropped at this width; only the tap zone can expand.
-      expect(find.byIcon(Icons.open_in_full_rounded), findsNothing);
-      expect(find.text('library-route'), findsOneWidget);
-
-      final spacer = find.descendant(
-        of: find.byType(EnjoyTappableSurface),
-        matching: find.byType(Spacer),
-      );
-      // The Spacer is empty space by design — its hit target is the parent
-      // EnjoyTappableSurface, not itself — so silence the "would not hit test"
-      // warning. Tapping here targets the neutral expand zone between the play
-      // cluster and the trailing controls.
-      await tester.tap(spacer, warnIfMissed: false);
-      await tester.pumpAndSettle();
-
-      expect(find.text('player-route'), findsOneWidget);
-    });
-
-    testWidgets('tapping play does not expand', (tester) async {
-      await pumpTransport(tester, router: _expandableRouter(), width: 320);
-
-      await tester.tap(find.byIcon(Icons.play_arrow_rounded));
-      await tester.pumpAndSettle();
-
-      expect(find.text('library-route'), findsOneWidget);
-      expect(find.text('player-route'), findsNothing);
-    });
-
-    testWidgets('tapping a secondary control does not expand', (tester) async {
-      await pumpTransport(tester, router: _expandableRouter(), width: 320);
-
-      await tester.tap(find.byIcon(Icons.mic_none_rounded));
-      await tester.pumpAndSettle();
-
-      expect(find.text('library-route'), findsOneWidget);
-      expect(find.text('player-route'), findsNothing);
-    });
-
-    testWidgets('tapping the seek strip does not expand', (tester) async {
-      await pumpTransport(tester, router: _expandableRouter(), width: 320);
-
-      await tester.tap(find.byType(TransportProgressStrip));
-      await tester.pumpAndSettle();
-
-      expect(find.text('library-route'), findsOneWidget);
-      expect(find.text('player-route'), findsNothing);
-    });
-
-    testWidgets('expand affordance is absent on the player route', (
+  group('GlobalTransportBar wide player chrome', () {
+    testWidgets('wide player renders line nav and practice controls', (
       tester,
     ) async {
-      await pumpTransport(tester, router: _playerRouter(), width: 320);
+      await pumpTransport(tester, router: _playerRouter(), width: 800);
 
-      // Already expanded -> no tap surface wrapping the controls row.
-      expect(find.byType(EnjoyTappableSurface), findsNothing);
-    });
-  });
-
-  group('GlobalTransportBar no-regression wide + affordance (US4)', () {
-    testWidgets('wide mini renders full control set and meta-row expands', (
-      tester,
-    ) async {
-      await pumpTransport(tester, router: _expandableRouter(), width: 800);
-
-      // Full set present in wide layout.
       expect(find.byIcon(Icons.skip_previous_rounded), findsOneWidget);
       expect(find.byIcon(Icons.skip_next_rounded), findsOneWidget);
       expect(find.byIcon(Icons.mic_none_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.open_in_full_rounded), findsOneWidget);
-
-      // Meta-row tap target still opens the player (no regression).
-      await tester.tap(find.text('Transport test'));
-      await tester.pumpAndSettle();
-      expect(find.text('player-route'), findsOneWidget);
-    });
-
-    testWidgets('collapsed narrow exposes the expand affordance surface', (
-      tester,
-    ) async {
-      await pumpTransport(tester, router: _libraryRouter(), width: 320);
-      expect(find.byType(EnjoyTappableSurface), findsOneWidget);
+      expect(find.byIcon(Icons.open_in_full_rounded), findsNothing);
+      expect(find.text('Transport test'), findsOneWidget);
     });
   });
 

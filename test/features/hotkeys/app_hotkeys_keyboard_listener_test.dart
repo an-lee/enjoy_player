@@ -262,9 +262,18 @@ class _FakePlayerController extends PlayerController {
     state = next;
   }
 
+  var clearCalls = 0;
+
   @override
   Future<void> togglePlay() async {
     togglePlayCalls++;
+  }
+
+  @override
+  Future<void> clear({bool keepVideoSurface = false}) async {
+    clearCalls++;
+    sessionOverride = null;
+    state = null;
   }
 
   @override
@@ -1053,6 +1062,21 @@ void main() {
       // remains visible.
       expect(find.text('expanded-overlay'), findsNothing);
       expect(find.text('player'), findsOneWidget);
+    });
+
+    testWidgets('off player without session is a no-op', (tester) async {
+      final harness = await _mountHarness(tester);
+      expect(harness.router.state.uri.path, '/library');
+      await _stroke(
+        tester,
+        [LogicalKeyboardKey.controlLeft, LogicalKeyboardKey.shiftLeft],
+        LogicalKeyboardKey.keyP,
+        character: 'p',
+      );
+      await tester.pumpAndSettle();
+      expect(harness.router.state.uri.path, '/library');
+      expect(harness.playerUi.collapseCalls, 0);
+      expect(harness.playerCtrl.togglePlayCalls, 0);
     });
 
     testWidgets('off player route → openPlayerRoute handler returns true '
