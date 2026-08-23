@@ -6,7 +6,12 @@ import 'package:enjoy_player/core/utils/avatar_url.dart';
 
 enum SubscriptionTier { free, lite, pro }
 
-SubscriptionTier? _subscriptionTierFromJson(Object? value) {
+/// Decode the `subscriptionTier` JSON value into a [SubscriptionTier].
+///
+/// Free by default when the value is unknown, missing, or null. Mirrors the
+/// case-insensitive server contract used by both `GET /api/v1/profile` and
+/// `GET /api/v1/subscriptions`.
+SubscriptionTier? subscriptionTierFromJson(Object? value) {
   if (value == null) return null;
   final s = value.toString().toLowerCase();
   if (s == 'pro') return SubscriptionTier.pro;
@@ -24,7 +29,7 @@ class UserProfile {
       balance: _doubleFromJson(json['balance']),
       hasMixin: json['hasMixin'] as bool?,
       mixinId: json['mixinId']?.toString(),
-      subscriptionTier: _subscriptionTierFromJson(json['subscriptionTier']),
+      subscriptionTier: subscriptionTierFromJson(json['subscriptionTier']),
       subscriptionExpireDate: json['subscriptionExpireDate'] as String?,
       locale: json['locale'] as String?,
       learningLanguage: json['learningLanguage'] as String?,
