@@ -3099,6 +3099,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsSectionNeedsAttention => '需要注意';
 
   @override
+  String get transcriptBlurDisplayTitle => '隐藏字幕文本';
+
+  @override
   String get transcriptBlurToggleTooltip =>
       'Blur practice (focus on listening)';
 
@@ -6381,6 +6384,9 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get settingsSectionNeedsAttention => '需要注意';
+
+  @override
+  String get transcriptBlurDisplayTitle => '隐藏字幕文本';
 
   @override
   String get transcriptBlurToggleTooltip => '听写练习（专注听力）';

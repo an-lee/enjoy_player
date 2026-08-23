@@ -423,6 +423,7 @@
   "@settingsTranscriptIpaOverlaySubtitle": {
     "description": "Settings switch subtitle explaining stored IPA overlay."
   },
+  "transcriptBlurDisplayTitle": "隐藏字幕文本",
   "transcriptDisplaySettingsTitle": "字幕显示",
   "@transcriptDisplaySettingsTitle": {
     "description": "Section title for karaoke and IPA toggles in the subtitle track picker."

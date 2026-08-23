@@ -52,10 +52,11 @@ const double kNarrowLineNavGap = 4;
 
 /// Which controls fit in the narrow single-row transport bar.
 ///
-/// Play/pause, echo, blur, subtitle (cc), and speed are always-on (never
-/// subject to width pressure); only line navigation, volume, fullscreen, and
-/// the expand icon are droppable. Previous and next are independent so that
-/// previous can hide before next as width shrinks.
+/// Play/pause, echo, subtitle (cc), and speed are always-on (never subject to
+/// width pressure). Blur/hide lives in the CC sheet on narrow layouts, so
+/// [showBlur] is always false here. Only line navigation, volume, fullscreen,
+/// and the expand icon are droppable. Previous and next are independent so
+/// that previous can hide before next as width shrinks.
 class NarrowTransportBudget {
   const NarrowTransportBudget({
     required this.showPrevious,
@@ -80,24 +81,24 @@ class NarrowTransportBudget {
 
 /// Resolves which controls fit in the narrow single-row transport bar.
 ///
-/// The five practice controls — echo, blur, subtitle (cc), speed — plus the
+/// The four practice controls — echo, subtitle (cc), speed — plus the
 /// play/pause ring are ALWAYS shown; their combined cost is reserved first so
-/// the always-on invariant holds at every supported width. Only line
-/// navigation, volume, and fullscreen are droppable, packed greedily in
-/// strict priority order (highest priority first). As width shrinks, controls
-/// drop in this order: previous → next → volume → fullscreen.
+/// the always-on invariant holds at every supported width. Blur is omitted
+/// (CC sheet). Only line navigation, volume, and fullscreen are droppable,
+/// packed greedily in strict priority order (highest priority first). As
+/// width shrinks, controls drop in this order: previous → next → volume →
+/// fullscreen.
 NarrowTransportBudget resolveNarrowTransportBudget(
   double maxWidth, {
   required bool hasTranscriptLines,
   required bool showFullscreenTransport,
 }) {
-  // Always-on baseline: play ring + layout slack + echo + blur + cc + speed.
+  // Always-on baseline: play ring + layout slack + echo + cc + speed.
   // These never drop, so their cost is reserved first (always-on invariant).
   const alwaysOnCost =
       kNarrowPlayRingWidth +
       kNarrowLayoutSlack +
       kNarrowIconSlotWidth + // echo
-      kNarrowIconSlotWidth + // blur
       kNarrowIconSlotWidth + // cc
       (kNarrowIconSlotWidth + kNarrowSpeedSlotExtra); // speed
 
@@ -130,7 +131,7 @@ NarrowTransportBudget resolveNarrowTransportBudget(
     showPrevious: showPrevious,
     showNext: showNext,
     showEcho: true,
-    showBlur: true,
+    showBlur: false,
     showCc: true,
     showSpeed: true,
     showVolume: showVolume,
@@ -618,9 +619,23 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
       ),
     );
 
-    return GlassSurface(
-      padding: EdgeInsets.zero,
-      child: Material(color: Colors.transparent, child: inner),
+    final radius = t.radiusXl;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radius),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.40),
+            blurRadius: 28,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: GlassSurface(
+        borderRadius: radius,
+        padding: EdgeInsets.zero,
+        child: Material(color: Colors.transparent, child: inner),
+      ),
     );
   }
 }

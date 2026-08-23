@@ -122,8 +122,8 @@ Interface notes:
 
 ## Blur practice (listening-focus) mode
 
-A "Blur practice" toggle in the bottom transport bar (next to the Echo
-button) renders every transcript cue body text with a CSS-style
+A "Blur practice" toggle in the CC subtitle sheet (and on the wide
+transport bar next to Echo) renders every transcript cue body text with a CSS-style
 `ImageFilter.blur` filter so the user can practice listening first and
 then peek at the text to check themselves. Like echo, blur is a
 **per-media player practice mode** (not a Settings preference). The
@@ -141,12 +141,15 @@ mode is deliberately hearing-focused:
 
 ### Toggle, hover, and tap-reveal
 
-- The **toggle** lives in the bottom transport bar's secondary tool
-  cluster, immediately after the Echo button
+- The **toggle** lives in the CC subtitle sheet's display card
+  ([`transcript_display_settings_sheet.dart`](../../lib/features/transcript/presentation/transcript_display_settings_sheet.dart))
+  on every layout, and also on the wide/desktop transport bar next to Echo
   ([`global_transport_bar.dart`](../../lib/features/player/presentation/widgets/global_transport_bar.dart)).
-  It mirrors the Echo button styling (active state tinted with the
-  `blurActive` token) and carries a hotkey hint in its tooltip. The
-  `H` key toggles it via `PlayerInteractions.toggleBlur()`.
+  Narrow (≤720px) transport omits the blur icon so the bar stays
+  play / echo / cc / speed. The bar button (when shown) mirrors Echo
+  styling (active state tinted with the `blurActive` token) and carries
+  a hotkey hint in its tooltip. The `H` key toggles it via
+  `PlayerInteractions.toggleBlur()`.
 - On macOS and Windows, **hovering a cue unblurs it**; pointer-out
   re-blurs it within one frame. The hover state is owned by the tile
   widget itself so per-frame hover changes do not invalidate unrelated
@@ -218,8 +221,11 @@ Coverage lives under
 - `transcript_blur_session_persist_test.dart` — `blur_active` written
   via `PlaybackSessionPersister.writeNow` and restored.
 - `global_transport_bar_test.dart` — the blur toggle's off/on icon
-  states, disabled state when there are no transcript lines, and that
-  a tap flips `transcriptBlurModeProvider`.
+  states on **wide** transport, disabled state when there are no
+  transcript lines, that a tap flips `transcriptBlurModeProvider`, and
+  that narrow transport omits the blur icon.
+- `transcript_display_gating_test.dart` / `subtitle_track_picker_sheet_test.dart`
+  — CC display card includes the hide-transcript (blur) switch.
 - `transcript_blur_hover_test.dart` — pointer-enter reveals;
   pointer-out re-blurs; toggle-off bypass.
 - `transcript_blur_selectable_reveal_test.dart` — the active / echo

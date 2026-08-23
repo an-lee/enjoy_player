@@ -159,15 +159,25 @@ class _RootShellState extends ConsumerState<RootShell> {
               Widget mobileShellScaffold() {
                 if (playerWithTransport) {
                   return Scaffold(
+                    backgroundColor: Colors.transparent,
                     body: SafeArea(
                       bottom: false,
                       child: SizedBox.expand(child: widget.child),
                     ),
-                    bottomNavigationBar: const SafeArea(
-                      top: false,
-                      left: false,
-                      right: false,
-                      child: GlobalTransportBar(),
+                    bottomNavigationBar: Material(
+                      type: MaterialType.transparency,
+                      child: SafeArea(
+                        top: false,
+                        left: false,
+                        right: false,
+                        minimum: EdgeInsets.fromLTRB(
+                          tokens.space16,
+                          tokens.space4,
+                          tokens.space16,
+                          tokens.space12,
+                        ),
+                        child: const GlobalTransportBar(),
+                      ),
                     ),
                   );
                 }

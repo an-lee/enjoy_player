@@ -256,18 +256,18 @@ void main() {
     expect(tester.takeException(), isNull);
   }
 
-  // The always-on five controls (play, echo, blur, subtitle/cc, speed) must
+  // The always-on four controls (play, echo, subtitle/cc, speed) must
   // be visible at the narrowest width on both routes — never clipped.
+  // Blur/hide lives in the CC sheet on narrow layouts.
   const alwaysOnIcons = <IconData>[
     Icons.play_arrow_rounded, // play (not playing by default)
     Icons.mic_none_rounded, // echo
-    Icons.visibility_outlined, // blur (off by default)
     Icons.closed_caption_outlined, // subtitle/cc
     Icons.speed_rounded, // speed
   ];
 
   group('GlobalTransportBar narrow always-on controls (US1)', () {
-    testWidgets('player at 320px renders all five always-on controls', (
+    testWidgets('player at 320px renders all four always-on controls', (
       tester,
     ) async {
       await pumpTransport(tester, router: _playerRouter(), width: 320);
@@ -276,24 +276,25 @@ void main() {
         expect(find.byIcon(icon), findsOneWidget, reason: '$icon visible');
       }
       expect(find.byIcon(Icons.replay_rounded), findsNothing);
+      expect(find.byIcon(Icons.visibility_outlined), findsNothing);
     });
   });
 
   group('GlobalTransportBar narrow drop sequence (US2)', () {
-    testWidgets('player at 320px drops previous and next, keeps volume', (
+    testWidgets('player at 320px drops previous, keeps next and volume', (
       tester,
     ) async {
       await pumpTransport(tester, router: _playerRouter(), width: 320);
 
       expect(find.byIcon(Icons.skip_previous_rounded), findsNothing);
-      expect(find.byIcon(Icons.skip_next_rounded), findsNothing);
+      expect(find.byIcon(Icons.skip_next_rounded), findsOneWidget);
       expect(find.byIcon(Icons.volume_up_rounded), findsOneWidget);
     });
 
-    testWidgets('player at 375px drops previous, keeps next', (tester) async {
+    testWidgets('player at 375px keeps previous and next', (tester) async {
       await pumpTransport(tester, router: _playerRouter(), width: 375);
 
-      expect(find.byIcon(Icons.skip_previous_rounded), findsNothing);
+      expect(find.byIcon(Icons.skip_previous_rounded), findsOneWidget);
       expect(find.byIcon(Icons.skip_next_rounded), findsOneWidget);
     });
 

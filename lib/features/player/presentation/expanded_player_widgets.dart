@@ -18,6 +18,7 @@ import 'package:enjoy_player/l10n/app_localizations.dart';
 
 import 'package:enjoy_player/features/player/application/player_surface_registry.dart';
 import 'package:enjoy_player/features/player/application/youtube_open_preview_provider.dart';
+import 'package:enjoy_player/features/player/presentation/widgets/player_frosted_back_button.dart';
 import 'package:enjoy_player/features/player/presentation/widgets/player_surface_target.dart';
 import 'package:enjoy_player/features/player/presentation/widgets/youtube_loading_video_stage.dart';
 
@@ -192,14 +193,11 @@ class _VideoCollapseOnlyOverlay extends ConsumerWidget {
       height: kToolbarHeight,
       child: Align(
         alignment: Alignment.centerLeft,
-        child: IconButton(
-          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-          icon: Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: Theme.of(context).colorScheme.onSurface,
-            size: 28,
+        child: Padding(
+          padding: const EdgeInsets.only(left: 8),
+          child: PlayerFrostedBackButton(
+            onPressed: () => unawaited(collapseExpandedPlayer(ref, context)),
           ),
-          onPressed: () => unawaited(collapseExpandedPlayer(ref, context)),
         ),
       ),
     );
