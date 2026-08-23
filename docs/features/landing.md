@@ -8,15 +8,15 @@ The download landing page is a **hand-authored static site** in [`landing/`](../
 
 | Path | Role |
 |------|------|
-| `landing/index.html` | Single page: hero, feature blurbs, five platform cards (`card-windows`, `card-macos`, `card-android`, `card-ios`, `card-linux`), FAQ, footer. All copy carries `data-i18n` keys. |
-| `landing/styles.css` | All styling; dark theme, gradient "recommended" highlight, `overflow-x: clip` on `<html>` to prevent horizontal scroll from decorative bleed. |
+| `landing/index.html` | Single page: navigation, hero, app showcase, feature bento grid, why section, pricing offers, five platform cards (`card-windows`, `card-macos`, `card-android`, `card-ios`, `card-linux`), closing CTA, and footer. All copy carries `data-i18n` keys. |
+| `landing/styles.css` | All styling; dark editorial theme, responsive sections, gradient "recommended" highlights for the Lite pricing offer and detected platform, `overflow-x: clip` on `<html>` to prevent horizontal scroll from decorative bleed. |
 | `landing/main.js` | OS detection, manifest fetch, store-button validation, recommended-card highlight. |
 | `landing/i18n.js` | `en` / `zh` string tables exposed as `window.translations`; swaps `data-i18n` nodes and persists the choice. |
 | `landing/config.js` | `window.ENJOY_CONFIG` — the **only file edited for link maintenance** (see below). |
 | `landing/functions/api/latest.js` | Cloudflare Pages Function: same-origin proxy for the release manifest. |
 | `landing/_headers` | Cloudflare Pages security headers + per-path cache policy. |
 | `landing/wrangler.toml` | Pages config; `pages_build_output_dir = "."` (the directory itself is the output). |
-| `landing/logo.svg`, `og-image.svg`, `screenshot-main.svg` | Brand assets (served `immutable`, 24 h TTL). |
+| `landing/logo.svg`, `og-image.svg`, `screenshot-hero.png` | Brand assets and app showcase image (served `immutable`, 24 h TTL). |
 
 ## Link maintenance — `config.js`
 
@@ -56,6 +56,16 @@ The Pages Function serves `GET /api/latest`:
 ## Internationalization — `i18n.js`
 
 Two locales, `en` (default) and `zh`, selected by the header `EN` / `中` buttons (`data-lang`). `initI18n()` swaps the text of every `[data-i18n]` node from `window.translations` and persists the choice (localStorage), so reloads keep the language. Dynamic strings created later (e.g., the recommended badge) look up their `data-i18n` key against the active locale at creation time.
+
+## Pricing offers
+
+The landing page mirrors the current subscription catalog with three informational offers:
+
+- **Free** — $0 forever, 1,000 Enjoy AI credits per day, and all core player features.
+- **Lite** — $1.99/month, 12,000 Enjoy AI credits per day.
+- **Pro** — $9.99/month, 60,000 Enjoy AI credits per day.
+
+The pricing cards link to the download section rather than pretending to provide checkout. Paid plans are managed inside the app, with platform-specific purchase availability described in [subscription.md](subscription.md). If plan prices or allowances change, update the cards and both locale tables together with the product catalog.
 
 ## Security headers & caching — `_headers`
 
