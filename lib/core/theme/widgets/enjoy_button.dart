@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:enjoy_player/core/interaction/haptics.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 
-enum EnjoyButtonVariant { primary, secondary, ghost, destructive }
+enum EnjoyButtonVariant { primary, secondary, soft, ghost, destructive }
 
 class EnjoyButton extends StatelessWidget {
   const EnjoyButton._({
@@ -37,6 +37,20 @@ class EnjoyButton extends StatelessWidget {
     IconData? icon,
   }) => EnjoyButton._(
     variant: EnjoyButtonVariant.secondary,
+    onPressed: onPressed,
+    icon: icon,
+    key: key,
+    child: child,
+  );
+
+  /// Soft translucent background with primary color foreground.
+  factory EnjoyButton.soft({
+    Key? key,
+    required VoidCallback? onPressed,
+    required Widget child,
+    IconData? icon,
+  }) => EnjoyButton._(
+    variant: EnjoyButtonVariant.soft,
     onPressed: onPressed,
     icon: icon,
     key: key,
@@ -104,6 +118,15 @@ class EnjoyButton extends StatelessWidget {
         );
       case EnjoyButtonVariant.secondary:
         return FilledButton.tonal(
+          onPressed: onPressed == null ? null : () => _handleTap(context),
+          child: label,
+        );
+      case EnjoyButtonVariant.soft:
+        return FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: t.accentSoft,
+            foregroundColor: cs.primary,
+          ),
           onPressed: onPressed == null ? null : () => _handleTap(context),
           child: label,
         );

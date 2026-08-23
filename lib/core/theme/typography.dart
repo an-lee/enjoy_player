@@ -148,12 +148,31 @@ class TranscriptTypographyTokens
     required this.bodyStyle,
     required this.secondaryStyle,
     required this.timestampStyle,
+    this.monoStyle = const TextStyle(
+      fontSize: 13,
+      fontWeight: FontWeight.w500,
+      letterSpacing: 0.15,
+      fontFamily: 'monospace',
+      fontFeatures: [FontFeature.tabularFigures()],
+    ),
+    this.displaySerifStyle = const TextStyle(
+      fontSize: 30,
+      fontWeight: FontWeight.w500,
+      letterSpacing: -0.5,
+      fontFamily: 'serif',
+    ),
   });
 
   final bool useSerif;
   final TextStyle bodyStyle;
   final TextStyle secondaryStyle;
   final TextStyle timestampStyle;
+
+  /// Monospace / numeric style for timers, durations, scores, and badges.
+  final TextStyle monoStyle;
+
+  /// Editorial serif display style for hero & screen titles.
+  final TextStyle displaySerifStyle;
 
   static TranscriptTypographyTokens of(BuildContext context) {
     return Theme.of(context).extension<TranscriptTypographyTokens>() ??
@@ -198,6 +217,24 @@ class TranscriptTypographyTokens
           fontFeatures: const [FontFeature.tabularFigures()],
           color: scheme.onSurfaceVariant.withValues(alpha: 0.72),
         ),
+        monoStyle: _withCjkFallbacks(
+          GoogleFonts.jetBrainsMono(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 0.15,
+            color: scheme.onSurface,
+          ),
+          serif: false,
+        ),
+        displaySerifStyle: _withCjkFallbacks(
+          GoogleFonts.newsreader(
+            fontSize: 30,
+            fontWeight: FontWeight.w500,
+            letterSpacing: -0.5,
+            color: scheme.onSurface,
+          ),
+          serif: true,
+        ),
       );
     }
     return _fallback(base, scheme);
@@ -231,6 +268,27 @@ class TranscriptTypographyTokens
         fontFeatures: const [FontFeature.tabularFigures()],
         color: scheme.onSurfaceVariant.withValues(alpha: 0.72),
       ),
+      monoStyle: _withCjkFallbacks(
+        (base.labelSmall ?? const TextStyle()).copyWith(
+          fontFamily: 'monospace',
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          letterSpacing: 0.15,
+          fontFeatures: const [FontFeature.tabularFigures()],
+          color: scheme.onSurface,
+        ),
+        serif: false,
+      ),
+      displaySerifStyle: _withCjkFallbacks(
+        (base.displaySmall ?? const TextStyle()).copyWith(
+          fontFamily: 'serif',
+          fontSize: 30,
+          fontWeight: FontWeight.w500,
+          letterSpacing: -0.5,
+          color: scheme.onSurface,
+        ),
+        serif: true,
+      ),
     );
   }
 
@@ -240,12 +298,16 @@ class TranscriptTypographyTokens
     TextStyle? bodyStyle,
     TextStyle? secondaryStyle,
     TextStyle? timestampStyle,
+    TextStyle? monoStyle,
+    TextStyle? displaySerifStyle,
   }) {
     return TranscriptTypographyTokens(
       useSerif: useSerif ?? this.useSerif,
       bodyStyle: bodyStyle ?? this.bodyStyle,
       secondaryStyle: secondaryStyle ?? this.secondaryStyle,
       timestampStyle: timestampStyle ?? this.timestampStyle,
+      monoStyle: monoStyle ?? this.monoStyle,
+      displaySerifStyle: displaySerifStyle ?? this.displaySerifStyle,
     );
   }
 
@@ -260,6 +322,12 @@ class TranscriptTypographyTokens
       bodyStyle: TextStyle.lerp(bodyStyle, other.bodyStyle, t)!,
       secondaryStyle: TextStyle.lerp(secondaryStyle, other.secondaryStyle, t)!,
       timestampStyle: TextStyle.lerp(timestampStyle, other.timestampStyle, t)!,
+      monoStyle: TextStyle.lerp(monoStyle, other.monoStyle, t)!,
+      displaySerifStyle: TextStyle.lerp(
+        displaySerifStyle,
+        other.displaySerifStyle,
+        t,
+      )!,
     );
   }
 }

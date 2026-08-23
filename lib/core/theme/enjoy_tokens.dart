@@ -21,10 +21,10 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
       space24: 24,
       space32: 32,
       space40: 40,
-      radiusSm: 8,
-      radiusMd: 12,
-      radiusLg: 16,
-      radiusXl: 20,
+      radiusSm: 10,
+      radiusMd: 14,
+      radiusLg: 18,
+      radiusXl: 24,
       radiusFull: 999,
       elevationNone: 0,
       elevationCard: 1,
@@ -42,6 +42,13 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
       motionMedium: const Duration(milliseconds: 220),
       echoActive: AppColors.echoActive,
       blurActive: AppColors.blurActive,
+      scoreGood: AppColors.scoreGood,
+      scoreWarn: AppColors.scoreWarn,
+      scoreBad: AppColors.scoreBad,
+      scoreGoodContainer: AppColors.scoreGoodContainer,
+      scoreWarnContainer: AppColors.scoreWarnContainer,
+      scoreBadContainer: AppColors.scoreBadContainer,
+      accentSoft: AppColors.accentSoft,
       ccBadge: scheme.primary,
       // Vertical padding is applied per-line via [TranscriptDensity.lineVerticalPadding].
       transcriptLinePadding: const EdgeInsets.symmetric(horizontal: 16),
@@ -103,6 +110,13 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
     // ── Feature colors ─────────────────────────────────────────────
     required this.echoActive,
     required this.blurActive,
+    required this.scoreGood,
+    required this.scoreWarn,
+    required this.scoreBad,
+    required this.scoreGoodContainer,
+    required this.scoreWarnContainer,
+    required this.scoreBadContainer,
+    required this.accentSoft,
     required this.ccBadge,
     // ── Layout ─────────────────────────────────────────────────────
     required this.transcriptLinePadding,
@@ -189,6 +203,28 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
 
   /// Accent used for the listening-focus (blur practice) toggle when active.
   final Color blurActive;
+
+  /// Evaluation & assessment good color (emerald green).
+  final Color scoreGood;
+
+  /// Evaluation & assessment warn color (amber gold).
+  final Color scoreWarn;
+
+  /// Evaluation & assessment bad color (coral red).
+  final Color scoreBad;
+
+  /// Evaluation & assessment good container background.
+  final Color scoreGoodContainer;
+
+  /// Evaluation & assessment warn container background.
+  final Color scoreWarnContainer;
+
+  /// Evaluation & assessment bad container background.
+  final Color scoreBadContainer;
+
+  /// Soft translucent brand accent background.
+  final Color accentSoft;
+
   final Color ccBadge;
 
   // ── Layout ─────────────────────────────────────────────────────────────
@@ -282,6 +318,13 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
     Duration? motionMedium,
     Color? echoActive,
     Color? blurActive,
+    Color? scoreGood,
+    Color? scoreWarn,
+    Color? scoreBad,
+    Color? scoreGoodContainer,
+    Color? scoreWarnContainer,
+    Color? scoreBadContainer,
+    Color? accentSoft,
     Color? ccBadge,
     EdgeInsets? transcriptLinePadding,
     double? contentMaxWidth,
@@ -336,6 +379,13 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
       motionMedium: motionMedium ?? this.motionMedium,
       echoActive: echoActive ?? this.echoActive,
       blurActive: blurActive ?? this.blurActive,
+      scoreGood: scoreGood ?? this.scoreGood,
+      scoreWarn: scoreWarn ?? this.scoreWarn,
+      scoreBad: scoreBad ?? this.scoreBad,
+      scoreGoodContainer: scoreGoodContainer ?? this.scoreGoodContainer,
+      scoreWarnContainer: scoreWarnContainer ?? this.scoreWarnContainer,
+      scoreBadContainer: scoreBadContainer ?? this.scoreBadContainer,
+      accentSoft: accentSoft ?? this.accentSoft,
       ccBadge: ccBadge ?? this.ccBadge,
       transcriptLinePadding:
           transcriptLinePadding ?? this.transcriptLinePadding,
@@ -431,6 +481,25 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
       ),
       echoActive: Color.lerp(echoActive, other.echoActive, t)!,
       blurActive: Color.lerp(blurActive, other.blurActive, t)!,
+      scoreGood: Color.lerp(scoreGood, other.scoreGood, t)!,
+      scoreWarn: Color.lerp(scoreWarn, other.scoreWarn, t)!,
+      scoreBad: Color.lerp(scoreBad, other.scoreBad, t)!,
+      scoreGoodContainer: Color.lerp(
+        scoreGoodContainer,
+        other.scoreGoodContainer,
+        t,
+      )!,
+      scoreWarnContainer: Color.lerp(
+        scoreWarnContainer,
+        other.scoreWarnContainer,
+        t,
+      )!,
+      scoreBadContainer: Color.lerp(
+        scoreBadContainer,
+        other.scoreBadContainer,
+        t,
+      )!,
+      accentSoft: Color.lerp(accentSoft, other.accentSoft, t)!,
       ccBadge: Color.lerp(ccBadge, other.ccBadge, t)!,
       transcriptLinePadding: EdgeInsets.lerp(
         transcriptLinePadding,

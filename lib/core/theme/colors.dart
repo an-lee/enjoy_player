@@ -19,6 +19,28 @@ abstract final class AppColors {
   /// High-legibility primary tint on dark surfaces (text, icons, outlines).
   static const brandOnDark = Color(0xFFB2A1FF);
 
+  /// Subtle soft tint for brand accent (15% opacity).
+  static const accentSoft = Color(0x267B61FF);
+
+  // ── Assessment / Scoring semantic tokens ────────────────────────────────
+  /// Evaluation & accuracy good (emerald green).
+  static const scoreGood = Color(0xFF22C55E);
+
+  /// Evaluation & accuracy warning / mid-tier (amber gold).
+  static const scoreWarn = Color(0xFFF59E0B);
+
+  /// Evaluation & accuracy bad / miss (coral red).
+  static const scoreBad = Color(0xFFEF4444);
+
+  /// Soft container background for good score items (14% alpha).
+  static const scoreGoodContainer = Color(0x2422C55E);
+
+  /// Soft container background for warn score items (14% alpha).
+  static const scoreWarnContainer = Color(0x24F59E0B);
+
+  /// Soft container background for bad score items (16% alpha).
+  static const scoreBadContainer = Color(0x29EF4444);
+
   // ── Dark surface ramp — zinc-style neutral ──────────────────────────────
   static const surfaceDark = Color(0xFF09090B);
   static const surfaceContainerLowestDark = Color(0xFF000000);
