@@ -42,6 +42,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeEmptyTitle => 'No recent media';
 
   @override
+  String get homeContinuePracticing => 'Continue practicing';
+
+  @override
+  String homeContinueProgressSemantics(int percent) {
+    return '$percent percent complete';
+  }
+
+  @override
+  String homeContinueOpenSemantics(String title) {
+    return 'Continue practicing, $title';
+  }
+
+  @override
   String get homeEmptyHint => 'Import media or drop a file here to start.';
 
   @override
@@ -427,12 +440,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transportCollapse => 'Collapse player';
 
   @override
-  String get transportExpand => 'Expand player';
-
-  @override
-  String get transportDismissPlayer => 'Close player';
-
-  @override
   String get settingsTitle => 'Settings';
 
   @override
@@ -534,9 +541,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get importSrtOrVtt => 'Import an .srt or .vtt file.';
-
-  @override
-  String get miniPlayerOpen => 'Open player';
 
   @override
   String get loading => 'Loading…';

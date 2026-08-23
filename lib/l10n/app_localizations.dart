@@ -165,6 +165,24 @@ abstract class AppLocalizations {
   /// **'No recent media'**
   String get homeEmptyTitle;
 
+  /// No description provided for @homeContinuePracticing.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue practicing'**
+  String get homeContinuePracticing;
+
+  /// No description provided for @homeContinueProgressSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent} percent complete'**
+  String homeContinueProgressSemantics(int percent);
+
+  /// No description provided for @homeContinueOpenSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue practicing, {title}'**
+  String homeContinueOpenSemantics(String title);
+
   /// No description provided for @homeEmptyHint.
   ///
   /// In en, this message translates to:
@@ -843,18 +861,6 @@ abstract class AppLocalizations {
   /// **'Collapse player'**
   String get transportCollapse;
 
-  /// No description provided for @transportExpand.
-  ///
-  /// In en, this message translates to:
-  /// **'Expand player'**
-  String get transportExpand;
-
-  /// No description provided for @transportDismissPlayer.
-  ///
-  /// In en, this message translates to:
-  /// **'Close player'**
-  String get transportDismissPlayer;
-
   /// No description provided for @settingsTitle.
   ///
   /// In en, this message translates to:
@@ -1052,12 +1058,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Import an .srt or .vtt file.'**
   String get importSrtOrVtt;
-
-  /// No description provided for @miniPlayerOpen.
-  ///
-  /// In en, this message translates to:
-  /// **'Open player'**
-  String get miniPlayerOpen;
 
   /// No description provided for @loading.
   ///

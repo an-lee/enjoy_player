@@ -57,7 +57,7 @@ This document is the implementation contract for Enjoy Player (Flutter). It desc
 ### Primary flows
 
 1. **Add word + context** — User selects text → lookup sheet → header bookmark icon (Add to Vocabulary / Add Context / Already in Vocabulary). Remove deletes the **entire item** (all contexts), not one context.
-2. **Review** — Open Vocabulary → Review → choose due / all / filter / random → immersive full-window cards (no app sidebar / bottom nav / mini player bar) → flip → rate `0|1|2` or skip → optional undo last rating → session complete → leave restores normal shell chrome.
+2. **Review** — Open Vocabulary → Review → choose due / all / filter / random → immersive full-window cards (no app sidebar / bottom nav) → flip → rate `0|1|2` or skip → optional undo last rating → session complete → leave restores normal shell chrome.
 3. **Manage** — All Words tab: search + status/language filters → delete confirm → Export Anki.
 4. **During review (card back)** — Context tab (practice overlay for play clip / echo reading; open player; contextual AI; context pager when multi-context); Dictionary tab (persist explanation on item); Notes placeholder.
 

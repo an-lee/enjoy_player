@@ -202,5 +202,62 @@ void main() {
       final found = await db.echoSessionDao.getLatestForTarget('Video', 'm1');
       expect(found?.id, 'new');
     });
+
+    test('listRecentByLastActiveAt orders desc and respects limit', () async {
+      await db.echoSessionDao.upsert(
+        _session(
+          id: 'old',
+          targetType: 'Video',
+          targetId: 'a',
+          lastActiveAt: DateTime.utc(2020, 1, 1),
+        ),
+      );
+      await db.echoSessionDao.upsert(
+        _session(
+          id: 'mid',
+          targetType: 'Video',
+          targetId: 'b',
+          lastActiveAt: DateTime.utc(2024, 1, 1),
+        ),
+      );
+      await db.echoSessionDao.upsert(
+        _session(
+          id: 'new',
+          targetType: 'Audio',
+          targetId: 'c',
+          lastActiveAt: DateTime.utc(2026, 1, 1),
+        ),
+      );
+
+      final all = await db.echoSessionDao.listRecentByLastActiveAt(limit: 20);
+      expect(all.map((s) => s.id).toList(), ['new', 'mid', 'old']);
+
+      final capped = await db.echoSessionDao.listRecentByLastActiveAt(limit: 2);
+      expect(capped.map((s) => s.id).toList(), ['new', 'mid']);
+    });
+
+    test('watchRecentByLastActiveAt emits newest-first', () async {
+      await db.echoSessionDao.upsert(
+        _session(
+          id: 'a',
+          targetType: 'Video',
+          targetId: 'a',
+          lastActiveAt: DateTime.utc(2020, 1, 1),
+        ),
+      );
+      await db.echoSessionDao.upsert(
+        _session(
+          id: 'b',
+          targetType: 'Video',
+          targetId: 'b',
+          lastActiveAt: DateTime.utc(2026, 1, 1),
+        ),
+      );
+
+      final rows = await db.echoSessionDao
+          .watchRecentByLastActiveAt(limit: 20)
+          .first;
+      expect(rows.map((s) => s.id).toList(), ['b', 'a']);
+    });
   });
 }

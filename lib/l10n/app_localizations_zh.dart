@@ -42,6 +42,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeEmptyTitle => '暂无最近媒体';
 
   @override
+  String get homeContinuePracticing => '继续练习';
+
+  @override
+  String homeContinueProgressSemantics(int percent) {
+    return '已完成 $percent%';
+  }
+
+  @override
+  String homeContinueOpenSemantics(String title) {
+    return '继续练习，$title';
+  }
+
+  @override
   String get homeEmptyHint => '导入媒体或将文件拖放到此处开始。';
 
   @override
@@ -412,12 +425,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get transportCollapse => '收起播放器';
 
   @override
-  String get transportExpand => '展开播放器';
-
-  @override
-  String get transportDismissPlayer => '关闭播放器';
-
-  @override
   String get settingsTitle => '设置';
 
   @override
@@ -515,9 +522,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get importSrtOrVtt => '导入 .srt 或 .vtt 文件。';
-
-  @override
-  String get miniPlayerOpen => '打开播放器';
 
   @override
   String get loading => '加载中…';
@@ -3804,6 +3808,19 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get homeEmptyTitle => '暂无最近媒体';
 
   @override
+  String get homeContinuePracticing => '继续练习';
+
+  @override
+  String homeContinueProgressSemantics(int percent) {
+    return '已完成 $percent%';
+  }
+
+  @override
+  String homeContinueOpenSemantics(String title) {
+    return '继续练习，$title';
+  }
+
+  @override
   String get homeEmptyHint => '导入媒体或将文件拖放到此处开始。';
 
   @override
@@ -4135,12 +4152,6 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get transportCollapse => '收起播放器';
 
   @override
-  String get transportExpand => '展开播放器';
-
-  @override
-  String get transportDismissPlayer => '关闭播放器';
-
-  @override
   String get settingsTitle => '设置';
 
   @override
@@ -4238,9 +4249,6 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get importSrtOrVtt => '导入 .srt 或 .vtt 文件';
-
-  @override
-  String get miniPlayerOpen => '打开播放器';
 
   @override
   String get loading => '加载中…';

@@ -137,6 +137,22 @@ class EchoSessionDao extends DatabaseAccessor<AppDatabase>
     }
   }
 
+  /// Most recently active sessions across all targets (Home Continue lookback).
+  Future<List<EchoSessionRow>> listRecentByLastActiveAt({int limit = 20}) {
+    return (select(echoSessions)
+          ..orderBy([(t) => OrderingTerm.desc(t.lastActiveAt)])
+          ..limit(limit))
+        .get();
+  }
+
+  /// Watch counterpart of [listRecentByLastActiveAt].
+  Stream<List<EchoSessionRow>> watchRecentByLastActiveAt({int limit = 20}) {
+    return (select(echoSessions)
+          ..orderBy([(t) => OrderingTerm.desc(t.lastActiveAt)])
+          ..limit(limit))
+        .watch();
+  }
+
   Future<({int sessionCount, int recordingsDurationMs})> practiceTotals() {
     return customSelect(
           'SELECT COUNT(*) AS c, COALESCE(SUM(recordings_duration_ms), 0) AS d '

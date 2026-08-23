@@ -5,7 +5,7 @@
 | Language | Dart ^3.12 | Strict analysis; matches `sdk: ^3.12.0` in `pubspec.yaml`. Flutter pinned in [`.github/flutter-version`](../.github/flutter-version). |
 | UI | Flutter 3.x / Material 3 + `google_fonts` | Dark-only `buildAppTheme()` + `EnjoyThemeTokens` in `lib/core/theme/` |
 | State | `flutter_riverpod` + `riverpod_annotation` | `@Riverpod` notifiers, `build_runner` |
-| Navigation | `go_router` | Shell route for persistent mini player |
+| Navigation | `go_router` | Shell route; player transport only on `/player/` |
 | Playback | `media_kit` + `media_kit_video` + `media_kit_libs_video` | Single `Player` instance |
 | Persistence | `drift` + `drift_flutter` + `sqlite3_flutter_libs` | Native SQLite |
 | Files | `file_picker` + `path_provider` + `cross_file` | Prefer lasting external link; copy into app `media/` when lasting access is unavailable ([ADR-0050](decisions/0050-path-linked-local-media.md)) |

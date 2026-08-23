@@ -5,9 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:enjoy_player/core/interaction/enjoy_tappable.dart';
 import 'package:enjoy_player/core/interaction/haptics.dart';
-import 'package:enjoy_player/core/routing/player_navigation.dart';
 import 'package:enjoy_player/core/window/desktop_window.dart';
 import 'package:enjoy_player/core/theme/dynamic_color/dynamic_color_provider.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
@@ -24,13 +22,11 @@ import 'package:enjoy_player/features/player/application/player_controller.dart'
 import 'package:enjoy_player/features/player/application/player_interactions.dart';
 import 'package:enjoy_player/features/player/application/player_preferences_provider.dart';
 import 'package:enjoy_player/features/player/application/player_state_providers.dart';
-import 'package:enjoy_player/features/player/application/player_ui_provider.dart';
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_blur_mode_provider.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_lines_provider.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
-import 'transport/transport_artwork_tile.dart';
 import 'transport/transport_cc_fullscreen.dart';
 import 'transport/transport_meta_row.dart';
 import 'transport/transport_play_ring_button.dart';
@@ -70,7 +66,6 @@ class NarrowTransportBudget {
     required this.showSpeed,
     required this.showVolume,
     required this.showFullscreen,
-    required this.showExpand,
   });
 
   final bool showPrevious;
@@ -81,7 +76,6 @@ class NarrowTransportBudget {
   final bool showSpeed;
   final bool showVolume;
   final bool showFullscreen;
-  final bool showExpand;
 }
 
 /// Resolves which controls fit in the narrow single-row transport bar.
@@ -89,16 +83,12 @@ class NarrowTransportBudget {
 /// The five practice controls — echo, blur, subtitle (cc), speed — plus the
 /// play/pause ring are ALWAYS shown; their combined cost is reserved first so
 /// the always-on invariant holds at every supported width. Only line
-/// navigation, volume, fullscreen, and the expand icon are droppable, packed
-/// greedily in strict priority order (highest priority first). The first
-/// droppable that does not fit terminates packing, so a lower-priority control
-/// can never survive at the expense of a higher-priority one. As width
-/// shrinks, controls therefore drop in this order: expand → previous → next →
-/// volume → fullscreen.
+/// navigation, volume, and fullscreen are droppable, packed greedily in
+/// strict priority order (highest priority first). As width shrinks, controls
+/// drop in this order: previous → next → volume → fullscreen.
 NarrowTransportBudget resolveNarrowTransportBudget(
   double maxWidth, {
   required bool hasTranscriptLines,
-  required bool onPlayer,
   required bool showFullscreenTransport,
 }) {
   // Always-on baseline: play ring + layout slack + echo + blur + cc + speed.
@@ -116,7 +106,7 @@ NarrowTransportBudget resolveNarrowTransportBudget(
   // Pack droppables in strict priority order. Once one does not fit, stop — a
   // lower-priority control must never be shown while a higher-priority one is
   // dropped. Drop order (first dropped first) is the reverse of this packing
-  // order: expand, previous, next, volume, fullscreen.
+  // order: previous, next, volume, fullscreen.
   var stopped = false;
   bool tryAdd(double cost) {
     if (stopped) return false;
@@ -135,7 +125,6 @@ NarrowTransportBudget resolveNarrowTransportBudget(
       hasTranscriptLines && tryAdd(kNarrowIconSlotWidth + kNarrowLineNavGap);
   final showPrevious =
       hasTranscriptLines && tryAdd(kNarrowIconSlotWidth + kNarrowLineNavGap);
-  final showExpand = !onPlayer && tryAdd(kNarrowIconSlotWidth);
 
   return NarrowTransportBudget(
     showPrevious: showPrevious,
@@ -146,7 +135,6 @@ NarrowTransportBudget resolveNarrowTransportBudget(
     showSpeed: true,
     showVolume: showVolume,
     showFullscreen: showFullscreen,
-    showExpand: showExpand,
   );
 }
 
@@ -287,8 +275,6 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
       playerPreferencesCtrlProvider.select((p) => p.playbackRate),
     );
     final playAccent = dynamicAccent ?? cs.primary;
-    final path = GoRouterState.of(context).uri.path;
-    final onPlayer = path.startsWith('/player/');
     final narrowLayout =
         MediaQuery.sizeOf(context).width <= t.breakpointTranscriptSideBySide;
     final hideBottomMediaInfo = narrowLayout;
@@ -324,12 +310,6 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
       ref,
       'player.togglePlay',
       isPlaying ? l10n.pause : l10n.play,
-    );
-
-    final ttExpand = hotkeyTooltipLabel(
-      ref,
-      'player.toggleExpand',
-      l10n.transportExpand,
     );
 
     if (chrome == null) return const SizedBox.shrink();
@@ -469,15 +449,6 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
       isVideo: chrome.mediaType == 'video',
     );
 
-    final expandButton = IconButton(
-      tooltip: ttExpand,
-      icon: const Icon(Icons.open_in_full_rounded),
-      onPressed: Haptics.wrapTap(
-        context,
-        () => openPlayerRoute(context, chrome.mediaId),
-      ),
-    );
-
     final secondaryEssentials = <Widget>[
       echoButton,
       blurButton,
@@ -485,7 +456,6 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
       speedButton,
       volumeButton,
       fullscreenButton,
-      if (!onPlayer) expandButton,
     ];
 
     final showFullscreenTransport = isDesktop && chrome.mediaType == 'video';
@@ -547,7 +517,6 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
                             final budget = resolveNarrowTransportBudget(
                               paddedConstraints.maxWidth,
                               hasTranscriptLines: hasTranscriptLines,
-                              onPlayer: onPlayer,
                               showFullscreenTransport: showFullscreenTransport,
                             );
 
@@ -570,8 +539,6 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
                                 _narrowTransportSlot(child: volumeButton),
                               if (budget.showFullscreen)
                                 _narrowTransportSlot(child: fullscreenButton),
-                              if (budget.showExpand)
-                                _narrowTransportSlot(child: expandButton),
                             ];
 
                             // Line navigation flanks the play ring; previous
@@ -598,23 +565,6 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
                               ],
                             );
 
-                            // Collapsed mini-player: tapping a neutral area of
-                            // the controls bar expands the full player.
-                            // Interactive controls (IconButtons / play ring) and
-                            // the seek strip consume their own taps via the
-                            // gesture arena, so only genuinely empty area (the
-                            // spacer / row padding) triggers expand. This is a
-                            // no-op on the player route (already expanded).
-                            if (!onPlayer) {
-                              return EnjoyTappableSurface(
-                                borderRadius: BorderRadius.zero,
-                                enableHoverScale: false,
-                                semanticsLabel: l10n.transportExpand,
-                                onTap: () =>
-                                    openPlayerRoute(context, chrome.mediaId),
-                                child: controlsRow,
-                              );
-                            }
                             return controlsRow;
                           },
                         )
@@ -632,42 +582,13 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
                                 alignment: Alignment.centerLeft,
                                 child: Row(
                                   children: [
-                                    if (!onPlayer) ...[
-                                      TransportArtworkTile(chrome: chrome),
-                                      SizedBox(width: t.space12),
-                                    ],
                                     Flexible(
-                                      child: Material(
-                                        color: Colors.transparent,
-                                        clipBehavior: Clip.antiAlias,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            t.radiusSm,
-                                          ),
+                                      child: Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: t.space4,
+                                          horizontal: t.space4,
                                         ),
-                                        child: InkWell(
-                                          onTap: onPlayer
-                                              ? null
-                                              : Haptics.wrapTap(
-                                                  context,
-                                                  () => openPlayerRoute(
-                                                    context,
-                                                    chrome.mediaId,
-                                                  ),
-                                                ),
-                                          borderRadius: BorderRadius.circular(
-                                            t.radiusSm,
-                                          ),
-                                          child: Padding(
-                                            padding: EdgeInsets.symmetric(
-                                              vertical: t.space4,
-                                              horizontal: t.space4,
-                                            ),
-                                            child: TransportMetaRow(
-                                              chrome: chrome,
-                                            ),
-                                          ),
-                                        ),
+                                        child: TransportMetaRow(chrome: chrome),
                                       ),
                                     ),
                                   ],
@@ -697,36 +618,9 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
       ),
     );
 
-    final transportContent = GlassSurface(
+    return GlassSurface(
       padding: EdgeInsets.zero,
       child: Material(color: Colors.transparent, child: inner),
-    );
-
-    if (onPlayer) return transportContent;
-
-    return Semantics(
-      explicitChildNodes: true,
-      label: l10n.transportDismissPlayer,
-      child: Dismissible(
-        key: ValueKey<String>('transport-${chrome.mediaId}'),
-        direction: DismissDirection.down,
-        background: ColoredBox(
-          color: cs.error.withValues(alpha: 0.1),
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: Padding(
-              padding: EdgeInsets.only(top: t.space8),
-              child: Icon(Icons.close_rounded, color: cs.error),
-            ),
-          ),
-        ),
-        onDismissed: (_) {
-          Haptics.selection(context);
-          ref.read(playerUiProvider.notifier).reset();
-          unawaited(ref.read(playerControllerProvider.notifier).clear());
-        },
-        child: transportContent,
-      ),
     );
   }
 }

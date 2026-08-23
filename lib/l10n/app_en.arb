@@ -11,6 +11,19 @@
   "homeTitle": "Home",
   "homeRecentMedia": "Recent media",
   "homeEmptyTitle": "No recent media",
+  "homeContinuePracticing": "Continue practicing",
+  "homeContinueProgressSemantics": "{percent} percent complete",
+  "@homeContinueProgressSemantics": {
+    "placeholders": {
+      "percent": {"type": "int"}
+    }
+  },
+  "homeContinueOpenSemantics": "Continue practicing, {title}",
+  "@homeContinueOpenSemantics": {
+    "placeholders": {
+      "title": {"type": "String"}
+    }
+  },
   "homeEmptyHint": "Import media or drop a file here to start.",
   "libraryTabAudio": "Audio",
   "libraryTabVideo": "Video",
@@ -151,8 +164,6 @@
   "transportExitFullscreen": "Exit fullscreen",
   "transportMore": "More",
   "transportCollapse": "Collapse player",
-  "transportExpand": "Expand player",
-  "transportDismissPlayer": "Close player",
   "settingsTitle": "Settings",
   "importMedia": "Import media",
   "importingMedia": "Importing media…",
@@ -186,7 +197,6 @@
   "importSubtitle": "Import subtitle",
   "noTranscript": "No transcript yet",
   "importSrtOrVtt": "Import an .srt or .vtt file.",
-  "miniPlayerOpen": "Open player",
   "loading": "Loading…",
   "error": "Error",
   "playerOpenGenericError": "Could not open this item.",
