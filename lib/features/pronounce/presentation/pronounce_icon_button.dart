@@ -22,6 +22,7 @@ class PronounceIconButton extends ConsumerWidget {
     this.compact = false,
     this.enabled = true,
     this.beforePlay,
+    this.label,
   });
 
   final String text;
@@ -32,6 +33,9 @@ class PronounceIconButton extends ConsumerWidget {
 
   /// Optional hook before model playback starts (e.g. stop take preview).
   final Future<void> Function()? beforePlay;
+
+  /// When set, render icon + [label] as an accent text control.
+  final String? label;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -68,28 +72,77 @@ class PronounceIconButton extends ConsumerWidget {
 
     final iconSize = compact ? 20.0 : 18.0;
     final buttonSize = compact ? 40.0 : 44.0;
+    final foreground = label != null ? scheme.primary : scheme.onSurfaceVariant;
     final style = IconButton.styleFrom(
       minimumSize: Size(buttonSize, buttonSize),
-      fixedSize: Size(buttonSize, buttonSize),
-      foregroundColor: scheme.onSurfaceVariant,
+      fixedSize: label == null ? Size(buttonSize, buttonSize) : null,
+      foregroundColor: foreground,
     );
+
+    Future<void> onPressed() async {
+      if (isLoading) {
+        Haptics.selection(context);
+        await ref.read(pronouncePlaybackControllerProvider.notifier).stop();
+        return;
+      }
+      if (!canTap) return;
+      final notifier = ref.read(pronouncePlaybackControllerProvider.notifier);
+      try {
+        // Stop competing take/clip audio only when starting model play.
+        if (!isPlaying) {
+          await beforePlay?.call();
+        }
+        await notifier.play(target);
+      } on AuthFailure {
+        if (!context.mounted) return;
+        AppNotice.info(context, l10n.pronounceSignInRequired);
+      } on CreditsFailure {
+        if (!context.mounted) return;
+        AppNotice.warning(context, l10n.pronounceCreditsExhausted);
+      } on AppFailure {
+        if (!context.mounted) return;
+        AppNotice.error(context, l10n.pronounceFailed);
+      }
+    }
+
+    final icon = isLoading
+        ? SizedBox(
+            width: iconSize,
+            height: iconSize,
+            child: CircularProgressIndicator(strokeWidth: 2, color: foreground),
+          )
+        : Icon(
+            isPlaying ? Icons.stop_rounded : Icons.volume_up_rounded,
+            size: isPlaying ? iconSize + 2 : iconSize,
+          );
+
+    if (label != null) {
+      return Semantics(
+        button: true,
+        enabled: canTap || isLoading,
+        label: tooltip,
+        child: TextButton.icon(
+          onPressed: (canTap || isLoading) ? onPressed : null,
+          icon: icon,
+          label: Text(label!),
+          style: TextButton.styleFrom(
+            foregroundColor: foreground,
+            minimumSize: const Size(44, 44),
+            textStyle: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      );
+    }
 
     if (isLoading) {
       return IconButton(
         tooltip: tooltip,
         style: style,
-        onPressed: () async {
-          Haptics.selection(context);
-          await ref.read(pronouncePlaybackControllerProvider.notifier).stop();
-        },
-        icon: SizedBox(
-          width: iconSize,
-          height: iconSize,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: scheme.onSurfaceVariant,
-          ),
-        ),
+        onPressed: onPressed,
+        icon: icon,
       );
     }
 
@@ -98,31 +151,9 @@ class PronounceIconButton extends ConsumerWidget {
       semanticLabel: tooltip,
       iconSize: isPlaying ? iconSize + 2 : iconSize,
       icon: isPlaying ? Icons.stop_rounded : Icons.volume_up_rounded,
-      color: scheme.onSurfaceVariant,
+      color: foreground,
       style: style,
-      onPressed: !canTap
-          ? null
-          : () async {
-              final notifier = ref.read(
-                pronouncePlaybackControllerProvider.notifier,
-              );
-              try {
-                // Stop competing take/clip audio only when starting model play.
-                if (!isPlaying && !isLoading) {
-                  await beforePlay?.call();
-                }
-                await notifier.play(target);
-              } on AuthFailure {
-                if (!context.mounted) return;
-                AppNotice.info(context, l10n.pronounceSignInRequired);
-              } on CreditsFailure {
-                if (!context.mounted) return;
-                AppNotice.warning(context, l10n.pronounceCreditsExhausted);
-              } on AppFailure {
-                if (!context.mounted) return;
-                AppNotice.error(context, l10n.pronounceFailed);
-              }
-            },
+      onPressed: canTap ? onPressed : null,
     );
   }
 }

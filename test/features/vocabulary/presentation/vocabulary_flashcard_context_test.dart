@@ -74,13 +74,11 @@ VocabularyFlashcard _card({
     item: item ?? _item(),
     primaryContext: primaryContext ?? _context(),
     flipped: flipped,
-    ratingInFlight: false,
     dictionaryFetchInFlight: false,
     contextualFetchInFlight: false,
     clipPlayInFlight: false,
     onFlip: () {},
     onUnflip: onUnflip ?? () {},
-    onRate: (_) {},
     onFetchDictionary: () {},
     onFetchContextual: () {},
     onPlayClip: () {},
@@ -154,17 +152,17 @@ void main() {
     await tester.pumpWidget(_wrap(_card()));
     await tester.pumpAndSettle();
     expect(find.text('Hello world.'), findsOneWidget);
-    expect(find.text('Play segment'), findsOneWidget);
-    expect(find.text('Open in player'), findsOneWidget);
-    expect(find.text('Echo reading'), findsOneWidget);
-    expect(find.text('Flip back'), findsOneWidget);
+    expect(find.byTooltip('Play segment'), findsOneWidget);
+    expect(find.byTooltip('Open in player'), findsOneWidget);
+    expect(find.byTooltip('Echo reading'), findsOneWidget);
+    expect(find.text('Flip back'), findsNothing);
   });
 
-  testWidgets('Flip back invokes onUnflip', (tester) async {
+  testWidgets('tapping the back face invokes onUnflip', (tester) async {
     var unflipped = false;
     await tester.pumpWidget(_wrap(_card(onUnflip: () => unflipped = true)));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Flip back'));
+    await tester.tap(find.text('hello'));
     await tester.pumpAndSettle();
     expect(unflipped, isTrue);
   });

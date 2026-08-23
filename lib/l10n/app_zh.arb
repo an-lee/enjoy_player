@@ -1230,6 +1230,8 @@
     }
   },
   "vocabularyFlipHint": "点击翻转",
+  "vocabularyPronounce": "发音",
+  "vocabularyFlipHintShortcuts": "空格翻转 · 1 / 2 / 3 评分",
   "vocabularyPlaySegment": "播放片段",
   "vocabularyOpenInPlayer": "在播放器中打开",
   "vocabularyOpenInPlayerDescription": "打开播放器将结束本次复习。已保存的评分不会丢失。",
