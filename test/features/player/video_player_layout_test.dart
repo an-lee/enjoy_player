@@ -1,10 +1,13 @@
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/features/player/application/player_controller.dart';
 import 'package:enjoy_player/features/player/application/player_engine_test_double_provider.dart';
+import 'package:enjoy_player/features/player/application/player_state_providers.dart';
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
 import 'package:enjoy_player/features/player/presentation/layouts/video_player_layout.dart';
+import 'package:enjoy_player/features/player/presentation/widgets/player_frosted_back_button.dart';
 import 'package:enjoy_player/features/player/presentation/widgets/player_surface_host.dart';
 import 'package:enjoy_player/features/player/presentation/widgets/player_surface_target.dart';
+import 'package:enjoy_player/features/player/presentation/widgets/youtube_login_video_frame_button.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -274,6 +277,55 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('back button stays visible while playing; title hides', (
+    tester,
+  ) async {
+    await pumpLayout(
+      tester,
+      width: 900,
+      height: 600,
+      overrides: [
+        playerControllerProvider.overrideWith(
+          () => _SessionPlayerController(_testSession()),
+        ),
+        playerIsPlayingProvider.overrideWith((ref) => Stream.value(true)),
+        playerIsBufferingProvider.overrideWith((ref) => Stream.value(false)),
+      ],
+    );
+
+    expect(find.byType(PlayerFrostedBackButton), findsOneWidget);
+    final titleOpacity = tester.widget<AnimatedOpacity>(
+      find.ancestor(
+        of: find.text('Layout test'),
+        matching: find.byType(AnimatedOpacity),
+      ),
+    );
+    expect(titleOpacity.opacity, 0.0);
+  });
+
+  testWidgets('YouTube login chrome is absent for local video', (tester) async {
+    await pumpLayout(tester, width: 900, height: 600);
+    expect(find.byType(YoutubeLoginVideoFrameButton), findsNothing);
+  });
+
+  testWidgets(
+    'YouTube login chrome sits bottom-right on the stage for YouTube video',
+    (tester) async {
+      final fake = FakePlayerEngine()..supportsYouTubePlaybackValue = true;
+      addTearDown(() async {
+        await fake.dispose();
+      });
+      await pumpLayout(tester, width: 500, height: 700, engine: fake);
+
+      expect(find.byType(YoutubeLoginVideoFrameButton), findsOneWidget);
+      final login = tester.getRect(find.byType(YoutubeLoginVideoFrameButton));
+      final stage = tester.getRect(find.byType(PlayerSurfaceTarget).first);
+      expect(login.bottom, closeTo(stage.bottom, 20));
+      expect(login.right, closeTo(stage.right, 20));
+      expect(find.byType(PlayerFrostedBackButton), findsOneWidget);
+    },
+  );
 
   testWidgets(
     'host overlay MouseRegion is pass-through so WebView can receive hits',

@@ -170,13 +170,11 @@ void main() {
       find.descendant(of: find.byType(IconButton), matching: find.byType(Icon)),
     );
     expect(icon.color, Colors.red);
-    expect(icon.size, 20);
+    expect(icon.size, 22);
     expect(icon.icon, equals(Icons.ios_share_rounded));
   });
 
-  testWidgets('default iconColor is white when none is provided', (
-    tester,
-  ) async {
+  testWidgets('default iconColor inherits the icon theme', (tester) async {
     await seedVideo(db, 'video-4');
     await seedRecording(db, 'rec-3', 'Video', 'video-4');
 
@@ -193,7 +191,7 @@ void main() {
     final icon = tester.widget<Icon>(
       find.descendant(of: find.byType(IconButton), matching: find.byType(Icon)),
     );
-    expect(icon.color, Colors.white);
+    expect(icon.color, isNull);
   });
 
   testWidgets('iconButton has a non-empty tooltip', (tester) async {
@@ -216,7 +214,7 @@ void main() {
     expect(iconButton.tooltip!.isNotEmpty, isTrue);
   });
 
-  testWidgets('wrapped in Material with translucent black color', (
+  testWidgets('is a plain IconButton without an overlay pill background', (
     tester,
   ) async {
     await seedVideo(db, 'video-6');
@@ -232,17 +230,20 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
     await tester.pumpAndSettle();
 
-    final material = tester.widget<Material>(
-      find
-          .ancestor(
+    expect(find.byType(IconButton), findsOneWidget);
+    final overlayPills = tester
+        .widgetList<Material>(
+          find.ancestor(
             of: find.byType(IconButton),
             matching: find.byType(Material),
-          )
-          .first,
-    );
-    expect(material.color, isNotNull);
-    expect(material.borderRadius, isNotNull);
-    expect(material.clipBehavior, Clip.antiAlias);
+          ),
+        )
+        .where(
+          (m) =>
+              m.color == Colors.black.withValues(alpha: 0.45) &&
+              m.borderRadius != null,
+        );
+    expect(overlayPills, isEmpty);
   });
 
   testWidgets('rebuilds with new mediaId after recordings added later', (

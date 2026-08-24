@@ -74,9 +74,6 @@ class _VideoPlayerLayoutState extends State<VideoPlayerLayout> {
   /// Hover on splitter (desktop) for a faint affordance — no hard divider line.
   final ValueNotifier<bool> _splitterHovered = ValueNotifier(false);
 
-  /// Whether the mouse hovers the video column (desktop side-by-side only).
-  final ValueNotifier<bool> _videoColumnHovered = ValueNotifier(false);
-
   @override
   void didUpdateWidget(covariant VideoPlayerLayout oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -92,7 +89,6 @@ class _VideoPlayerLayoutState extends State<VideoPlayerLayout> {
   void dispose() {
     _transcriptWidthNotifier.dispose();
     _splitterHovered.dispose();
-    _videoColumnHovered.dispose();
     super.dispose();
   }
 
@@ -138,30 +134,18 @@ class _VideoPlayerLayoutState extends State<VideoPlayerLayout> {
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  ValueListenableBuilder<bool>(
-                    valueListenable: _videoColumnHovered,
-                    builder: (context, hovered, _) {
-                      return SizedBox(
-                        width: vw,
-                        child: SafeArea(
-                          top: true,
-                          bottom: false,
-                          left: false,
-                          right: false,
-                          child: _VideoColumn(
-                            engine: widget.engine,
-                            isHovered: hovered,
-                            onHoverChanged: (v) =>
-                                setValueNotifierOutsideMouseTracker(
-                                  _videoColumnHovered,
-                                  v,
-                                ),
-                            showButtonsInTitleBar: true,
-                            surfaceOverlay: widget.surfaceOverlay,
-                          ),
-                        ),
-                      );
-                    },
+                  SizedBox(
+                    width: vw,
+                    child: SafeArea(
+                      top: true,
+                      bottom: false,
+                      left: false,
+                      right: false,
+                      child: _VideoColumn(
+                        engine: widget.engine,
+                        surfaceOverlay: widget.surfaceOverlay,
+                      ),
+                    ),
                   ),
                   ValueListenableBuilder<bool>(
                     valueListenable: _splitterHovered,
@@ -222,9 +206,6 @@ class _VideoPlayerLayoutState extends State<VideoPlayerLayout> {
                     _kMobileVideoAspectWidth / _kMobileVideoAspectHeight,
                 child: _VideoColumn(
                   engine: widget.engine,
-                  isHovered: false,
-                  onHoverChanged: null,
-                  showButtonsInTitleBar: false,
                   surfaceOverlay: widget.surfaceOverlay,
                 ),
               ),
@@ -239,79 +220,60 @@ class _VideoPlayerLayoutState extends State<VideoPlayerLayout> {
   }
 }
 
-/// Wraps the video stage with an optional title-bar overlay.
-///
-/// On desktop (side-by-side) the title bar contains the YT control buttons;
-/// on mobile the YT buttons stay at the bottom-right inside the stage.
+/// Wraps the video stage with persistent back + paused title overlay.
 class _VideoColumn extends StatelessWidget {
-  const _VideoColumn({
-    required this.engine,
-    required this.isHovered,
-    required this.onHoverChanged,
-    required this.showButtonsInTitleBar,
-    required this.surfaceOverlay,
-  });
+  const _VideoColumn({required this.engine, required this.surfaceOverlay});
 
   final PlayerEngine engine;
-  final bool isHovered;
-  final ValueChanged<bool>? onHoverChanged;
-  final bool showButtonsInTitleBar;
   final Widget? surfaceOverlay;
 
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
       color: Colors.black,
-      child: LayoutBuilder(
-        builder: (context, c) {
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              _VideoStageWithChrome(
-                engine: engine,
-                maxWidth: c.maxWidth,
-                maxHeight: c.maxHeight,
-                showButtons: !showButtonsInTitleBar,
-                loginOnTop: showButtonsInTitleBar,
-                onHoverChanged: onHoverChanged,
-                titleBar: _VideoTitleBar(
-                  isHovered: isHovered,
-                  showYtButtons: showButtonsInTitleBar,
-                ),
-                surfaceOverlay: surfaceOverlay,
-              ),
-            ],
-          );
-        },
+      child: _VideoStageWithChrome(
+        engine: engine,
+        surfaceOverlay: surfaceOverlay,
       ),
     );
   }
 }
 
-/// Title bar overlaid at the top of the video column.
-///
-/// Visible when paused, buffering, or the mouse hovers the video column
-/// (desktop only — [isHovered] is always `false` on mobile).
-class _VideoTitleBar extends ConsumerWidget {
-  const _VideoTitleBar({required this.isHovered, required this.showYtButtons});
+/// Collapse control that stays visible while playing (same persistence as
+/// the YouTube account cluster at bottom-right).
+class _VideoBackButton extends ConsumerWidget {
+  const _VideoBackButton();
 
-  final bool isHovered;
-  final bool showYtButtons;
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8, top: 8),
+      child: PlayerFrostedBackButton(
+        onPressed: () => unawaited(collapseExpandedPlayer(ref, context)),
+      ),
+    );
+  }
+}
+
+/// Title + scrim, shown only while paused or buffering.
+class _VideoPausedTitleOverlay extends ConsumerWidget {
+  const _VideoPausedTitleOverlay();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isPlaying = ref.watch(playerIsPlayingProvider).value ?? false;
     final isBuffering = ref.watch(playerIsBufferingProvider).value ?? false;
     final chrome = ref.watch(playerControllerProvider.select(playbackChromeOf));
-    final isVisible = (!isPlaying || isBuffering) || isHovered;
+    final isVisible = !isPlaying || isBuffering;
+    final title = chrome?.mediaTitle ?? '';
 
-    return AnimatedOpacity(
-      opacity: isVisible ? 1.0 : 0.0,
-      duration: const Duration(milliseconds: 200),
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: IgnorePointer(
-          ignoring: !isVisible,
+    return Align(
+      alignment: Alignment.topCenter,
+      child: IgnorePointer(
+        ignoring: !isVisible,
+        child: AnimatedOpacity(
+          opacity: isVisible ? 1.0 : 0.0,
+          duration: const Duration(milliseconds: 200),
           child: DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -325,33 +287,21 @@ class _VideoTitleBar extends ConsumerWidget {
             ),
             child: SizedBox(
               height: kToolbarHeight,
-              child: Row(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: PlayerFrostedBackButton(
-                      onPressed: () =>
-                          unawaited(collapseExpandedPlayer(ref, context)),
+              child: Padding(
+                // Leave room for the always-on back control.
+                padding: const EdgeInsets.fromLTRB(54, 0, 12, 0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
                     ),
                   ),
-                  Expanded(
-                    child: Text(
-                      chrome?.mediaTitle ?? '',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  if (showYtButtons) ...[
-                    const YoutubeOpenInBrowserButton(),
-                    const SizedBox(width: 6),
-                    const YoutubeLoginVideoFrameButton(),
-                    const SizedBox(width: 12),
-                  ],
-                ],
+                ),
               ),
             ),
           ),
@@ -364,31 +314,11 @@ class _VideoTitleBar extends ConsumerWidget {
 class _VideoStageWithChrome extends ConsumerWidget {
   const _VideoStageWithChrome({
     required this.engine,
-    required this.maxWidth,
-    required this.maxHeight,
-    required this.loginOnTop,
-    required this.onHoverChanged,
-    required this.titleBar,
     required this.surfaceOverlay,
-    this.showButtons = true,
   });
 
   final PlayerEngine engine;
-  final double maxWidth;
-  final double maxHeight;
-
-  /// Wide side-by-side: login sits top-right on the video column (share uses
-  /// app chrome top-right). Stacked narrow: login sits bottom-right to avoid
-  /// the share button over the video top edge.
-  final bool loginOnTop;
-  final ValueChanged<bool>? onHoverChanged;
-  final Widget titleBar;
   final Widget? surfaceOverlay;
-
-  /// Whether to render YouTube control buttons inside this stage.
-  ///
-  /// Should be `false` when the buttons are rendered in [\_VideoTitleBar].
-  final bool showButtons;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -400,10 +330,6 @@ class _VideoStageWithChrome extends ConsumerWidget {
       // below (YouTube needs a real WebView gesture; see docs/features/youtube.md).
       overlayBuilder: (ctx) => MouseRegion(
         opaque: false,
-        // Defer hover rebuilds — parking WebView2 under the cursor fires
-        // onExit inside MouseTracker and must not setState synchronously.
-        onEnter: onHoverChanged == null ? null : (_) => onHoverChanged!(true),
-        onExit: onHoverChanged == null ? null : (_) => onHoverChanged!(false),
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -420,23 +346,24 @@ class _VideoStageWithChrome extends ConsumerWidget {
                   child: const ColoredBox(color: Colors.transparent),
                 ),
               ),
-            if (showButtons)
-              Positioned(
-                top: loginOnTop ? 8 : null,
-                bottom: loginOnTop ? null : 12,
+            const _VideoPausedTitleOverlay(),
+            const Align(
+              alignment: Alignment.topLeft,
+              child: _VideoBackButton(),
+            ),
+            if (isYoutube)
+              const Positioned(
+                bottom: 12,
                 right: 8,
-                child: isYoutube
-                    ? const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          YoutubeOpenInBrowserButton(),
-                          SizedBox(width: 6),
-                          YoutubeLoginVideoFrameButton(),
-                        ],
-                      )
-                    : const SizedBox.shrink(),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    YoutubeOpenInBrowserButton(),
+                    SizedBox(width: 6),
+                    YoutubeLoginVideoFrameButton(),
+                  ],
+                ),
               ),
-            titleBar,
             ?surfaceOverlay,
           ],
         ),
