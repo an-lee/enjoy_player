@@ -291,6 +291,10 @@ void main() {
         expect(shellScaffolds.first.backgroundColor, Colors.transparent);
         expect(shellScaffolds.first.extendBody, isTrue);
         expect(find.byType(EnjoyBottomNav), findsOneWidget);
+        final content = tester.widget<Padding>(
+          find.byKey(const ValueKey<String>('root-shell-content')),
+        );
+        expect(content.padding.resolve(TextDirection.ltr).bottom, 68);
       },
     );
 

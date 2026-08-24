@@ -212,7 +212,14 @@ class _RootShellState extends ConsumerState<RootShell> {
                 return Scaffold(
                   backgroundColor: Colors.transparent,
                   extendBody: bottomNav != null,
-                  body: SafeArea(bottom: false, child: widget.child),
+                  body: SafeArea(
+                    bottom: false,
+                    child: Padding(
+                      key: const ValueKey<String>('root-shell-content'),
+                      padding: EdgeInsets.only(bottom: bottomClearance),
+                      child: widget.child,
+                    ),
+                  ),
                   bottomNavigationBar: bottomNav == null
                       ? null
                       : Material(
