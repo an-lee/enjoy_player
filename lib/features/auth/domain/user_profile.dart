@@ -12,8 +12,8 @@ enum SubscriptionTier { free, lite, pro }
 /// case-insensitive server contract used by both `GET /api/v1/profile` and
 /// `GET /api/v1/subscriptions`.
 SubscriptionTier? subscriptionTierFromJson(Object? value) {
-  if (value == null) return null;
-  final s = value.toString().toLowerCase();
+  final s = stringOrNull(value);
+  if (s == null) return null;
   if (s == 'pro') return SubscriptionTier.pro;
   if (s == 'lite') return SubscriptionTier.lite;
   return SubscriptionTier.free;
