@@ -154,6 +154,36 @@ void main() {
     });
 
     testWidgets(
+      'selected tab does not overlay a circular marker on the label',
+      (tester) async {
+        await tester.pumpWidget(
+          _harness(
+            selectedIndex: 0,
+            destinations: _sampleDestinations(),
+            onSelected: (_) {},
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final containers = tester
+            .widgetList<Container>(
+              find.descendant(
+                of: find.byType(EnjoyBottomNav),
+                matching: find.byType(Container),
+              ),
+            )
+            .toList();
+        final overlayDots = containers.where(
+          (c) =>
+              c.constraints != null &&
+              c.constraints!.minWidth == 4 &&
+              c.constraints!.minHeight == 4,
+        );
+        expect(overlayDots, isEmpty);
+      },
+    );
+
+    testWidgets(
       'falls back to semanticsLabel -> label for Semantics container',
       (tester) async {
         const customDest = EnjoyBottomNavDestination(
@@ -203,5 +233,31 @@ void main() {
         expect(find.text('Profile'), findsOneWidget);
       },
     );
+
+    testWidgets('renders in light theme without throwing', (tester) async {
+      final scheme = ColorScheme.fromSeed(
+        seedColor: const Color(0xFF7B61FF),
+        brightness: Brightness.light,
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(
+            colorScheme: scheme,
+            useMaterial3: true,
+            extensions: [EnjoyThemeTokens.build(scheme)],
+          ),
+          home: Scaffold(
+            body: EnjoyBottomNav(
+              selectedIndex: 0,
+              onDestinationSelected: (_) {},
+              destinations: _sampleDestinations(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Home'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   });
 }

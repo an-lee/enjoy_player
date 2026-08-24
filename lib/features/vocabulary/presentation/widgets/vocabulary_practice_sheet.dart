@@ -38,7 +38,7 @@ class VocabularyPracticeOverlay extends ConsumerWidget {
       children: [
         ModalBarrier(
           dismissible: true,
-          color: enjoyModalBarrierColor(),
+          color: enjoyModalBarrierColor(context),
           onDismiss: () {
             unawaited(
               ref

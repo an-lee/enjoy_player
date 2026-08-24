@@ -14,11 +14,11 @@ ButtonStyle enjoySegmentedButtonStyle(BuildContext context) {
   return SegmentedButton.styleFrom(
     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
     visualDensity: VisualDensity.compact,
-    backgroundColor: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+    backgroundColor: cs.surfaceContainer,
     foregroundColor: cs.onSurfaceVariant,
-    selectedForegroundColor: cs.onPrimaryContainer,
-    selectedBackgroundColor: cs.primaryContainer.withValues(alpha: 0.65),
-    side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.3)),
+    selectedForegroundColor: cs.onSurface,
+    selectedBackgroundColor: cs.surface,
+    side: BorderSide(color: cs.outlineVariant),
     splashFactory: NoSplash.splashFactory,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(t.radiusFull),

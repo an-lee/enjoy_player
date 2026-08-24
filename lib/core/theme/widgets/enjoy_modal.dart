@@ -5,7 +5,11 @@ import 'package:flutter/material.dart';
 
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 
-Color enjoyModalBarrierColor() => Colors.black.withValues(alpha: 0.52);
+Color enjoyModalBarrierColor([BuildContext? context]) {
+  final light =
+      context != null && Theme.of(context).brightness == Brightness.light;
+  return Colors.black.withValues(alpha: light ? 0.28 : 0.52);
+}
 
 /// Whether [context] should use a compact bottom sheet vs a centered modal.
 ///
@@ -37,7 +41,7 @@ Future<T?> showEnjoySheet<T>({
     useSafeArea: useSafeArea,
     showDragHandle: false,
     backgroundColor: cs.surfaceContainerHigh,
-    barrierColor: enjoyModalBarrierColor(),
+    barrierColor: enjoyModalBarrierColor(context),
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(t.radiusXl)),
     ),
@@ -73,7 +77,7 @@ Future<T?> showEnjoyAdaptiveSheet<T>({
     context: context,
     useRootNavigator: useRootNavigator,
     barrierDismissible: barrierDismissible,
-    barrierColor: enjoyModalBarrierColor(),
+    barrierColor: enjoyModalBarrierColor(context),
     builder: (ctx) {
       return Dialog(
         backgroundColor: cs.surfaceContainerHigh,
@@ -113,7 +117,7 @@ Future<T?> showEnjoyAlertDialog<T>({
     context: context,
     useRootNavigator: useRootNavigator,
     barrierDismissible: barrierDismissible,
-    barrierColor: enjoyModalBarrierColor(),
+    barrierColor: enjoyModalBarrierColor(context),
     builder: (ctx) {
       final resolved = actions ?? actionsBuilder?.call(ctx);
       return AlertDialog(
@@ -145,7 +149,7 @@ Future<T?> showEnjoyDialog<T>({
     context: context,
     useRootNavigator: useRootNavigator,
     barrierDismissible: barrierDismissible,
-    barrierColor: enjoyModalBarrierColor(),
+    barrierColor: enjoyModalBarrierColor(context),
     builder: builder,
   );
 }

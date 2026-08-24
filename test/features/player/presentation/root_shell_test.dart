@@ -5,6 +5,9 @@
 // database, sync) are stubbed so the shell can be exercised in isolation.
 import 'package:drift/native.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
+import 'package:enjoy_player/core/theme/widgets/enjoy_bottom_nav.dart';
+import 'package:enjoy_player/core/theme/widgets/enjoy_chrome_icon.dart';
+import 'package:enjoy_player/features/player/presentation/widgets/app_sidebar.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
 import 'package:enjoy_player/data/db/app_database_provider.dart';
 import 'package:enjoy_player/features/player/application/player_controller.dart';
@@ -35,6 +38,7 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../helpers/chrome_icon_finders.dart';
 import '../../../support/fake_player_engine.dart';
 
 const _kShellMediaId = 'shell-transport-test';
@@ -262,11 +266,37 @@ void main() {
 
       expect(find.text('home-page'), findsOneWidget);
       // Bottom nav icons for Home, Discover, Library, Profile.
-      expect(find.byIcon(Icons.home_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.explore_outlined), findsOneWidget);
-      expect(find.byIcon(Icons.collections_bookmark_outlined), findsOneWidget);
-      expect(find.byIcon(Icons.person_outlined), findsOneWidget);
+      expect(findChromeIcon(EnjoyChromeGlyph.home), findsOneWidget);
+      expect(findChromeIcon(EnjoyChromeGlyph.compass), findsOneWidget);
+      expect(findChromeIcon(EnjoyChromeGlyph.library), findsOneWidget);
+      expect(findChromeIcon(EnjoyChromeGlyph.user), findsOneWidget);
     });
+
+    testWidgets(
+      'floats bottom nav over a transparent scaffold with extendBody',
+      (tester) async {
+        final router = _router(initial: '/');
+        await _pump(
+          tester,
+          router: router,
+          overrides: _shellOverrides(db),
+          surface: const Size(400, 900),
+        );
+
+        final shellScaffolds = tester
+            .widgetList<Scaffold>(find.byType(Scaffold))
+            .where((s) => s.bottomNavigationBar != null)
+            .toList();
+        expect(shellScaffolds, hasLength(1));
+        expect(shellScaffolds.first.backgroundColor, Colors.transparent);
+        expect(shellScaffolds.first.extendBody, isTrue);
+        expect(find.byType(EnjoyBottomNav), findsOneWidget);
+        final content = tester.widget<Padding>(
+          find.byKey(const ValueKey<String>('root-shell-content')),
+        );
+        expect(content.padding.resolve(TextDirection.ltr).bottom, 68);
+      },
+    );
 
     testWidgets('selects Discover icon at /discover', (tester) async {
       final router = _router(initial: '/discover');
@@ -277,8 +307,8 @@ void main() {
         surface: const Size(400, 900),
       );
 
-      expect(find.byIcon(Icons.explore_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.home_outlined), findsOneWidget);
+      expect(findChromeIcon(EnjoyChromeGlyph.compass), findsOneWidget);
+      expect(findChromeIcon(EnjoyChromeGlyph.home), findsOneWidget);
     });
 
     testWidgets('selects Library icon at /library', (tester) async {
@@ -290,7 +320,7 @@ void main() {
         surface: const Size(400, 900),
       );
 
-      expect(find.byIcon(Icons.collections_bookmark_rounded), findsOneWidget);
+      expect(findChromeIcon(EnjoyChromeGlyph.library), findsOneWidget);
     });
 
     testWidgets('selects Profile icon at /profile', (tester) async {
@@ -302,7 +332,7 @@ void main() {
         surface: const Size(400, 900),
       );
 
-      expect(find.byIcon(Icons.person_rounded), findsOneWidget);
+      expect(findChromeIcon(EnjoyChromeGlyph.user), findsOneWidget);
     });
 
     testWidgets('selects Profile icon at /settings', (tester) async {
@@ -315,7 +345,7 @@ void main() {
       );
 
       // /settings also maps to the profile tab (settings > profile).
-      expect(find.byIcon(Icons.person_rounded), findsOneWidget);
+      expect(findChromeIcon(EnjoyChromeGlyph.user), findsOneWidget);
     });
 
     testWidgets('selects Library icon at /cloud', (tester) async {
@@ -327,7 +357,7 @@ void main() {
         surface: const Size(400, 900),
       );
 
-      expect(find.byIcon(Icons.collections_bookmark_rounded), findsOneWidget);
+      expect(findChromeIcon(EnjoyChromeGlyph.library), findsOneWidget);
     });
 
     testWidgets('does not render bottom nav on /player/abc', (tester) async {
@@ -340,11 +370,11 @@ void main() {
       );
 
       // Player route hides the bottom nav.
-      expect(find.byIcon(Icons.home_outlined), findsNothing);
+      expect(find.byType(EnjoyBottomNav), findsNothing);
       expect(find.text('player-page'), findsOneWidget);
     });
 
-    testWidgets('does not render bottom nav on /youtube/login', (tester) async {
+    testWidgets('still renders bottom nav on /youtube/login', (tester) async {
       final router = _router(initial: '/youtube/login');
       await _pump(
         tester,
@@ -353,7 +383,8 @@ void main() {
         surface: const Size(400, 900),
       );
 
-      expect(find.byIcon(Icons.home_outlined), findsNothing);
+      // `/youtube/login` parks the video stage but does not hide shell chrome.
+      expect(find.byType(EnjoyBottomNav), findsOneWidget);
       expect(find.text('youtube-login-page'), findsOneWidget);
     });
   });
@@ -372,10 +403,9 @@ void main() {
 
       // AppSidebar brand row + nav pills are visible.
       expect(find.byIcon(Icons.search_rounded), findsOneWidget);
-      // Bottom nav icons (home_outlined on the bottom nav) are not rendered.
-      expect(find.byIcon(Icons.home_outlined), findsNothing);
-      // Sidebar uses the rounded icon for the selected home pill.
-      expect(find.byIcon(Icons.home_rounded), findsOneWidget);
+      expect(find.byType(AppSidebar), findsOneWidget);
+      expect(find.byType(EnjoyBottomNav), findsNothing);
+      expect(findChromeIcon(EnjoyChromeGlyph.home), findsOneWidget);
     });
 
     testWidgets('does not render AppSidebar when on /player/abc', (
@@ -428,7 +458,7 @@ void main() {
       );
 
       expect(router.state.uri.path, '/');
-      await tester.tap(find.byIcon(Icons.explore_outlined));
+      await tester.tap(findChromeIcon(EnjoyChromeGlyph.compass));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
       expect(router.state.uri.path, '/discover');
@@ -445,7 +475,7 @@ void main() {
         surface: const Size(400, 900),
       );
 
-      await tester.tap(find.byIcon(Icons.collections_bookmark_outlined));
+      await tester.tap(findChromeIcon(EnjoyChromeGlyph.library));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
       expect(router.state.uri.path, '/library');
@@ -462,7 +492,7 @@ void main() {
         surface: const Size(400, 900),
       );
 
-      await tester.tap(find.byIcon(Icons.person_outlined));
+      await tester.tap(findChromeIcon(EnjoyChromeGlyph.user));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
       expect(router.state.uri.path, '/profile');
@@ -477,7 +507,7 @@ void main() {
         surface: const Size(400, 900),
       );
 
-      await tester.tap(find.byIcon(Icons.home_outlined));
+      await tester.tap(findChromeIcon(EnjoyChromeGlyph.home));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
       expect(router.state.uri.path, '/');
@@ -496,7 +526,7 @@ void main() {
 
       // Profile pill is present with the badge semantics label.
       expect(find.text('home-page'), findsOneWidget);
-      expect(find.byIcon(Icons.person_outlined), findsWidgets);
+      expect(findChromeIcon(EnjoyChromeGlyph.user), findsWidgets);
     });
 
     testWidgets('shows transport on /player/ with an active session', (
@@ -517,6 +547,32 @@ void main() {
       expect(find.text('player-page'), findsOneWidget);
       expect(find.byType(GlobalTransportBar), findsOneWidget);
     });
+
+    testWidgets(
+      'floats player transport over a transparent scaffold with extendBody',
+      (tester) async {
+        final router = _router(initial: '/player/$_kShellMediaId');
+        await _pump(
+          tester,
+          router: router,
+          overrides: _shellOverrides(
+            db,
+            playerSession: _shellSession(),
+            playerEngine: fakeEngine,
+          ),
+          surface: const Size(400, 900),
+        );
+
+        final shellScaffolds = tester
+            .widgetList<Scaffold>(find.byType(Scaffold))
+            .where((s) => s.bottomNavigationBar != null)
+            .toList();
+        expect(shellScaffolds, hasLength(1));
+        expect(shellScaffolds.first.backgroundColor, Colors.transparent);
+        expect(shellScaffolds.first.extendBody, isTrue);
+        expect(find.byType(GlobalTransportBar), findsOneWidget);
+      },
+    );
 
     testWidgets('does not show mini transport on / even with a session', (
       tester,
@@ -561,7 +617,7 @@ void main() {
       );
 
       expect(find.text('profile-page'), findsOneWidget);
-      expect(find.byIcon(Icons.person_rounded), findsOneWidget);
+      expect(findChromeIcon(EnjoyChromeGlyph.user), findsOneWidget);
     });
   });
 
@@ -584,7 +640,8 @@ void main() {
 
       expect(find.text('vocabulary-review-page'), findsOneWidget);
       expect(find.byIcon(Icons.search_rounded), findsNothing);
-      expect(find.byIcon(Icons.home_outlined), findsNothing);
+      expect(find.byType(AppSidebar), findsNothing);
+      expect(find.byType(EnjoyBottomNav), findsNothing);
     });
 
     testWidgets('hides bottom nav on /vocabulary/review (narrow)', (
@@ -599,8 +656,8 @@ void main() {
       );
 
       expect(find.text('vocabulary-review-page'), findsOneWidget);
-      expect(find.byIcon(Icons.home_outlined), findsNothing);
-      expect(find.byIcon(Icons.explore_outlined), findsNothing);
+      expect(find.byType(EnjoyBottomNav), findsNothing);
+      expect(findChromeIcon(EnjoyChromeGlyph.compass), findsNothing);
     });
 
     testWidgets(
@@ -702,7 +759,7 @@ void main() {
           surface: const Size(400, 900),
         );
 
-        expect(find.byIcon(Icons.home_outlined), findsNothing);
+        expect(find.byType(EnjoyBottomNav), findsNothing);
 
         await tester.binding.setSurfaceSize(const Size(1100, 900));
         await tester.pump();
@@ -710,13 +767,14 @@ void main() {
 
         expect(find.text('vocabulary-review-page'), findsOneWidget);
         expect(find.byIcon(Icons.search_rounded), findsNothing);
-        expect(find.byIcon(Icons.home_outlined), findsNothing);
+        expect(find.byType(AppSidebar), findsNothing);
+        expect(find.byType(EnjoyBottomNav), findsNothing);
 
         await tester.binding.setSurfaceSize(const Size(400, 900));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 50));
 
-        expect(find.byIcon(Icons.home_outlined), findsNothing);
+        expect(find.byType(EnjoyBottomNav), findsNothing);
       },
     );
   });

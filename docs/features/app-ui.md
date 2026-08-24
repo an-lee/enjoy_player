@@ -7,20 +7,22 @@
 **Style**: Cinematic Editorial — confident hero typography, generous whitespace, ambient artwork-derived color, selective glass on the floating player transport and [`EnjoyBottomNav`](../../lib/core/theme/widgets/enjoy_bottom_nav.dart).
 
 **Color**:
-- **Neutrals** — zinc-style dark ramp only: base `#09090B`, containers through `#3F3F46` (see `AppColors` in `lib/core/theme/colors.dart`).
-- **Brand** — premium purple `#7B61FF` (primary) elevating the logo gradient, with logo blue `#4797F5` (secondary) (Material `ColorScheme` roles).
-- **Dynamic accent** — extracted per-media via `palette_generator`; applied to now-playing ring glow, transcript active-line rail, and ambient backdrop tint.
-- **Echo accent** — `#E65100` orange kept for brand recognition, used on echo-mode affordances and stacked IPA labels.
+- **Neutrals** — warm **paper** light (`#FDFCF9`) and **graphite** dark (`#15171E`), not zinc OLED `#09090B` (see `AppColors` in `lib/core/theme/colors.dart`).
+- **Brand** — deep violet **fill** (`#7334A9`, white label) with brightness-aware **ink** for text/icons. Logo gradient `#4797F5` → `#A855F7` is mark-only.
+- **Intelligence** — blue fill/ink for lookup (not interchangeable with violet).
+- **Echo** — warm fill/ink for speaking practice.
+- **Dynamic accent** — extracted per-media via `palette_generator`; applied to now-playing ring glow, transcript active-line rail, and ambient backdrop tint **on top of** the paper/graphite neutrals.
 
 ### Typography
 
 **Typography**:
-- Display / UI: **Inter** (Google Fonts), `w600` tight-tracked for hero titles.
-- Transcript body: **Source Serif 4** (Google Fonts), default ON, toggleable.
-- Transcript **secondary** (translation) track: **Noto Sans SC** (Google Fonts), upright (no italic), `w400` at 14pt serif / 13.5pt sans-serif reading mode.
-- **CJK fallbacks**: transcript styles layer Noto **Serif** (KR / SC / JP) on the body when serif reading is on, and Noto **Sans** (KR / SC / JP) + Inter on the secondary track and UI. The fallbacks are appended via `fontFamilyFallback` so Windows stops substituting low-quality system CJK fonts for Chinese / Japanese / Korean text.
-- Tabular figures everywhere on timestamps and durations via `FontFeature.tabularFigures()`.
+- Display / editorial titles: **Newsreader** (Google Fonts), tight tracking.
+- UI (body, labels, buttons, nav): **Instrument Sans** (Google Fonts).
+- Transcript body: **Source Serif 4** (Google Fonts), default ON, toggleable, plus Noto Serif CJK fallbacks.
+- Transcript **secondary** (translation) track: **Noto Sans SC** (Google Fonts), upright (no italic), plus Noto Sans CJK + Instrument Sans fallbacks.
+- Mono meta (timestamps, scores): **JetBrains Mono** with tabular figures.
 - Type scale: `12 / 13 / 14 / 16 / 18 / 22 / 28 / 36 / 48`.
+- Radii: `8 / 12 / 16 / 20 / pill`.
 
 **Effects**:
 - Glass: **floating capsules only** — player transport (`GlassSurface` with corner radius) and [`EnjoyBottomNav`](../../lib/core/theme/widgets/enjoy_bottom_nav.dart). Sidebar is flat tonal; content cards are flat.
@@ -33,11 +35,11 @@
 
 ## Theme mode
 
-Single dark `ThemeData` only (`buildAppTheme()`). No light theme and no Settings theme toggle. See [ADR-0011](../decisions/0011-dark-mode-only.md).
+Paper light + graphite dark `ThemeData` (`buildAppTheme(Brightness)`). `MaterialApp.themeMode` follows persisted `prefs.theme_mode` (`system` | `light` | `dark`, default **system**). Settings → Appearance exposes the three options. See [ADR-0083](../decisions/0083-paper-graphite-light-dark.md) (supersedes [ADR-0011](../decisions/0011-dark-mode-only.md)).
 
 ## Navigation
 
-- **Mobile**: custom `EnjoyBottomNav` (68pt content height + system home-indicator inset via `SafeArea`). **Four** destinations: Home, Discover, Library, **Profile** (the signed-in profile tab — see [auth.md](auth.md) for the dedicated profile screen; Settings is reached from a tile inside the Profile tab, not as a top-level destination). Pill selection, editorial typography, keyboard focus ring on items; haptics on change. Implemented in `lib/core/theme/widgets/enjoy_bottom_nav.dart`, used from `RootShell`.
+- **Mobile**: custom `EnjoyBottomNav` (68pt content height + system home-indicator inset via `SafeArea`). **Four** destinations: Home, Discover, Library, **Profile** (the signed-in profile tab — see [auth.md](auth.md) for the dedicated profile screen; Settings is reached from a tile inside the Profile tab, not as a top-level destination). Pill selection, editorial typography, keyboard focus ring on items; haptics on change. Implemented in `lib/core/theme/widgets/enjoy_bottom_nav.dart`. `RootShell` mounts it as `Scaffold.bottomNavigationBar` with `extendBody` and a transparent scaffold so the glass capsule floats over page content instead of sitting in an opaque tray; the routed body reserves the nav height so scrollable content remains reachable.
 - **Library source switch**: Inside `LibraryScreen`, a compact **Local / Cloud** badge with swap icon sits inline beside the Library title; tap toggles source. Cloud mode uses `/library?source=cloud`; legacy `/cloud` redirects. Import + compact search on Local; Refresh on Cloud.
 - **Desktop (≥ 900 px)**: `AppSidebar` — flat tonal panel (`surfaceContainerLow`), hairline right border, pill nav items with hover/splash/focus, `FocusTraversalGroup` for keyboard order; extra top breathing room on **macOS** desktop for traffic-light clearance. **Three** primary pills: Home, Discover, Library. Profile is reached via the bottom **`SidebarAccountChip`** (not a fourth nav pill). Library nav item covers both local and cloud sources (no separate Cloud row). The Settings hub is reached from inside the Profile tab (a tile that pushes `/settings`), not from the sidebar.
 - **No glass on sidebar**: `EnjoyThemeTokens.useGlassOnSidebar = false`.
@@ -72,7 +74,7 @@ Use `EnjoyPage` + `EnjoyPageMetrics` (or `pageGutterOf`) — never invent per-sc
 | `ExpandedPlayerScreen` | `PlayerAmbientBackdrop` around scaffold; video: no AppBar (stage overlay); audio: no AppBar — collapse chevron in `AudioPlayerLayout` ([ADR-0077](../decisions/0077-audio-reserved-collapse-chrome.md)) |
 | `AudioPlayerLayout` | Compact top-left collapse chevron + transcript-first body (`contentMaxWidth`); no HeroArtwork stage |
 | `VideoPlayerLayout` | Side-by-side when layout is landscape (`width > height`); stacked 16:9 video over transcript in portrait/square ([ADR-0059](../decisions/0059-phone-tablet-orientation-and-player-aspect-layout.md)). Split: draggable transcript column (**≥360** px min, max 50% width), persisted `splitPx` preference, dark zinc panel, 1px left border; top **SafeArea** on video when expanded chrome hides the app bar. Transport packing still uses `breakpointTranscriptSideBySide` (720). |
-| `GlobalTransportBar` | Player route only ([ADR-0082](../decisions/0082-home-continue-no-mini-player.md)); inset floating glass capsule; dynamic-accent play ring; tabular timestamps; narrow ≤720px: play/echo/cc/speed always-on, blur/hide in the CC sheet |
+| `GlobalTransportBar` | Player route only ([ADR-0082](../decisions/0082-home-continue-no-mini-player.md)); inset floating glass capsule (`RootShell` `extendBody` + transparent scaffold, same as bottom nav); dynamic-accent play ring; tabular timestamps; narrow ≤720px: play/echo/cc/speed always-on, blur/hide in the CC sheet |
 | `TranscriptPanel` | Source Serif 4 body; editorial left-rail active line; neutral echo card with 8px orange rail |
 | `ShadowReadingPanel` | Idle: three-zone bar (pitch icon, centered 44pt FAB / 56pt hit, play + more; delete in menu); recording: centered FAB + countdown |
 | `SettingsScreen` | iOS-style grouped `_SettingsCard`; **Appearance & Language** rows open pickers for display + native language (learning fixed en-US); guest vs signed-in copy for language sync |
@@ -141,5 +143,6 @@ See ADR-0007 for rationale.
 - [ADR-0007](../decisions/0007-dynamic-color-from-artwork.md) — Dynamic color from artwork
 - [ADR-0008](../decisions/0008-light-mode-parity.md) — Light mode parity (superseded by 0011)
 - [ADR-0009](../decisions/0009-platform-adaptive-shell.md) — Platform-adaptive shell
-- [ADR-0011](../decisions/0011-dark-mode-only.md) — Dark mode only + logo-aligned brand
+- [ADR-0011](../decisions/0011-dark-mode-only.md) — Dark mode only (superseded by 0083)
+- [ADR-0083](../decisions/0083-paper-graphite-light-dark.md) — Paper / graphite light+dark + System/Light/Dark appearance
 - [ADR-0055](../decisions/0055-adaptive-page-layout-system.md) — Adaptive page layout system

@@ -9,10 +9,13 @@ import 'package:enjoy_player/data/db/app_database.dart';
 import 'package:enjoy_player/data/db/app_database_provider.dart';
 import 'package:enjoy_player/features/auth/application/auth_controller.dart';
 import 'package:enjoy_player/features/auth/domain/auth_state.dart';
+import 'package:enjoy_player/core/theme/widgets/enjoy_chrome_icon.dart';
 import 'package:enjoy_player/core/theme/widgets/sheet_drag_handle.dart';
 import 'package:enjoy_player/features/settings/presentation/widgets/sections/appearance_language_section.dart';
 import 'package:enjoy_player/features/settings/presentation/widgets/settings_row.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
+
+import '../../../../helpers/chrome_icon_finders.dart';
 
 class _SignedOutAuthCtrl extends AuthCtrl {
   @override
@@ -176,6 +179,37 @@ void main() {
       final rowWidget = tester.widget<SettingsRow>(nativeRow);
       expect(rowWidget.onTap, isNotNull);
       expect(rowWidget.showChevron, isTrue);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'theme row opens System / Light / Dark and applying Light updates the badge',
+    (tester) async {
+      await tester.pumpWidget(_harness(db: db, learningLanguage: 'en-US'));
+      await tester.pumpAndSettle();
+
+      final l10n = await AppLocalizations.delegate.load(
+        const Locale('en', 'US'),
+      );
+
+      expect(find.text(l10n.settingsAppearanceTheme), findsOneWidget);
+      expect(find.text(l10n.settingsAppearanceThemeSystem), findsOneWidget);
+      expect(findChromeIcon(EnjoyChromeGlyph.monitor), findsOneWidget);
+
+      await tester.tap(find.text(l10n.settingsAppearanceTheme));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PaddedSheetDragHandle), findsOneWidget);
+      expect(find.text(l10n.settingsAppearanceThemeLight), findsOneWidget);
+      expect(find.text(l10n.settingsAppearanceThemeDark), findsOneWidget);
+
+      await tester.tap(find.text(l10n.settingsAppearanceThemeLight));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PaddedSheetDragHandle), findsNothing);
+      expect(find.text(l10n.settingsAppearanceThemeLight), findsOneWidget);
+      expect(findChromeIcon(EnjoyChromeGlyph.sun), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );

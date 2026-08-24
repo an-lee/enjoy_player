@@ -2242,6 +2242,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAppearanceThemeValue => '深色 · 影院风';
 
   @override
+  String get settingsAppearanceThemeSystem => '跟随系统';
+
+  @override
+  String get settingsAppearanceThemeLight => '浅色';
+
+  @override
+  String get settingsAppearanceThemeDark => '深色';
+
+  @override
   String get settingsAppearanceDisplayLanguage => '显示语言';
 
   @override
@@ -5527,6 +5536,15 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get settingsAppearanceThemeValue => '深色 · 影院风';
+
+  @override
+  String get settingsAppearanceThemeSystem => '跟随系统';
+
+  @override
+  String get settingsAppearanceThemeLight => '浅色';
+
+  @override
+  String get settingsAppearanceThemeDark => '深色';
 
   @override
   String get settingsAppearanceDisplayLanguage => '显示语言';

@@ -21,6 +21,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:enjoy_player/core/theme/widgets/enjoy_chrome_icon.dart';
+import '../../helpers/chrome_icon_finders.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../support/fake_player_engine.dart';
@@ -259,11 +261,11 @@ void main() {
   // The always-on four controls (play, echo, subtitle/cc, speed) must
   // be visible at the narrowest width on both routes — never clipped.
   // Blur/hide lives in the CC sheet on narrow layouts.
-  const alwaysOnIcons = <IconData>[
-    Icons.play_arrow_rounded, // play (not playing by default)
-    Icons.mic_none_rounded, // echo
-    Icons.closed_caption_outlined, // subtitle/cc
-    Icons.speed_rounded, // speed
+  const alwaysOnGlyphs = <EnjoyChromeGlyph>[
+    EnjoyChromeGlyph.play,
+    EnjoyChromeGlyph.mic,
+    EnjoyChromeGlyph.cc,
+    EnjoyChromeGlyph.speed,
   ];
 
   group('GlobalTransportBar narrow always-on controls (US1)', () {
@@ -272,10 +274,10 @@ void main() {
     ) async {
       await pumpTransport(tester, router: _playerRouter(), width: 320);
 
-      for (final icon in alwaysOnIcons) {
-        expect(find.byIcon(icon), findsOneWidget, reason: '$icon visible');
+      for (final glyph in alwaysOnGlyphs) {
+        expect(findChromeIcon(glyph), findsOneWidget, reason: '$glyph visible');
       }
-      expect(find.byIcon(Icons.replay_rounded), findsNothing);
+      expect(findChromeIcon(EnjoyChromeGlyph.replay), findsNothing);
       expect(find.byIcon(Icons.visibility_outlined), findsNothing);
     });
   });
@@ -286,23 +288,23 @@ void main() {
     ) async {
       await pumpTransport(tester, router: _playerRouter(), width: 320);
 
-      expect(find.byIcon(Icons.skip_previous_rounded), findsNothing);
-      expect(find.byIcon(Icons.skip_next_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.volume_up_rounded), findsOneWidget);
+      expect(findChromeIcon(EnjoyChromeGlyph.skipBack), findsNothing);
+      expect(findChromeIcon(EnjoyChromeGlyph.skipForward), findsOneWidget);
+      expect(findChromeIcon(EnjoyChromeGlyph.volume), findsOneWidget);
     });
 
     testWidgets('player at 375px keeps previous and next', (tester) async {
       await pumpTransport(tester, router: _playerRouter(), width: 375);
 
-      expect(find.byIcon(Icons.skip_previous_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.skip_next_rounded), findsOneWidget);
+      expect(findChromeIcon(EnjoyChromeGlyph.skipBack), findsOneWidget);
+      expect(findChromeIcon(EnjoyChromeGlyph.skipForward), findsOneWidget);
     });
 
     testWidgets('player at 430px keeps previous and next', (tester) async {
       await pumpTransport(tester, router: _playerRouter(), width: 430);
 
-      expect(find.byIcon(Icons.skip_previous_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.skip_next_rounded), findsOneWidget);
+      expect(findChromeIcon(EnjoyChromeGlyph.skipBack), findsOneWidget);
+      expect(findChromeIcon(EnjoyChromeGlyph.skipForward), findsOneWidget);
     });
   });
 
@@ -312,9 +314,9 @@ void main() {
     ) async {
       await pumpTransport(tester, router: _playerRouter(), width: 800);
 
-      expect(find.byIcon(Icons.skip_previous_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.skip_next_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.mic_none_rounded), findsOneWidget);
+      expect(findChromeIcon(EnjoyChromeGlyph.skipBack), findsOneWidget);
+      expect(findChromeIcon(EnjoyChromeGlyph.skipForward), findsOneWidget);
+      expect(findChromeIcon(EnjoyChromeGlyph.mic), findsOneWidget);
       expect(find.byIcon(Icons.open_in_full_rounded), findsNothing);
       expect(find.text('Transport test'), findsOneWidget);
     });

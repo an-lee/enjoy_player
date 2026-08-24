@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 
 import 'package:enjoy_player/core/interaction/haptics.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
+import 'package:enjoy_player/core/theme/widgets/enjoy_chrome_icon.dart';
 
 class SettingsRow extends StatelessWidget {
   const SettingsRow({
@@ -90,10 +91,10 @@ class SettingsRow extends StatelessWidget {
     }
 
     Widget disclosure() {
-      return Icon(
-        Icons.chevron_right_rounded,
-        color: cs.onSurfaceVariant.withValues(alpha: 0.55),
+      return EnjoyChromeIcon(
+        EnjoyChromeGlyph.chevronRight,
         size: 20,
+        color: cs.onSurfaceVariant.withValues(alpha: 0.55),
       );
     }
 

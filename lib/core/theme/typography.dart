@@ -1,4 +1,4 @@
-/// Typography tokens — Inter Tight for display, Inter for UI.
+/// Typography tokens — Newsreader for display, Instrument Sans for UI.
 /// Source Serif 4 for transcript reading (toggled at runtime via TranscriptTypographyTokens).
 library;
 
@@ -16,7 +16,7 @@ List<String> _transcriptCjkSansFallbacks() => [
   GoogleFonts.notoSansKr().fontFamily,
   GoogleFonts.notoSansSc().fontFamily,
   GoogleFonts.notoSansJp().fontFamily,
-  GoogleFonts.inter().fontFamily,
+  GoogleFonts.instrumentSans().fontFamily,
 ].whereType<String>().toList();
 
 TextStyle _withCjkFallbacks(TextStyle style, {required bool serif}) {
@@ -27,106 +27,114 @@ TextStyle _withCjkFallbacks(TextStyle style, {required bool serif}) {
   );
 }
 
-/// Builds the base [TextTheme] using Inter family.
-///
-/// Display titles use Inter (approximating Inter Tight until the Google Fonts
-/// package ships that variant — tracking is manually tightened to match).
+TextStyle _newsreader(
+  TextStyle? base, {
+  required double size,
+  required FontWeight weight,
+  required double height,
+  required double letterSpacing,
+}) {
+  return GoogleFonts.newsreader(
+    fontSize: size,
+    fontWeight: weight,
+    height: height,
+    letterSpacing: letterSpacing,
+    color: base?.color,
+  );
+}
+
+/// Builds the base [TextTheme]: Newsreader display + Instrument Sans UI.
 TextTheme buildBaseTextTheme(TextTheme base, ColorScheme scheme) {
-  // Apply Inter to the full theme, then hand-tune the scale.
-  final inter = GoogleFonts.interTextTheme(
+  final ui = GoogleFonts.instrumentSansTextTheme(
     base,
   ).apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
 
-  return inter.copyWith(
-    // ── Display (hero titles) — tight tracking ─────────────────────────
-    displayLarge: inter.displayLarge?.copyWith(
-      fontSize: 48,
-      fontWeight: FontWeight.w600,
-      letterSpacing: -1.5,
-      height: 1.1,
-    ),
-    displayMedium: inter.displayMedium?.copyWith(
-      fontSize: 36,
-      fontWeight: FontWeight.w600,
-      letterSpacing: -1.2,
-      height: 1.12,
-    ),
-    displaySmall: inter.displaySmall?.copyWith(
-      fontSize: 28,
-      fontWeight: FontWeight.w600,
+  return ui.copyWith(
+    displayLarge: _newsreader(
+      ui.displayLarge,
+      size: 48,
+      weight: FontWeight.w600,
+      height: 1.02,
       letterSpacing: -0.8,
-      height: 1.15,
     ),
-
-    // ── Headline ──────────────────────────────────────────────────────
-    headlineLarge: inter.headlineLarge?.copyWith(
-      fontSize: 28,
-      fontWeight: FontWeight.w600,
+    displayMedium: _newsreader(
+      ui.displayMedium,
+      size: 36,
+      weight: FontWeight.w600,
+      height: 1.08,
       letterSpacing: -0.6,
-      height: 1.18,
     ),
-    headlineMedium: inter.headlineMedium?.copyWith(
-      fontSize: 22,
-      fontWeight: FontWeight.w600,
+    displaySmall: _newsreader(
+      ui.displaySmall,
+      size: 28,
+      weight: FontWeight.w600,
+      height: 1.15,
       letterSpacing: -0.4,
-      height: 1.2,
     ),
-    headlineSmall: inter.headlineSmall?.copyWith(
+    headlineLarge: _newsreader(
+      ui.headlineLarge,
+      size: 28,
+      weight: FontWeight.w600,
+      height: 1.18,
+      letterSpacing: -0.4,
+    ),
+    headlineMedium: _newsreader(
+      ui.headlineMedium,
+      size: 22,
+      weight: FontWeight.w600,
+      height: 1.2,
+      letterSpacing: -0.3,
+    ),
+    headlineSmall: ui.headlineSmall?.copyWith(
       fontSize: 18,
       fontWeight: FontWeight.w600,
       letterSpacing: -0.2,
       height: 1.25,
     ),
-
-    // ── Title ─────────────────────────────────────────────────────────
-    titleLarge: inter.titleLarge?.copyWith(
+    titleLarge: ui.titleLarge?.copyWith(
       fontSize: 18,
       fontWeight: FontWeight.w600,
       letterSpacing: -0.15,
     ),
-    titleMedium: inter.titleMedium?.copyWith(
+    titleMedium: ui.titleMedium?.copyWith(
       fontSize: 16,
       fontWeight: FontWeight.w500,
       letterSpacing: -0.1,
     ),
-    titleSmall: inter.titleSmall?.copyWith(
+    titleSmall: ui.titleSmall?.copyWith(
       fontSize: 14,
       fontWeight: FontWeight.w500,
       letterSpacing: 0,
     ),
-
-    // ── Body ──────────────────────────────────────────────────────────
-    bodyLarge: inter.bodyLarge?.copyWith(
+    bodyLarge: ui.bodyLarge?.copyWith(
       fontSize: 16,
       fontWeight: FontWeight.w400,
       letterSpacing: 0,
       height: 1.55,
     ),
-    bodyMedium: inter.bodyMedium?.copyWith(
+    bodyMedium: ui.bodyMedium?.copyWith(
       fontSize: 14,
       fontWeight: FontWeight.w400,
       letterSpacing: 0,
       height: 1.5,
     ),
-    bodySmall: inter.bodySmall?.copyWith(
+    bodySmall: ui.bodySmall?.copyWith(
       fontSize: 13,
       fontWeight: FontWeight.w400,
       letterSpacing: 0,
       height: 1.45,
     ),
-
-    // ── Label ─────────────────────────────────────────────────────────
-    labelLarge: inter.labelLarge?.copyWith(
+    labelLarge: ui.labelLarge?.copyWith(
       fontSize: 14,
       fontWeight: FontWeight.w500,
       letterSpacing: 0.1,
     ),
-    labelMedium: inter.labelMedium?.copyWith(
+    labelMedium: ui.labelMedium?.copyWith(
       fontSize: 13,
       fontWeight: FontWeight.w500,
       letterSpacing: 0.2,
     ),
-    labelSmall: inter.labelSmall?.copyWith(
+    labelSmall: ui.labelSmall?.copyWith(
       fontSize: 12,
       fontWeight: FontWeight.w500,
       letterSpacing: 0.15,
@@ -210,7 +218,7 @@ class TranscriptTypographyTokens
           ),
           serif: false,
         ),
-        timestampStyle: (base.labelSmall ?? const TextStyle()).copyWith(
+        timestampStyle: GoogleFonts.jetBrainsMono(
           fontSize: 12,
           fontWeight: FontWeight.w500,
           letterSpacing: 0.1,
@@ -264,13 +272,14 @@ class TranscriptTypographyTokens
         ),
         serif: false,
       ),
-      timestampStyle: (base.labelSmall ?? const TextStyle()).copyWith(
+      timestampStyle: GoogleFonts.jetBrainsMono(
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
         fontFeatures: const [FontFeature.tabularFigures()],
         color: scheme.onSurfaceVariant.withValues(alpha: 0.72),
       ),
       monoStyle: _withCjkFallbacks(
-        (base.labelSmall ?? const TextStyle()).copyWith(
-          fontFamily: 'monospace',
+        GoogleFonts.jetBrainsMono(
           fontSize: 13,
           fontWeight: FontWeight.w500,
           letterSpacing: 0.15,
@@ -280,8 +289,7 @@ class TranscriptTypographyTokens
         serif: false,
       ),
       displaySerifStyle: _withCjkFallbacks(
-        (base.displaySmall ?? const TextStyle()).copyWith(
-          fontFamily: 'serif',
+        GoogleFonts.newsreader(
           fontSize: 30,
           fontWeight: FontWeight.w500,
           letterSpacing: -0.5,

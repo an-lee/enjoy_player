@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
+import 'package:enjoy_player/core/theme/widgets/enjoy_chrome_icon.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_logo.dart';
 import 'package:enjoy_player/core/theme/widgets/nav_item_pill.dart';
 import 'package:enjoy_player/core/window/desktop_window.dart';
@@ -188,6 +189,10 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                 NavItemPill(
                   icon: Icons.home_outlined,
                   selectedIcon: Icons.home_rounded,
+                  iconWidget: const EnjoyChromeIcon(EnjoyChromeGlyph.home),
+                  selectedIconWidget: const EnjoyChromeIcon(
+                    EnjoyChromeGlyph.home,
+                  ),
                   label: l10n.homeTitle,
                   selected: path == '/',
                   iconSize: 22,
@@ -196,6 +201,10 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                 NavItemPill(
                   icon: Icons.explore_outlined,
                   selectedIcon: Icons.explore_rounded,
+                  iconWidget: const EnjoyChromeIcon(EnjoyChromeGlyph.compass),
+                  selectedIconWidget: const EnjoyChromeIcon(
+                    EnjoyChromeGlyph.compass,
+                  ),
                   label: l10n.discoverTitle,
                   selected: path.startsWith('/discover'),
                   iconSize: 22,
@@ -204,6 +213,10 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                 NavItemPill(
                   icon: Icons.collections_bookmark_outlined,
                   selectedIcon: Icons.collections_bookmark_rounded,
+                  iconWidget: const EnjoyChromeIcon(EnjoyChromeGlyph.library),
+                  selectedIconWidget: const EnjoyChromeIcon(
+                    EnjoyChromeGlyph.library,
+                  ),
                   label: l10n.libraryTitle,
                   selected:
                       path.startsWith('/library') || path.startsWith('/cloud'),

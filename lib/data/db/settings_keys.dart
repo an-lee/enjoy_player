@@ -10,6 +10,9 @@ abstract final class SettingsKeys {
   static const String prefsLearningLanguage = 'prefs.learning_language';
   static const String prefsNativeLanguage = 'prefs.native_language';
 
+  /// Appearance: `system` | `light` | `dark`. Missing ≡ system.
+  static const String prefsThemeMode = 'prefs.theme_mode';
+
   /// Capture device id (`record` package `InputDevice.id`) for shadow-reading
   /// recordings. Empty / missing means "auto-pick the first non-virtual mic".
   static const String prefsRecordingInputDeviceId =
@@ -96,6 +99,7 @@ abstract final class SettingsKeys {
     prefsLocale,
     prefsLearningLanguage,
     prefsNativeLanguage,
+    prefsThemeMode,
     prefsRecordingInputDeviceId,
     syncCursorAudio,
     syncCursorVideo,

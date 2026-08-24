@@ -68,6 +68,22 @@ Future<void> _pump() async {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  group('themeModeFromStorage', () {
+    test('maps known values and defaults to system', () {
+      expect(themeModeFromStorage('light'), ThemeMode.light);
+      expect(themeModeFromStorage('dark'), ThemeMode.dark);
+      expect(themeModeFromStorage('system'), ThemeMode.system);
+      expect(themeModeFromStorage(null), ThemeMode.system);
+      expect(themeModeFromStorage('nope'), ThemeMode.system);
+    });
+
+    test('themeModeToStorage round-trips', () {
+      expect(themeModeToStorage(ThemeMode.light), 'light');
+      expect(themeModeToStorage(ThemeMode.dark), 'dark');
+      expect(themeModeToStorage(ThemeMode.system), 'system');
+    });
+  });
+
   group('AppPreferencesState', () {
     test('initial has default locale and null languages', () {
       const state = AppPreferencesState.initial;
@@ -249,6 +265,7 @@ void main() {
         expect(state.locale, kAppDefaultDisplayLocale);
         expect(state.learningLanguage, isNull);
         expect(state.nativeLanguage, isNull);
+        expect(state.themeMode, ThemeMode.system);
       });
 
       test('reads and normalizes stored prefs when signed in', () async {
@@ -271,6 +288,18 @@ void main() {
         expect(settled.locale, const Locale('en', 'US'));
         expect(settled.learningLanguage, 'ja-JP');
         expect(settled.nativeLanguage, 'zh-CN');
+      });
+
+      test('reads stored theme mode when signed in', () async {
+        await db.settingsDao.setValue(SettingsKeys.prefsThemeMode, 'light');
+
+        final container = await signedInContainer();
+        addTearDown(container.dispose);
+
+        await container.read(appPreferencesCtrlProvider.future);
+        await _pump();
+        final settled = container.read(appPreferencesCtrlProvider).valueOrNull!;
+        expect(settled.themeMode, ThemeMode.light);
       });
 
       test('canonicalizes non-standard learning language in DB', () async {
@@ -910,6 +939,42 @@ void main() {
 
         final state = container.read(appPreferencesCtrlProvider).valueOrNull;
         expect(state!.nativeLanguage, 'en-US');
+      });
+    });
+
+    group('setThemeMode', () {
+      test('persists when signed in', () async {
+        final container = await signedInContainer();
+        addTearDown(container.dispose);
+        await container.read(appPreferencesCtrlProvider.future);
+
+        await container
+            .read(appPreferencesCtrlProvider.notifier)
+            .setThemeMode(ThemeMode.light);
+
+        final state = container.read(appPreferencesCtrlProvider).valueOrNull;
+        expect(state!.themeMode, ThemeMode.light);
+        expect(
+          await db.settingsDao.getValue(SettingsKeys.prefsThemeMode),
+          'light',
+        );
+      });
+
+      test('updates memory but does not write DB when signed out', () async {
+        final container = await signedOutContainer();
+        addTearDown(container.dispose);
+        await container.read(appPreferencesCtrlProvider.future);
+
+        await container
+            .read(appPreferencesCtrlProvider.notifier)
+            .setThemeMode(ThemeMode.dark);
+
+        final state = container.read(appPreferencesCtrlProvider).valueOrNull;
+        expect(state!.themeMode, ThemeMode.dark);
+        expect(
+          await db.settingsDao.getValue(SettingsKeys.prefsThemeMode),
+          isNull,
+        );
       });
     });
 

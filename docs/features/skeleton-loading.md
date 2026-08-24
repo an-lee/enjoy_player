@@ -45,7 +45,7 @@ re-implement motion handling around `Skeleton` — the widget already does it.
 - Base → `surfaceContainerHighest` at `alpha 0.55`.
 - Highlight → `surfaceContainerHigh` at `alpha 0.95`.
 
-Both colors are theme-derived, so dark-only theme changes ([ADR-0011](../decisions/0011-dark-mode-only.md))
+Both colors are theme-derived, so paper/graphite theme changes ([ADR-0083](../decisions/0083-paper-graphite-light-dark.md))
 flow through automatically. New placeholders should not introduce their own
 colors.
 
@@ -155,4 +155,4 @@ New placeholders should:
 - [app-ui.md](app-ui.md) — design tokens, motion, and reduced-motion conventions.
 - [features/library.md](library.md) — first-paint loading order on the Library screen.
 - [features/settings.md](settings.md#account-section) — single-column / two-pane account hero loading state.
-- [ADR-0011](../decisions/0011-dark-mode-only.md) — single dark theme that drives `Skeleton` colors.
+- [ADR-0083](../decisions/0083-paper-graphite-light-dark.md) — paper/graphite light+dark theme that drives `Skeleton` colors.

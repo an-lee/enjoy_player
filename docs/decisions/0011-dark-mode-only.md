@@ -1,6 +1,6 @@
 # ADR-0011 — Dark mode only + logo-aligned brand
 
-**Status**: Accepted  
+**Status**: Superseded by [ADR-0083](0083-paper-graphite-light-dark.md)  
 **Date**: 2026-05-09
 
 **Supersedes**: [ADR-0008](0008-light-mode-parity.md)

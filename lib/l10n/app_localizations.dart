@@ -4347,6 +4347,24 @@ abstract class AppLocalizations {
   /// **'Dark · Cinematic'**
   String get settingsAppearanceThemeValue;
 
+  /// No description provided for @settingsAppearanceThemeSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get settingsAppearanceThemeSystem;
+
+  /// No description provided for @settingsAppearanceThemeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get settingsAppearanceThemeLight;
+
+  /// No description provided for @settingsAppearanceThemeDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get settingsAppearanceThemeDark;
+
   /// No description provided for @settingsAppearanceDisplayLanguage.
   ///
   /// In en, this message translates to:

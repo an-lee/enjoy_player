@@ -18,7 +18,9 @@ class EnjoyCard extends StatelessWidget {
     return Material(
       color: cs.surfaceContainer,
       elevation: t.elevationCard,
-      shadowColor: Colors.black.withValues(alpha: 0.35),
+      shadowColor: Colors.black.withValues(
+        alpha: Theme.of(context).brightness == Brightness.dark ? 0.35 : 0.08,
+      ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(t.radiusLg),
         side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.22)),

@@ -48,25 +48,16 @@ class SharePracticePosterButton extends ConsumerWidget {
 
     if (!hasRecordings) return const SizedBox.shrink();
 
-    final icon = Icon(
-      Icons.ios_share_rounded,
-      color: iconColor ?? Colors.white,
-      size: 20,
-    );
-
-    return Material(
-      color: Colors.black.withValues(alpha: 0.45),
-      borderRadius: BorderRadius.circular(20),
-      clipBehavior: Clip.antiAlias,
-      child: IconButton(
+    return IconButton(
+      visualDensity: VisualDensity.compact,
+      style: IconButton.styleFrom(
         visualDensity: VisualDensity.compact,
-        padding: const EdgeInsets.all(8),
-        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-        tooltip: l10n.practicePosterShareTooltip,
-        icon: icon,
-        onPressed: () =>
-            showPracticePosterPreviewSheet(context, ref, mediaId: mediaId),
+        minimumSize: const Size(44, 44),
       ),
+      tooltip: l10n.practicePosterShareTooltip,
+      icon: Icon(Icons.ios_share_rounded, color: iconColor, size: 22),
+      onPressed: () =>
+          showPracticePosterPreviewSheet(context, ref, mediaId: mediaId),
     );
   }
 }

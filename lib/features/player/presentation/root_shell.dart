@@ -12,6 +12,7 @@ import 'package:enjoy_player/core/player/player_surface_overlay_coordinator.dart
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/widgets/app_background.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_bottom_nav.dart';
+import 'package:enjoy_player/core/theme/widgets/enjoy_chrome_icon.dart';
 import 'package:enjoy_player/features/onboarding/presentation/onboarding_showcase_host.dart';
 import 'package:enjoy_player/features/subscription/presentation/tier_reconcile_host.dart';
 import 'package:enjoy_player/features/sync/application/sync_controller.dart';
@@ -100,21 +101,45 @@ class _RootShellState extends ConsumerState<RootShell> {
                         EnjoyBottomNavDestination(
                           icon: Icons.home_outlined,
                           selectedIcon: Icons.home_rounded,
+                          iconWidget: const EnjoyChromeIcon(
+                            EnjoyChromeGlyph.home,
+                          ),
+                          selectedIconWidget: const EnjoyChromeIcon(
+                            EnjoyChromeGlyph.home,
+                          ),
                           label: l10n.homeTitle,
                         ),
                         EnjoyBottomNavDestination(
                           icon: Icons.explore_outlined,
                           selectedIcon: Icons.explore_rounded,
+                          iconWidget: const EnjoyChromeIcon(
+                            EnjoyChromeGlyph.compass,
+                          ),
+                          selectedIconWidget: const EnjoyChromeIcon(
+                            EnjoyChromeGlyph.compass,
+                          ),
                           label: l10n.discoverTitle,
                         ),
                         EnjoyBottomNavDestination(
                           icon: Icons.collections_bookmark_outlined,
                           selectedIcon: Icons.collections_bookmark_rounded,
+                          iconWidget: const EnjoyChromeIcon(
+                            EnjoyChromeGlyph.library,
+                          ),
+                          selectedIconWidget: const EnjoyChromeIcon(
+                            EnjoyChromeGlyph.library,
+                          ),
                           label: l10n.libraryTitle,
                         ),
                         EnjoyBottomNavDestination(
                           icon: Icons.person_outlined,
                           selectedIcon: Icons.person_rounded,
+                          iconWidget: const EnjoyChromeIcon(
+                            EnjoyChromeGlyph.user,
+                          ),
+                          selectedIconWidget: const EnjoyChromeIcon(
+                            EnjoyChromeGlyph.user,
+                          ),
                           label: l10n.profileTitle,
                           showBadge: updateBadge,
                           semanticsLabel: updateBadge
@@ -145,21 +170,20 @@ class _RootShellState extends ConsumerState<RootShell> {
                 });
               }
 
-              final pageColumn = Column(
-                children: [
-                  Expanded(child: widget.child),
-                  ?bottomNav,
-                ],
-              );
-
               final bottomClearance = !useSidebar && !onPlayer && !onReview
                   ? rootShellBottomNavClearance(context)
                   : 0.0;
 
               Widget mobileShellScaffold() {
                 if (playerWithTransport) {
+                  // Same floating treatment as [EnjoyBottomNav]: transparent
+                  // scaffold + [extendBody] so transcript / [AppBackground]
+                  // show around (and through) the glass capsule. Native video
+                  // stays in the upper [PlayerSurfaceTarget] stage, not in this
+                  // bottom slot (ADR-0066 parks the surface for overlays).
                   return Scaffold(
                     backgroundColor: Colors.transparent,
+                    extendBody: true,
                     body: SafeArea(
                       bottom: false,
                       child: SizedBox.expand(child: widget.child),
@@ -181,13 +205,35 @@ class _RootShellState extends ConsumerState<RootShell> {
                     ),
                   );
                 }
-                return Scaffold(body: SafeArea(child: pageColumn));
+                // Transparent + [extendBody] so [AppBackground] and page content
+                // show around (and through) the floating glass capsule. Do not
+                // wrap the nav in a [Column] inside [SafeArea] — that paints an
+                // opaque home-indicator tray behind the bar.
+                return Scaffold(
+                  backgroundColor: Colors.transparent,
+                  extendBody: bottomNav != null,
+                  body: SafeArea(
+                    bottom: false,
+                    child: Padding(
+                      key: const ValueKey<String>('root-shell-content'),
+                      padding: EdgeInsets.only(bottom: bottomClearance),
+                      child: widget.child,
+                    ),
+                  ),
+                  bottomNavigationBar: bottomNav == null
+                      ? null
+                      : Material(
+                          type: MaterialType.transparency,
+                          child: bottomNav,
+                        ),
+                );
               }
 
               final shell = useSidebar
                   ? RootShellBottomInset(
                       bottomClearance: bottomClearance,
                       child: Scaffold(
+                        backgroundColor: Colors.transparent,
                         body: SafeArea(
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -197,7 +243,7 @@ class _RootShellState extends ConsumerState<RootShell> {
                                 label: l10n.navMainLabel,
                                 child: const AppSidebar(),
                               ),
-                              Expanded(child: pageColumn),
+                              Expanded(child: widget.child),
                             ],
                           ),
                         ),

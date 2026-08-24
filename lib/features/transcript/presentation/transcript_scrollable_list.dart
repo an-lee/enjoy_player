@@ -472,9 +472,11 @@ class _TranscriptScrollableListState
         child: ListView.builder(
           scrollCacheExtent: const ScrollCacheExtent.pixels(1400),
           controller: _scrollController,
-          padding: EdgeInsets.symmetric(
-            horizontal: density.listHorizontalPadding,
-            vertical: density.listVerticalPadding,
+          padding: EdgeInsets.fromLTRB(
+            density.listHorizontalPadding,
+            density.listVerticalPadding,
+            density.listHorizontalPadding,
+            density.listVerticalPadding + MediaQuery.paddingOf(context).bottom,
           ),
           itemCount: items.length,
           itemBuilder: (context, index) {

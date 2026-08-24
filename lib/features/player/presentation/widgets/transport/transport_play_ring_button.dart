@@ -3,6 +3,9 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:enjoy_player/core/theme/colors.dart';
+import 'package:enjoy_player/core/theme/widgets/enjoy_chrome_icon.dart';
+
 class TransportPlayRingButton extends StatefulWidget {
   const TransportPlayRingButton({
     super.key,
@@ -54,11 +57,11 @@ class _TransportPlayRingButtonState extends State<TransportPlayRingButton> {
                 duration: const Duration(milliseconds: 90),
                 curve: Curves.easeOutCubic,
                 child: Ink(
-                  width: 44,
-                  height: 44,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: ringColor, width: 2),
+                    color: ringColor,
                     boxShadow: [
                       BoxShadow(
                         color: ringColor.withValues(alpha: 0.28),
@@ -69,12 +72,12 @@ class _TransportPlayRingButtonState extends State<TransportPlayRingButton> {
                   ),
                   child: Center(
                     child: widget.buffering
-                        ? SizedBox(
+                        ? const SizedBox(
                             width: 22,
                             height: 22,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: ringColor,
+                              color: AppColors.onAccent,
                             ),
                           )
                         : AnimatedSwitcher(
@@ -83,13 +86,13 @@ class _TransportPlayRingButtonState extends State<TransportPlayRingButton> {
                             switchOutCurve: Curves.easeInCubic,
                             transitionBuilder: (child, anim) =>
                                 FadeTransition(opacity: anim, child: child),
-                            child: Icon(
+                            child: EnjoyChromeIcon(
                               widget.playing
-                                  ? Icons.pause_rounded
-                                  : Icons.play_arrow_rounded,
+                                  ? EnjoyChromeGlyph.pause
+                                  : EnjoyChromeGlyph.play,
                               key: ValueKey<bool>(widget.playing),
-                              color: cs.onSurface,
-                              size: 26,
+                              color: AppColors.onAccent,
+                              size: 22,
                             ),
                           ),
                   ),

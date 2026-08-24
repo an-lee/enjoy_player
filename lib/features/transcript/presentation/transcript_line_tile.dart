@@ -246,8 +246,8 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
           bg = tok.echoActive.withValues(alpha: 0.06);
           railColor = tok.echoActive;
         } else if (widget.isActive) {
-          bg = scheme.primary.withValues(alpha: 0.08);
-          railColor = scheme.primary;
+          bg = tok.accentSoft;
+          railColor = tok.accentInk;
         } else if (widget.inEcho) {
           bg = tok.echoActive.withValues(alpha: 0.04);
         } else if (hover) {

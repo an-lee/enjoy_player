@@ -6,6 +6,7 @@ import 'package:enjoy_player/features/auth/domain/auth_state.dart';
 import 'package:enjoy_player/features/auth/domain/user_profile.dart';
 import 'package:enjoy_player/features/player/application/player_engine_test_double_provider.dart';
 import 'package:enjoy_player/features/player/application/player_preferences_provider.dart';
+import 'package:enjoy_player/core/theme/widgets/enjoy_chrome_icon.dart';
 import 'package:enjoy_player/features/player/presentation/widgets/transport/transport_volume_button.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +14,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../../../../helpers/chrome_icon_finders.dart';
 import '../../../../../support/fake_player_engine.dart';
 
 class _SignedInAuthCtrl extends AuthCtrl {
@@ -74,8 +76,7 @@ void main() {
     );
     await tester.pump();
 
-    // The button should render an IconButton with a volume-related icon.
-    expect(find.byIcon(Icons.volume_up_rounded), findsOneWidget);
+    expect(findChromeIcon(EnjoyChromeGlyph.volume), findsOneWidget);
   });
 
   testWidgets('TransportVolumeButton shows muted icon when volume is 0', (
@@ -83,17 +84,16 @@ void main() {
   ) async {
     final container = _containerFor(db, fake);
     addTearDown(container.dispose);
-    // Force volume to 0.
     await container.read(playerPreferencesCtrlProvider.notifier).setVolume(0);
     await tester.pumpWidget(
       _wrap(container: container, child: const TransportVolumeButton()),
     );
     await tester.pump();
 
-    expect(find.byIcon(Icons.volume_off_rounded), findsOneWidget);
+    expect(findChromeIcon(EnjoyChromeGlyph.volumeOff), findsOneWidget);
   });
 
-  testWidgets('TransportVolumeButton toggles mute on tap', (tester) async {
+  testWidgets('tapping volume shows a slider to adjust level', (tester) async {
     final container = _containerFor(db, fake);
     addTearDown(container.dispose);
     await tester.pumpWidget(
@@ -101,11 +101,18 @@ void main() {
     );
     await tester.pump();
 
-    // Tap the icon button.
-    await tester.tap(find.byIcon(Icons.volume_up_rounded));
+    expect(find.byType(Slider), findsNothing);
+
+    await tester.tap(findChromeIcon(EnjoyChromeGlyph.volume));
+    await tester.pump();
     await tester.pump();
 
-    // After muting, the icon should switch.
-    expect(find.byIcon(Icons.volume_off_rounded), findsOneWidget);
+    expect(find.byType(Slider), findsOneWidget);
+
+    await tester.tap(findChromeIcon(EnjoyChromeGlyph.volume));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byType(Slider), findsNothing);
   });
 }

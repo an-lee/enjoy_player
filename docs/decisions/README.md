@@ -34,7 +34,7 @@ Trade-offs, follow-up work, risks.
 | [0008](0008-light-mode-parity.md) | Light mode parity |
 | [0009](0009-platform-adaptive-shell.md) | Platform-adaptive shell nuances |
 | [0010](0010-cloud-sync-mvp.md) | Cloud sync MVP — metadata (audio/video/recording) |
-| [0011](0011-dark-mode-only.md) | Dark mode only + logo-aligned brand (supersedes 0008) |
+| [0011](0011-dark-mode-only.md) | Dark mode only + logo-aligned brand (supersedes 0008; **superseded by 0083**) |
 | [0012](0012-per-user-sqlite-isolation.md) | Per-user SQLite + secure profile cache (partial supersession of 0006) |
 | [0013](0013-local-first-sync.md) | Local-first cloud sync + Cloud index (supersedes 0010 download behavior on player) |
 | [0014](0014-ai-capabilities-layer.md) | AI capabilities layer (Enjoy worker + capability pattern; BYOK/local placeholders) |
@@ -106,3 +106,4 @@ Trade-offs, follow-up work, risks.
 | [0080](0080-macos-security-scoped-bookmarks.md) | macOS security-scoped bookmarks for path-linked local media — sandbox-restart resilience + file-move resilience for externally linked imports (supplements ADR-0050) |
 | [0081](0081-crafted-audio-cloud-sync.md) | Crafted audio cloud sync — Active Storage direct-upload of TTS binaries for cross-device playback |
 | [0082](0082-home-continue-no-mini-player.md) | Home Continue practicing card; no global mini player; leave player clears live session (supersedes ADR-0035 E1–E7) |
+| [0083](0083-paper-graphite-light-dark.md) | Paper / graphite dual theme + System/Light/Dark appearance (supersedes 0011) |

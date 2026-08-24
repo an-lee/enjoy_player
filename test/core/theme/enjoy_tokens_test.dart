@@ -17,11 +17,12 @@ void main() {
       expect(tokens.space24, 24);
       expect(tokens.space32, 32);
       expect(tokens.space40, 40);
+      expect(tokens.space48, 48);
 
-      expect(tokens.radiusSm, 10);
-      expect(tokens.radiusMd, 14);
-      expect(tokens.radiusLg, 18);
-      expect(tokens.radiusXl, 24);
+      expect(tokens.radiusSm, 8);
+      expect(tokens.radiusMd, 12);
+      expect(tokens.radiusLg, 16);
+      expect(tokens.radiusXl, 20);
       expect(tokens.radiusFull, 999);
 
       expect(tokens.elevationNone, 0);
@@ -50,6 +51,9 @@ void main() {
       expect(tokens.scoreWarnContainer, AppColors.scoreWarnContainer);
       expect(tokens.scoreBadContainer, AppColors.scoreBadContainer);
       expect(tokens.accentSoft, AppColors.accentSoft);
+      expect(tokens.accentInk, AppColors.brandOnDark);
+      expect(tokens.intelligenceInk, AppColors.intelligenceInkDark);
+      expect(tokens.echoInk, AppColors.echoInkDark);
       expect(tokens.ccBadge, scheme.primary);
       expect(tokens.contentMaxWidth, 720);
       expect(tokens.formMaxWidth, 680);
@@ -80,6 +84,20 @@ void main() {
 
       expect(tokens.glassTint, scheme.surface.withValues(alpha: 0.55));
       expect(tokens.glassBorder, scheme.outlineVariant.withValues(alpha: 0.22));
+    });
+
+    test('light palette uses paper inks and denser glass', () {
+      const scheme = ColorScheme.light();
+      final tokens = EnjoyThemeTokens.build(scheme);
+
+      expect(tokens.accentInk, AppColors.brandOnLight);
+      expect(tokens.intelligenceInk, AppColors.intelligenceInkLight);
+      expect(tokens.echoInk, AppColors.echoInkLight);
+      expect(tokens.scoreGood, AppColors.scoreGoodLight);
+      expect(tokens.glassTint, scheme.surface.withValues(alpha: 0.82));
+      expect(tokens.glassBorder, scheme.outlineVariant.withValues(alpha: 0.55));
+      expect(tokens.radiusSm, 8);
+      expect(tokens.space48, 48);
     });
   });
 
@@ -364,10 +382,10 @@ void main() {
       expect(result.space32, 48); // lerp(32, 64, 0.5)
       expect(result.space40, 60); // lerp(40, 80, 0.5)
 
-      expect(result.radiusSm, 13); // lerp(10, 16, 0.5)
-      expect(result.radiusMd, 19); // lerp(14, 24, 0.5)
-      expect(result.radiusLg, 25); // lerp(18, 32, 0.5)
-      expect(result.radiusXl, 32); // lerp(24, 40, 0.5)
+      expect(result.radiusSm, 12); // lerp(8, 16, 0.5)
+      expect(result.radiusMd, 18); // lerp(12, 24, 0.5)
+      expect(result.radiusLg, 24); // lerp(16, 32, 0.5)
+      expect(result.radiusXl, 30); // lerp(20, 40, 0.5)
       expect(result.radiusFull, 1498.5); // lerp(999, 1998, 0.5)
 
       expect(result.elevationNone, 0); // lerp(0, 0, 0.5)
@@ -475,7 +493,7 @@ void main() {
 
       expect(result.space4, 5); // lerp(4, 8, 0.25) = 5
       expect(result.space40, 50); // lerp(40, 80, 0.25) = 50
-      expect(result.radiusSm, 11.5); // lerp(10, 16, 0.25) = 11.5
+      expect(result.radiusSm, 10); // lerp(8, 16, 0.25) = 10
       expect(result.focusRingWidth, 2.5); // lerp(2, 4, 0.25) = 2.5
     });
   });
