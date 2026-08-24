@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:enjoy_player/core/theme/app_theme.dart';
+import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
 import 'package:enjoy_player/features/settings/application/karaoke_highlight_settings.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_blur_mode_provider.dart';
@@ -278,5 +280,60 @@ void main() {
     );
 
     expect(find.byIcon(Icons.mic_rounded), findsNothing);
+  });
+
+  testWidgets('active line uses accentSoft wash in light and dark', (
+    tester,
+  ) async {
+    for (final brightness in [Brightness.light, Brightness.dark]) {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            transcriptBlurModeProvider.overrideWith(() => _BlurMode(false)),
+            karaokeHighlightSettingsProvider.overrideWith(
+              _KaraokeHighlightOff.new,
+            ),
+            ...transcriptWordPracticeOffOverrides(),
+          ],
+          child: MaterialApp(
+            theme: buildAppTheme(brightness),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: TranscriptLineTile(
+                line: const TranscriptLine(
+                  text: 'Hello world',
+                  startMs: 0,
+                  durationMs: 2000,
+                ),
+                mediaId: 'test',
+                secondaryText: null,
+                isActive: true,
+                inEcho: false,
+                groupedInEcho: false,
+                selectable: false,
+                onTap: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final tokens = EnjoyThemeTokens.of(
+        tester.element(find.byType(TranscriptLineTile)),
+      );
+      final materials = tester.widgetList<Material>(
+        find.descendant(
+          of: find.byType(TranscriptLineTile),
+          matching: find.byType(Material),
+        ),
+      );
+      expect(
+        materials.any((m) => m.color == tokens.accentSoft),
+        isTrue,
+        reason: 'active wash in $brightness',
+      );
+    }
   });
 }

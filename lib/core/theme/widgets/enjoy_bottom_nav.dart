@@ -17,10 +17,18 @@ class EnjoyBottomNavDestination {
     required this.label,
     this.semanticsLabel,
     this.showBadge = false,
+    this.iconWidget,
+    this.selectedIconWidget,
   });
 
   final IconData icon;
   final IconData selectedIcon;
+
+  /// When set, rendered instead of [icon] (chrome SVG). Tests may omit this.
+  final Widget? iconWidget;
+
+  /// When set, rendered instead of [selectedIcon].
+  final Widget? selectedIconWidget;
   final String label;
 
   /// Defaults to [label] when null.
@@ -45,7 +53,6 @@ class EnjoyBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = EnjoyThemeTokens.of(context);
-    final cs = Theme.of(context).colorScheme;
 
     final blurRaw = t.miniBarBlurSigma;
     final blur = defaultTargetPlatform == TargetPlatform.android
@@ -64,7 +71,11 @@ class EnjoyBottomNav extends StatelessWidget {
               borderRadius: BorderRadius.circular(t.radiusXl),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.40),
+                  color: Colors.black.withValues(
+                    alpha: Theme.of(context).brightness == Brightness.dark
+                        ? 0.40
+                        : 0.10,
+                  ),
                   blurRadius: 28,
                   offset: const Offset(0, 8),
                 ),
@@ -76,7 +87,7 @@ class EnjoyBottomNav extends StatelessWidget {
                 filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: cs.surface.withValues(alpha: 0.82),
+                    color: t.glassTint,
                     borderRadius: BorderRadius.circular(t.radiusXl),
                     border: Border.all(color: t.glassBorder, width: 1),
                   ),
@@ -165,7 +176,7 @@ class _EnjoyBottomNavItem extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: selected ? t.accentSoft : Colors.transparent,
-                      borderRadius: BorderRadius.circular(t.radiusLg),
+                      borderRadius: BorderRadius.circular(t.radiusMd),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -174,14 +185,21 @@ class _EnjoyBottomNavItem extends StatelessWidget {
                         Stack(
                           clipBehavior: Clip.none,
                           children: [
-                            Icon(
-                              selected
-                                  ? destination.selectedIcon
-                                  : destination.icon,
-                              size: 22,
-                              color: selected
-                                  ? cs.primary
-                                  : cs.onSurfaceVariant.withValues(alpha: 0.75),
+                            IconTheme(
+                              data: IconThemeData(
+                                size: 22,
+                                color: selected
+                                    ? t.accentInk
+                                    : cs.onSurfaceVariant.withValues(
+                                        alpha: 0.75,
+                                      ),
+                              ),
+                              child: selected
+                                  ? (destination.selectedIconWidget ??
+                                        destination.iconWidget ??
+                                        Icon(destination.selectedIcon))
+                                  : (destination.iconWidget ??
+                                        Icon(destination.icon)),
                             ),
                             if (destination.showBadge)
                               Positioned(
@@ -216,7 +234,7 @@ class _EnjoyBottomNavItem extends StatelessWidget {
                                 ? FontWeight.w600
                                 : FontWeight.w500,
                             color: selected
-                                ? cs.primary
+                                ? t.accentInk
                                 : cs.onSurfaceVariant.withValues(alpha: 0.75),
                             letterSpacing: 0.1,
                           ),

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'package:enjoy_player/core/interaction/haptics.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
+import 'package:enjoy_player/core/theme/widgets/enjoy_chrome_icon.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_modal.dart';
 import 'package:enjoy_player/core/theme/widgets/sheet_drag_handle.dart';
 
@@ -89,8 +90,8 @@ Future<String?> showLanguageChoiceSheet({
                                         ),
                                       ),
                                       if (selected)
-                                        Icon(
-                                          Icons.check_rounded,
+                                        EnjoyChromeIcon(
+                                          EnjoyChromeGlyph.check,
                                           color: cs.primary,
                                           size: 22,
                                         ),

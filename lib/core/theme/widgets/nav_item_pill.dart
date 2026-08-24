@@ -23,6 +23,8 @@ class NavItemPill extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.selectedIcon,
+    this.iconWidget,
+    this.selectedIconWidget,
     this.iconSize = 20,
     this.maxLines,
     this.overflow,
@@ -34,6 +36,10 @@ class NavItemPill extends StatelessWidget {
   /// to [icon] when null. The sidebar uses a heavier outline/filled pair;
   /// the Settings rail reuses a single icon.
   final IconData? selectedIcon;
+
+  /// Optional chrome widget; when set, replaces the [Icon] for this state.
+  final Widget? iconWidget;
+  final Widget? selectedIconWidget;
 
   final String label;
   final bool selected;
@@ -89,19 +95,24 @@ class NavItemPill extends StatelessWidget {
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color: selected
-                        ? cs.primaryContainer.withValues(alpha: 0.6)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(t.radiusFull),
+                    color: selected ? cs.surfaceContainer : Colors.transparent,
+                    borderRadius: BorderRadius.circular(t.radiusMd),
+                    border: selected
+                        ? Border(left: BorderSide(color: t.accentInk, width: 3))
+                        : null,
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        selected ? (selectedIcon ?? icon) : icon,
-                        size: iconSize,
-                        color: selected
-                            ? cs.onPrimaryContainer
-                            : cs.onSurfaceVariant,
+                      IconTheme(
+                        data: IconThemeData(
+                          size: iconSize,
+                          color: selected ? t.accentInk : cs.onSurfaceVariant,
+                        ),
+                        child: selected
+                            ? (selectedIconWidget ??
+                                  iconWidget ??
+                                  Icon(selectedIcon ?? icon, size: iconSize))
+                            : (iconWidget ?? Icon(icon, size: iconSize)),
                       ),
                       SizedBox(width: t.space12),
                       Expanded(

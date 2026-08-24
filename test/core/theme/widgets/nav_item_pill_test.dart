@@ -205,5 +205,32 @@ void main() {
         expect(shapeOf().side, BorderSide.none);
       },
     );
+
+    testWidgets('renders selected pill in light theme', (tester) async {
+      final scheme = ColorScheme.fromSeed(
+        seedColor: const Color(0xFF7B61FF),
+        brightness: Brightness.light,
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(
+            colorScheme: scheme,
+            extensions: [EnjoyThemeTokens.build(scheme)],
+          ),
+          home: Scaffold(
+            body: NavItemPill(
+              icon: Icons.home_outlined,
+              selectedIcon: Icons.home_rounded,
+              label: 'Home',
+              selected: true,
+              onTap: () {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Home'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   });
 }

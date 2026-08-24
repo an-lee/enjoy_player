@@ -3,7 +3,7 @@
 | Concern | Choice | Notes |
 |---------|--------|-------|
 | Language | Dart ^3.12 | Strict analysis; matches `sdk: ^3.12.0` in `pubspec.yaml`. Flutter pinned in [`.github/flutter-version`](../.github/flutter-version). |
-| UI | Flutter 3.x / Material 3 + `google_fonts` | Dark-only `buildAppTheme()` + `EnjoyThemeTokens` in `lib/core/theme/` |
+| UI | Flutter 3.x / Material 3 + `google_fonts` | Paper/graphite `buildAppTheme(Brightness)` + `EnjoyThemeTokens` in `lib/core/theme/` ([ADR-0083](decisions/0083-paper-graphite-light-dark.md)) |
 | State | `flutter_riverpod` + `riverpod_annotation` | `@Riverpod` notifiers, `build_runner` |
 | Navigation | `go_router` | Shell route; player transport only on `/player/` |
 | Playback | `media_kit` + `media_kit_video` + `media_kit_libs_video` | Single `Player` instance |

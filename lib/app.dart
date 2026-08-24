@@ -115,6 +115,8 @@ class _EnjoyAppState extends ConsumerState<EnjoyApp>
   /// [prefs] as the locale source.
   Widget _baseMaterialApp({
     required ThemeData theme,
+    ThemeData? darkTheme,
+    ThemeMode themeMode = ThemeMode.system,
     required Widget home,
     GoRouter? router,
     AppPreferencesState? prefs,
@@ -125,6 +127,8 @@ class _EnjoyAppState extends ConsumerState<EnjoyApp>
         scaffoldMessengerKey: appScaffoldMessengerKey,
         onGenerateTitle: (ctx) => AppLocalizations.of(ctx)!.appTitle,
         theme: theme,
+        darkTheme: darkTheme ?? theme,
+        themeMode: themeMode,
         locale: prefs?.locale,
         localizationsDelegates: _fallbackLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -136,6 +140,8 @@ class _EnjoyAppState extends ConsumerState<EnjoyApp>
       debugShowCheckedModeBanner: false,
       scaffoldMessengerKey: appScaffoldMessengerKey,
       theme: theme,
+      darkTheme: darkTheme ?? theme,
+      themeMode: themeMode,
       localizationsDelegates: _fallbackLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: home,
@@ -147,13 +153,8 @@ class _EnjoyAppState extends ConsumerState<EnjoyApp>
   /// Only the router variant needs a `builder`; the loading + error
   /// fallbacks render their `home` directly.
   Widget _shellBuilder(BuildContext context, Widget? child) {
-    const overlayStyle = SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: Color(0xFF09090B),
-      systemNavigationBarIconBrightness: Brightness.light,
-      systemNavigationBarContrastEnforced: false,
-    );
+    final brightness = Theme.of(context).brightness;
+    final overlayStyle = enjoySystemUiOverlayStyle(brightness);
     final viewport = ConstrainedAppViewport(
       child: AnnotatedRegion<SystemUiOverlayStyle>(
         value: overlayStyle,
@@ -166,19 +167,33 @@ class _EnjoyAppState extends ConsumerState<EnjoyApp>
     return isDesktop ? AppHotkeysKeyboardListener(child: hosted) : hosted;
   }
 
-  Widget _loadingBranch(ThemeData theme) {
+  Widget _loadingBranch(
+    ThemeData theme,
+    ThemeData darkTheme,
+    ThemeMode themeMode,
+  ) {
     return _baseMaterialApp(
       theme: theme,
+      darkTheme: darkTheme,
+      themeMode: themeMode,
       home: const ConstrainedAppViewport(
         child: Scaffold(body: Center(child: SkeletonAppBootstrap())),
       ),
     );
   }
 
-  Widget _errorBranch(ThemeData theme, Object error, StackTrace? stack) {
+  Widget _errorBranch(
+    ThemeData theme,
+    ThemeData darkTheme,
+    ThemeMode themeMode,
+    Object error,
+    StackTrace? stack,
+  ) {
     final isDb = isUnrecoverableDatabaseError(error);
     return _baseMaterialApp(
       theme: theme,
+      darkTheme: darkTheme,
+      themeMode: themeMode,
       home: isDb
           ? RecoverySurface(
               error: error,
@@ -203,10 +218,14 @@ class _EnjoyAppState extends ConsumerState<EnjoyApp>
   Widget _routerBranch({
     required GoRouter router,
     required ThemeData theme,
+    required ThemeData darkTheme,
+    required ThemeMode themeMode,
     required AppPreferencesState prefs,
   }) {
     return _baseMaterialApp(
       theme: theme,
+      darkTheme: darkTheme,
+      themeMode: themeMode,
       home: const SizedBox.shrink(),
       router: router,
       prefs: prefs,
@@ -275,22 +294,33 @@ class _EnjoyAppState extends ConsumerState<EnjoyApp>
 
     final router = ref.watch(appRouterProvider);
     final prefsAsync = ref.watch(appPreferencesCtrlProvider);
-    final theme = widget.themeBuilder?.call() ?? buildAppTheme();
+    final overrideTheme = widget.themeBuilder?.call();
+    final lightTheme = overrideTheme ?? buildAppTheme(Brightness.light);
+    final darkTheme = overrideTheme ?? buildAppTheme(Brightness.dark);
 
     final live = prefsAsync.valueOrNull;
     final effective = live ?? _lastResolvedPrefs;
+    final themeMode = effective?.themeMode ?? ThemeMode.system;
 
     if (prefsAsync.hasError && effective == null) {
-      return _errorBranch(theme, prefsAsync.error!, prefsAsync.stackTrace);
+      return _errorBranch(
+        lightTheme,
+        darkTheme,
+        themeMode,
+        prefsAsync.error!,
+        prefsAsync.stackTrace,
+      );
     }
 
     if (prefsAsync.isLoading && effective == null) {
-      return _loadingBranch(theme);
+      return _loadingBranch(lightTheme, darkTheme, themeMode);
     }
 
     return _routerBranch(
       router: router,
-      theme: theme,
+      theme: lightTheme,
+      darkTheme: darkTheme,
+      themeMode: themeMode,
       prefs: effective ?? AppPreferencesState.initial,
     );
   }

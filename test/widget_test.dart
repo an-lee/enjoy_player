@@ -49,6 +49,12 @@ class _StaticPrefsCtrl extends AppPreferencesCtrl {
   Future<AppPreferencesState> build() async => AppPreferencesState.initial;
 }
 
+class _LightPrefsCtrl extends AppPreferencesCtrl {
+  @override
+  Future<AppPreferencesState> build() async =>
+      AppPreferencesState.initial.copyWith(themeMode: ThemeMode.light);
+}
+
 class _NoopUpdateCtrl extends UpdateCtrl {
   @override
   UpdateCheckResult? build() => null;
@@ -104,6 +110,62 @@ void main() {
 
     expect(find.byType(EnjoyApp), findsOneWidget);
     expect(find.byType(MaterialApp), findsOneWidget);
+    expect(
+      tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
+      ThemeMode.system,
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    await fakeEngine.dispose();
+    await db.close();
+    if (root.existsSync()) root.deleteSync(recursive: true);
+  });
+
+  testWidgets('EnjoyApp MaterialApp.themeMode follows prefs', (tester) async {
+    FlutterSecureStorage.setMockInitialValues({});
+    PackageInfo.setMockInitialValues(
+      appName: 'Enjoy Player',
+      packageName: 'com.enjoy.player.test',
+      version: '0.3.1',
+      buildNumber: '2',
+      buildSignature: 'test',
+    );
+
+    final root = Directory.systemTemp.createTempSync('enjoy_widget_theme_mode');
+    PathProviderPlatform.instance = TestPathProvider(root.path);
+
+    final db = AppDatabase(executor: NativeDatabase.memory());
+    final fakeEngine = FakePlayerEngine();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          deviceGlobalAppDatabaseProvider.overrideWithValue(db),
+          appDatabaseProvider.overrideWithValue(db),
+          authCtrlProvider.overrideWith(_SignedOutAuthCtrl.new),
+          appPreferencesCtrlProvider.overrideWith(_LightPrefsCtrl.new),
+          updateCtrlProvider.overrideWith(_NoopUpdateCtrl.new),
+          playerEngineTestDoubleProvider.overrideWithValue(fakeEngine),
+          syncEnqueueProvider.overrideWithValue((_, _, _) async {}),
+          libraryHomeRecentsProvider.overrideWith(
+            (ref) => Stream<List<Media>>.value(const []),
+          ),
+          discoverSubscriptionsProvider.overrideWith(
+            (ref) => Stream<List<DiscoverChannel>>.value(const []),
+          ),
+        ],
+        child: const EnjoyApp(themeBuilder: _testTheme),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(
+      tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
+      ThemeMode.light,
+    );
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();

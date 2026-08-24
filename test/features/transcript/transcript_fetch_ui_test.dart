@@ -4,12 +4,15 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
+import 'package:enjoy_player/core/theme/widgets/enjoy_chrome_icon.dart';
 import 'package:enjoy_player/features/player/presentation/widgets/transport/transport_cc_fullscreen.dart';
 import 'package:enjoy_player/features/transcript/application/all_transcripts_provider.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_fetch_controller.dart';
 import 'package:enjoy_player/features/transcript/domain/transcript_fetch_status.dart';
 import 'package:enjoy_player/features/transcript/domain/transcript_track.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
+
+import '../../helpers/chrome_icon_finders.dart';
 
 Widget _harness({required Widget child, required List<Override> overrides}) {
   final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF003366));
@@ -81,7 +84,7 @@ void main() {
       await tester.pump();
 
       expect(find.byType(CircularProgressIndicator), findsNothing);
-      expect(find.byIcon(Icons.closed_caption_outlined), findsOneWidget);
+      expect(findChromeIcon(EnjoyChromeGlyph.cc), findsOneWidget);
     },
   );
 }

@@ -9,6 +9,7 @@ import 'package:enjoy_player/core/interaction/haptics.dart';
 import 'package:enjoy_player/core/window/desktop_window.dart';
 import 'package:enjoy_player/core/theme/dynamic_color/dynamic_color_provider.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
+import 'package:enjoy_player/core/theme/widgets/enjoy_chrome_icon.dart';
 import 'package:enjoy_player/core/theme/widgets/glass_surface.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_modal.dart';
 import 'package:enjoy_player/core/theme/widgets/sheet_drag_handle.dart';
@@ -330,21 +331,21 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
 
     final prevButton = _LineNavButton(
       tooltip: ttPrev,
-      icon: Icons.skip_previous_rounded,
+      icon: const EnjoyChromeIcon(EnjoyChromeGlyph.skipBack),
       enabled: !isBuffering && hasTranscriptLines,
       onTap: () => ref.read(playerInteractionsProvider.notifier).prevLine(),
     );
 
     final nextButton = _LineNavButton(
       tooltip: ttNext,
-      icon: Icons.skip_next_rounded,
+      icon: const EnjoyChromeIcon(EnjoyChromeGlyph.skipForward),
       enabled: !isBuffering && hasTranscriptLines,
       onTap: () => ref.read(playerInteractionsProvider.notifier).nextLine(),
     );
 
     final replayButton = _LineNavButton(
       tooltip: ttReplay,
-      icon: Icons.replay_rounded,
+      icon: const EnjoyChromeIcon(EnjoyChromeGlyph.replay),
       enabled: !isBuffering && hasTranscriptLines,
       onTap: () => ref.read(playerInteractionsProvider.notifier).replayLine(),
     );
@@ -365,7 +366,7 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
         onPressed: echo.active || hasTranscriptLines
             ? Haptics.wrapTap(context, echoToggle)
             : null,
-        icon: const Icon(Icons.mic_none_rounded),
+        icon: const EnjoyChromeIcon(EnjoyChromeGlyph.mic),
       ),
     );
 
@@ -422,7 +423,7 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
           clipBehavior: Clip.none,
           alignment: Alignment.center,
           children: [
-            Icon(Icons.speed_rounded, color: cs.onSurfaceVariant),
+            const EnjoyChromeIcon(EnjoyChromeGlyph.speed),
             if (!playbackRatesEqual(playbackRate, 1.0))
               Positioned(
                 right: -2,
@@ -649,7 +650,7 @@ class _LineNavButton extends StatelessWidget {
   });
 
   final String tooltip;
-  final IconData icon;
+  final Widget icon;
   final bool enabled;
   final VoidCallback onTap;
 
@@ -659,7 +660,7 @@ class _LineNavButton extends StatelessWidget {
       tooltip: tooltip,
       iconSize: 22,
       onPressed: enabled ? Haptics.wrapTap(context, onTap) : null,
-      icon: Icon(icon),
+      icon: icon,
     );
   }
 }

@@ -1,47 +1,45 @@
-/// Material 3 theme — dark-only cinematic editorial (logo-aligned blue / purple).
+/// Material 3 theme — paper (light) / graphite (dark) cinematic editorial.
 library;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'colors.dart';
 import 'enjoy_tokens.dart';
 import 'typography.dart';
 
-ThemeData? _cachedTheme;
+ThemeData? _cachedLight;
+ThemeData? _cachedDark;
 
-ThemeData buildAppTheme() {
-  return _cachedTheme ??= _buildAppThemeImpl();
+/// Builds the Enjoy [ThemeData] for [brightness].
+///
+/// Results are cached per brightness. Existing call sites that omit
+/// [brightness] still receive dark (historical default).
+ThemeData buildAppTheme([Brightness brightness = Brightness.dark]) {
+  if (brightness == Brightness.light) {
+    return _cachedLight ??= _buildAppThemeImpl(Brightness.light);
+  }
+  return _cachedDark ??= _buildAppThemeImpl(Brightness.dark);
 }
 
-ThemeData _buildAppThemeImpl() {
-  // ── Color scheme ────────────────────────────────────────────────────────
-  final base = ColorScheme.fromSeed(
-    seedColor: AppColors.seedBrand,
-    brightness: Brightness.dark,
-  );
-
-  final colorScheme = _refinedDark(base);
-
-  // ── Tokens ──────────────────────────────────────────────────────────────
+ThemeData _buildAppThemeImpl(Brightness brightness) {
+  final colorScheme = AppColors.colorScheme(brightness);
   final tokens = EnjoyThemeTokens.build(colorScheme);
 
-  // ── Typography ──────────────────────────────────────────────────────────
   final baseTheme = ThemeData(
     colorScheme: colorScheme,
     useMaterial3: true,
-    brightness: Brightness.dark,
+    brightness: brightness,
   );
   final textTheme = buildBaseTextTheme(baseTheme.textTheme, colorScheme);
 
-  // Serif extension (default: serif ON for transcript)
   final transcriptTokens = TranscriptTypographyTokens.build(
     useSerif: true,
     base: textTheme,
     scheme: colorScheme,
   );
 
-  // ── Component themes ────────────────────────────────────────────────────
   final navigationBarTheme = NavigationBarThemeData(
     height: 68,
     backgroundColor: colorScheme.surface,
@@ -91,8 +89,8 @@ ThemeData _buildAppThemeImpl() {
   final inactiveSliderColor = colorScheme.onSurface.withValues(alpha: 0.12);
 
   final sliderTheme = SliderThemeData(
-    trackHeight: 2,
-    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 0),
+    trackHeight: 4,
+    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
     overlayShape: SliderComponentShape.noOverlay,
     activeTrackColor: colorScheme.primary,
     inactiveTrackColor: inactiveSliderColor,
@@ -131,16 +129,14 @@ ThemeData _buildAppThemeImpl() {
   );
 
   final cardTheme = CardThemeData(
-    elevation: tokens.elevationCard,
+    elevation: 0,
     margin: EdgeInsets.zero,
     clipBehavior: Clip.antiAlias,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(tokens.radiusXl),
-      side: BorderSide(
-        color: colorScheme.outlineVariant.withValues(alpha: 0.15),
-      ),
+      side: BorderSide(color: colorScheme.outlineVariant),
     ),
-    color: colorScheme.surfaceContainerLow,
+    color: colorScheme.surface,
   );
 
   final listTileTheme = ListTileThemeData(
@@ -159,10 +155,12 @@ ThemeData _buildAppThemeImpl() {
     ),
   );
 
+  final focusGlow = tokens.accentInk.withValues(alpha: 0.18);
+
   return ThemeData(
     colorScheme: colorScheme,
     useMaterial3: true,
-    brightness: Brightness.dark,
+    brightness: brightness,
     visualDensity: VisualDensity.adaptivePlatformDensity,
     splashColor: colorScheme.primary.withValues(alpha: 0.10),
     highlightColor: colorScheme.primary.withValues(alpha: 0.05),
@@ -171,6 +169,10 @@ ThemeData _buildAppThemeImpl() {
     extensions: <ThemeExtension<dynamic>>[tokens, transcriptTokens],
     textTheme: textTheme,
     scaffoldBackgroundColor: Colors.transparent,
+    cupertinoOverrideTheme: CupertinoThemeData(
+      brightness: brightness,
+      primaryColor: colorScheme.primary,
+    ),
     appBarTheme: AppBarTheme(
       centerTitle: false,
       elevation: 0,
@@ -197,10 +199,12 @@ ThemeData _buildAppThemeImpl() {
           vertical: tokens.space12,
         ),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(tokens.radiusSm),
+          borderRadius: BorderRadius.circular(tokens.radiusMd),
         ),
         textStyle: textTheme.labelLarge?.copyWith(letterSpacing: 0.1),
         elevation: 0,
+        backgroundColor: colorScheme.primary,
+        foregroundColor: colorScheme.onPrimary,
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -210,9 +214,9 @@ ThemeData _buildAppThemeImpl() {
           vertical: tokens.space12,
         ),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(tokens.radiusSm),
+          borderRadius: BorderRadius.circular(tokens.radiusMd),
         ),
-        side: BorderSide(color: colorScheme.outlineVariant, width: 1),
+        side: BorderSide(color: colorScheme.outline, width: 1),
         textStyle: textTheme.labelLarge?.copyWith(letterSpacing: 0.1),
       ),
     ),
@@ -223,14 +227,14 @@ ThemeData _buildAppThemeImpl() {
           vertical: tokens.space8,
         ),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(tokens.radiusSm),
+          borderRadius: BorderRadius.circular(tokens.radiusMd),
         ),
         textStyle: textTheme.labelLarge?.copyWith(letterSpacing: 0.1),
       ),
     ),
     iconTheme: IconThemeData(color: colorScheme.onSurfaceVariant, size: 24),
     dividerTheme: DividerThemeData(
-      color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+      color: colorScheme.outlineVariant,
       thickness: 1,
       space: 1,
     ),
@@ -256,20 +260,26 @@ ThemeData _buildAppThemeImpl() {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+      fillColor: colorScheme.surface,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(tokens.radiusMd),
-        borderSide: BorderSide.none,
+        borderSide: BorderSide(color: colorScheme.outlineVariant),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(tokens.radiusMd),
-        borderSide: BorderSide(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-        ),
+        borderSide: BorderSide(color: colorScheme.outlineVariant),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(tokens.radiusMd),
-        borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
+        borderSide: BorderSide(color: tokens.accentInk, width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tokens.radiusMd),
+        borderSide: BorderSide(color: colorScheme.error),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tokens.radiusMd),
+        borderSide: BorderSide(color: colorScheme.error, width: 1.5),
       ),
       contentPadding: EdgeInsets.symmetric(
         horizontal: tokens.space16,
@@ -281,31 +291,29 @@ ThemeData _buildAppThemeImpl() {
         fontWeight: FontWeight.w500,
       ),
       floatingLabelStyle: textTheme.labelLarge?.copyWith(
-        color: colorScheme.primary,
+        color: tokens.accentInk,
         fontWeight: FontWeight.w600,
       ),
       helperStyle: textTheme.bodyMedium?.copyWith(
         color: colorScheme.onSurfaceVariant.withValues(alpha: 0.85),
         height: 1.35,
       ),
+      focusColor: focusGlow,
     ),
     chipTheme: ChipThemeData(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(tokens.radiusFull),
-        side: BorderSide(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.35),
-        ),
+        side: BorderSide(color: colorScheme.outlineVariant),
       ),
-      backgroundColor: colorScheme.surfaceContainerLow,
+      backgroundColor: colorScheme.surface,
+      selectedColor: colorScheme.primaryContainer,
       labelStyle: textTheme.labelSmall,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
     ),
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {
-        // Cupertino slide for Apple platforms
         TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
         TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
-        // Fade-upward for others
         TargetPlatform.android: ZoomPageTransitionsBuilder(),
         TargetPlatform.fuchsia: FadeUpwardsPageTransitionsBuilder(),
         TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
@@ -324,26 +332,18 @@ ThemeData _buildAppThemeImpl() {
   );
 }
 
-// ── Dark color scheme refinement (surfaces + logo-aligned roles) ───────────
-ColorScheme _refinedDark(ColorScheme base) {
-  return base.copyWith(
-    surface: AppColors.surfaceDark,
-    surfaceDim: AppColors.surfaceContainerLowestDark,
-    surfaceBright: AppColors.surfaceContainerHighestDark,
-    surfaceContainerLowest: AppColors.surfaceContainerLowestDark,
-    surfaceContainerLow: AppColors.surfaceContainerLowDark,
-    surfaceContainer: AppColors.surfaceContainerDark,
-    surfaceContainerHigh: AppColors.surfaceContainerHighDark,
-    surfaceContainerHighest: AppColors.surfaceContainerHighestDark,
-    // Premium purple primary
-    primary: AppColors.brand,
-    onPrimary: const Color(0xFFFFFFFF),
-    primaryContainer: const Color(0xFF2B2250),
-    onPrimaryContainer: AppColors.brandOnDark,
-    // Logo blue secondary
-    secondary: AppColors.brandSecondary,
-    onSecondary: const Color(0xFFFFFFFF),
-    secondaryContainer: const Color(0xFF172554),
-    onSecondaryContainer: const Color(0xFFBFDBFE),
+/// Status / navigation bar chrome that follows paper vs graphite.
+SystemUiOverlayStyle enjoySystemUiOverlayStyle(Brightness brightness) {
+  final dark = brightness == Brightness.dark;
+  return SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+    systemNavigationBarColor: dark
+        ? AppColors.surfaceContainerLowestDark
+        : AppColors.surfaceContainerLowestLight,
+    systemNavigationBarIconBrightness: dark
+        ? Brightness.light
+        : Brightness.dark,
+    systemNavigationBarContrastEnforced: false,
   );
 }

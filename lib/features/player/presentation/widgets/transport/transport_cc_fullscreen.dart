@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
+import 'package:enjoy_player/core/theme/widgets/enjoy_chrome_icon.dart';
 import 'package:enjoy_player/core/window/desktop_window.dart';
 import 'package:enjoy_player/core/window/window_fullscreen_provider.dart';
 import 'package:enjoy_player/features/transcript/application/all_transcripts_provider.dart';
@@ -42,7 +43,7 @@ class TransportCcButton extends ConsumerWidget {
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 )
-              : const Icon(Icons.closed_caption_outlined),
+              : const EnjoyChromeIcon(EnjoyChromeGlyph.cc),
           onPressed: () => showSubtitleTrackPicker(context, ref, mediaId),
         ),
         if (hasTrack)

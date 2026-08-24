@@ -105,6 +105,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/logo-light.svg
+    - assets/icons/
     - assets/illustrations/
     - assets/discover/recommended_channels.json
     # Vendored eSpeak-NG voices/dicts; extracted to disk on Android at startup

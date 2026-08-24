@@ -12,6 +12,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:enjoy_player/core/theme/widgets/enjoy_chrome_icon.dart';
+import '../../../../helpers/chrome_icon_finders.dart';
 import 'package:go_router/go_router.dart';
 
 Widget buildHost(ProviderContainer container, GoRouter router) {
@@ -92,9 +94,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     // Three nav pills (Home, Discover, Library) rendered.
-    expect(find.byIcon(Icons.home_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.explore_outlined), findsOneWidget);
-    expect(find.byIcon(Icons.collections_bookmark_outlined), findsOneWidget);
+    expect(findChromeIcon(EnjoyChromeGlyph.home), findsOneWidget);
+    expect(findChromeIcon(EnjoyChromeGlyph.compass), findsOneWidget);
+    expect(findChromeIcon(EnjoyChromeGlyph.library), findsOneWidget);
     // Search field is present.
     expect(find.byType(TextField), findsOneWidget);
   });
@@ -109,7 +111,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    await tester.tap(find.byIcon(Icons.explore_outlined));
+    await tester.tap(findChromeIcon(EnjoyChromeGlyph.compass));
     await tester.pump();
 
     expect(router.state.uri.path, '/discover');

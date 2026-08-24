@@ -29,16 +29,21 @@ class AppPreferencesState {
     required this.locale,
     this.learningLanguage,
     this.nativeLanguage,
+    this.themeMode = ThemeMode.system,
   });
 
   final Locale? locale;
   final String? learningLanguage;
   final String? nativeLanguage;
 
+  /// Persisted appearance. Default [ThemeMode.system].
+  final ThemeMode themeMode;
+
   static const initial = AppPreferencesState(
     locale: kAppDefaultDisplayLocale,
     learningLanguage: null,
     nativeLanguage: null,
+    themeMode: ThemeMode.system,
   );
 
   String get effectiveLearningLanguage =>
@@ -54,12 +59,36 @@ class AppPreferencesState {
     Locale? locale,
     String? learningLanguage,
     String? nativeLanguage,
+    ThemeMode? themeMode,
   }) {
     return AppPreferencesState(
       locale: locale ?? this.locale,
       learningLanguage: learningLanguage ?? this.learningLanguage,
       nativeLanguage: nativeLanguage ?? this.nativeLanguage,
+      themeMode: themeMode ?? this.themeMode,
     );
+  }
+}
+
+ThemeMode themeModeFromStorage(String? raw) {
+  switch (raw) {
+    case 'light':
+      return ThemeMode.light;
+    case 'dark':
+      return ThemeMode.dark;
+    default:
+      return ThemeMode.system;
+  }
+}
+
+String themeModeToStorage(ThemeMode mode) {
+  switch (mode) {
+    case ThemeMode.light:
+      return 'light';
+    case ThemeMode.dark:
+      return 'dark';
+    case ThemeMode.system:
+      return 'system';
   }
 }
 
@@ -88,6 +117,8 @@ class AppPreferencesCtrl extends _$AppPreferencesCtrl {
     var nativeRaw = await db.settingsDao.getValue(
       SettingsKeys.prefsNativeLanguage,
     );
+    final themeRaw = await db.settingsDao.getValue(SettingsKeys.prefsThemeMode);
+    final themeMode = themeModeFromStorage(themeRaw);
 
     final learnCanonical = canonicalFocusLanguageTag(learnRaw);
     if (learnRaw == null ||
@@ -130,6 +161,7 @@ class AppPreferencesCtrl extends _$AppPreferencesCtrl {
       locale: decodedLocale,
       learningLanguage: learnCanonical,
       nativeLanguage: nativeCoerced,
+      themeMode: themeMode,
     );
 
     // Apply server-side prefs on sign-in / profile refresh (was previously
@@ -225,6 +257,17 @@ class AppPreferencesCtrl extends _$AppPreferencesCtrl {
     );
   }
 
+  Future<void> setThemeMode(ThemeMode mode) async {
+    final next = (await future).copyWith(themeMode: mode);
+    state = AsyncData(next);
+    final auth = ref.read(authCtrlProvider).valueOrNull;
+    if (auth is! AuthSignedIn) return;
+    await ref
+        .read(appDatabaseProvider)
+        .settingsDao
+        .setValue(SettingsKeys.prefsThemeMode, themeModeToStorage(mode));
+  }
+
   /// Ensures Drift + (when signed in) server use canonical learning + coerced native.
   Future<void> applyFromUserProfile(UserProfile profile) async {
     final prev = await future;
@@ -247,6 +290,7 @@ class AppPreferencesCtrl extends _$AppPreferencesCtrl {
       locale: nextLocale,
       learningLanguage: learnCanonical,
       nativeLanguage: nativeCoerced,
+      themeMode: prev.themeMode,
     );
     state = AsyncData(next);
     final db = ref.read(appDatabaseProvider);

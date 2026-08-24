@@ -7,11 +7,12 @@ import 'package:flutter/material.dart';
 
 import 'colors.dart';
 
-/// Premium cinematic-editorial tokens; use [EnjoyThemeTokens.of] from widgets.
+/// Paper/graphite design tokens; use [EnjoyThemeTokens.of] from widgets.
 @immutable
 class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
-  /// Dark-only app tokens derived from the active [ColorScheme].
+  /// Tokens for [scheme]'s brightness (paper light / graphite dark).
   factory EnjoyThemeTokens.build(ColorScheme scheme) {
+    final light = scheme.brightness == Brightness.light;
     return EnjoyThemeTokens(
       space4: 4,
       space8: 8,
@@ -21,10 +22,11 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
       space24: 24,
       space32: 32,
       space40: 40,
-      radiusSm: 10,
-      radiusMd: 14,
-      radiusLg: 18,
-      radiusXl: 24,
+      space48: 48,
+      radiusSm: 8,
+      radiusMd: 12,
+      radiusLg: 16,
+      radiusXl: 20,
       radiusFull: 999,
       elevationNone: 0,
       elevationCard: 1,
@@ -42,13 +44,18 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
       motionMedium: const Duration(milliseconds: 220),
       echoActive: AppColors.echoActive,
       blurActive: AppColors.blurActive,
-      scoreGood: AppColors.scoreGood,
-      scoreWarn: AppColors.scoreWarn,
-      scoreBad: AppColors.scoreBad,
+      scoreGood: light ? AppColors.scoreGoodLight : AppColors.scoreGoodDark,
+      scoreWarn: light ? AppColors.scoreWarnLight : AppColors.scoreWarnDark,
+      scoreBad: light ? AppColors.scoreBadLight : AppColors.scoreBadDark,
       scoreGoodContainer: AppColors.scoreGoodContainer,
       scoreWarnContainer: AppColors.scoreWarnContainer,
       scoreBadContainer: AppColors.scoreBadContainer,
       accentSoft: AppColors.accentSoft,
+      accentInk: light ? AppColors.brandOnLight : AppColors.brandOnDark,
+      intelligenceInk: light
+          ? AppColors.intelligenceInkLight
+          : AppColors.intelligenceInkDark,
+      echoInk: light ? AppColors.echoInkLight : AppColors.echoInkDark,
       ccBadge: scheme.primary,
       // Vertical padding is applied per-line via [TranscriptDensity.lineVerticalPadding].
       transcriptLinePadding: const EdgeInsets.symmetric(horizontal: 16),
@@ -62,10 +69,14 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
       sidebarBrandHeight: 56,
       transportHeight: 88,
       heroTitleLetterSpacing: -1.2,
-      glassTint: scheme.surface.withValues(alpha: 0.55),
-      glassBorder: scheme.outlineVariant.withValues(alpha: 0.22),
-      gradientStart: AppColors.gradientStartDark,
-      gradientEnd: AppColors.gradientEndDark,
+      glassTint: scheme.surface.withValues(alpha: light ? 0.82 : 0.55),
+      glassBorder: scheme.outlineVariant.withValues(alpha: light ? 0.55 : 0.22),
+      gradientStart: light
+          ? AppColors.gradientStartLight
+          : AppColors.gradientStartDark,
+      gradientEnd: light
+          ? AppColors.gradientEndLight
+          : AppColors.gradientEndDark,
       useGlassOnSidebar: false,
       bottomNavHeight: 68,
       desktopGutter: 24,
@@ -83,6 +94,7 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
     required this.space24,
     required this.space32,
     required this.space40,
+    required this.space48,
     required this.radiusSm,
     required this.radiusMd,
     required this.radiusLg,
@@ -117,6 +129,9 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
     required this.scoreWarnContainer,
     required this.scoreBadContainer,
     required this.accentSoft,
+    required this.accentInk,
+    required this.intelligenceInk,
+    required this.echoInk,
     required this.ccBadge,
     // ── Layout ─────────────────────────────────────────────────────
     required this.transcriptLinePadding,
@@ -145,6 +160,9 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
     required this.focusRingWidth,
   });
 
+  /// Prototype easing: cubic-bezier(.2, .7, .2, 1).
+  static const Curve ease = Cubic(0.2, 0.7, 0.2, 1);
+
   // ── Spacing (4pt grid) ─────────────────────────────────────────────────
   final double space4;
   final double space8;
@@ -154,6 +172,7 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
   final double space24;
   final double space32;
   final double space40;
+  final double space48;
 
   // ── Radii ──────────────────────────────────────────────────────────────
   final double radiusSm;
@@ -224,6 +243,15 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
 
   /// Soft translucent brand accent background.
   final Color accentSoft;
+
+  /// Violet used as text/icon ink (deep on paper, bright on graphite).
+  final Color accentInk;
+
+  /// Intelligence / lookup blue ink.
+  final Color intelligenceInk;
+
+  /// Echo / speaking warm ink.
+  final Color echoInk;
 
   final Color ccBadge;
 
@@ -297,6 +325,7 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
     double? space24,
     double? space32,
     double? space40,
+    double? space48,
     double? radiusSm,
     double? radiusMd,
     double? radiusLg,
@@ -325,6 +354,9 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
     Color? scoreWarnContainer,
     Color? scoreBadContainer,
     Color? accentSoft,
+    Color? accentInk,
+    Color? intelligenceInk,
+    Color? echoInk,
     Color? ccBadge,
     EdgeInsets? transcriptLinePadding,
     double? contentMaxWidth,
@@ -357,6 +389,7 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
       space24: space24 ?? this.space24,
       space32: space32 ?? this.space32,
       space40: space40 ?? this.space40,
+      space48: space48 ?? this.space48,
       radiusSm: radiusSm ?? this.radiusSm,
       radiusMd: radiusMd ?? this.radiusMd,
       radiusLg: radiusLg ?? this.radiusLg,
@@ -386,6 +419,9 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
       scoreWarnContainer: scoreWarnContainer ?? this.scoreWarnContainer,
       scoreBadContainer: scoreBadContainer ?? this.scoreBadContainer,
       accentSoft: accentSoft ?? this.accentSoft,
+      accentInk: accentInk ?? this.accentInk,
+      intelligenceInk: intelligenceInk ?? this.intelligenceInk,
+      echoInk: echoInk ?? this.echoInk,
       ccBadge: ccBadge ?? this.ccBadge,
       transcriptLinePadding:
           transcriptLinePadding ?? this.transcriptLinePadding,
@@ -438,6 +474,7 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
       space24: lerpDouble(space24, other.space24, t)!,
       space32: lerpDouble(space32, other.space32, t)!,
       space40: lerpDouble(space40, other.space40, t)!,
+      space48: lerpDouble(space48, other.space48, t)!,
       radiusSm: lerpDouble(radiusSm, other.radiusSm, t)!,
       radiusMd: lerpDouble(radiusMd, other.radiusMd, t)!,
       radiusLg: lerpDouble(radiusLg, other.radiusLg, t)!,
@@ -500,6 +537,9 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
         t,
       )!,
       accentSoft: Color.lerp(accentSoft, other.accentSoft, t)!,
+      accentInk: Color.lerp(accentInk, other.accentInk, t)!,
+      intelligenceInk: Color.lerp(intelligenceInk, other.intelligenceInk, t)!,
+      echoInk: Color.lerp(echoInk, other.echoInk, t)!,
       ccBadge: Color.lerp(ccBadge, other.ccBadge, t)!,
       transcriptLinePadding: EdgeInsets.lerp(
         transcriptLinePadding,

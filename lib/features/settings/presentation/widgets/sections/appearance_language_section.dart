@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:enjoy_player/core/application/app_language_catalog.dart';
 import 'package:enjoy_player/core/application/app_preferences_provider.dart';
 import 'package:enjoy_player/core/presentation/language_labels.dart';
+import 'package:enjoy_player/core/theme/widgets/enjoy_chrome_icon.dart';
 import 'package:enjoy_player/core/theme/widgets/skeleton.dart';
 import 'package:enjoy_player/features/auth/application/auth_controller.dart';
 import 'package:enjoy_player/features/auth/domain/auth_state.dart';
@@ -46,6 +47,44 @@ class AppearanceLanguageSectionBody extends ConsumerWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            SettingsRow(
+              leading: EnjoyChromeIcon(switch (state.themeMode) {
+                ThemeMode.light => EnjoyChromeGlyph.sun,
+                ThemeMode.dark => EnjoyChromeGlyph.moon,
+                ThemeMode.system => EnjoyChromeGlyph.monitor,
+              }),
+              title: l10n.settingsAppearanceTheme,
+              valueBadge: SettingsValuePill(
+                label: _themeModeLabel(l10n, state.themeMode),
+              ),
+              showChevron: true,
+              onTap: () async {
+                final picked = await showLanguageChoiceSheet(
+                  context: context,
+                  title: l10n.settingsAppearanceTheme,
+                  options: [
+                    LanguageChoiceOption(
+                      value: 'system',
+                      label: l10n.settingsAppearanceThemeSystem,
+                    ),
+                    LanguageChoiceOption(
+                      value: 'light',
+                      label: l10n.settingsAppearanceThemeLight,
+                    ),
+                    LanguageChoiceOption(
+                      value: 'dark',
+                      label: l10n.settingsAppearanceThemeDark,
+                    ),
+                  ],
+                  selectedValue: themeModeToStorage(state.themeMode),
+                );
+                if (picked == null || !context.mounted) return;
+                await ref
+                    .read(appPreferencesCtrlProvider.notifier)
+                    .setThemeMode(themeModeFromStorage(picked));
+              },
+            ),
+            const SettingsRowDivider(),
             SettingsRow(
               leadingIcon: Icons.language_rounded,
               title: l10n.settingsAppearanceDisplayLanguage,
@@ -141,5 +180,16 @@ class AppearanceLanguageSectionBody extends ConsumerWidget {
       ),
       error: (e, s) => const SizedBox.shrink(),
     );
+  }
+}
+
+String _themeModeLabel(AppLocalizations l10n, ThemeMode mode) {
+  switch (mode) {
+    case ThemeMode.light:
+      return l10n.settingsAppearanceThemeLight;
+    case ThemeMode.dark:
+      return l10n.settingsAppearanceThemeDark;
+    case ThemeMode.system:
+      return l10n.settingsAppearanceThemeSystem;
   }
 }

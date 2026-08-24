@@ -2339,6 +2339,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAppearanceThemeValue => 'Dark · Cinematic';
 
   @override
+  String get settingsAppearanceThemeSystem => 'System';
+
+  @override
+  String get settingsAppearanceThemeLight => 'Light';
+
+  @override
+  String get settingsAppearanceThemeDark => 'Dark';
+
+  @override
   String get settingsAppearanceDisplayLanguage => 'Display language';
 
   @override
