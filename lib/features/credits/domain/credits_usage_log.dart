@@ -58,7 +58,7 @@ bool? _boolFromJson(Object? value) {
   if (value == null) return null;
   if (value is bool) return value;
   if (value is num) return value != 0;
-  final s = value.toString().toLowerCase();
+  final s = stringOrNull(value)!;
   if (s == 'true') return true;
   if (s == 'false') return false;
   return null;

@@ -73,3 +73,16 @@ num? numOrNull(Object? value) {
   if (value is String) return num.tryParse(value);
   return null;
 }
+
+/// Coerces a JSON value to a nullable [String] in case-insensitive form.
+///
+/// Returns `null` when [value] is `null`. For any other value, returns
+/// `value.toString().toLowerCase()` — i.e. strings come back lower-cased
+/// (so `'Stripe'` and `'stripe'` compare equal), and non-strings surface
+/// their `toString()` representation also lower-cased (e.g. `123` →
+/// `'123'`). Used by enum decoders that compare the result against a fixed
+/// set of literal strings.
+String? stringOrNull(Object? value) {
+  if (value == null) return null;
+  return value.toString().toLowerCase();
+}
