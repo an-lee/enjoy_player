@@ -176,8 +176,14 @@ class _RootShellState extends ConsumerState<RootShell> {
 
               Widget mobileShellScaffold() {
                 if (playerWithTransport) {
+                  // Same floating treatment as [EnjoyBottomNav]: transparent
+                  // scaffold + [extendBody] so transcript / [AppBackground]
+                  // show around (and through) the glass capsule. Native video
+                  // stays in the upper [PlayerSurfaceTarget] stage, not in this
+                  // bottom slot (ADR-0066 parks the surface for overlays).
                   return Scaffold(
                     backgroundColor: Colors.transparent,
+                    extendBody: true,
                     body: SafeArea(
                       bottom: false,
                       child: SizedBox.expand(child: widget.child),

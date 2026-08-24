@@ -544,6 +544,32 @@ void main() {
       expect(find.byType(GlobalTransportBar), findsOneWidget);
     });
 
+    testWidgets(
+      'floats player transport over a transparent scaffold with extendBody',
+      (tester) async {
+        final router = _router(initial: '/player/$_kShellMediaId');
+        await _pump(
+          tester,
+          router: router,
+          overrides: _shellOverrides(
+            db,
+            playerSession: _shellSession(),
+            playerEngine: fakeEngine,
+          ),
+          surface: const Size(400, 900),
+        );
+
+        final shellScaffolds = tester
+            .widgetList<Scaffold>(find.byType(Scaffold))
+            .where((s) => s.bottomNavigationBar != null)
+            .toList();
+        expect(shellScaffolds, hasLength(1));
+        expect(shellScaffolds.first.backgroundColor, Colors.transparent);
+        expect(shellScaffolds.first.extendBody, isTrue);
+        expect(find.byType(GlobalTransportBar), findsOneWidget);
+      },
+    );
+
     testWidgets('does not show mini transport on / even with a session', (
       tester,
     ) async {
