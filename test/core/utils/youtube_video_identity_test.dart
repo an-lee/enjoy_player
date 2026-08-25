@@ -36,4 +36,40 @@ void main() {
       );
     });
   });
+
+  group('bareYoutubeIdRegExp', () {
+    test('matches canonical 11-char id', () {
+      expect(bareYoutubeIdRegExp.hasMatch('dQw4w9WgXcQ'), isTrue);
+    });
+
+    test('matches ids that include underscore and dash', () {
+      expect(bareYoutubeIdRegExp.hasMatch('a_b-c12345'), isTrue);
+    });
+
+    test('rejects too-short input', () {
+      expect(bareYoutubeIdRegExp.hasMatch('short'), isFalse);
+    });
+
+    test('rejects too-long input', () {
+      expect(
+        bareYoutubeIdRegExp.hasMatch('dQw4w9WgXcQextra'),
+        isFalse,
+      );
+    });
+
+    test('rejects embedded ids (anchor required)', () {
+      expect(
+        bareYoutubeIdRegExp.hasMatch('https://youtu.be/dQw4w9WgXcQ'),
+        isFalse,
+      );
+    });
+
+    test('rejects empty input', () {
+      expect(bareYoutubeIdRegExp.hasMatch(''), isFalse);
+    });
+
+    test('rejects ids containing forbidden chars', () {
+      expect(bareYoutubeIdRegExp.hasMatch('dQw4w9WgXc!'), isFalse);
+    });
+  });
 }

@@ -3,13 +3,11 @@ library;
 
 import 'dart:convert';
 
+import 'package:enjoy_player/core/utils/youtube_video_identity.dart';
 import 'package:enjoy_player/features/discover/domain/feed_entry.dart';
 
 /// Matches the YouTube watch URL query parameter.
 final RegExp _kYTUrlV = RegExp(r'[?&]v=([a-zA-Z0-9_-]{11})');
-
-/// Matches a bare 11-character YouTube video ID.
-final RegExp _kYTBare = RegExp(r'^([a-zA-Z0-9_-]{11})$');
 
 /// Matches a youtu.be short URL path component.
 final RegExp _kYTShort = RegExp(r'youtu\.be/([a-zA-Z0-9_-]{11})');
@@ -45,8 +43,7 @@ String extractVideoId(dynamic idValue) {
   final urlMatch = _kYTUrlV.firstMatch(idStr);
   if (urlMatch != null) return urlMatch.group(1)!;
   // Try bare 11-char video ID
-  final bareMatch = _kYTBare.firstMatch(idStr);
-  if (bareMatch != null) return bareMatch.group(1)!;
+  if (bareYoutubeIdRegExp.hasMatch(idStr)) return idStr;
   // Try youtu.be short URL
   final shortMatch = _kYTShort.firstMatch(idStr);
   if (shortMatch != null) return shortMatch.group(1)!;

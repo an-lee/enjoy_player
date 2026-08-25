@@ -8,7 +8,7 @@ extension _TranscriptRepositoryYoutubeFetch on TranscriptRepository {
   /// 11-character YouTube id; otherwise fall back to [youtubePlaybackVideoId].
   String _workerYoutubeVideoId(VideoRow video) {
     final v = video.vid.trim();
-    if (_youtubeWorkerVideoIdRe.hasMatch(v)) return v;
+    if (bareYoutubeIdRegExp.hasMatch(v)) return v;
     final pb = youtubePlaybackVideoId(
       provider: video.provider,
       vid: video.vid,
