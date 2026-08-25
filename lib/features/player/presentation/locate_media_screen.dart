@@ -69,10 +69,7 @@ class _LocateMediaScreenState extends ConsumerState<LocateMediaScreen> {
       try {
         await ref
             .read(playerControllerProvider.notifier)
-            .relocateAndOpen(
-              widget.info.mediaId,
-              XFile(path, name: pick.name),
-            );
+            .relocateAndOpen(widget.info.mediaId, XFile(path, name: pick.name));
       } on AppFailure {
         if (!mounted) return;
         AppNotice.error(context, l10n.mediaLocateHashMismatch);

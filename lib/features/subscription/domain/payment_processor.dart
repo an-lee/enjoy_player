@@ -9,7 +9,8 @@ enum PaymentProcessor {
 
   String get apiValue => name;
 
-  static PaymentProcessor? fromJson(Object? value) => switch (stringOrNull(value)) {
+  static PaymentProcessor? fromJson(Object? value) =>
+      switch (stringOrNull(value)) {
         'stripe' => PaymentProcessor.stripe,
         'mixin' => PaymentProcessor.mixin,
         _ => null,
@@ -21,7 +22,8 @@ enum PaymentStatus {
   succeeded,
   expired;
 
-  static PaymentStatus? fromJson(Object? value) => switch (stringOrNull(value)) {
+  static PaymentStatus? fromJson(Object? value) =>
+      switch (stringOrNull(value)) {
         'pending' => PaymentStatus.pending,
         'succeeded' => PaymentStatus.succeeded,
         'expired' => PaymentStatus.expired,
