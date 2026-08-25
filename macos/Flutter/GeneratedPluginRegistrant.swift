@@ -10,7 +10,7 @@ import audioplayers_darwin
 import auto_updater_macos
 import azure_speech
 import ffmpeg_kit_flutter_new
-import file_picker
+import file_picker_darwin
 import flutter_inappwebview_macos
 import flutter_secure_storage_darwin
 import flutter_timezone

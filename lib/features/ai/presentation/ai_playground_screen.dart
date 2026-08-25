@@ -96,13 +96,12 @@ class _AiPlaygroundScreenState extends ConsumerState<AiPlaygroundScreen> {
 
   Future<void> _pickAudio() async {
     final l10n = AppLocalizations.of(context)!;
-    final r = await FilePicker.pickFiles(
+    final f = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: const ['wav', 'mp3', 'm4a', 'webm', 'ogg', 'flac'],
     );
     if (!mounted) return;
-    if (r == null || r.files.isEmpty) return;
-    final f = r.files.single;
+    if (f == null) return;
     Uint8List? bytes;
     try {
       bytes = await f.readAsBytes();

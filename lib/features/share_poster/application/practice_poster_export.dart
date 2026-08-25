@@ -63,7 +63,7 @@ Future<void> sharePracticePosterPng(Uint8List pngBytes) async {
   await SharePlus.instance.share(ShareParams(files: [file]));
 }
 
-Future<String?> savePracticePosterPng(Uint8List pngBytes) async {
+Future<Uri?> savePracticePosterPng(Uint8List pngBytes) async {
   final date = DateFormat('yyyy-MM-dd').format(DateTime.now());
   final fileName = 'EnjoyPlayer-practice-$date.png';
   return FilePicker.saveFile(fileName: fileName, bytes: pngBytes);

@@ -26,7 +26,7 @@ dependencies:
   drift_flutter: ^0.3.1
   # Pre-release dep (single-publisher supply chain) — pinned exactly so a
   # fresh `pub get` cannot upgrade without an explicit PR. See ADR-0029.
-  file_picker: ^12.0.0-beta.7
+  file_picker: ^12.0.0
   freezed_annotation: ^3.0.0
   flutter_riverpod: ^3.3.2
   flutter_secure_storage: ^10.2.0

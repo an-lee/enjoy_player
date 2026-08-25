@@ -87,12 +87,12 @@ void _showImportProgressDialog(
 }
 
 Future<void> importMediaFromPicker(BuildContext context, WidgetRef ref) async {
-  final pick = await FilePicker.pickFiles(
+  final pick = await FilePicker.pickFile(
     type: FileType.custom,
     allowedExtensions: kFilePickerLocalImportExtensions,
   );
-  if (pick == null || pick.files.isEmpty) return;
-  final path = pick.files.single.path;
+  if (pick == null) return;
+  final path = pick.path;
   if (path == null) return;
   if (!context.mounted) return;
 
