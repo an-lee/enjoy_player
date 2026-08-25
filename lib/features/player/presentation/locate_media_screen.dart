@@ -47,16 +47,16 @@ class _LocateMediaScreenState extends ConsumerState<LocateMediaScreen> {
       final allowed = widget.info.kind == MediaKind.video
           ? kFilePickerLocalVideoExtensions
           : kFilePickerLocalAudioExtensions;
-      final pick = await FilePicker.pickFiles(
+      final pick = await FilePicker.pickFile(
         type: FileType.custom,
         allowedExtensions: allowed,
       );
-      if (pick == null || pick.files.isEmpty) return;
-      final path = pick.files.single.path;
+      if (pick == null) return;
+      final path = pick.path;
       if (path == null || path.isEmpty) return;
       if (!mounted) return;
 
-      final pickedName = pick.files.single.name;
+      final pickedName = pick.name;
       final extOk = widget.info.kind == MediaKind.video
           ? isVideoFileName(pickedName)
           : isAudioFileName(pickedName);
@@ -71,7 +71,7 @@ class _LocateMediaScreenState extends ConsumerState<LocateMediaScreen> {
             .read(playerControllerProvider.notifier)
             .relocateAndOpen(
               widget.info.mediaId,
-              XFile(path, name: pick.files.single.name),
+              XFile(path, name: pick.name),
             );
       } on AppFailure {
         if (!mounted) return;

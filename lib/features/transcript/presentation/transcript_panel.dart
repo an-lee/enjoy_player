@@ -87,12 +87,12 @@ class _TranscriptPanelState extends ConsumerState<TranscriptPanel> {
   }
 
   Future<void> _import(BuildContext context, WidgetRef ref) async {
-    final pick = await FilePicker.pickFiles(
+    final pick = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: const ['srt', 'vtt'],
     );
-    if (pick == null || pick.files.isEmpty) return;
-    final f = pick.files.single;
+    if (pick == null) return;
+    final f = pick;
     final path = f.path;
     if (path == null) return;
     if (!context.mounted) return;

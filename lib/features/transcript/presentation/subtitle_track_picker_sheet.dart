@@ -125,12 +125,12 @@ class _SubtitleTrackPickerSheetState
   }
 
   Future<void> _importFile() async {
-    final pick = await FilePicker.pickFiles(
+    final pick = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: const ['srt', 'vtt'],
     );
-    if (pick == null || pick.files.isEmpty) return;
-    final f = pick.files.single;
+    if (pick == null) return;
+    final f = pick;
     if (f.path == null) return;
 
     if (!mounted) return;
