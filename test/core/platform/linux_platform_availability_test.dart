@@ -23,11 +23,13 @@ void main() {
       },
     );
 
-    test('googleSignInAvailableOnLinux is true (v1 default per ADR-0048)', () {
+    test('googleSignInAvailableOnLinux is false (disabled per ADR-0084)', () {
       expect(
         linux_avail.googleSignInAvailableOnLinux,
-        true,
-        reason: 'google_sign_in supports Linux via browser-based OAuth flow.',
+        false,
+        reason:
+            'google_sign_in browser-based OAuth fails on real Linux installs. '
+            'Linux uses email OTP + web PKCE fallback (ADR-0084).',
       );
     });
 
