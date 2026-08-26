@@ -19,6 +19,10 @@ typedef YoutubePollStopFn = void Function();
 typedef YoutubeFirstPlayingFn = void Function();
 typedef YoutubeReapplyVolumeFn = Future<void> Function();
 
+/// Injectable post-restore heal play (defaults to
+/// [YoutubeWebViewBridge.play], which preserves audible state).
+typedef YoutubeHealPlayFn = Future<void> Function(InAppWebViewController? web);
+
 /// Handles `onVideoEvent` JavaScript callbacks from the watch page.
 class YoutubeWebViewEvents {
   YoutubeWebViewEvents({
@@ -31,21 +35,37 @@ class YoutubeWebViewEvents {
     required this.seekTo,
     Duration? volumeRestoreDelay,
     Duration? volumeRestoreFallback,
+    Duration? postRestoreHealDelay,
+    YoutubeHealPlayFn? healPlay,
   }) : volumeRestoreDelay =
            volumeRestoreDelay ??
            (defaultTargetPlatform == TargetPlatform.windows
                ? windowsVolumeRestoreDelay
                : Duration.zero),
        volumeRestoreFallback =
-           volumeRestoreFallback ?? YoutubeSession.volumeRestoreFallback;
+           volumeRestoreFallback ?? YoutubeSession.volumeRestoreFallback,
+       postRestoreHealDelay =
+           postRestoreHealDelay ??
+           YoutubeWebViewEvents.defaultPostRestoreHealDelay,
+       healPlay = healPlay ?? YoutubeWebViewBridge.play;
 
   /// Legacy minimum settle before progress-gated unmute (Windows first play).
   /// Progress confirmation is preferred; this delay is only a lower bound when
   /// progress arrives earlier than the platform settle window.
   static const Duration windowsVolumeRestoreDelay = Duration(milliseconds: 400);
 
+  /// How long after a volume restore to check whether the unmute tripped the
+  /// WebView's autoplay gesture lock (which pauses the element). Must exceed
+  /// the poll loop's pause-confirmation window (~3 × 250 ms) so a real pause
+  /// is already reflected in [YoutubeSession.playing]; must stay short enough
+  /// to beat the tap-to-play recovery hint.
+  static const Duration defaultPostRestoreHealDelay = Duration(
+    milliseconds: 900,
+  );
+
   final Duration volumeRestoreDelay;
   final Duration volumeRestoreFallback;
+  final Duration postRestoreHealDelay;
 
   final YoutubeSession session;
   final InAppWebViewController? Function() webController;
@@ -54,6 +74,7 @@ class YoutubeWebViewEvents {
   final YoutubePollStopFn stopPolling;
   final YoutubeReapplyVolumeFn reapplyVolume;
   final YoutubeSeekFn seekTo;
+  final YoutubeHealPlayFn healPlay;
 
   Timer? _volumeRestoreFallbackTimer;
   DateTime? _volumeRestoreArmedAt;
@@ -68,7 +89,12 @@ class YoutubeWebViewEvents {
         _logEvents.fine('youtube video play requested vid=${session.videoId}');
         break;
       case 'playing':
-        final progressGate = !session.loggedFirstPlaying;
+        // A fresh watch document (cold open or post-ad reload) starts muted;
+        // arm the progress-gated restore once. Later `playing` events in an
+        // already-restored document must NOT re-unmute: every programmatic
+        // unMute is a pause trigger under Chromium's autoplay gesture lock
+        // (the play-then-pause root cause), so redundancy here is the bug.
+        final needsRestore = session.needsVolumeRestore;
         session.pausedPollStreak = 0;
         session.playbackCompleted = false;
         session.userPlayInFlight = false;
@@ -77,10 +103,8 @@ class YoutubeWebViewEvents {
         session.emitBuffering(false);
         startPolling();
         applyPendingSeek();
-        if (progressGate) {
+        if (needsRestore) {
           _armProgressGatedVolumeRestore();
-        } else {
-          _scheduleImmediateVolumeRestore();
         }
         _logEvents.fine('youtube video playing vid=${session.videoId}');
         break;
@@ -181,11 +205,6 @@ class YoutubeWebViewEvents {
     });
   }
 
-  void _scheduleImmediateVolumeRestore() {
-    cancelPendingVolumeRestore();
-    unawaited(_restoreVolume(reason: 'resume'));
-  }
-
   Future<void> _restoreVolume({required String reason}) async {
     if (session.disposed || !session.playing) return;
     session.clearVolumeRestorePending();
@@ -194,9 +213,11 @@ class YoutubeWebViewEvents {
     _volumeRestoreArmedAt = null;
     try {
       await reapplyVolume();
+      session.noteVolumeRestored();
       _logEvents.fine(
         'youtube volume restored vid=${session.videoId} reason=$reason',
       );
+      unawaited(_healPostRestorePause());
     } on Object catch (error, stackTrace) {
       _logEvents.warning(
         'youtube volume restore failed vid=${session.videoId} reason=$reason',
@@ -204,6 +225,24 @@ class YoutubeWebViewEvents {
         stackTrace,
       );
     }
+  }
+
+  /// One-shot self-heal for the gesture-lock failure mode: the unmute made
+  /// the element audible without user activation and the WebView paused it
+  /// right after ("Unmuting failed and the element was paused instead").
+  /// Re-issues play exactly once with audible state preserved — on engines
+  /// that allow audible starts this recovers invisibly; where the start is
+  /// genuinely refused, the poll loop's recovery hint remains the fallback.
+  Future<void> _healPostRestorePause() async {
+    await Future<void>.delayed(postRestoreHealDelay);
+    if (session.disposed ||
+        session.playing ||
+        session.playbackCompleted ||
+        session.needsVolumeRestore) {
+      return;
+    }
+    _logEvents.info('youtube post-restore pause heal vid=${session.videoId}');
+    unawaited(healPlay(webController()));
   }
 
   void cancelPendingVolumeRestore() {

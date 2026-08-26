@@ -51,10 +51,22 @@ void main() {
       expect(YoutubeWebViewBridge.playScript, contains('playRejected'));
     });
 
-    test('playScript sets muted=true before play', () {
-      // The script mutes first to bypass autoplay gesture requirements.
-      expect(YoutubeWebViewBridge.playScript, contains('v.muted=true'));
-    });
+    test(
+      'play scripts never touch mute state (play-then-pause regression guard)',
+      () {
+        // Chromium's autoplay gesture lock pauses an element that becomes
+        // audible without user activation. A forced muted start here is
+        // always followed by a programmatic unmute in the volume-restore
+        // path — the exact play→pause sequence. Play must preserve the
+        // current audible state; only setVolumeScript may flip audibility.
+        for (final script in [
+          YoutubeWebViewBridge.playScript,
+          YoutubeWebViewBridge.playOrPauseScript,
+        ]) {
+          expect(script, isNot(matches(RegExp('mute', caseSensitive: false))));
+        }
+      },
+    );
 
     test(
       'playScript uses __enjoyYtPlayAttempt counter for stale rejection',
@@ -69,7 +81,6 @@ void main() {
     test('playOrPauseScript plays when paused and pauses when playing', () {
       expect(YoutubeWebViewBridge.playOrPauseScript, contains('v.paused'));
       expect(YoutubeWebViewBridge.playOrPauseScript, contains('v.ended'));
-      expect(YoutubeWebViewBridge.playOrPauseScript, contains('v.muted=true'));
       expect(YoutubeWebViewBridge.playOrPauseScript, contains('v.play()'));
       expect(YoutubeWebViewBridge.playOrPauseScript, contains('v.pause()'));
       expect(YoutubeWebViewBridge.playOrPauseScript, contains('playRejected'));
@@ -85,7 +96,6 @@ void main() {
         expect(script, contains('#movie_player'));
         expect(script, contains('.html5-video-player'));
         expect(script, contains('mp.playVideo()'));
-        expect(script, contains('mp.mute()'));
       }
       expect(YoutubeWebViewBridge.playOrPauseScript, contains('mp.pauseVideo'));
       expect(YoutubeWebViewBridge.playOrPauseScript, contains('mp.isPaused'));
@@ -112,6 +122,14 @@ void main() {
         YoutubeWebViewBridge.setVolumeScript(0.25),
         contains('var vol=0.25;'),
       );
+    });
+
+    test('exits without mutation when element state already matches', () {
+      // Redundant unMutes are pause triggers under the autoplay gesture
+      // lock; the script must early-return on a no-op request.
+      final script = YoutubeWebViewBridge.setVolumeScript(1.0);
+      expect(script, contains('stateMatches'));
+      expect(script, contains('if(stateMatches) return;'));
     });
   });
 }
