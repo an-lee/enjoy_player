@@ -18,6 +18,7 @@ import 'core/logging/diagnostic_log_config.dart';
 import 'core/logging/diagnostic_session_header.dart';
 import 'core/logging/log.dart';
 import 'core/logging/setup_logging.dart';
+import 'core/platform/linux_url_scheme_handler.dart';
 import 'core/webview/platform_webview_environment.dart';
 
 Future<void> main() async {
@@ -44,6 +45,12 @@ Future<void> _bootstrap() async {
       _provisionAndroidEspeak(),
   ]);
   _installFrameworkErrorHandlers();
+  if (defaultTargetPlatform == TargetPlatform.linux) {
+    // Register the enjoyplayer:// handler so browser OAuth callbacks can
+    // find the running install (AppImage runs / dev builds ship no desktop
+    // entry of their own).
+    unawaited(ensureEnjoyplayerSchemeHandler());
+  }
   try {
     await writeDiagnosticSessionHeader();
   } on Object catch (e, st) {

@@ -9,16 +9,15 @@ void main() {
   });
 
   group('nativeGoogleSignInSupported on Linux', () {
-    test('returns true on Linux (google_sign_in is enabled by default per '
-        'ADR-0048)', () {
+    test('returns false on Linux (disabled per ADR-0084)', () {
       debugDefaultTargetPlatformOverride = TargetPlatform.linux;
       expect(
         nativeGoogleSignInSupported,
-        true,
+        false,
         reason:
-            'Google Sign-In is available on Linux via browser-based '
-            'OAuth flow. If smoke shows a crash, flip '
-            'googleSignInAvailableOnLinux to false.',
+            'The Google Sign-In browser-based OAuth flow fails on real '
+            'Linux installs; the button is hidden and users sign in with '
+            'email OTP or the web PKCE fallback (ADR-0084).',
       );
     });
 

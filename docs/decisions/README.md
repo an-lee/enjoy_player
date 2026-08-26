@@ -107,3 +107,4 @@ Trade-offs, follow-up work, risks.
 | [0081](0081-crafted-audio-cloud-sync.md) | Crafted audio cloud sync — Active Storage direct-upload of TTS binaries for cross-device playback |
 | [0082](0082-home-continue-no-mini-player.md) | Home Continue practicing card; no global mini player; leave player clears live session (supersedes ADR-0035 E1–E7) |
 | [0083](0083-paper-graphite-light-dark.md) | Paper / graphite dual theme + System/Light/Dark appearance (supersedes 0011) |
+| [0084](0084-linux-google-signin-off-and-pkce-deeplink.md) | Disable native Google Sign-In on Linux (ADR-0048 kill switch); GTK single-instance `enjoyplayer://` forwarding + AppImage scheme registration for PKCE callbacks |

@@ -3,6 +3,8 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -11,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:enjoy_player/core/errors/app_failure.dart';
 import 'package:enjoy_player/core/logging/log.dart';
+import 'package:enjoy_player/core/platform/linux_url_scheme_handler.dart';
 import 'package:enjoy_player/core/riverpod/async_value_x.dart';
 import 'package:enjoy_player/features/auth/data/apple_sign_in_service.dart';
 import 'package:enjoy_player/features/auth/data/auth_repository.dart';
@@ -183,6 +186,12 @@ class AuthCtrl extends _$AuthCtrl {
         state = const AsyncData(AuthSignedOut());
       }
     });
+    // Refresh the enjoyplayer:// handler registration right before the
+    // browser opens: a moved binary or fresh AppImage run may not have a
+    // valid handler yet. Failures are contained inside the helper.
+    if (defaultTargetPlatform == TargetPlatform.linux) {
+      await ensureEnjoyplayerSchemeHandler();
+    }
     final launched = await launchUrl(
       authorizeUri,
       mode: LaunchMode.externalApplication,
@@ -198,6 +207,10 @@ class AuthCtrl extends _$AuthCtrl {
   Future<void> handleAuthCallbackUri(Uri uri) async {
     final current = state.valueOrNull;
     if (current is! AuthSigningInWebPkce) {
+      // Typical when the callback arrives in a fresh process (the app was
+      // restarted while the browser was open): the in-memory PKCE verifier
+      // and state are gone, so sign-in must be retried.
+      _log.info('auth callback ignored: no web PKCE flow in progress');
       return;
     }
     final parsed = parseAuthCallbackUri(uri);

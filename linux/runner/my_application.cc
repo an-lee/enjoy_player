@@ -10,6 +10,8 @@
 struct _MyApplication {
   GtkApplication parent_instance;
   char** dart_entrypoint_arguments;
+  FlView* view;
+  FlMethodChannel* gtk_application_channel;
 };
 
 G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
@@ -22,6 +24,15 @@ static void first_frame_cb(MyApplication* self, FlView* view) {
 // Implements GApplication::activate.
 static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
+
+  // Single instance: a secondary launch only raises the existing window
+  // instead of building a second one.
+  GList* windows = gtk_application_get_windows(GTK_APPLICATION(application));
+  if (windows) {
+    gtk_window_present(GTK_WINDOW(windows->data));
+    return;
+  }
+
   GtkWindow* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
 
@@ -75,7 +86,63 @@ static void my_application_activate(GApplication* application) {
 
   fl_register_plugins(FL_PLUGIN_REGISTRY(view));
 
+  // Channel used by the `gtk` / `app_links` Dart packages: remote
+  // command-line arguments (e.g. `enjoyplayer://auth/callback?...` from the
+  // browser) are forwarded here so OAuth PKCE callbacks reach the running
+  // instance.
+  g_autoptr(FlStandardMethodCodec) codec = fl_standard_method_codec_new();
+  self->view = view;
+  self->gtk_application_channel = fl_method_channel_new(
+      fl_engine_get_binary_messenger(fl_view_get_engine(view)),
+      "gtk/application", FL_METHOD_CODEC(codec));
+
   gtk_widget_grab_focus(GTK_WIDGET(view));
+}
+
+// Implements GApplication::command-line. Runs on the primary instance for
+// every launch of the application (local or forwarded over D-Bus from a
+// secondary instance). arguments[0] is the binary name, so skip it before
+// forwarding — app_links treats the first entry as the deep-link URI.
+static gint my_application_command_line(GApplication* application,
+                                        GApplicationCommandLine* command_line) {
+  MyApplication* self = MY_APPLICATION(application);
+  gchar** arguments =
+      g_application_command_line_get_arguments(command_line, nullptr);
+  if (self->gtk_application_channel != nullptr && arguments != nullptr &&
+      g_strv_length(arguments) > 1) {
+    g_autoptr(FlValue) args = fl_value_new_list();
+    for (gint i = 1; arguments[i] != nullptr; i++) {
+      fl_value_append_take(args, fl_value_new_string(arguments[i]));
+    }
+    fl_method_channel_invoke_method(self->gtk_application_channel,
+                                    "command-line", args, nullptr, nullptr,
+                                    nullptr);
+  }
+  g_strfreev(arguments);
+  return 0;
+}
+
+// Implements GApplication::open (D-Bus Open requests, e.g. from portals).
+static void my_application_open(GApplication* application,
+                                GFile** files,
+                                gint n_files,
+                                const gchar* hint) {
+  MyApplication* self = MY_APPLICATION(application);
+  if (self->gtk_application_channel == nullptr || n_files <= 0 ||
+      files == nullptr) {
+    return;
+  }
+  FlValue* uris = fl_value_new_list();
+  for (gint i = 0; i < n_files; i++) {
+    g_autofree gchar* uri = g_file_get_uri(files[i]);
+    fl_value_append_take(uris, fl_value_new_string(uri));
+  }
+  g_autoptr(FlValue) args = fl_value_new_map();
+  fl_value_set_take(args, fl_value_new_string("files"), uris);
+  fl_value_set_take(args, fl_value_new_string("hint"),
+                    fl_value_new_string(hint != nullptr ? hint : ""));
+  fl_method_channel_invoke_method(self->gtk_application_channel, "open", args,
+                                  nullptr, nullptr, nullptr);
 }
 
 // Implements GApplication::local_command_line.
@@ -96,7 +163,10 @@ static gboolean my_application_local_command_line(GApplication* application,
   g_application_activate(application);
   *exit_status = 0;
 
-  return TRUE;
+  // Let GApplication route the command line / open request: on the primary
+  // instance it emits ::command-line (handled above), and a secondary
+  // instance forwards its arguments to the primary over D-Bus and exits.
+  return FALSE;
 }
 
 // Implements GApplication::startup.
@@ -121,6 +191,8 @@ static void my_application_shutdown(GApplication* application) {
 static void my_application_dispose(GObject* object) {
   MyApplication* self = MY_APPLICATION(object);
   g_clear_pointer(&self->dart_entrypoint_arguments, g_strfreev);
+  g_clear_object(&self->gtk_application_channel);
+  self->view = nullptr;
   G_OBJECT_CLASS(my_application_parent_class)->dispose(object);
 }
 
@@ -128,6 +200,8 @@ static void my_application_class_init(MyApplicationClass* klass) {
   G_APPLICATION_CLASS(klass)->activate = my_application_activate;
   G_APPLICATION_CLASS(klass)->local_command_line =
       my_application_local_command_line;
+  G_APPLICATION_CLASS(klass)->command_line = my_application_command_line;
+  G_APPLICATION_CLASS(klass)->open = my_application_open;
   G_APPLICATION_CLASS(klass)->startup = my_application_startup;
   G_APPLICATION_CLASS(klass)->shutdown = my_application_shutdown;
   G_OBJECT_CLASS(klass)->dispose = my_application_dispose;
@@ -144,5 +218,6 @@ MyApplication* my_application_new() {
 
   return MY_APPLICATION(g_object_new(my_application_get_type(),
                                      "application-id", APPLICATION_ID, "flags",
-                                     G_APPLICATION_NON_UNIQUE, nullptr));
+                                     G_APPLICATION_HANDLES_COMMAND_LINE |
+                                         G_APPLICATION_HANDLES_OPEN, nullptr));
 }

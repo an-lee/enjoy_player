@@ -36,16 +36,20 @@ trap 'rm -rf "$APPDIR"' EXIT
 echo "==> Preparing AppDir from $BUNDLE_DIR"
 cp -a "$BUNDLE_DIR"/* "$APPDIR"/
 
-# Desktop entry (required by AppImage spec — must be at AppDir root AND in usr/share/applications)
+# Desktop entry (required by AppImage spec — must be at AppDir root AND in usr/share/applications).
+# `%u` passes the launched URI (e.g. enjoyplayer://auth/callback) and
+# `MimeType=x-scheme-handler/enjoyplayer` registers the PKCE callback scheme
+# so browsers/xdg-open can find the app (ADR-0084).
 mkdir -p "$APPDIR"/usr/share/applications
 cat > "$APPDIR"/enjoy-player.desktop <<EOF
 [Desktop Entry]
 Type=Application
 Name=Enjoy Player
 Comment=Cross-platform language-learning player
-Exec=enjoy_player
+Exec=enjoy_player %u
 Icon=enjoy_player
 Categories=AudioVideo;Player;Education;
+MimeType=x-scheme-handler/enjoyplayer;
 Terminal=false
 EOF
 cp "$APPDIR"/enjoy-player.desktop "$APPDIR"/usr/share/applications/enjoy-player.desktop

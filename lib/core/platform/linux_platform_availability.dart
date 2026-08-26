@@ -18,11 +18,13 @@ bool get isLinux => Platform.isLinux;
 /// Re-evaluate in a follow-up ADR (ADR-0048, R1 / R6).
 const youtubeEngineAvailableOnLinux = false;
 
-/// Google native sign-in is **available** on Linux.
+/// Google native sign-in is **not available** on Linux.
 ///
-/// `google_sign_in: ^6.3.0` supports Linux via a browser-based OAuth flow.
-/// Flip to `false` if first smoke shows a crash or auth loop (ADR-0048, R10).
-const googleSignInAvailableOnLinux = true;
+/// First smoke on real Linux installs showed the `google_sign_in`
+/// browser-based OAuth flow failing (ADR-0048, R10 kill switch). Linux users
+/// sign in with email OTP or the web PKCE fallback instead (ADR-0084). Flip
+/// back to `true` only after the provider flow is verified end-to-end.
+const googleSignInAvailableOnLinux = false;
 
 /// In-app auto-updater (`auto_updater: 0.2.1`) is **not** available on Linux.
 ///

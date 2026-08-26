@@ -39,7 +39,7 @@ No `apt install`, no `sudo`, no Snap/Flatpak abstraction layer. The AppImage is 
 | Echo mode (shadow reading) | Works; recording via `record: ^7.0.0` is enabled. Disabled gracefully if the PulseAudio/PipeWire backend is unavailable. |
 | Dictionary lookup | Full support |
 | Library management | Full support (import, delete, sort, tag) |
-| Cloud sync (Enjoy account) | Full support (metadata sync, re-download manifests) |
+| Cloud sync (Enjoy account) | Full support (metadata sync, re-download manifests). Sign-in via **email OTP** or **Other sign-in options** (web PKCE); native Google is hidden ([ADR-0084](../decisions/0084-linux-google-signin-off-and-pkce-deeplink.md)). |
 | Recording uploads | Upload `client_platform=linux` to the existing endpoint |
 | Keyboard hotkeys | Full support (desktop shortcuts) |
 | Settings / preferences | Full support (libsecret / GNOME Keyring backed secure storage) |
@@ -117,6 +117,26 @@ If the issue persists, open a GitHub issue with your distribution, GPU model, an
 
 Recording may fail if PulseAudio/PipeWire is not running or the microphone permission is denied. The echo practice flow will still work without recording (shadow reading without feedback). Check your sound settings.
 
+### Sign-in redirect can't find the app
+
+After completing "Other sign-in options" in the browser, the browser opens `enjoyplayer://auth/callback`. If it reports "No application can open this link", the URL-scheme handler is not registered. The app registers it automatically when it starts (and again right before opening the sign-in browser), so:
+
+1. Start the app once after installing/updating, then retry sign-in from the app (don't reuse an old browser tab).
+2. Verify the registration:
+
+```bash
+gio mime x-scheme-handler/enjoyplayer
+# → Default application for “x-scheme-handler/enjoyplayer”: enjoy-player-scheme.desktop
+```
+
+3. Manual repair (e.g. `$XDG_DATA_HOME` on a non-standard location):
+
+```bash
+xdg-mime default enjoy-player-scheme.desktop x-scheme-handler/enjoyplayer
+```
+
+The app must be running when you finish sign-in in the browser — the running instance receives the callback (a fresh launch forwards to it over D-Bus and exits). If the app was closed mid-sign-in, the flow cannot resume (the one-time code verifier lived in memory); start sign-in again from the app.
+
 ### Database won't open ("corrupt local database")
 
 The recovery surface works on Linux — it uses `xdg-open` to reveal the database directory (same code path as macOS uses `open` and Windows uses `explorer`). Tap "Copy error" or "Open logs folder" as needed.
@@ -124,5 +144,7 @@ The recovery surface works on Linux — it uses `xdg-open` to reveal the databas
 ## See also
 
 - [ADR-0048: Linux as a first-class supported desktop platform](../decisions/0048-linux-platform-support.md)
+- [ADR-0084: Linux Google Sign-In off + PKCE deep-link plumbing](../decisions/0084-linux-google-signin-off-and-pkce-deeplink.md)
+- [Auth — Deep links (PKCE callback)](auth.md#deep-links-pkce-callback)
 - [Packaging — Linux AppImage](../packaging.md#linux-appimage)
 - [CI — build_linux.yml and the self-hosted Linux runner](../ci-self-hosted-runners.md)
