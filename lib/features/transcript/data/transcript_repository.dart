@@ -119,9 +119,6 @@ DateTime _parseServerDate(dynamic v, DateTime fallback) {
 
 final Logger _log = logNamed('TranscriptRepository');
 
-/// Matches Worker `YOUTUBE_ID_RE` / `VideoRow.vid` for canonical imports.
-final RegExp _youtubeWorkerVideoIdRe = RegExp(r'^[a-zA-Z0-9_-]{11}$');
-
 /// Owns transcript rows for a media target: watching tracks, resolving the
 /// primary transcript on open, fetching cloud / YouTube transcripts,
 /// importing subtitles, and managing active tracks.

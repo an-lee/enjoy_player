@@ -4,7 +4,12 @@
 /// depend on `features/library`.
 library;
 
-final RegExp _bareYoutubeId = RegExp(r'^[A-Za-z0-9_-]{11}$');
+/// Matches a bare 11-character YouTube video id (whole-string anchored).
+///
+/// Shared across the codebase so the canonical id shape lives in one place:
+/// the JSON worker matches the same regex, and the JSON Feed parser uses
+/// this to recognize already-canonical video ids.
+final RegExp bareYoutubeIdRegExp = RegExp(r'^[A-Za-z0-9_-]{11}$');
 
 /// Fallback title when oEmbed does not return a real title.
 String youtubeImportPlaceholderTitle(String vid) => 'YouTube video $vid';
@@ -21,7 +26,7 @@ bool isYoutubeImportPlaceholderTitle(String title, String vid) {
 String? parseYoutubeVideoId(String raw) {
   final s = raw.trim();
   if (s.isEmpty) return null;
-  if (_bareYoutubeId.hasMatch(s)) return s;
+  if (bareYoutubeIdRegExp.hasMatch(s)) return s;
 
   var uri = Uri.tryParse(s);
   if (uri == null || uri.host.isEmpty) return null;
@@ -31,20 +36,20 @@ String? parseYoutubeVideoId(String raw) {
     final parts = uri.pathSegments.where((e) => e.isNotEmpty).toList();
     if (parts.isEmpty) return null;
     final seg = parts.first;
-    if (_bareYoutubeId.hasMatch(seg)) return seg;
+    if (bareYoutubeIdRegExp.hasMatch(seg)) return seg;
     return null;
   }
 
   if (host.contains('youtube.com')) {
     final v = uri.queryParameters['v'];
-    if (v != null && _bareYoutubeId.hasMatch(v)) return v;
+    if (v != null && bareYoutubeIdRegExp.hasMatch(v)) return v;
 
     final parts = uri.pathSegments.where((e) => e.isNotEmpty).toList();
     for (final key in ['embed', 'shorts', 'live']) {
       final i = parts.indexOf(key);
       if (i >= 0 && i + 1 < parts.length) {
         final id = parts[i + 1];
-        if (_bareYoutubeId.hasMatch(id)) return id;
+        if (bareYoutubeIdRegExp.hasMatch(id)) return id;
       }
     }
   }
