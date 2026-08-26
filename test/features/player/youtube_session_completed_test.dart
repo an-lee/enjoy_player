@@ -108,4 +108,57 @@ void main() {
       expect(session.lastPlayingAt, isNull);
     });
   });
+
+  group('YoutubeSession per-document volume restore tracking', () {
+    late YoutubeSession session;
+
+    setUp(() {
+      session = YoutubeSession()..resetForOpen('vid');
+    });
+
+    tearDown(() async {
+      await session.closeStreams();
+    });
+
+    test('fresh open needs a volume restore', () {
+      expect(session.needsVolumeRestore, isTrue);
+    });
+
+    test('noteVolumeRestored pins the current document', () {
+      session.noteVolumeRestored();
+      expect(session.needsVolumeRestore, isFalse);
+      expect(session.volumeRestoredDocGen, session.documentGen);
+    });
+
+    test('watch load stop bumps the generation (post-ad reload)', () {
+      session.noteVolumeRestored();
+      final before = session.documentGen;
+
+      session.noteWatchDocumentLoaded();
+
+      expect(session.documentGen, before + 1);
+      expect(session.needsVolumeRestore, isTrue);
+    });
+
+    test('resetForOpen starts a new document needing restore', () {
+      session.noteVolumeRestored();
+      session.resetForOpen('other');
+
+      expect(session.needsVolumeRestore, isTrue);
+      expect(session.volumeRestoredDocGen, -1);
+    });
+
+    test('resetForClear drops the restored pin', () {
+      session.noteVolumeRestored();
+      session.resetForClear();
+
+      expect(session.needsVolumeRestore, isTrue);
+      expect(session.volumeRestoredDocGen, -1);
+    });
+
+    test('disposed session never needs restore', () async {
+      await session.closeStreams();
+      expect(session.needsVolumeRestore, isFalse);
+    });
+  });
 }

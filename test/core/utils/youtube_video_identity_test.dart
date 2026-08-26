@@ -43,7 +43,7 @@ void main() {
     });
 
     test('matches ids that include underscore and dash', () {
-      expect(bareYoutubeIdRegExp.hasMatch('a_b-c12345'), isTrue);
+      expect(bareYoutubeIdRegExp.hasMatch('a_b-c123456'), isTrue);
     });
 
     test('rejects too-short input', () {
@@ -51,10 +51,7 @@ void main() {
     });
 
     test('rejects too-long input', () {
-      expect(
-        bareYoutubeIdRegExp.hasMatch('dQw4w9WgXcQextra'),
-        isFalse,
-      );
+      expect(bareYoutubeIdRegExp.hasMatch('dQw4w9WgXcQextra'), isFalse);
     });
 
     test('rejects embedded ids (anchor required)', () {

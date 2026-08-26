@@ -248,6 +248,10 @@ class YoutubeWebViewController {
     session.awaitingColdInitialNavigation = false;
     session.watchPageLoadStopReceived = true;
     session.nonWatchRecoveryScheduled = false;
+    // Fresh document: its <video> starts muted, so the next `playing` event
+    // re-arms the per-document volume restore (covers cold open AND the
+    // post-ad page reload).
+    session.noteWatchDocumentLoaded();
     onLogInitPhase('load_stop');
     if (!session.loggedFirstPlaying) {
       _stallWatchdog.onLoadStop(session.videoId);

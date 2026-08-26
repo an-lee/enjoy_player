@@ -56,6 +56,22 @@ class YoutubeSession {
   static const int progressConfirmTicks = 2;
   static const Duration volumeRestoreFallback = Duration(milliseconds: 1500);
 
+  /// Generation of the loaded watch document. Bumped on every open and watch
+  /// load stop (ads reload the page into a fresh document whose `<video>`
+  /// starts muted again).
+  int documentGen = 0;
+
+  /// [documentGen] for which volume was last restored, or `-1` when never.
+  /// The unmute runs at most once per document: redundant programmatic
+  /// unMutes are pause triggers under Chromium's autoplay gesture lock (the
+  /// play-then-pause root cause), so later `playing` events in an already
+  /// restored document must not touch volume at all.
+  int volumeRestoredDocGen = -1;
+
+  /// True when the current document still needs its first volume restore.
+  bool get needsVolumeRestore =>
+      volumeRestoredDocGen != documentGen && !disposed;
+
   /// Wall-clock when [emitPlaying(true)] last succeeded — for immediate-pause
   /// diagnostics (pause confirmed within this window after first playing).
   DateTime? lastPlayingAt;
@@ -111,6 +127,8 @@ class YoutubeSession {
     explicitPlayAttempted = false;
     userPlayInFlight = false;
     clearVolumeRestorePending();
+    noteWatchDocumentLoaded();
+    volumeRestoredDocGen = -1;
     lastPlayingAt = null;
     videoId = newVideoId;
     playbackCompleted = false;
@@ -126,6 +144,7 @@ class YoutubeSession {
     explicitPlayAttempted = false;
     userPlayInFlight = false;
     clearVolumeRestorePending();
+    volumeRestoredDocGen = -1;
     lastPlayingAt = null;
     videoId = '';
     mountRequested = keepMounted;
@@ -148,6 +167,17 @@ class YoutubeSession {
     volumeRestorePending = false;
     volumeRestoreBaselinePosition = null;
     progressAdvanceTicks = 0;
+  }
+
+  /// Pins the current document as volume-restored so later `playing` events
+  /// skip the unmute entirely (idempotence against the gesture lock).
+  void noteVolumeRestored() {
+    volumeRestoredDocGen = documentGen;
+  }
+
+  /// Bumps the watch-document generation (open / watch load stop).
+  void noteWatchDocumentLoaded() {
+    documentGen++;
   }
 
   void armVolumeRestorePending({required Duration baseline}) {

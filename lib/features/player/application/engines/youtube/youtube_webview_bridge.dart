@@ -68,11 +68,17 @@ class YoutubeWebViewBridge {
       if(!mp||typeof mp.playVideo!=='function') mp=null;
   ''';
 
-  /// Muted-play body shared by [playScript] and [playOrPauseScript]. Mutes
-  /// through the page player when possible so the page's own volume state
-  /// stays consistent; falls back to element `muted` for pages without the
-  /// player API.
-  static const String _mutedPlayBody = '''
+  /// Playback-start body shared by [playScript] and [playOrPauseScript].
+  ///
+  /// Never muting here is the play-then-pause fix: Chromium gives each media
+  /// element a gesture lock that muted starts bypass, and unmuting later
+  /// without fresh user activation pauses the element ("Unmuting failed and
+  /// the element was paused instead"). Every forced mute here used to be
+  /// followed by a programmatic unmute in the volume-restore path, tripping
+  /// exactly that rule. Starts must preserve the current audible state; only
+  /// the per-document volume restore may flip audibility (see
+  /// [YoutubeWebViewEvents]).
+  static const String _startPlaybackBody = '''
       var attempt=(window.__enjoyYtPlayAttempt||0)+1;
       window.__enjoyYtPlayAttempt=attempt;
       function rejected(error){
@@ -86,13 +92,8 @@ class YoutubeWebViewBridge {
         }
       }
       if(mp){
-        try{
-          if(typeof mp.mute==='function') mp.mute();
-          else mp.setVolume(0);
-        }catch(e){}
         try{mp.playVideo();}catch(e){}
       } else {
-        v.muted=true;
         try{
           var result=v.play();
           if(result&&typeof result.catch==='function') result.catch(rejected);
@@ -105,7 +106,7 @@ class YoutubeWebViewBridge {
     (function(){
       $_findVideoAndPlayer
       if(!v) return;
-      $_mutedPlayBody
+      $_startPlaybackBody
     })();
   ''';
 
@@ -122,7 +123,7 @@ class YoutubeWebViewBridge {
         try{paused=!!mp.isPaused();}catch(e){}
       }
       if(paused){
-        $_mutedPlayBody
+        $_startPlaybackBody
       } else {
         window.__enjoyYtPlayAttempt=(window.__enjoyYtPlayAttempt||0)+1;
         if(mp){try{mp.pauseVideo();}catch(e){}}
@@ -220,11 +221,22 @@ class YoutubeWebViewBridge {
   /// Volume/mute script. Prefers the page player API (`unMute` / `mute` /
   /// `setVolume` 0-100) so unmute does not fight YouTube's gesture-gated
   /// autoplay policy; element mutation is only the no-API fallback.
+  ///
+  /// Idempotent: when the element already matches the requested state the
+  /// script exits without touching anything. Every skipped `muted=false`
+  /// mutation is one fewer chance for Chromium's gesture lock to pause an
+  /// autoplaying-muted video ("Unmuting failed and the element was paused").
   static String setVolumeScript(double volume) =>
       '''
         (function(){
           $_findVideoAndPlayer
           var vol=$volume;
+          if(v){
+            var wantMuted=(vol<=0.001);
+            var volDelta=(typeof v.volume==='number')?Math.abs(v.volume-vol):1;
+            var stateMatches=wantMuted?(v.muted===true):(v.muted===false&&volDelta<=0.001);
+            if(stateMatches) return;
+          }
           if(mp){
             try{
               if(vol<=0.001){

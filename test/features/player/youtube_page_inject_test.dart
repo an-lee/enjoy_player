@@ -4,8 +4,13 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('YoutubeWebViewBridge play script', () {
-    test('starts muted and reports rejected play promises', () {
-      expect(YoutubeWebViewBridge.playScript, contains('v.muted=true'));
+    test('preserves audible state and reports rejected play promises', () {
+      // Forced muted starts are banned: the later programmatic unmute trips
+      // Chromium's gesture lock and pauses playback (play-then-pause).
+      expect(
+        YoutubeWebViewBridge.playScript,
+        isNot(matches(RegExp('mute', caseSensitive: false))),
+      );
       expect(
         YoutubeWebViewBridge.playScript,
         contains("'onVideoEvent','playRejected'"),
