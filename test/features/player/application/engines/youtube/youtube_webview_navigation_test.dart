@@ -9,6 +9,8 @@
 // We drive every public method through a fake `PlatformInAppWebViewController`
 // (the same pattern used by `translation_prompt_test.dart`) and assert
 // against the recorded side effects, plus session-state transitions.
+import 'dart:async';
+
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_session.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_webview_bridge.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_webview_navigation.dart';
@@ -67,10 +69,11 @@ class _Stub {
 
   YoutubeWebViewNavigation build({bool attach = true}) {
     if (attach) {
-      session.videoId = 'vid';
-    } else {
-      session.videoId = '';
+      session.resetForOpen('vid');
     }
+    // Detached stubs keep the fresh session as-is: videoId is already '' and
+    // skipping transitions avoids arming the recovery-hint timer in
+    // testWidgets (pending-timer assertion).
     nav = YoutubeWebViewNavigation(
       session: session,
       webController: () => attach ? controller : null,
@@ -116,7 +119,7 @@ void main() {
     testWidgets('skips when webController returns null', (tester) async {
       final stub = _Stub();
       stub.build(attach: false);
-      stub.session.videoId = 'vid';
+      stub.session.resetForOpen('vid');
       // Override the controller supplier to return null on this call.
       final nav = YoutubeWebViewNavigation(
         session: stub.session,
@@ -196,7 +199,7 @@ void main() {
     testWidgets('returns when session is disposed', (tester) async {
       final stub = _Stub();
       final nav = stub.build();
-      stub.session.disposed = true;
+      unawaited(stub.session.closeStreams());
       await runDelayed(tester, nav);
       expect(stub.platform.loadUrlCalls, 0);
     });
@@ -204,7 +207,7 @@ void main() {
     testWidgets('returns when web controller missing', (tester) async {
       final stub = _Stub();
       stub.build(attach: false);
-      stub.session.videoId = 'vid';
+      stub.session.resetForOpen('vid');
       final nav = YoutubeWebViewNavigation(
         session: stub.session,
         webController: () => null,
@@ -221,7 +224,7 @@ void main() {
     testWidgets('returns when loggedFirstPlaying already true', (tester) async {
       final stub = _Stub();
       final nav = stub.build();
-      stub.session.loggedFirstPlaying = true;
+      stub.session.markFirstPlayingLogged();
       await runDelayed(tester, nav);
       expect(stub.platform.loadUrlCalls, 0);
     });
@@ -231,7 +234,7 @@ void main() {
     ) async {
       final stub = _Stub();
       final nav = stub.build();
-      stub.session.watchPageLoadStopReceived = true;
+      stub.session.noteWatchPageLoaded();
       await runDelayed(tester, nav, skipIfLoadStopReceived: true);
       expect(stub.platform.loadUrlCalls, 0);
     });
@@ -250,7 +253,7 @@ void main() {
     test('returns early when disposed', () {
       final stub = _Stub();
       final nav = stub.build();
-      stub.session.disposed = true;
+      unawaited(stub.session.closeStreams());
       nav.scheduleNonWatchRecovery();
       expect(stub.session.nonWatchRecoveryScheduled, isFalse);
     });
@@ -258,7 +261,6 @@ void main() {
     test('returns early when video id is empty', () {
       final stub = _Stub();
       stub.build(attach: false);
-      stub.session.videoId = '';
       stub.nav!.scheduleNonWatchRecovery();
       expect(stub.session.nonWatchRecoveryScheduled, isFalse);
     });
@@ -266,7 +268,7 @@ void main() {
     test('returns early when already playing', () {
       final stub = _Stub();
       final nav = stub.build();
-      stub.session.loggedFirstPlaying = true;
+      stub.session.markFirstPlayingLogged();
       nav.scheduleNonWatchRecovery();
       expect(stub.session.nonWatchRecoveryScheduled, isFalse);
     });
@@ -274,7 +276,7 @@ void main() {
     test('returns early when already scheduled', () {
       final stub = _Stub();
       final nav = stub.build();
-      stub.session.nonWatchRecoveryScheduled = true;
+      stub.session.scheduleNonWatchRecovery();
       nav.scheduleNonWatchRecovery();
       // Flag stays true; second call does not reschedule.
       expect(stub.session.nonWatchRecoveryScheduled, isTrue);
@@ -298,7 +300,7 @@ void main() {
       final nav = stub.build();
       nav.schedulePlaybackNudge();
       // Mark session disposed before the nudge would fire.
-      stub.session.disposed = true;
+      unawaited(stub.session.closeStreams());
       // Cancel and reschedule so we can verify the disposed short-circuit
       // without waiting on the real 6-second Timer.
       nav.cancelNudge();
@@ -344,7 +346,7 @@ void main() {
     testWidgets('returns when web controller missing', (tester) async {
       final stub = _Stub();
       stub.build(attach: false);
-      stub.session.videoId = 'vid';
+      stub.session.resetForOpen('vid');
       var prepareCalls = 0;
       final nav = YoutubeWebViewNavigation(
         session: stub.session,
@@ -365,7 +367,7 @@ void main() {
     testWidgets('returns when session is disposed', (tester) async {
       final stub = _Stub();
       final nav = stub.build();
-      stub.session.disposed = true;
+      unawaited(stub.session.closeStreams());
       var prepareCalls = 0;
       await nav.onWebViewProcessTerminated(
         prepareWatchReload: () => prepareCalls++,
@@ -379,9 +381,13 @@ void main() {
     ) async {
       final stub = _Stub();
       final nav = stub.build();
-      // Force buffering to false so emitBuffering(true) actually fires.
-      stub.session.buffering = false;
-      stub.session.playing = true;
+      // Force buffering to false so emitBuffering(true) actually fires. The
+      // first-playing latch is set before the buffering transition so the
+      // hint scheduler stays idle in this test.
+      stub.session
+        ..markFirstPlayingLogged()
+        ..emitBuffering(false)
+        ..emitPlaying(true);
       var prepareCalls = 0;
       final bufferingEvents = <bool>[];
       final playingEvents = <bool>[];
@@ -407,7 +413,6 @@ void main() {
     testWidgets('returns when video id is empty', (tester) async {
       final stub = _Stub();
       stub.build(attach: false);
-      stub.session.videoId = '';
       var prepareCalls = 0;
       await stub.nav!.onSignInNavigationBlocked(
         stub.controller,
@@ -420,7 +425,7 @@ void main() {
     testWidgets('returns when session is disposed', (tester) async {
       final stub = _Stub();
       final nav = stub.build();
-      stub.session.disposed = true;
+      unawaited(stub.session.closeStreams());
       var prepareCalls = 0;
       await nav.onSignInNavigationBlocked(
         stub.controller,
@@ -460,7 +465,7 @@ void main() {
     test('returns early when session is disposed', () async {
       final stub = _Stub();
       final nav = stub.build();
-      stub.session.disposed = true;
+      unawaited(stub.session.closeStreams());
       await nav.nudgePlaybackStart(stub.controller);
       expect(stub.platform.evaluateCalls, 0);
     });
@@ -468,7 +473,7 @@ void main() {
     test('returns early when loggedFirstPlaying', () async {
       final stub = _Stub();
       final nav = stub.build();
-      stub.session.loggedFirstPlaying = true;
+      stub.session.markFirstPlayingLogged();
       await nav.nudgePlaybackStart(stub.controller);
       expect(stub.platform.evaluateCalls, 0);
     });
@@ -490,7 +495,7 @@ void main() {
     test('does not nudge after explicitPlayAttempted', () async {
       final stub = _Stub();
       final nav = stub.build();
-      stub.session.explicitPlayAttempted = true;
+      stub.session.markExplicitPlayAttempt();
       nav.schedulePlaybackNudge();
       await Future<void>.delayed(
         YoutubeWebViewNavigation.playbackNudgeDelay +
@@ -506,7 +511,7 @@ void main() {
     ) async {
       final stub = _Stub();
       final nav = stub.build();
-      stub.session.explicitPlayAttempted = true;
+      stub.session.markExplicitPlayAttempt();
       var prepareCalls = 0;
       var cancelCalls = 0;
       await nav.recoverStalledPlayback(
@@ -526,7 +531,7 @@ void main() {
     testWidgets('returns when web controller missing', (tester) async {
       final stub = _Stub();
       stub.build(attach: false);
-      stub.session.videoId = 'vid';
+      stub.session.resetForOpen('vid');
       var prepareCalls = 0;
       final nav = YoutubeWebViewNavigation(
         session: stub.session,
@@ -550,7 +555,7 @@ void main() {
     testWidgets('returns when session is disposed', (tester) async {
       final stub = _Stub();
       final nav = stub.build();
-      stub.session.disposed = true;
+      unawaited(stub.session.closeStreams());
       var prepareCalls = 0;
       await nav.recoverStalledPlayback(
         maxStallRecoveries: 3,
@@ -565,7 +570,7 @@ void main() {
     testWidgets('cancels watchdog when already playing', (tester) async {
       final stub = _Stub();
       final nav = stub.build();
-      stub.session.playing = true;
+      stub.session.emitPlaying(true);
       var cancelCalls = 0;
       var prepareCalls = 0;
       await nav.recoverStalledPlayback(

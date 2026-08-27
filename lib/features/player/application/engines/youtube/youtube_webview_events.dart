@@ -96,10 +96,7 @@ class YoutubeWebViewEvents {
         // unMute is a pause trigger under Chromium's autoplay gesture lock
         // (the play-then-pause root cause), so redundancy here is the bug.
         final needsRestore = session.needsVolumeRestore;
-        session.pausedPollStreak = 0;
-        session.playbackCompleted = false;
-        session.userPlayInFlight = false;
-        session.emitPlaying(true);
+        session.notePlayingConfirmed();
         onFirstPlaying();
         session.emitBuffering(false);
         startPolling();
@@ -119,9 +116,7 @@ class YoutubeWebViewEvents {
         break;
       case YoutubeVideoEventName.playRejected:
         cancelPendingVolumeRestore();
-        session.userPlayInFlight = false;
-        session.emitPlaying(false);
-        session.emitBuffering(false);
+        session.noteUserPlayUnresolved();
         final reason = args.length > 1 ? '${args[1]}' : 'unknown';
         _logEvents.warning(
           'youtube play rejected vid=${session.videoId} reason=$reason '
@@ -132,13 +127,9 @@ class YoutubeWebViewEvents {
         session.scheduleRecoveryHint();
         break;
       case YoutubeVideoEventName.ended:
-        session.pausedPollStreak = 0;
-        session.userPlayInFlight = false;
         cancelPendingVolumeRestore();
-        session.markCompleted();
+        session.noteEnded();
         stopPolling();
-        session.emitPlaying(false);
-        session.emitBuffering(false);
         unawaited(YoutubeWebViewBridge.pauseVideoElement(webController()));
         break;
       case YoutubeVideoEventName.waiting:
@@ -162,9 +153,7 @@ class YoutubeWebViewEvents {
       case YoutubeVideoEventName.error:
         cancelPendingVolumeRestore();
         _logEvents.warning('YouTube video element error');
-        session.userPlayInFlight = false;
-        session.emitPlaying(false);
-        session.emitBuffering(false);
+        session.noteUserPlayUnresolved();
         break;
       default:
         // A name the Dart side does not switch over cannot reach here without
@@ -258,9 +247,8 @@ class YoutubeWebViewEvents {
   }
 
   void applyPendingSeek() {
-    final secs = session.pendingSeekSeconds;
+    final secs = session.takePendingSeekSeconds();
     if (secs == null || secs <= 0) return;
-    session.pendingSeekSeconds = null;
     unawaited(seekTo(Duration(milliseconds: (secs * 1000).round())));
   }
 }

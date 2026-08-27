@@ -82,12 +82,12 @@ class YoutubePlayerEngine implements PlayerEngine {
   @override
   void setPosterUrl(String? url) => _session.setPosterUrl(url);
 
-  /// Clears the internal [YoutubeSession.playbackCompleted] flag so the next
+  /// Clears the session's end-of-media latch so the next
   /// [play] call drives the `<video>` directly instead of reloading the watch
   /// page. Used by the deterministic completion loop (ADR-0044) to seek + play
   /// from an arbitrary position after end-of-media.
   @override
-  void resetCompletionFlag() => _session.playbackCompleted = false;
+  void resetCompletionFlag() => _session.resetCompletionFlag();
 
   @override
   void markOpenTimingStart() => _webView.markOpenTimingStart();
@@ -207,11 +207,8 @@ class YoutubePlayerEngine implements PlayerEngine {
 
   @override
   Future<void> setVolumeNormalized(double volume) async {
-    _session.volumeNormalized = volume.clamp(0, 1);
-    await YoutubeWebViewBridge.setVolume(
-      _webView.webController,
-      _session.volumeNormalized,
-    );
+    final applied = _session.storeVolumeNormalized(volume);
+    await YoutubeWebViewBridge.setVolume(_webView.webController, applied);
   }
 
   @override
@@ -235,11 +232,8 @@ class YoutubePlayerEngine implements PlayerEngine {
           return;
         }
         _webView.onExplicitPlayAttempt();
-        _session.userPlayInFlight = true;
-        // Clear stale buffering so the transport button stays retryable.
-        if (_session.buffering && !_session.playing) {
-          _session.emitBuffering(false);
-        }
+        // In-flight latch + stale-buffering clear live in the transition.
+        _session.beginUserPlay();
         _logYoutube.fine(
           'youtube playOrPause command vid=${_session.videoId} '
           'sessionPlaying=${_session.playing} '
@@ -279,10 +273,8 @@ class YoutubePlayerEngine implements PlayerEngine {
           return;
         }
         _webView.onExplicitPlayAttempt();
-        _session.userPlayInFlight = true;
-        if (_session.buffering && !_session.playing) {
-          _session.emitBuffering(false);
-        }
+        // In-flight latch + stale-buffering clear live in the transition.
+        _session.beginUserPlay();
         _logYoutube.fine(
           'youtube play command vid=${_session.videoId} '
           'buffering=${_session.buffering} '
@@ -321,7 +313,7 @@ class YoutubePlayerEngine implements PlayerEngine {
     _session.emitPlaying(false);
     _session.emitBuffering(false);
     _session.emitPosition(Duration.zero);
-    _session.playbackCompleted = false;
+    _session.resetCompletionFlag();
   }
 
   @override

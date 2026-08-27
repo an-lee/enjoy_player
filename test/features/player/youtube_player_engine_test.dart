@@ -388,7 +388,7 @@ void main() {
         );
 
         events.handle(['playing']);
-        session.pausedPollStreak = 2;
+        session.notePauseStreak(2);
         events.handle(['pause']);
 
         // Streak must survive so poll confirmation is not delayed.
@@ -451,11 +451,11 @@ void main() {
         reapplyVolume: () async {},
       );
 
-      session.userPlayInFlight = true;
+      session.beginUserPlay();
       events.handle(['playing']);
       expect(session.userPlayInFlight, isFalse);
 
-      session.userPlayInFlight = true;
+      session.beginUserPlay();
       events.handle(['playRejected', 'NotAllowedError']);
       expect(session.userPlayInFlight, isFalse);
 
@@ -465,11 +465,11 @@ void main() {
 
     test('resetForOpen and resetForClear reset userPlayInFlight', () {
       final session = YoutubeSession()..resetForOpen('abc12345678');
-      session.userPlayInFlight = true;
+      session.beginUserPlay();
       session.resetForOpen('other123456');
       expect(session.userPlayInFlight, isFalse);
 
-      session.userPlayInFlight = true;
+      session.beginUserPlay();
       session.resetForClear();
       expect(session.userPlayInFlight, isFalse);
     });

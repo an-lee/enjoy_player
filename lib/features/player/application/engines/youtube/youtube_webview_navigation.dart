@@ -87,7 +87,7 @@ class YoutubeWebViewNavigation {
       return;
     }
     if (session.nonWatchRecoveryScheduled) return;
-    session.nonWatchRecoveryScheduled = true;
+    session.scheduleNonWatchRecovery();
     _logNav.info('youtube non-watch load_stop; verifying watch page');
     unawaited(ensureWatchPageLoadedAfterDelay(skipIfLoadStopReceived: true));
   }
