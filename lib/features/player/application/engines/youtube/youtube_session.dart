@@ -61,7 +61,6 @@ class YoutubeSession {
   Duration? _volumeRestoreBaselinePosition;
   int _progressAdvanceTicks = 0;
   static const int progressConfirmTicks = 2;
-  static const Duration volumeRestoreFallback = Duration(milliseconds: 1500);
 
   /// Generation of the loaded watch document. Bumped on every open and watch
   /// load stop (ads reload the page into a fresh document whose `<video>`
@@ -81,7 +80,12 @@ class YoutubeSession {
   static const Duration immediatePauseWindow = Duration(seconds: 2);
 
   Timer? _tapToPlayHintTimer;
-  static const Duration _tapToPlayHintDelay = Duration(milliseconds: 1200);
+
+  /// Recovery-overlay delay. Part of the audible-playback joint invariant
+  /// (must exceed [YoutubeAudiblePlaybackPolicy.postRestoreHealDelay]'s
+  /// check window) — asserted in the policy's tests, which is why it is
+  /// public.
+  static const Duration tapToPlayHintDelay = Duration(milliseconds: 1200);
 
   Duration _lastPosition = Duration.zero;
   Duration _lastDuration = Duration.zero;
@@ -446,7 +450,7 @@ class YoutubeSession {
     final allowRecovery = _explicitPlayAttempted && !_playing && !_buffering;
     if (_loggedFirstPlaying && !allowRecovery) return;
     _tapToPlayHintTimer?.cancel();
-    _tapToPlayHintTimer = Timer(_tapToPlayHintDelay, () {
+    _tapToPlayHintTimer = Timer(tapToPlayHintDelay, () {
       _tapToPlayHintTimer = null;
       if (_disposed || _playing || _buffering) return;
       if (_loggedFirstPlaying && !_explicitPlayAttempted) return;

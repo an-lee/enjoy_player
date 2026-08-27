@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import 'package:enjoy_player/core/logging/log.dart';
+import 'package:enjoy_player/features/player/application/engines/youtube/youtube_audible_playback_policy.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_page_inject.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_playback_stall_watchdog.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_session.dart';
@@ -34,23 +35,28 @@ class YoutubeWebViewController {
            unawaited(onStallRecovery());
          },
        ) {
+    _audibility = YoutubeAudiblePlaybackPolicy(
+      session: session,
+      reapplyVolume: reapplyVolume,
+      healPlay: () => YoutubeWebViewBridge.play(_webController),
+    );
     _events = YoutubeWebViewEvents(
       session: session,
       webController: () => _webController,
       onFirstPlaying: onFirstPlayingFromSession,
       startPolling: () => _pollLoop.start(),
       stopPolling: () => _pollLoop.stop(),
-      reapplyVolume: reapplyVolume,
       seekTo: (d) => YoutubeWebViewBridge.seekToSeconds(
         _webController,
         d.inMilliseconds / 1000.0,
       ),
+      audibility: _audibility,
     );
     _pollLoop = YoutubeWebViewPollLoop(
       session: session,
       webController: () => _webController,
       onFirstPlaying: onFirstPlayingFromSession,
-      onPlaybackProgress: _events.onPlaybackProgress,
+      onPlaybackProgress: _audibility.onPlaybackProgress,
     );
     _navigation = YoutubeWebViewNavigation(
       session: session,
@@ -75,6 +81,7 @@ class YoutubeWebViewController {
   static const int maxStallRecoveries = 1;
 
   final YoutubePlaybackStallWatchdog _stallWatchdog;
+  late final YoutubeAudiblePlaybackPolicy _audibility;
   late final YoutubeWebViewEvents _events;
   late final YoutubeWebViewPollLoop _pollLoop;
   late final YoutubeWebViewNavigation _navigation;
@@ -90,7 +97,7 @@ class YoutubeWebViewController {
   void markOpenTimingStart() {
     _stallWatchdog.cancel();
     _navigation.cancelNudge();
-    _events.cancelPendingVolumeRestore();
+    _audibility.cancelPending();
     _bumpVerifyGeneration();
     session.startInitTiming();
     session.resetWatchPageExpectations(firstPlaying: true);
@@ -104,7 +111,7 @@ class YoutubeWebViewController {
   }) {
     _stallWatchdog.cancel();
     _navigation.cancelNudge();
-    _events.cancelPendingVolumeRestore();
+    _audibility.cancelPending();
     _bumpVerifyGeneration();
     session.resetWatchPageExpectations(firstPlaying: resetFirstPlaying);
     if (resetStallRecovery) {
@@ -132,7 +139,7 @@ class YoutubeWebViewController {
   Future<void> idleAfterClear({bool keepMounted = false}) async {
     _stallWatchdog.cancel();
     _navigation.cancelNudge();
-    _events.cancelPendingVolumeRestore();
+    _audibility.cancelPending();
     _bumpVerifyGeneration();
     session.resetForClear(keepMounted: keepMounted);
     _pollLoop.stop();
@@ -150,7 +157,7 @@ class YoutubeWebViewController {
   Future<void> dispose() async {
     _stallWatchdog.cancel();
     _navigation.cancelNudge();
-    _events.cancelPendingVolumeRestore();
+    _audibility.cancelPending();
     _bumpVerifyGeneration();
     _pollLoop.stop();
   }
@@ -235,7 +242,7 @@ class YoutubeWebViewController {
       session.noteWebViewUnmounted();
       session.clearAwaitingColdInitialNavigation();
       _navigation.cancelNudge();
-      _events.cancelPendingVolumeRestore();
+      _audibility.cancelPending();
       _bumpVerifyGeneration();
       _pollLoop.stop();
       // Defer: notifying during StatefulElement.unmount locks the tree
