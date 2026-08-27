@@ -9,6 +9,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_session.dart';
+import 'package:enjoy_player/features/player/application/engines/youtube/youtube_video_event.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_webview_bridge.dart';
 
 final _logEvents = logNamed('YouTubeWebViewEvents');
@@ -83,12 +84,12 @@ class YoutubeWebViewEvents {
     if (args.isEmpty) return null;
     final event = args[0] as String;
     switch (event) {
-      case 'play':
+      case YoutubeVideoEventName.play:
         // Optimistic request only — do not touch pause streak (DOM may still
         // pause before `playing`). Transport waits for authoritative `playing`.
         _logEvents.fine('youtube video play requested vid=${session.videoId}');
         break;
-      case 'playing':
+      case YoutubeVideoEventName.playing:
         // A fresh watch document (cold open or post-ad reload) starts muted;
         // arm the progress-gated restore once. Later `playing` events in an
         // already-restored document must NOT re-unmute: every programmatic
@@ -108,7 +109,7 @@ class YoutubeWebViewEvents {
         }
         _logEvents.fine('youtube video playing vid=${session.videoId}');
         break;
-      case 'pause':
+      case YoutubeVideoEventName.pause:
         // Do NOT reset [pausedPollStreak] — a DOM pause while Dart still thinks
         // playing must accumulate toward poll confirmation. Resetting here
         // previously extended the stale-`playing` window and made the next
@@ -116,7 +117,7 @@ class YoutubeWebViewEvents {
         cancelPendingVolumeRestore();
         _logEvents.fine('youtube video paused vid=${session.videoId}');
         break;
-      case 'playRejected':
+      case YoutubeVideoEventName.playRejected:
         cancelPendingVolumeRestore();
         session.userPlayInFlight = false;
         session.emitPlaying(false);
@@ -130,7 +131,7 @@ class YoutubeWebViewEvents {
         startPolling();
         session.scheduleRecoveryHint();
         break;
-      case 'ended':
+      case YoutubeVideoEventName.ended:
         session.pausedPollStreak = 0;
         session.userPlayInFlight = false;
         cancelPendingVolumeRestore();
@@ -140,15 +141,15 @@ class YoutubeWebViewEvents {
         session.emitBuffering(false);
         unawaited(YoutubeWebViewBridge.pauseVideoElement(webController()));
         break;
-      case 'waiting':
+      case YoutubeVideoEventName.waiting:
         session.emitBuffering(true);
         break;
-      case 'canplay':
+      case YoutubeVideoEventName.canplay:
         if (session.buffering) {
           session.emitBuffering(false);
         }
         break;
-      case 'loadedmetadata':
+      case YoutubeVideoEventName.loadedmetadata:
         startPolling();
         if (args.length > 1) {
           final dur = (args[1] as num).toDouble();
@@ -158,7 +159,7 @@ class YoutubeWebViewEvents {
           }
         }
         break;
-      case 'error':
+      case YoutubeVideoEventName.error:
         cancelPendingVolumeRestore();
         _logEvents.warning('YouTube video element error');
         session.userPlayInFlight = false;
@@ -166,6 +167,10 @@ class YoutubeWebViewEvents {
         session.emitBuffering(false);
         break;
       default:
+        // A name the Dart side does not switch over cannot reach here without
+        // failing youtube_js_protocol_contract_test first — log so a stray
+        // name surfaces in diagnostics instead of vanishing.
+        _logEvents.warning('youtube unknown video event name=$event');
         break;
     }
     return null;
