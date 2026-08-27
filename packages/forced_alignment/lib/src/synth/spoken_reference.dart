@@ -2,7 +2,11 @@ import 'dart:typed_data';
 
 import '../failures.dart';
 
-final _wordPattern = RegExp(r"[\p{L}\p{N}']+", unicode: true);
+/// Letters, digits, ASCII apostrophe (contractions), typographic apostrophes
+/// (`don’t`), and combining marks (NFD `é`). Token spans are the displayed
+/// orthography, so anything eSpeak pronounces as part of one word must stay
+/// one token (issue #621).
+final _wordPattern = RegExp(r"[\p{L}\p{N}\p{M}'’‘]+", unicode: true);
 
 /// One [tokenizeWords] token with Dart string indexes into the source text.
 final class WordSpan {

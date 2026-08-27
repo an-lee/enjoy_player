@@ -53,7 +53,8 @@ bool espeakFfiIsAvailable() {
 /// eSpeak does not emit one event per orthographic token: function words can
 /// be swallowed (no event), expansions can emit several events with shifted
 /// positions (`77` → "seventy seven"), and some events report `length == 0`.
-/// Display labels never come from these fields; they only carry timing.
+/// Display labels never come from these fields; only [textPosition] and
+/// [audioMs] drive the mapping, and [length] is informational.
 final class EspeakWordEvent {
   const EspeakWordEvent({
     required this.textPosition,
@@ -62,6 +63,9 @@ final class EspeakWordEvent {
   });
 
   final int textPosition;
+
+  /// Informational: captured verbatim from eSpeak but never read by the
+  /// token mapping.
   final int length;
   final int audioMs;
 }
@@ -86,6 +90,11 @@ final class EspeakPhoneEvent {
 /// already passed, so swallowed-word neighbours keep their own events,
 /// expansion duplicates (`77` + `7`) collapse onto one token, and stale or
 /// zero-length events land on the token they were spoken for.
+///
+/// [positions] are zero-based character offsets into the same string the
+/// spans were tokenized from, in UTF-16 code units (convert eSpeak's
+/// code-point positions with [_utf16Offset] first). Values outside the text
+/// clamp to the nearest span.
 @visibleForTesting
 List<int> mapWordEventsToTokenSpans(List<WordSpan> spans, List<int> positions) {
   if (spans.isEmpty) return const <int>[];
@@ -107,6 +116,30 @@ List<int> mapWordEventsToTokenSpans(List<WordSpan> spans, List<int> positions) {
     cursor = best;
   }
   return owners;
+}
+
+/// UTF-16 offset table for zero-based code-point positions, or null when
+/// every code point of [text] is one UTF-16 unit (the common case).
+///
+/// eSpeak counts characters (code points) while Dart string indexes count
+/// code units, so any non-BMP character (emoji, rare CJK) before a word
+/// shifts its event by one without this conversion.
+List<int>? _codePointOffsetTable(String text) {
+  if (text.runes.length == text.length) return null;
+  final table = List<int>.filled(text.runes.length + 1, 0);
+  var codePoint = 0;
+  var unit = 0;
+  for (final rune in text.runes) {
+    table[codePoint++] = unit;
+    unit += rune > 0xFFFF ? 2 : 1;
+  }
+  table[codePoint] = unit;
+  return table;
+}
+
+int _utf16Offset(List<int>? table, int zeroBasedCodePoint) {
+  if (table == null) return zeroBasedCodePoint;
+  return table[math.max(0, math.min(table.length - 1, zeroBasedCodePoint))];
 }
 
 int _distanceToSpan(WordSpan span, int position) {
@@ -354,6 +387,10 @@ final class EspeakNgSynthesizer implements SpokenReferenceSynthesizer {
     return ReferenceAudio(pcm: pcm, words: words, durationSeconds: duration);
   }
 
+  /// Event-clock duration for the phonemesOnly (YouTube IPA) path, which has
+  /// no PCM to measure. Ends at the last event's *onset*, so the final
+  /// phoneme collapses to zero width — pre-existing eSpeak limitation, kept
+  /// because stretching the clock would shift every IPA phone.
   static double _eventDurationSeconds() {
     var maxMs = 0;
     for (final word in _words) {
@@ -387,11 +424,11 @@ final class EspeakNgSynthesizer implements SpokenReferenceSynthesizer {
   /// so swallowed words, numeral expansions, and hyphenated compounds can
   /// never change the displayed word sequence (issue #621).
   ///
-  /// Each token's span tiles the reference audio: a token owning events keeps
-  /// the audio up to the next owned event; tokens without an event share the
-  /// surrounding region proportionally by length so every source word stays
-  /// visible with a usable window. Phones attach by audio time within the
-  /// token's span.
+  /// Tokens tile the audio from the first event to [duration]; leading
+  /// silence stays unclaimed. A token owning events keeps the audio up to
+  /// the next owned event; tokens without an event share the surrounding
+  /// region proportionally by length so every source word stays visible with
+  /// a usable window. Phones attach by audio time within the token's span.
   @visibleForTesting
   static List<ReferenceWord> buildWords({
     required String text,
@@ -402,18 +439,25 @@ final class EspeakNgSynthesizer implements SpokenReferenceSynthesizer {
   }) {
     final spans = tokenizeWordSpans(text);
     if (spans.isEmpty) return const [];
-    if (wordEvents.isEmpty) {
+    // eSpeak emits events in text order and time order in practice; sorting
+    // keeps the region math sane for callers that do not.
+    final words = [...wordEvents]
+      ..sort((a, b) => a.audioMs.compareTo(b.audioMs));
+    final phones = [...phoneEvents]
+      ..sort((a, b) => a.audioMs.compareTo(b.audioMs));
+    final codePointTable = _codePointOffsetTable(text);
+    if (words.isEmpty) {
       if (requireWordEvents) {
         throw const SpokenReferenceException(
           message: 'eSpeak-NG produced PCM but no word events',
         );
       }
-      return _wordsFromTokenSpans(text, duration);
+      return _wordsFromTokenSpans(spans, phones, duration, codePointTable);
     }
 
     final owners = mapWordEventsToTokenSpans(spans, [
-      for (final event in wordEvents)
-        math.max(0, math.min(text.length, event.textPosition - 1)),
+      for (final event in words)
+        _utf16Offset(codePointTable, event.textPosition - 1),
     ]);
 
     final firstEvent = List<int?>.filled(spans.length, null);
@@ -425,8 +469,8 @@ final class EspeakNgSynthesizer implements SpokenReferenceSynthesizer {
         if (firstEvent[t] != null) t,
     ];
     final eventStartSec = <double>[
-      for (final event in wordEvents)
-        (event.audioMs / 1000.0).clamp(0.0, duration),
+      for (final event in words)
+        math.max(0.0, math.min(duration, event.audioMs / 1000.0)),
     ];
 
     final starts = List<double>.filled(spans.length, 0);
@@ -456,7 +500,7 @@ final class EspeakNgSynthesizer implements SpokenReferenceSynthesizer {
       );
     }
 
-    final phonesByToken = _phonesByToken(phoneEvents, starts, ends);
+    final phonesByToken = _phonesByToken(phones, starts, ends);
     return [
       for (var t = 0; t < spans.length; t++)
         ReferenceWord(
@@ -473,7 +517,9 @@ final class EspeakNgSynthesizer implements SpokenReferenceSynthesizer {
   ///
   /// A lone token keeps the whole region (the previous
   /// word-end = next-event-start convention); a run of event-less tokens
-  /// shares it proportionally by token length.
+  /// shares it proportionally by token length. An inverted region (events
+  /// reporting non-monotonic audio positions) collapses to zero width
+  /// instead of producing a token that ends before it starts.
   static void _distributeRegion(
     List<WordSpan> spans,
     List<double> starts,
@@ -484,6 +530,7 @@ final class EspeakNgSynthesizer implements SpokenReferenceSynthesizer {
     double regionEnd,
   ) {
     if (endToken <= startToken) return;
+    if (regionEnd < regionStart) regionEnd = regionStart;
     if (endToken - startToken == 1) {
       starts[startToken] = regionStart;
       ends[startToken] = regionEnd;
@@ -529,6 +576,8 @@ final class EspeakNgSynthesizer implements SpokenReferenceSynthesizer {
 
   /// Phone spans for one token, preserving the previous shape: the first
   /// phone reaches the token end and each mark closes the previous one.
+  /// Bounds use min/max rather than [double.clamp], which throws when a
+  /// caller's end precedes its start.
   static List<ReferencePhone> _phonesForSpan(
     List<EspeakPhoneEvent> events,
     double start,
@@ -537,15 +586,15 @@ final class EspeakNgSynthesizer implements SpokenReferenceSynthesizer {
   ) {
     final phones = <ReferencePhone>[];
     for (final event in events) {
-      final t = (event.audioMs / 1000.0).clamp(start, end);
-      final pe = phones.isEmpty ? end : (t + 0.02).clamp(t, end);
+      final t = math.min(end, math.max(start, event.audioMs / 1000.0));
+      final pe = phones.isEmpty ? end : math.min(end, t + 0.02);
       if (phones.isNotEmpty) {
         final prev = phones.removeLast();
         phones.add(
           ReferencePhone(
             phone: prev.phone,
             startTime: prev.startTime,
-            endTime: t.clamp(prev.startTime, end),
+            endTime: math.min(end, math.max(prev.startTime, t)),
             wordIndex: wordIndex,
           ),
         );
@@ -563,28 +612,27 @@ final class EspeakNgSynthesizer implements SpokenReferenceSynthesizer {
   }
 
   /// IPA-only fallback when eSpeak emitted phones but no WORD events.
+  /// Maps phone text positions with the same rule as the word-event path so
+  /// both paths agree for identical text.
   static List<ReferenceWord> _wordsFromTokenSpans(
-    String text,
+    List<WordSpan> spans,
+    List<EspeakPhoneEvent> phoneEvents,
     double duration,
+    List<int>? codePointTable,
   ) {
-    final spans = tokenizeWordSpans(text);
     if (spans.isEmpty) return const [];
     final phonesByWord = List<List<String>>.generate(
       spans.length,
       (_) => <String>[],
     );
-    for (final phone in _phones) {
-      var pos = phone.textPosition;
-      if (pos >= 1) pos -= 1;
-      var idx = 0;
-      for (var i = 0; i < spans.length; i++) {
-        if (pos >= spans[i].start && pos < spans[i].end) {
-          idx = i;
-          break;
-        }
-        if (pos >= spans[i].end) idx = i;
+    final owners = mapWordEventsToTokenSpans(spans, [
+      for (final phone in phoneEvents)
+        _utf16Offset(codePointTable, phone.textPosition - 1),
+    ]);
+    for (var i = 0; i < phoneEvents.length; i++) {
+      if (phoneEvents[i].phone.isNotEmpty) {
+        phonesByWord[owners[i]].add(phoneEvents[i].phone);
       }
-      if (phone.phone.isNotEmpty) phonesByWord[idx].add(phone.phone);
     }
     return [
       for (var i = 0; i < spans.length; i++)

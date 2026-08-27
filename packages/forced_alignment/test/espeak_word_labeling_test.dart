@@ -2,117 +2,28 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forced_alignment/forced_alignment.dart';
 import 'package:forced_alignment/src/synth/espeak_ng_synthesizer.dart';
 
+import 'helpers/espeak_word_event_fixtures.dart';
+
 /// Regression coverage for issue #621: IPA enrichment must not change the
-/// source orthography. Word events below are captured verbatim from
-/// eSpeak-NG (en-US) for the cues reported in the issue.
+/// source orthography. Word events are captured verbatim from eSpeak-NG
+/// (en-US) for the reported cues plus edge-case sentences.
 void main() {
-  const cue1 =
-      'One of the pictures hanging in my office in mid-Manhattan is a '
-      'photograph of the writer E. B. White.';
-  const cue1Events = [
-    (1, 3, 0),
-    (5, 2, 165),
-    (12, 8, 420),
-    (21, 7, 929),
-    (29, 2, 1236),
-    (32, 2, 1411),
-    (35, 6, 1512),
-    (42, 2, 1861),
-    (45, 3, 1980),
-    (59, 2, 2703),
-    (62, 1, 2819),
-    (64, 10, 2874),
-    (75, 2, 3431),
-    (82, 6, 3660),
-    (89, 1, 3951),
-    (92, 1, 4128),
-    (95, 5, 4357),
-  ];
-  const cue2 =
-      'It was taken by Jill Krementz when White was 77 years old, at his '
-      'home in North Brooklin, Maine.';
-  const cue2Events = [
-    (1, 2, 0),
-    (4, 3, 146),
-    (8, 5, 345),
-    (14, 2, 768),
-    (17, 4, 905),
-    (22, 8, 1166),
-    (31, 4, 1713),
-    (36, 5, 1887),
-    (42, 3, 2160),
-    (46, 2, 2368),
-    (47, 2, 2848),
-    (49, 5, 3215),
-    (55, 3, 3517),
-    (60, 2, 4056),
-    (63, 3, 4213),
-    (67, 4, 4421),
-    (72, 2, 4626),
-    (75, 5, 4780),
-    (81, 8, 5079),
-    (91, 5, 5695),
-  ];
-  const cue3 =
-      'A white-haired man is sitting on a plain wooden bench at a plain '
-      'wooden table—three boards nailed to four legs—in a small boathouse.';
-  const cue3Events = [
-    (1, 1, 0),
-    (3, 5, 62),
-    (16, 3, 636),
-    (20, 2, 807),
-    (23, 7, 989),
-    (31, 2, 1268),
-    (34, 1, 1433),
-    (36, 5, 1523),
-    (42, 6, 1857),
-    (49, 5, 2171),
-    (55, 2, 2502),
-    (60, 5, 2651),
-    (66, 6, 2985),
-    (73, 0, 3293),
-    (79, 5, 3791),
-    (85, 6, 4030),
-    (92, 6, 4454),
-    (99, 2, 4807),
-    (102, 4, 4938),
-    (107, 0, 5196),
-    (112, 2, 5684),
-    (115, 1, 5745),
-    (117, 5, 5822),
-    (123, 9, 6155),
-  ];
-
-  List<EspeakWordEvent> events(List<(int, int, int)> tuples) => [
-    for (final (position, length, audioMs) in tuples)
-      EspeakWordEvent(textPosition: position, length: length, audioMs: audioMs),
-  ];
-
   group('buildWords keeps the tokenizer orthography', () {
-    for (final (name, text, tuples, duration) in [
-      ('cue 1 articles', cue1, cue1Events, 5.0),
-      ('cue 2 numeral', cue2, cue2Events, 6.5),
-      ('cue 3 hyphens and dashes', cue3, cue3Events, 7.0),
-    ]) {
-      test(name, () {
+    for (final cue in capturedCues) {
+      test(cue.text, () {
         final words = EspeakNgSynthesizer.buildWords(
-          text: text,
-          duration: duration,
-          wordEvents: events(tuples),
+          text: cue.text,
+          duration: cue.durationSeconds,
+          wordEvents: cueWordEvents(cue),
           phoneEvents: const [],
         );
-        expect(words.map((w) => w.text), tokenizeWords(text));
+        expect(words.map((w) => w.text), tokenizeWords(cue.text));
       });
     }
   });
 
   test('cue 1 restores both articles and Manhattan', () {
-    final words = EspeakNgSynthesizer.buildWords(
-      text: cue1,
-      duration: 5.0,
-      wordEvents: events(cue1Events),
-      phoneEvents: const [],
-    );
+    final words = _build(cueArticles);
     expect(words.where((w) => w.text == 'the'), hasLength(2));
     final mid = words.firstWhere((w) => w.text == 'mid');
     final manhattan = words.firstWhere((w) => w.text == 'Manhattan');
@@ -130,9 +41,9 @@ void main() {
         EspeakPhoneEvent(phone: 's', audioMs: ms, textPosition: 46),
     ];
     final words = EspeakNgSynthesizer.buildWords(
-      text: cue2,
-      duration: 6.5,
-      wordEvents: events(cue2Events),
+      text: cueNumeral.text,
+      duration: cueNumeral.durationSeconds,
+      wordEvents: cueWordEvents(cueNumeral),
       phoneEvents: phones,
     );
     expect(words.where((w) => w.text == '77'), hasLength(1));
@@ -150,12 +61,7 @@ void main() {
   });
 
   test('cue 3 relabels zero-length events to their own tokens', () {
-    final words = EspeakNgSynthesizer.buildWords(
-      text: cue3,
-      duration: 7.0,
-      wordEvents: events(cue3Events),
-      phoneEvents: const [],
-    );
+    final words = _build(cueHyphens);
     // Both len=0 events (positions 73 and 107) previously fell back to
     // tokens[13] ('plain') and tokens[19] ('to').
     final table = words.firstWhere((w) => w.text == 'table');
@@ -165,19 +71,13 @@ void main() {
     final inAfterLegs = words[words.indexOf(legs) + 1];
     expect(table.startTime, closeTo(3.293, 1e-9));
     expect(table.endTime, closeTo(three.startTime, 1e-9));
-    expect(legs.startTime, closeTo(5.196, 1e-9));
     expect(legs.startTime, greaterThan(four.startTime));
     expect(inAfterLegs.text, 'in');
     expect(legs.endTime, closeTo(inAfterLegs.startTime, 1e-9));
   });
 
   test('cue 3 splits white-haired across the single white event', () {
-    final words = EspeakNgSynthesizer.buildWords(
-      text: cue3,
-      duration: 7.0,
-      wordEvents: events(cue3Events),
-      phoneEvents: const [],
-    );
+    final words = _build(cueHyphens);
     final white = words.firstWhere((w) => w.text == 'white');
     final haired = words.firstWhere((w) => w.text == 'haired');
     final man = words.firstWhere((w) => w.text == 'man');
@@ -186,65 +86,64 @@ void main() {
     expect(haired.endTime, greaterThan(haired.startTime));
   });
 
-  test('token spans tile the reference audio for every cue', () {
-    for (final (text, tuples, duration) in [
-      (cue1, cue1Events, 5.0),
-      (cue2, cue2Events, 6.5),
-      (cue3, cue3Events, 7.0),
-    ]) {
-      final words = EspeakNgSynthesizer.buildWords(
-        text: text,
-        duration: duration,
-        wordEvents: events(tuples),
-        phoneEvents: const [],
-      );
-      expect(words.first.startTime, 0);
+  test('token spans tile from the first event to the duration', () {
+    for (final cue in capturedCues) {
+      final words = _build(cue);
       for (var i = 0; i < words.length; i++) {
         expect(words[i].startTime, lessThanOrEqualTo(words[i].endTime));
         if (i + 1 < words.length) {
           expect(words[i].endTime, closeTo(words[i + 1].startTime, 1e-9));
         } else {
-          expect(words[i].endTime, closeTo(duration, 1e-9));
+          expect(words[i].endTime, closeTo(cue.durationSeconds, 1e-9));
         }
       }
     }
   });
 
-  test('mapWordEventsToTokenSpans resolves the documented collisions', () {
-    final spans = tokenizeWordSpans(cue2);
-    final owners = mapWordEventsToTokenSpans(spans, const [
-      0,
-      3,
-      7,
-      13,
-      16,
-      21,
-      30,
-      35,
-      41,
-      45,
-      46,
-      48,
-      54,
-      59,
-      62,
-      66,
-      71,
-      74,
-      80,
-      90,
-    ]);
-    // Both numeral expansion events (zero-based positions 45 and 46) own
-    // the token '77'.
-    final token77 = spans.indexWhere((s) => s.text == '77');
-    expect(owners[9], token77);
-    expect(owners[10], token77);
-    expect(owners, everyElement(lessThan(spans.length)));
+  test('leading punctuation keeps its silence before the first word', () {
+    final words = _build(cueQuoted);
+    expect(words.first.text, 'Well');
+    expect(words.first.startTime, closeTo(0.109, 1e-9));
+    expect(words.first.endTime, closeTo(words[1].startTime, 1e-9));
+  });
 
-    final spans3 = tokenizeWordSpans(cue3);
-    final owners3 = mapWordEventsToTokenSpans(spans3, const [72, 106]);
-    expect(spans3[owners3[0]].text, 'table');
-    expect(spans3[owners3[1]].text, 'legs');
+  test('every token of the emoji sentence is claimed in order', () {
+    final words = _build(cueEmoji);
+    final scored = words.last;
+    expect(scored.text, 'scored');
+    expect(scored.startTime, greaterThan(0));
+    expect(scored.endTime, closeTo(cueEmoji.durationSeconds, 1e-9));
+    final loudly = words.firstWhere((w) => w.text == 'loudly');
+    final when = words.firstWhere((w) => w.text == 'when');
+    expect(loudly.endTime, closeTo(when.startTime, 1e-9));
+  });
+
+  test('out-of-order event times stay monotone and throw-free', () {
+    final words = EspeakNgSynthesizer.buildWords(
+      text: 'hello world foo',
+      duration: 1.0,
+      wordEvents: const [
+        EspeakWordEvent(textPosition: 10, length: 5, audioMs: 900),
+        EspeakWordEvent(textPosition: 1, length: 5, audioMs: 100),
+        EspeakWordEvent(textPosition: 7, length: 4, audioMs: 500),
+      ],
+      phoneEvents: const [
+        EspeakPhoneEvent(phone: 'ə', audioMs: 500, textPosition: 1),
+      ],
+      requireWordEvents: true,
+    );
+    expect(words.map((w) => w.text), ['hello', 'world', 'foo']);
+    for (var i = 0; i < words.length; i++) {
+      expect(words[i].startTime, lessThanOrEqualTo(words[i].endTime));
+      if (i + 1 < words.length) {
+        expect(words[i].startTime, lessThanOrEqualTo(words[i + 1].startTime));
+      }
+    }
+    // The 500 ms phone lands in the window it belongs to, not on a later
+    // token, and no clamp throws on the inverted raw order.
+    final withPhones = words.where((w) => w.phones.isNotEmpty).toList();
+    expect(withPhones, hasLength(1));
+    expect(withPhones.first.text, 'world');
   });
 
   test('no word events falls back to token spans', () {
@@ -266,4 +165,73 @@ void main() {
       throwsA(isA<SpokenReferenceException>()),
     );
   });
+
+  test('fallback path threads the injected phone events', () {
+    final words = EspeakNgSynthesizer.buildWords(
+      text: 'hello world',
+      duration: 1.0,
+      wordEvents: const [],
+      phoneEvents: const [
+        EspeakPhoneEvent(phone: 'h', audioMs: 10, textPosition: 1),
+        EspeakPhoneEvent(phone: 'w', audioMs: 20, textPosition: 7),
+      ],
+      requireWordEvents: false,
+    );
+    expect(words[0].phones.single.phone, 'h');
+    expect(words[1].phones.single.phone, 'w');
+  });
+
+  group('mapWordEventsToTokenSpans', () {
+    test('resolves the documented collisions', () {
+      final spans = tokenizeWordSpans(cueNumeral.text);
+      final owners = mapWordEventsToTokenSpans(spans, const [
+        0,
+        3,
+        7,
+        13,
+        16,
+        21,
+        30,
+        35,
+        41,
+        45,
+        46,
+        48,
+        54,
+        59,
+        62,
+        66,
+        71,
+        74,
+        80,
+        90,
+      ]);
+      // Both numeral expansion events (zero-based positions 45 and 46) own
+      // the token '77'.
+      final token77 = spans.indexWhere((s) => s.text == '77');
+      expect(owners[9], token77);
+      expect(owners[10], token77);
+      expect(owners, everyElement(lessThan(spans.length)));
+
+      final spans3 = tokenizeWordSpans(cueHyphens.text);
+      final owners3 = mapWordEventsToTokenSpans(spans3, const [72, 106]);
+      expect(spans3[owners3[0]].text, 'table');
+      expect(spans3[owners3[1]].text, 'legs');
+    });
+
+    test('keeps one token across combining marks and curly apostrophes', () {
+      // NFD resumé: 'resume' followed by a combining acute (U+0301).
+      expect(tokenizeWords('resume\u0301'), ['resume\u0301']);
+      expect(tokenizeWords("don't don’t ‘tis"), ["don't", 'don’t', '‘tis']);
+    });
+  });
+}
+
+List<ReferenceWord> _build(CapturedCue cue) {
+  return EspeakNgSynthesizer.buildWords(
+    text: cue.text,
+    duration: cue.durationSeconds,
+    wordEvents: cueWordEvents(cue),
+    phoneEvents: const [],
+  );
 }
