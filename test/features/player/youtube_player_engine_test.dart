@@ -1,68 +1,92 @@
+import 'package:enjoy_player/features/player/application/engines/youtube/youtube_audible_playback_policy.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_player_engine.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_session.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_webview_events.dart';
 import 'package:enjoy_player/features/player/domain/playable_source.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('YoutubePlayerEngine mount lifecycle', () {
-    test(
-      'ensureWebViewAttached sets shouldMountWebView without duplicate hosts',
-      () async {
-        final engine = YoutubePlayerEngine();
-        expect(engine.shouldMountWebView, isFalse);
-        expect(engine.webViewMounted, isFalse);
-
-        engine.ensureWebViewAttached();
-        expect(engine.shouldMountWebView, isTrue);
-        expect(engine.webViewMounted, isFalse);
-
-        await engine.idleAfterClear();
-        expect(engine.shouldMountWebView, isFalse);
-        expect(engine.currentVideoId, isEmpty);
-      },
-    );
-
-    test('ensureWebViewAttached is idempotent for mountTick', () {
-      final engine = YoutubePlayerEngine();
-      engine.ensureWebViewAttached();
-      final tickAfterFirst = engine.mountTick.value;
-      engine.ensureWebViewAttached();
-      engine.ensureWebViewAttached();
-      expect(engine.mountTick.value, tickAfterFirst);
-      expect(engine.shouldMountWebView, isTrue);
-    });
-
-    test('open requests mount and sets video id', () async {
+  group('YoutubePlayerEngine contract surface', () {
+    test('open sets the video id and arms buffering transport', () async {
       final engine = YoutubePlayerEngine();
       await engine.open(const YoutubePlayableSource('abc12345678'));
       expect(engine.currentVideoId, 'abc12345678');
-      expect(engine.shouldMountWebView, isTrue);
+      expect(engine.transportSnapshot.buffering, isTrue);
+      await engine.dispose();
     });
 
-    test('practice clear idles content but keeps WebView mounted', () async {
+    test('teardownAfterClear idles the engine', () async {
       final engine = YoutubePlayerEngine();
       await engine.open(const YoutubePlayableSource('abc12345678'));
 
-      await engine.idleAfterClear(keepMounted: true);
+      await engine.teardownAfterClear(keepSurfaceMounted: false);
 
       expect(engine.currentVideoId, isEmpty);
-      expect(engine.shouldMountWebView, isTrue);
+      expect(engine.transportSnapshot.playing, isFalse);
+      expect(engine.transportSnapshot.buffering, isFalse);
+      await engine.dispose();
     });
 
-    test(
-      'warmVideoSurface only requests mount (no redundant idle navigation)',
-      () {
-        final engine = YoutubePlayerEngine();
-        engine.warmVideoSurface();
-        expect(engine.shouldMountWebView, isTrue);
-        expect(engine.currentVideoId, isEmpty);
-      },
-    );
+    test('warmVideoSurface does not throw and keeps no video open', () {
+      final engine = YoutubePlayerEngine();
+      engine.warmVideoSurface();
+      expect(engine.currentVideoId, isEmpty);
+    });
+  });
+
+  group('YoutubeSession mount lifecycle', () {
+    // The mount latches live on the session; the engine only forwards them
+    // through warmVideoSurface / teardownAfterClear (issue #630).
+    test('requestMount arms the mount without duplicate host ticks', () {
+      final session = YoutubeSession();
+      expect(session.shouldMountWebView, isFalse);
+      expect(session.webViewMounted, isFalse);
+
+      session.requestMount();
+      final tickAfterFirst = session.mountTick.value;
+      session.requestMount();
+      session.requestMount();
+
+      expect(session.shouldMountWebView, isTrue);
+      expect(session.mountTick.value, tickAfterFirst);
+      expect(session.webViewMounted, isFalse);
+    });
+
+    test('resetForClear unmounts unless asked to keep the host', () {
+      final session = YoutubeSession()..resetForOpen('abc12345678');
+      session.requestMount();
+
+      session.resetForClear();
+      expect(session.shouldMountWebView, isFalse);
+      expect(session.videoId, isEmpty);
+
+      session.resetForOpen('abc12345678');
+      session.requestMount();
+      session.resetForClear(keepMounted: true);
+      expect(session.shouldMountWebView, isTrue);
+      expect(session.videoId, isEmpty);
+    });
   });
 
   group('YoutubeWebViewEvents playback state', () {
+    YoutubeAudiblePlaybackPolicy buildPolicy(
+      YoutubeSession session, {
+      required Future<void> Function() reapplyVolume,
+      Duration? volumeRestoreDelay,
+      Duration? volumeRestoreFallback,
+      Duration? postRestoreHealDelay,
+      Future<void> Function()? healPlay,
+    }) {
+      return YoutubeAudiblePlaybackPolicy(
+        session: session,
+        reapplyVolume: reapplyVolume,
+        healPlay: healPlay ?? () async {},
+        volumeRestoreDelay: volumeRestoreDelay,
+        volumeRestoreFallback: volumeRestoreFallback,
+        postRestoreHealDelay: postRestoreHealDelay,
+      );
+    }
+
     YoutubeWebViewEvents buildEvents(
       YoutubeSession session, {
       required void Function() onFirstPlaying,
@@ -72,23 +96,24 @@ void main() {
       Duration? volumeRestoreDelay,
       Duration? volumeRestoreFallback,
       Duration? postRestoreHealDelay,
-      Future<void> Function(InAppWebViewController? web)? healPlay,
+      Future<void> Function()? healPlay,
     }) {
+      final audibility = buildPolicy(
+        session,
+        reapplyVolume: reapplyVolume,
+        volumeRestoreDelay: volumeRestoreDelay,
+        volumeRestoreFallback: volumeRestoreFallback,
+        postRestoreHealDelay: postRestoreHealDelay,
+        healPlay: healPlay,
+      );
       return YoutubeWebViewEvents(
         session: session,
         webController: () => null,
         onFirstPlaying: onFirstPlaying,
         startPolling: startPolling,
         stopPolling: stopPolling,
-        reapplyVolume: reapplyVolume,
         seekTo: (_) async {},
-        volumeRestoreDelay:
-            volumeRestoreDelay ??
-            YoutubeWebViewEvents.windowsVolumeRestoreDelay,
-        volumeRestoreFallback:
-            volumeRestoreFallback ?? const Duration(seconds: 30),
-        postRestoreHealDelay: postRestoreHealDelay,
-        healPlay: healPlay,
+        audibility: audibility,
       );
     }
 
@@ -122,217 +147,6 @@ void main() {
       expect(volumeRestoreCalls, 0);
       expect(session.volumeRestorePending, isTrue);
 
-      events.cancelPendingVolumeRestore();
-      await session.closeStreams();
-    });
-
-    test('restores volume after playback progress settles', () async {
-      final session = YoutubeSession()..resetForOpen('abc12345678');
-      var volumeRestoreCalls = 0;
-      final events = buildEvents(
-        session,
-        onFirstPlaying: () {},
-        startPolling: () {},
-        stopPolling: () {},
-        reapplyVolume: () async {
-          volumeRestoreCalls++;
-        },
-        volumeRestoreDelay: Duration.zero,
-      );
-
-      events.handle(['playing']);
-      expect(session.volumeRestorePending, isTrue);
-      expect(volumeRestoreCalls, 0);
-
-      // Need [progressConfirmTicks] advancing samples.
-      events.onPlaybackProgress(const Duration(milliseconds: 100));
-      expect(volumeRestoreCalls, 0);
-      events.onPlaybackProgress(const Duration(milliseconds: 200));
-
-      expect(volumeRestoreCalls, 1);
-      expect(session.volumeRestorePending, isFalse);
-
-      events.cancelPendingVolumeRestore();
-      await session.closeStreams();
-    });
-
-    test('restores volume via fallback when progress never arrives', () async {
-      final session = YoutubeSession()..resetForOpen('abc12345678');
-      var volumeRestoreCalls = 0;
-      final events = buildEvents(
-        session,
-        onFirstPlaying: () {},
-        startPolling: () {},
-        stopPolling: () {},
-        reapplyVolume: () async {
-          volumeRestoreCalls++;
-        },
-        volumeRestoreDelay: Duration.zero,
-        volumeRestoreFallback: const Duration(milliseconds: 80),
-      );
-
-      events.handle(['playing']);
-      await Future<void>.delayed(const Duration(milliseconds: 120));
-
-      expect(volumeRestoreCalls, 1);
-
-      events.cancelPendingVolumeRestore();
-      await session.closeStreams();
-    });
-
-    test(
-      'does not touch volume on later playing events in same document',
-      () async {
-        final session = YoutubeSession()
-          ..resetForOpen('abc12345678')
-          ..noteVolumeRestored();
-        var volumeRestoreCalls = 0;
-        final events = buildEvents(
-          session,
-          onFirstPlaying: () {},
-          startPolling: () {},
-          stopPolling: () {},
-          reapplyVolume: () async {
-            volumeRestoreCalls++;
-          },
-        );
-
-        events.handle(['playing']);
-
-        // Redundant programmatic unMutes are pause triggers under Chromium's
-        // autoplay gesture lock (play-then-pause root cause): an already
-        // restored document must skip the restore entirely.
-        expect(volumeRestoreCalls, 0);
-        expect(session.volumeRestorePending, isFalse);
-        expect(session.volumeRestoredDocGen, session.documentGen);
-
-        events.cancelPendingVolumeRestore();
-        await session.closeStreams();
-      },
-    );
-
-    test(
-      're-arms restore for a fresh watch document (post-ad reload)',
-      () async {
-        final session = YoutubeSession()
-          ..resetForOpen('abc12345678')
-          ..noteVolumeRestored();
-        var volumeRestoreCalls = 0;
-        final events = buildEvents(
-          session,
-          onFirstPlaying: () {},
-          startPolling: () {},
-          stopPolling: () {},
-          reapplyVolume: () async {
-            volumeRestoreCalls++;
-          },
-          volumeRestoreDelay: Duration.zero,
-        );
-
-        // Ad reload lands a brand-new document whose <video> starts muted.
-        session.noteWatchDocumentLoaded();
-        events.handle(['playing']);
-        expect(session.volumeRestorePending, isTrue);
-        expect(volumeRestoreCalls, 0);
-
-        // Progress gate still applies within the new document.
-        events.onPlaybackProgress(const Duration(milliseconds: 100));
-        events.onPlaybackProgress(const Duration(milliseconds: 200));
-        expect(volumeRestoreCalls, 1);
-        await Future<void>.delayed(Duration.zero);
-        expect(session.volumeRestoredDocGen, session.documentGen);
-
-        events.cancelPendingVolumeRestore();
-        await session.closeStreams();
-      },
-    );
-
-    test(
-      'heals a pause that immediately followed the volume restore',
-      () async {
-        final session = YoutubeSession()..resetForOpen('abc12345678');
-        var healCalls = 0;
-        final events = buildEvents(
-          session,
-          onFirstPlaying: () {},
-          startPolling: () {},
-          stopPolling: () {},
-          reapplyVolume: () async {},
-          volumeRestoreDelay: Duration.zero,
-          postRestoreHealDelay: const Duration(milliseconds: 20),
-          healPlay: (_) async {
-            healCalls++;
-          },
-        );
-
-        events.handle(['playing']);
-        events.onPlaybackProgress(const Duration(milliseconds: 100));
-        events.onPlaybackProgress(const Duration(milliseconds: 200));
-
-        // The unmute tripped the WebView's autoplay gesture lock and playback
-        // stopped; simulate the poll loop's pause confirmation.
-        await Future<void>.delayed(Duration.zero);
-        session.emitPlaying(false);
-
-        await Future<void>.delayed(const Duration(milliseconds: 60));
-        expect(healCalls, 1);
-        await session.closeStreams();
-      },
-    );
-
-    test('no heal when playback survives the volume restore', () async {
-      final session = YoutubeSession()..resetForOpen('abc12345678');
-      var healCalls = 0;
-      final events = buildEvents(
-        session,
-        onFirstPlaying: () {},
-        startPolling: () {},
-        stopPolling: () {},
-        reapplyVolume: () async {},
-        volumeRestoreDelay: Duration.zero,
-        postRestoreHealDelay: const Duration(milliseconds: 20),
-        healPlay: (_) async {
-          healCalls++;
-        },
-      );
-
-      events.handle(['playing']);
-      events.onPlaybackProgress(const Duration(milliseconds: 100));
-      events.onPlaybackProgress(const Duration(milliseconds: 200));
-
-      // Video kept playing after the unmute (the healthy case).
-      await Future<void>.delayed(const Duration(milliseconds: 60));
-      expect(healCalls, 0);
-      await session.closeStreams();
-    });
-
-    test('stale heal is skipped when a new document re-arms restore', () async {
-      final session = YoutubeSession()..resetForOpen('abc12345678');
-      var healCalls = 0;
-      final events = buildEvents(
-        session,
-        onFirstPlaying: () {},
-        startPolling: () {},
-        stopPolling: () {},
-        reapplyVolume: () async {},
-        volumeRestoreDelay: Duration.zero,
-        postRestoreHealDelay: const Duration(milliseconds: 20),
-        healPlay: (_) async {
-          healCalls++;
-        },
-      );
-
-      events.handle(['playing']);
-      events.onPlaybackProgress(const Duration(milliseconds: 100));
-      events.onPlaybackProgress(const Duration(milliseconds: 200));
-      await Future<void>.delayed(Duration.zero);
-
-      // Ad reload lands a new document before the heal fires.
-      session.noteWatchDocumentLoaded();
-      session.emitPlaying(false);
-
-      await Future<void>.delayed(const Duration(milliseconds: 60));
-      expect(healCalls, 0);
       await session.closeStreams();
     });
 
@@ -361,7 +175,6 @@ void main() {
       expect(volumeRestoreCalls, 0);
       expect(pollStartCalls, greaterThanOrEqualTo(1));
 
-      events.cancelPendingVolumeRestore();
       await session.closeStreams();
     });
 
@@ -382,7 +195,7 @@ void main() {
         );
 
         events.handle(['playing']);
-        session.pausedPollStreak = 2;
+        session.notePauseStreak(2);
         events.handle(['pause']);
 
         // Streak must survive so poll confirmation is not delayed.
@@ -391,7 +204,6 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 120));
         expect(volumeRestoreCalls, 0);
 
-        events.cancelPendingVolumeRestore();
         await session.closeStreams();
       },
     );
@@ -410,7 +222,6 @@ void main() {
       events.handle(['pause']);
       expect(session.playing, isTrue);
 
-      events.cancelPendingVolumeRestore();
       await session.closeStreams();
     });
 
@@ -431,7 +242,6 @@ void main() {
       expect(session.playing, isFalse);
       expect(session.buffering, isFalse);
 
-      events.cancelPendingVolumeRestore();
       await session.closeStreams();
     });
 
@@ -445,25 +255,24 @@ void main() {
         reapplyVolume: () async {},
       );
 
-      session.userPlayInFlight = true;
+      session.beginUserPlay();
       events.handle(['playing']);
       expect(session.userPlayInFlight, isFalse);
 
-      session.userPlayInFlight = true;
+      session.beginUserPlay();
       events.handle(['playRejected', 'NotAllowedError']);
       expect(session.userPlayInFlight, isFalse);
 
-      events.cancelPendingVolumeRestore();
       await session.closeStreams();
     });
 
     test('resetForOpen and resetForClear reset userPlayInFlight', () {
       final session = YoutubeSession()..resetForOpen('abc12345678');
-      session.userPlayInFlight = true;
+      session.beginUserPlay();
       session.resetForOpen('other123456');
       expect(session.userPlayInFlight, isFalse);
 
-      session.userPlayInFlight = true;
+      session.beginUserPlay();
       session.resetForClear();
       expect(session.userPlayInFlight, isFalse);
     });

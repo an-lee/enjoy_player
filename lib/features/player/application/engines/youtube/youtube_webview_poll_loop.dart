@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import 'package:enjoy_player/core/logging/log.dart';
+import 'package:enjoy_player/features/player/application/engines/youtube/youtube_audible_playback_policy.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_session.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_state_poller.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_webview_bridge.dart';
@@ -73,9 +74,9 @@ class YoutubeWebViewPollLoop {
 
   void start() {
     if (_pollTimer != null) return;
-    session.pausedPollStreak = 0;
+    session.resetPauseStreak();
     _pollTimer = Timer.periodic(
-      const Duration(milliseconds: 250),
+      YoutubeAudiblePlaybackPolicy.pollTick,
       (_) => _tick(),
     );
   }
@@ -122,13 +123,10 @@ class YoutubeWebViewPollLoop {
                 // is the single consumer of `completed` for repeat policy
                 // (ADR-0044). Stop polling; the loop's replay re-arms it via
                 // the explicit-play path.
-                session.pausedPollStreak = 0;
-                session.markCompleted();
+                session.noteEnded();
                 stop();
-                session.emitPlaying(false);
-                session.emitBuffering(false);
               case PauseStreaking(:final confirmed, :final newStreak):
-                session.pausedPollStreak = newStreak;
+                session.notePauseStreak(newStreak);
                 if (confirmed) {
                   final immediate = session.isImmediatePause(DateTime.now());
                   final retry = decideImmediatePauseRetry(
@@ -149,15 +147,13 @@ class YoutubeWebViewPollLoop {
                       'positionMs=${position.inMilliseconds}',
                     );
                   }
-                  session.pausedPollStreak = 0;
-                  session.emitPlaying(false);
-                  session.emitBuffering(false);
+                  session.notePauseConfirmed();
                   switch (retry) {
                     case RetryPlayOnce():
                       // Consume the one-shot budget before re-playing so a
                       // second immediate pause surfaces to the user instead
                       // of looping.
-                      session.userPlayInFlight = false;
+                      session.clearUserPlayInFlight();
                       _logPoll.info(
                         'youtube immediate pause retry vid='
                         '${session.videoId}',
@@ -173,16 +169,13 @@ class YoutubeWebViewPollLoop {
                   // Position updates while paused are cheap; stop only on ended.
                 }
               case PollPlaying():
-                session.pausedPollStreak = 0;
-                session.playbackCompleted = false;
-                session.userPlayInFlight = false;
-                session.emitPlaying(true);
+                session.notePlayingConfirmed();
                 onFirstPlaying();
                 if (session.buffering) {
                   session.emitBuffering(false);
                 }
               case PollIdleTick():
-                session.pausedPollStreak = 0;
+                session.resetPauseStreak();
             }
           },
     );

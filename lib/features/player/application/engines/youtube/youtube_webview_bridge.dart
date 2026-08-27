@@ -53,25 +53,17 @@ class YoutubeWebViewBridge {
   static WebUri watchUri(String videoId) =>
       WebUri('https://m.youtube.com/watch?v=$videoId');
 
-  /// Locates the `<video>` element inside YouTube's player container,
-  /// falling back to any `<video>` on the page. For commands that target the
-  /// raw element directly (seek, playback rate, inline-mode attributes).
-  static const String _findVideo = '''
-      var p=document.querySelector('.html5-video-player');
-      var v=p?p.querySelector('video'):null;
-      if(!v) v=document.querySelector('video');
-  ''';
-
-  /// [_findVideo] plus YouTube's own page player object.
+  /// Locates the `<video>` element and YouTube's own page player object.
   ///
   /// Transport and volume commands must go through the page player
   /// (`mp.playVideo()` / `mp.unMute()` / …) whenever it is available:
   /// mutating the raw element (especially `video.muted`) behind the page's
   /// back lets its autoplay-policy/state machine re-pause the element shortly
   /// after playback starts — the play-then-pause symptom.
-  static const String _findVideoAndPlayer =
-      '''
-      $_findVideo
+  static const String _findVideoAndPlayer = '''
+      var p=document.querySelector('.html5-video-player');
+      var v=p?p.querySelector('video'):null;
+      if(!v) v=document.querySelector('video');
       var mp=document.querySelector('#movie_player')||p;
       if(!mp||typeof mp.playVideo!=='function') mp=null;
   ''';
@@ -189,7 +181,7 @@ class YoutubeWebViewBridge {
       source:
           '''
         (function(){
-          $_findVideo
+          $_findVideoAndPlayer
           if(v) v.currentTime=$seconds;
         })();
       ''',
@@ -208,7 +200,7 @@ class YoutubeWebViewBridge {
       source:
           '''
         (function(){
-          $_findVideo
+          $_findVideoAndPlayer
           if(v) v.playbackRate=$speed;
         })();
       ''',
@@ -274,7 +266,7 @@ class YoutubeWebViewBridge {
       source:
           '''
         (function(){
-          $_findVideo
+          $_findVideoAndPlayer
           if(!v) return;
           v.setAttribute('playsinline','');
           v.setAttribute('webkit-playsinline','');

@@ -6,10 +6,12 @@ import 'dart:async';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import 'package:enjoy_player/core/logging/log.dart';
+import 'package:enjoy_player/features/player/application/engines/youtube/youtube_audible_playback_policy.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_page_inject.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_playback_stall_watchdog.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_session.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_watch_navigation_policy.dart';
+import 'package:enjoy_player/features/player/application/engines/youtube/youtube_video_event.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_webview_bridge.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_webview_events.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_webview_navigation.dart';
@@ -33,23 +35,28 @@ class YoutubeWebViewController {
            unawaited(onStallRecovery());
          },
        ) {
+    _audibility = YoutubeAudiblePlaybackPolicy(
+      session: session,
+      reapplyVolume: reapplyVolume,
+      healPlay: () => YoutubeWebViewBridge.play(_webController),
+    );
     _events = YoutubeWebViewEvents(
       session: session,
       webController: () => _webController,
       onFirstPlaying: onFirstPlayingFromSession,
       startPolling: () => _pollLoop.start(),
       stopPolling: () => _pollLoop.stop(),
-      reapplyVolume: reapplyVolume,
       seekTo: (d) => YoutubeWebViewBridge.seekToSeconds(
         _webController,
         d.inMilliseconds / 1000.0,
       ),
+      audibility: _audibility,
     );
     _pollLoop = YoutubeWebViewPollLoop(
       session: session,
       webController: () => _webController,
       onFirstPlaying: onFirstPlayingFromSession,
-      onPlaybackProgress: _events.onPlaybackProgress,
+      onPlaybackProgress: _audibility.onPlaybackProgress,
     );
     _navigation = YoutubeWebViewNavigation(
       session: session,
@@ -60,9 +67,9 @@ class YoutubeWebViewController {
       currentNavGeneration: () => _navGeneration,
       onStaleWebView: () {
         _webController = null;
-        session.webViewMounted = false;
+        session.noteWebViewUnmounted();
         _pollLoop.stop();
-        session.mountTick.value++;
+        session.bumpMountTick();
       },
     );
   }
@@ -74,6 +81,7 @@ class YoutubeWebViewController {
   static const int maxStallRecoveries = 1;
 
   final YoutubePlaybackStallWatchdog _stallWatchdog;
+  late final YoutubeAudiblePlaybackPolicy _audibility;
   late final YoutubeWebViewEvents _events;
   late final YoutubeWebViewPollLoop _pollLoop;
   late final YoutubeWebViewNavigation _navigation;
@@ -89,13 +97,10 @@ class YoutubeWebViewController {
   void markOpenTimingStart() {
     _stallWatchdog.cancel();
     _navigation.cancelNudge();
-    _events.cancelPendingVolumeRestore();
+    _audibility.cancelPending();
     _bumpVerifyGeneration();
-    session.initStopwatch = Stopwatch()..start();
-    session.loggedFirstPlaying = false;
-    session.watchPageLoadStopReceived = false;
-    session.awaitingColdInitialNavigation = false;
-    session.nonWatchRecoveryScheduled = false;
+    session.startInitTiming();
+    session.resetWatchPageExpectations(firstPlaying: true);
     _stallRecoveryCount = 0;
     onLogInitPhase('open_start');
   }
@@ -106,14 +111,9 @@ class YoutubeWebViewController {
   }) {
     _stallWatchdog.cancel();
     _navigation.cancelNudge();
-    _events.cancelPendingVolumeRestore();
+    _audibility.cancelPending();
     _bumpVerifyGeneration();
-    session.watchPageLoadStopReceived = false;
-    session.awaitingColdInitialNavigation = false;
-    session.nonWatchRecoveryScheduled = false;
-    if (resetFirstPlaying) {
-      session.loggedFirstPlaying = false;
-    }
+    session.resetWatchPageExpectations(firstPlaying: resetFirstPlaying);
     if (resetStallRecovery) {
       _stallRecoveryCount = 0;
     }
@@ -122,7 +122,7 @@ class YoutubeWebViewController {
   void onFirstPlayingFromSession() {
     _stallWatchdog.onFirstPlaying();
     if (!session.loggedFirstPlaying) {
-      session.loggedFirstPlaying = true;
+      session.markFirstPlayingLogged();
       _navigation.cancelNudge();
       onLogInitPhase('first_playing');
     }
@@ -139,7 +139,7 @@ class YoutubeWebViewController {
   Future<void> idleAfterClear({bool keepMounted = false}) async {
     _stallWatchdog.cancel();
     _navigation.cancelNudge();
-    _events.cancelPendingVolumeRestore();
+    _audibility.cancelPending();
     _bumpVerifyGeneration();
     session.resetForClear(keepMounted: keepMounted);
     _pollLoop.stop();
@@ -157,7 +157,7 @@ class YoutubeWebViewController {
   Future<void> dispose() async {
     _stallWatchdog.cancel();
     _navigation.cancelNudge();
-    _events.cancelPendingVolumeRestore();
+    _audibility.cancelPending();
     _bumpVerifyGeneration();
     _pollLoop.stop();
   }
@@ -167,6 +167,25 @@ class YoutubeWebViewController {
         controller,
         prepareWatchReload: () => prepareWatchReload(resetFirstPlaying: false),
       );
+
+  /// Main-frame HTTP failures are worth a diagnostic line; sub-frame noise is
+  /// not. Called by [YoutubeWebViewHost].
+  void onWebResourceHttpError({
+    required String? url,
+    required int? statusCode,
+    required bool isForMainFrame,
+  }) {
+    if (!isForMainFrame) return;
+    _logWebView.warning('youtube main-frame HTTP $statusCode url=${url ?? ''}');
+  }
+
+  /// Main-frame load failures (DNS, TLS, …). Called by [YoutubeWebViewHost].
+  void onWebResourceLoadError({
+    required String url,
+    required String description,
+  }) {
+    _logWebView.warning('youtube load error url=$url msg=$description');
+  }
 
   Future<void> onWebViewProcessTerminated() =>
       _navigation.onWebViewProcessTerminated(
@@ -178,25 +197,25 @@ class YoutubeWebViewController {
     bool initialWatchUrlRequested = false,
   }) {
     _webController = controller;
-    session.webViewMounted = true;
+    session.noteWebViewMounted();
     onLogInitPhase('webview_created');
 
     if (initialWatchUrlRequested && session.videoId.isNotEmpty) {
-      session.awaitingColdInitialNavigation = true;
+      session.noteAwaitingColdInitialNavigation();
     }
 
     controller.addJavaScriptHandler(
-      handlerName: 'onAdReload',
+      handlerName: YoutubeJsHandlerName.onAdReload,
       callback: (List<dynamic> args) {
         if (args.isNotEmpty) {
-          session.pendingSeekSeconds = (args[0] as num?)?.toDouble() ?? 0;
+          session.setPendingSeekSeconds((args[0] as num?)?.toDouble() ?? 0);
         }
         return null;
       },
     );
 
     controller.addJavaScriptHandler(
-      handlerName: 'onVideoEvent',
+      handlerName: YoutubeJsHandlerName.onVideoEvent,
       callback: _events.handle,
     );
 
@@ -220,17 +239,15 @@ class YoutubeWebViewController {
   void onWebViewDisposed(InAppWebViewController? controller) {
     if (identical(_webController, controller)) {
       _webController = null;
-      session.webViewMounted = false;
-      session.awaitingColdInitialNavigation = false;
+      session.noteWebViewUnmounted();
+      session.clearAwaitingColdInitialNavigation();
       _navigation.cancelNudge();
-      _events.cancelPendingVolumeRestore();
+      _audibility.cancelPending();
       _bumpVerifyGeneration();
       _pollLoop.stop();
       // Defer: notifying during StatefulElement.unmount locks the tree
       // (ValueListenableBuilder markNeedsBuild assertion).
-      scheduleMicrotask(() {
-        session.mountTick.value++;
-      });
+      session.scheduleMountTickBump();
     }
   }
 
@@ -245,9 +262,7 @@ class YoutubeWebViewController {
       _navigation.scheduleNonWatchRecovery();
       return;
     }
-    session.awaitingColdInitialNavigation = false;
-    session.watchPageLoadStopReceived = true;
-    session.nonWatchRecoveryScheduled = false;
+    session.noteWatchPageLoaded();
     // Fresh document: its <video> starts muted, so the next `playing` event
     // re-arms the per-document volume restore (covers cold open AND the
     // post-ad page reload).
