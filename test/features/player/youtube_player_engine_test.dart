@@ -6,60 +6,66 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('YoutubePlayerEngine mount lifecycle', () {
-    test(
-      'ensureWebViewAttached sets shouldMountWebView without duplicate hosts',
-      () async {
-        final engine = YoutubePlayerEngine();
-        expect(engine.shouldMountWebView, isFalse);
-        expect(engine.webViewMounted, isFalse);
-
-        engine.ensureWebViewAttached();
-        expect(engine.shouldMountWebView, isTrue);
-        expect(engine.webViewMounted, isFalse);
-
-        await engine.idleAfterClear();
-        expect(engine.shouldMountWebView, isFalse);
-        expect(engine.currentVideoId, isEmpty);
-      },
-    );
-
-    test('ensureWebViewAttached is idempotent for mountTick', () {
-      final engine = YoutubePlayerEngine();
-      engine.ensureWebViewAttached();
-      final tickAfterFirst = engine.mountTick.value;
-      engine.ensureWebViewAttached();
-      engine.ensureWebViewAttached();
-      expect(engine.mountTick.value, tickAfterFirst);
-      expect(engine.shouldMountWebView, isTrue);
-    });
-
-    test('open requests mount and sets video id', () async {
+  group('YoutubePlayerEngine contract surface', () {
+    test('open sets the video id and arms buffering transport', () async {
       final engine = YoutubePlayerEngine();
       await engine.open(const YoutubePlayableSource('abc12345678'));
       expect(engine.currentVideoId, 'abc12345678');
-      expect(engine.shouldMountWebView, isTrue);
+      expect(engine.transportSnapshot.buffering, isTrue);
+      await engine.dispose();
     });
 
-    test('practice clear idles content but keeps WebView mounted', () async {
+    test('teardownAfterClear idles the engine', () async {
       final engine = YoutubePlayerEngine();
       await engine.open(const YoutubePlayableSource('abc12345678'));
 
-      await engine.idleAfterClear(keepMounted: true);
+      await engine.teardownAfterClear(keepSurfaceMounted: false);
 
       expect(engine.currentVideoId, isEmpty);
-      expect(engine.shouldMountWebView, isTrue);
+      expect(engine.transportSnapshot.playing, isFalse);
+      expect(engine.transportSnapshot.buffering, isFalse);
+      await engine.dispose();
     });
 
-    test(
-      'warmVideoSurface only requests mount (no redundant idle navigation)',
-      () {
-        final engine = YoutubePlayerEngine();
-        engine.warmVideoSurface();
-        expect(engine.shouldMountWebView, isTrue);
-        expect(engine.currentVideoId, isEmpty);
-      },
-    );
+    test('warmVideoSurface does not throw and keeps no video open', () {
+      final engine = YoutubePlayerEngine();
+      engine.warmVideoSurface();
+      expect(engine.currentVideoId, isEmpty);
+    });
+  });
+
+  group('YoutubeSession mount lifecycle', () {
+    // The mount latches live on the session; the engine only forwards them
+    // through warmVideoSurface / teardownAfterClear (issue #630).
+    test('requestMount arms the mount without duplicate host ticks', () {
+      final session = YoutubeSession();
+      expect(session.shouldMountWebView, isFalse);
+      expect(session.webViewMounted, isFalse);
+
+      session.requestMount();
+      final tickAfterFirst = session.mountTick.value;
+      session.requestMount();
+      session.requestMount();
+
+      expect(session.shouldMountWebView, isTrue);
+      expect(session.mountTick.value, tickAfterFirst);
+      expect(session.webViewMounted, isFalse);
+    });
+
+    test('resetForClear unmounts unless asked to keep the host', () {
+      final session = YoutubeSession()..resetForOpen('abc12345678');
+      session.requestMount();
+
+      session.resetForClear();
+      expect(session.shouldMountWebView, isFalse);
+      expect(session.videoId, isEmpty);
+
+      session.resetForOpen('abc12345678');
+      session.requestMount();
+      session.resetForClear(keepMounted: true);
+      expect(session.shouldMountWebView, isTrue);
+      expect(session.videoId, isEmpty);
+    });
   });
 
   group('YoutubeWebViewEvents playback state', () {
