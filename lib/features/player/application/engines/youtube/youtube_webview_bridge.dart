@@ -101,6 +101,16 @@ class YoutubeWebViewBridge {
       }
   ''';
 
+  /// Pause body shared by [pauseScript], [stopScript], and the pause branch
+  /// of [playOrPauseScript]. Bumping `__enjoyYtPlayAttempt` invalidates any
+  /// in-flight play attempt's rejection callback (see [_startPlaybackBody]),
+  /// so a stale play error cannot surface after the pause already won.
+  static const String _pauseBody = '''
+      window.__enjoyYtPlayAttempt=(window.__enjoyYtPlayAttempt||0)+1;
+      if(mp){try{mp.pauseVideo();}catch(e){}}
+      else if(v){v.pause();}
+  ''';
+
   static const String playScript =
       '''
     (function(){
@@ -125,10 +135,28 @@ class YoutubeWebViewBridge {
       if(paused){
         $_startPlaybackBody
       } else {
-        window.__enjoyYtPlayAttempt=(window.__enjoyYtPlayAttempt||0)+1;
-        if(mp){try{mp.pauseVideo();}catch(e){}}
-        else{v.pause();}
+        $_pauseBody
       }
+    })();
+  ''';
+
+  /// Pause script — routes through the page player when available, falling
+  /// back to the raw element (see [_findVideoAndPlayer]).
+  static const String pauseScript =
+      '''
+    (function(){
+      $_findVideoAndPlayer
+      $_pauseBody
+    })();
+  ''';
+
+  /// [pauseScript] plus a position reset to the start of the video.
+  static const String stopScript =
+      '''
+    (function(){
+      $_findVideoAndPlayer
+      $_pauseBody
+      if(v){v.currentTime=0;}
     })();
   ''';
 
@@ -142,31 +170,7 @@ class YoutubeWebViewBridge {
   }
 
   static Future<void> pause(InAppWebViewController? web) async {
-    await web?.evaluateJavascript(
-      source:
-          '''
-        (function(){
-          $_findVideoAndPlayer
-          window.__enjoyYtPlayAttempt=(window.__enjoyYtPlayAttempt||0)+1;
-          if(mp){try{mp.pauseVideo();}catch(e){}}
-          else if(v){v.pause();}
-        })();
-      ''',
-    );
-  }
-
-  static Future<void> pauseVideoElement(InAppWebViewController? web) async {
-    await web?.evaluateJavascript(
-      source:
-          '''
-        (function(){
-          $_findVideoAndPlayer
-          window.__enjoyYtPlayAttempt=(window.__enjoyYtPlayAttempt||0)+1;
-          if(mp){try{mp.pauseVideo();}catch(e){}}
-          else if(v){v.pause();}
-        })();
-      ''',
-    );
+    await web?.evaluateJavascript(source: pauseScript);
   }
 
   static Future<void> seekToSeconds(
@@ -185,18 +189,7 @@ class YoutubeWebViewBridge {
   }
 
   static Future<void> stop(InAppWebViewController? web) async {
-    await web?.evaluateJavascript(
-      source:
-          '''
-        (function(){
-          $_findVideoAndPlayer
-          window.__enjoyYtPlayAttempt=(window.__enjoyYtPlayAttempt||0)+1;
-          if(mp){try{mp.pauseVideo();}catch(e){}}
-          else if(v){v.pause();}
-          if(v){v.currentTime=0;}
-        })();
-      ''',
-    );
+    await web?.evaluateJavascript(source: stopScript);
   }
 
   static Future<void> setPlaybackRate(

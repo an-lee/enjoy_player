@@ -85,7 +85,7 @@ class YoutubeWebViewEvents {
         audibility.cancelPending();
         session.noteEnded();
         stopPolling();
-        unawaited(YoutubeWebViewBridge.pauseVideoElement(webController()));
+        unawaited(YoutubeWebViewBridge.pause(webController()));
         break;
       case YoutubeVideoEventName.waiting:
         session.emitBuffering(true);
