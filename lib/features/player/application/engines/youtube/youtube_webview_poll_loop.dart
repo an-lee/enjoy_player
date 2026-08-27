@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import 'package:enjoy_player/core/logging/log.dart';
+import 'package:enjoy_player/features/player/application/engines/youtube/youtube_audible_playback_policy.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_session.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_state_poller.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_webview_bridge.dart';
@@ -75,7 +76,7 @@ class YoutubeWebViewPollLoop {
     if (_pollTimer != null) return;
     session.resetPauseStreak();
     _pollTimer = Timer.periodic(
-      const Duration(milliseconds: 250),
+      YoutubeAudiblePlaybackPolicy.pollTick,
       (_) => _tick(),
     );
   }

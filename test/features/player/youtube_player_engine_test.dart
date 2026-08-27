@@ -1,8 +1,8 @@
+import 'package:enjoy_player/features/player/application/engines/youtube/youtube_audible_playback_policy.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_player_engine.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_session.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_webview_events.dart';
 import 'package:enjoy_player/features/player/domain/playable_source.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -69,6 +69,24 @@ void main() {
   });
 
   group('YoutubeWebViewEvents playback state', () {
+    YoutubeAudiblePlaybackPolicy buildPolicy(
+      YoutubeSession session, {
+      required Future<void> Function() reapplyVolume,
+      Duration? volumeRestoreDelay,
+      Duration? volumeRestoreFallback,
+      Duration? postRestoreHealDelay,
+      Future<void> Function()? healPlay,
+    }) {
+      return YoutubeAudiblePlaybackPolicy(
+        session: session,
+        reapplyVolume: reapplyVolume,
+        healPlay: healPlay ?? () async {},
+        volumeRestoreDelay: volumeRestoreDelay,
+        volumeRestoreFallback: volumeRestoreFallback,
+        postRestoreHealDelay: postRestoreHealDelay,
+      );
+    }
+
     YoutubeWebViewEvents buildEvents(
       YoutubeSession session, {
       required void Function() onFirstPlaying,
@@ -78,23 +96,24 @@ void main() {
       Duration? volumeRestoreDelay,
       Duration? volumeRestoreFallback,
       Duration? postRestoreHealDelay,
-      Future<void> Function(InAppWebViewController? web)? healPlay,
+      Future<void> Function()? healPlay,
     }) {
+      final audibility = buildPolicy(
+        session,
+        reapplyVolume: reapplyVolume,
+        volumeRestoreDelay: volumeRestoreDelay,
+        volumeRestoreFallback: volumeRestoreFallback,
+        postRestoreHealDelay: postRestoreHealDelay,
+        healPlay: healPlay,
+      );
       return YoutubeWebViewEvents(
         session: session,
         webController: () => null,
         onFirstPlaying: onFirstPlaying,
         startPolling: startPolling,
         stopPolling: stopPolling,
-        reapplyVolume: reapplyVolume,
         seekTo: (_) async {},
-        volumeRestoreDelay:
-            volumeRestoreDelay ??
-            YoutubeWebViewEvents.windowsVolumeRestoreDelay,
-        volumeRestoreFallback:
-            volumeRestoreFallback ?? const Duration(seconds: 30),
-        postRestoreHealDelay: postRestoreHealDelay,
-        healPlay: healPlay,
+        audibility: audibility,
       );
     }
 
@@ -128,217 +147,6 @@ void main() {
       expect(volumeRestoreCalls, 0);
       expect(session.volumeRestorePending, isTrue);
 
-      events.cancelPendingVolumeRestore();
-      await session.closeStreams();
-    });
-
-    test('restores volume after playback progress settles', () async {
-      final session = YoutubeSession()..resetForOpen('abc12345678');
-      var volumeRestoreCalls = 0;
-      final events = buildEvents(
-        session,
-        onFirstPlaying: () {},
-        startPolling: () {},
-        stopPolling: () {},
-        reapplyVolume: () async {
-          volumeRestoreCalls++;
-        },
-        volumeRestoreDelay: Duration.zero,
-      );
-
-      events.handle(['playing']);
-      expect(session.volumeRestorePending, isTrue);
-      expect(volumeRestoreCalls, 0);
-
-      // Need [progressConfirmTicks] advancing samples.
-      events.onPlaybackProgress(const Duration(milliseconds: 100));
-      expect(volumeRestoreCalls, 0);
-      events.onPlaybackProgress(const Duration(milliseconds: 200));
-
-      expect(volumeRestoreCalls, 1);
-      expect(session.volumeRestorePending, isFalse);
-
-      events.cancelPendingVolumeRestore();
-      await session.closeStreams();
-    });
-
-    test('restores volume via fallback when progress never arrives', () async {
-      final session = YoutubeSession()..resetForOpen('abc12345678');
-      var volumeRestoreCalls = 0;
-      final events = buildEvents(
-        session,
-        onFirstPlaying: () {},
-        startPolling: () {},
-        stopPolling: () {},
-        reapplyVolume: () async {
-          volumeRestoreCalls++;
-        },
-        volumeRestoreDelay: Duration.zero,
-        volumeRestoreFallback: const Duration(milliseconds: 80),
-      );
-
-      events.handle(['playing']);
-      await Future<void>.delayed(const Duration(milliseconds: 120));
-
-      expect(volumeRestoreCalls, 1);
-
-      events.cancelPendingVolumeRestore();
-      await session.closeStreams();
-    });
-
-    test(
-      'does not touch volume on later playing events in same document',
-      () async {
-        final session = YoutubeSession()
-          ..resetForOpen('abc12345678')
-          ..noteVolumeRestored();
-        var volumeRestoreCalls = 0;
-        final events = buildEvents(
-          session,
-          onFirstPlaying: () {},
-          startPolling: () {},
-          stopPolling: () {},
-          reapplyVolume: () async {
-            volumeRestoreCalls++;
-          },
-        );
-
-        events.handle(['playing']);
-
-        // Redundant programmatic unMutes are pause triggers under Chromium's
-        // autoplay gesture lock (play-then-pause root cause): an already
-        // restored document must skip the restore entirely.
-        expect(volumeRestoreCalls, 0);
-        expect(session.volumeRestorePending, isFalse);
-        expect(session.volumeRestoredDocGen, session.documentGen);
-
-        events.cancelPendingVolumeRestore();
-        await session.closeStreams();
-      },
-    );
-
-    test(
-      're-arms restore for a fresh watch document (post-ad reload)',
-      () async {
-        final session = YoutubeSession()
-          ..resetForOpen('abc12345678')
-          ..noteVolumeRestored();
-        var volumeRestoreCalls = 0;
-        final events = buildEvents(
-          session,
-          onFirstPlaying: () {},
-          startPolling: () {},
-          stopPolling: () {},
-          reapplyVolume: () async {
-            volumeRestoreCalls++;
-          },
-          volumeRestoreDelay: Duration.zero,
-        );
-
-        // Ad reload lands a brand-new document whose <video> starts muted.
-        session.noteWatchDocumentLoaded();
-        events.handle(['playing']);
-        expect(session.volumeRestorePending, isTrue);
-        expect(volumeRestoreCalls, 0);
-
-        // Progress gate still applies within the new document.
-        events.onPlaybackProgress(const Duration(milliseconds: 100));
-        events.onPlaybackProgress(const Duration(milliseconds: 200));
-        expect(volumeRestoreCalls, 1);
-        await Future<void>.delayed(Duration.zero);
-        expect(session.volumeRestoredDocGen, session.documentGen);
-
-        events.cancelPendingVolumeRestore();
-        await session.closeStreams();
-      },
-    );
-
-    test(
-      'heals a pause that immediately followed the volume restore',
-      () async {
-        final session = YoutubeSession()..resetForOpen('abc12345678');
-        var healCalls = 0;
-        final events = buildEvents(
-          session,
-          onFirstPlaying: () {},
-          startPolling: () {},
-          stopPolling: () {},
-          reapplyVolume: () async {},
-          volumeRestoreDelay: Duration.zero,
-          postRestoreHealDelay: const Duration(milliseconds: 20),
-          healPlay: (_) async {
-            healCalls++;
-          },
-        );
-
-        events.handle(['playing']);
-        events.onPlaybackProgress(const Duration(milliseconds: 100));
-        events.onPlaybackProgress(const Duration(milliseconds: 200));
-
-        // The unmute tripped the WebView's autoplay gesture lock and playback
-        // stopped; simulate the poll loop's pause confirmation.
-        await Future<void>.delayed(Duration.zero);
-        session.emitPlaying(false);
-
-        await Future<void>.delayed(const Duration(milliseconds: 60));
-        expect(healCalls, 1);
-        await session.closeStreams();
-      },
-    );
-
-    test('no heal when playback survives the volume restore', () async {
-      final session = YoutubeSession()..resetForOpen('abc12345678');
-      var healCalls = 0;
-      final events = buildEvents(
-        session,
-        onFirstPlaying: () {},
-        startPolling: () {},
-        stopPolling: () {},
-        reapplyVolume: () async {},
-        volumeRestoreDelay: Duration.zero,
-        postRestoreHealDelay: const Duration(milliseconds: 20),
-        healPlay: (_) async {
-          healCalls++;
-        },
-      );
-
-      events.handle(['playing']);
-      events.onPlaybackProgress(const Duration(milliseconds: 100));
-      events.onPlaybackProgress(const Duration(milliseconds: 200));
-
-      // Video kept playing after the unmute (the healthy case).
-      await Future<void>.delayed(const Duration(milliseconds: 60));
-      expect(healCalls, 0);
-      await session.closeStreams();
-    });
-
-    test('stale heal is skipped when a new document re-arms restore', () async {
-      final session = YoutubeSession()..resetForOpen('abc12345678');
-      var healCalls = 0;
-      final events = buildEvents(
-        session,
-        onFirstPlaying: () {},
-        startPolling: () {},
-        stopPolling: () {},
-        reapplyVolume: () async {},
-        volumeRestoreDelay: Duration.zero,
-        postRestoreHealDelay: const Duration(milliseconds: 20),
-        healPlay: (_) async {
-          healCalls++;
-        },
-      );
-
-      events.handle(['playing']);
-      events.onPlaybackProgress(const Duration(milliseconds: 100));
-      events.onPlaybackProgress(const Duration(milliseconds: 200));
-      await Future<void>.delayed(Duration.zero);
-
-      // Ad reload lands a new document before the heal fires.
-      session.noteWatchDocumentLoaded();
-      session.emitPlaying(false);
-
-      await Future<void>.delayed(const Duration(milliseconds: 60));
-      expect(healCalls, 0);
       await session.closeStreams();
     });
 
@@ -367,7 +175,6 @@ void main() {
       expect(volumeRestoreCalls, 0);
       expect(pollStartCalls, greaterThanOrEqualTo(1));
 
-      events.cancelPendingVolumeRestore();
       await session.closeStreams();
     });
 
@@ -397,7 +204,6 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 120));
         expect(volumeRestoreCalls, 0);
 
-        events.cancelPendingVolumeRestore();
         await session.closeStreams();
       },
     );
@@ -416,7 +222,6 @@ void main() {
       events.handle(['pause']);
       expect(session.playing, isTrue);
 
-      events.cancelPendingVolumeRestore();
       await session.closeStreams();
     });
 
@@ -437,7 +242,6 @@ void main() {
       expect(session.playing, isFalse);
       expect(session.buffering, isFalse);
 
-      events.cancelPendingVolumeRestore();
       await session.closeStreams();
     });
 
@@ -459,7 +263,6 @@ void main() {
       events.handle(['playRejected', 'NotAllowedError']);
       expect(session.userPlayInFlight, isFalse);
 
-      events.cancelPendingVolumeRestore();
       await session.closeStreams();
     });
 
