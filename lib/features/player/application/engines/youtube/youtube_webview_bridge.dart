@@ -53,17 +53,25 @@ class YoutubeWebViewBridge {
   static WebUri watchUri(String videoId) =>
       WebUri('https://m.youtube.com/watch?v=$videoId');
 
-  /// Locates the `<video>` element and YouTube's own page player object.
+  /// Locates the `<video>` element inside YouTube's player container,
+  /// falling back to any `<video>` on the page. For commands that target the
+  /// raw element directly (seek, playback rate, inline-mode attributes).
+  static const String _findVideo = '''
+      var p=document.querySelector('.html5-video-player');
+      var v=p?p.querySelector('video'):null;
+      if(!v) v=document.querySelector('video');
+  ''';
+
+  /// [_findVideo] plus YouTube's own page player object.
   ///
   /// Transport and volume commands must go through the page player
   /// (`mp.playVideo()` / `mp.unMute()` / …) whenever it is available:
   /// mutating the raw element (especially `video.muted`) behind the page's
   /// back lets its autoplay-policy/state machine re-pause the element shortly
   /// after playback starts — the play-then-pause symptom.
-  static const String _findVideoAndPlayer = '''
-      var p=document.querySelector('.html5-video-player');
-      var v=p?p.querySelector('video'):null;
-      if(!v) v=document.querySelector('video');
+  static const String _findVideoAndPlayer =
+      '''
+      $_findVideo
       var mp=document.querySelector('#movie_player')||p;
       if(!mp||typeof mp.playVideo!=='function') mp=null;
   ''';
@@ -101,6 +109,16 @@ class YoutubeWebViewBridge {
       }
   ''';
 
+  /// Pause body shared by [pauseScript], [stopScript], and the pause branch
+  /// of [playOrPauseScript]. Bumping `__enjoyYtPlayAttempt` invalidates any
+  /// in-flight play attempt's rejection callback (see [_startPlaybackBody]),
+  /// so a stale play error cannot surface after the pause already won.
+  static const String _pauseBody = '''
+      window.__enjoyYtPlayAttempt=(window.__enjoyYtPlayAttempt||0)+1;
+      if(mp){try{mp.pauseVideo();}catch(e){}}
+      else if(v){v.pause();}
+  ''';
+
   static const String playScript =
       '''
     (function(){
@@ -125,10 +143,28 @@ class YoutubeWebViewBridge {
       if(paused){
         $_startPlaybackBody
       } else {
-        window.__enjoyYtPlayAttempt=(window.__enjoyYtPlayAttempt||0)+1;
-        if(mp){try{mp.pauseVideo();}catch(e){}}
-        else{v.pause();}
+        $_pauseBody
       }
+    })();
+  ''';
+
+  /// Pause script — routes through the page player when available, falling
+  /// back to the raw element (see [_findVideoAndPlayer]).
+  static const String pauseScript =
+      '''
+    (function(){
+      $_findVideoAndPlayer
+      $_pauseBody
+    })();
+  ''';
+
+  /// [pauseScript] plus a position reset to the start of the video.
+  static const String stopScript =
+      '''
+    (function(){
+      $_findVideoAndPlayer
+      $_pauseBody
+      if(v){v.currentTime=0;}
     })();
   ''';
 
@@ -142,31 +178,7 @@ class YoutubeWebViewBridge {
   }
 
   static Future<void> pause(InAppWebViewController? web) async {
-    await web?.evaluateJavascript(
-      source:
-          '''
-        (function(){
-          $_findVideoAndPlayer
-          window.__enjoyYtPlayAttempt=(window.__enjoyYtPlayAttempt||0)+1;
-          if(mp){try{mp.pauseVideo();}catch(e){}}
-          else if(v){v.pause();}
-        })();
-      ''',
-    );
-  }
-
-  static Future<void> pauseVideoElement(InAppWebViewController? web) async {
-    await web?.evaluateJavascript(
-      source:
-          '''
-        (function(){
-          $_findVideoAndPlayer
-          window.__enjoyYtPlayAttempt=(window.__enjoyYtPlayAttempt||0)+1;
-          if(mp){try{mp.pauseVideo();}catch(e){}}
-          else if(v){v.pause();}
-        })();
-      ''',
-    );
+    await web?.evaluateJavascript(source: pauseScript);
   }
 
   static Future<void> seekToSeconds(
@@ -177,9 +189,7 @@ class YoutubeWebViewBridge {
       source:
           '''
         (function(){
-          var p=document.querySelector('.html5-video-player');
-          var v=p?p.querySelector('video'):null;
-          if(!v) v=document.querySelector('video');
+          $_findVideo
           if(v) v.currentTime=$seconds;
         })();
       ''',
@@ -187,18 +197,7 @@ class YoutubeWebViewBridge {
   }
 
   static Future<void> stop(InAppWebViewController? web) async {
-    await web?.evaluateJavascript(
-      source:
-          '''
-        (function(){
-          $_findVideoAndPlayer
-          window.__enjoyYtPlayAttempt=(window.__enjoyYtPlayAttempt||0)+1;
-          if(mp){try{mp.pauseVideo();}catch(e){}}
-          else if(v){v.pause();}
-          if(v){v.currentTime=0;}
-        })();
-      ''',
-    );
+    await web?.evaluateJavascript(source: stopScript);
   }
 
   static Future<void> setPlaybackRate(
@@ -209,9 +208,7 @@ class YoutubeWebViewBridge {
       source:
           '''
         (function(){
-          var p=document.querySelector('.html5-video-player');
-          var v=p?p.querySelector('video'):null;
-          if(!v) v=document.querySelector('video');
+          $_findVideo
           if(v) v.playbackRate=$speed;
         })();
       ''',
@@ -274,11 +271,10 @@ class YoutubeWebViewBridge {
   /// Re-applies `playsinline` on the active `<video>` (iOS WKWebView safety net).
   static Future<void> forceInlinePlayback(InAppWebViewController? web) async {
     await web?.evaluateJavascript(
-      source: '''
+      source:
+          '''
         (function(){
-          var p=document.querySelector('.html5-video-player');
-          var v=p?p.querySelector('video'):null;
-          if(!v) v=document.querySelector('video');
+          $_findVideo
           if(!v) return;
           v.setAttribute('playsinline','');
           v.setAttribute('webkit-playsinline','');

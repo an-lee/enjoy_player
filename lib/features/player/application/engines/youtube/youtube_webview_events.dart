@@ -138,7 +138,7 @@ class YoutubeWebViewEvents {
         stopPolling();
         session.emitPlaying(false);
         session.emitBuffering(false);
-        unawaited(YoutubeWebViewBridge.pauseVideoElement(webController()));
+        unawaited(YoutubeWebViewBridge.pause(webController()));
         break;
       case 'waiting':
         session.emitBuffering(true);

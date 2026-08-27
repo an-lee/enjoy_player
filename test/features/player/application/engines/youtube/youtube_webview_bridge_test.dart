@@ -102,6 +102,28 @@ void main() {
     });
   });
 
+  group('pauseScript / stopScript', () {
+    test('pause routes through the page player with element fallback', () {
+      expect(YoutubeWebViewBridge.pauseScript, contains('#movie_player'));
+      expect(YoutubeWebViewBridge.pauseScript, contains('mp.pauseVideo()'));
+      expect(YoutubeWebViewBridge.pauseScript, contains('v.pause()'));
+    });
+
+    test('pause bumps the play-attempt counter (stale rejection guard)', () {
+      // A pause must invalidate any in-flight play attempt's rejection
+      // callback, or a late play error could surface after the pause won.
+      expect(
+        YoutubeWebViewBridge.pauseScript,
+        contains('__enjoyYtPlayAttempt'),
+      );
+    });
+
+    test('stop is the pause body plus a position reset', () {
+      expect(YoutubeWebViewBridge.stopScript, contains('mp.pauseVideo()'));
+      expect(YoutubeWebViewBridge.stopScript, contains('v.currentTime=0;'));
+    });
+  });
+
   group('setVolumeScript', () {
     test('unmute prefers the page player API over element muted=false', () {
       final script = YoutubeWebViewBridge.setVolumeScript(1.0);
