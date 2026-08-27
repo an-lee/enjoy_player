@@ -169,6 +169,25 @@ class YoutubeWebViewController {
         prepareWatchReload: () => prepareWatchReload(resetFirstPlaying: false),
       );
 
+  /// Main-frame HTTP failures are worth a diagnostic line; sub-frame noise is
+  /// not. Called by [YoutubeWebViewHost].
+  void onWebResourceHttpError({
+    required String? url,
+    required int? statusCode,
+    required bool isForMainFrame,
+  }) {
+    if (!isForMainFrame) return;
+    _logWebView.warning('youtube main-frame HTTP $statusCode url=${url ?? ''}');
+  }
+
+  /// Main-frame load failures (DNS, TLS, …). Called by [YoutubeWebViewHost].
+  void onWebResourceLoadError({
+    required String url,
+    required String description,
+  }) {
+    _logWebView.warning('youtube load error url=$url msg=$description');
+  }
+
   Future<void> onWebViewProcessTerminated() =>
       _navigation.onWebViewProcessTerminated(
         prepareWatchReload: () => prepareWatchReload(resetFirstPlaying: true),

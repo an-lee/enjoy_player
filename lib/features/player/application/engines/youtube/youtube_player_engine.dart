@@ -7,7 +7,6 @@ import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter/services.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:media_kit/media_kit.dart' as mk;
 
 import 'package:enjoy_player/core/logging/log.dart';
@@ -37,17 +36,11 @@ class YoutubePlayerEngine implements PlayerEngine {
   final YoutubeSession _session;
   late final YoutubeWebViewController _webView;
 
-  GlobalKey get webViewHostKey => _session.webViewHostKey;
-  ValueNotifier<int> get mountTick => _session.mountTick;
-
   @override
   String get currentVideoId => _session.videoId;
 
   @override
   String? get posterUrl => _session.posterUrl;
-  bool get webViewMounted => _session.webViewMounted;
-  bool get shouldMountWebView => _session.shouldMountWebView;
-  bool get tapToPlayHintActive => _session.tapToPlayHintActive;
 
   @override
   bool get supportsYouTubePlayback => true;
@@ -99,34 +92,38 @@ class YoutubePlayerEngine implements PlayerEngine {
   @override
   void markOpenTimingStart() => _webView.markOpenTimingStart();
 
-  void ensureWebViewAttached() {
+  void _ensureWebViewAttached() {
     _session.requestMount();
     _logInitPhase('mount_requested');
   }
 
-  /// Completes when [webViewMounted] is true or [timeout] elapses.
-  Future<bool> awaitWebViewMounted({
+  /// Completes when the WebView is mounted or [timeout] elapses.
+  Future<bool> _awaitWebViewMounted({
     Duration timeout = const Duration(seconds: 8),
   }) async {
-    ensureWebViewAttached();
-    if (webViewMounted) return true;
+    _ensureWebViewAttached();
+    if (_session.webViewMounted) return true;
     final deadline = DateTime.now().add(timeout);
     while (DateTime.now().isBefore(deadline)) {
-      if (webViewMounted) return true;
+      if (_session.webViewMounted) return true;
       await Future<void>.delayed(const Duration(milliseconds: 40));
     }
-    return webViewMounted;
+    return _session.webViewMounted;
   }
 
   @override
-  Future<void> awaitSurfaceReady() => awaitWebViewMounted().then((_) {});
+  Future<void> awaitSurfaceReady() => _awaitWebViewMounted().then((_) {});
 
   @override
   Future<void> teardownAfterClear({required bool keepSurfaceMounted}) =>
-      idleAfterClear(keepMounted: keepSurfaceMounted);
+      _webView.idleAfterClear(keepMounted: keepSurfaceMounted);
 
-  Widget buildWebViewHost() {
-    return YoutubeWebViewHost(key: _session.webViewHostKey, engine: this);
+  Widget _buildWebViewHost() {
+    return YoutubeWebViewHost(
+      key: _session.webViewHostKey,
+      controller: _webView,
+      currentVideoId: () => _session.videoId,
+    );
   }
 
   @override
@@ -167,13 +164,13 @@ class YoutubePlayerEngine implements PlayerEngine {
       builder: (context, snapshot) {
         final showPoster = snapshot.data ?? _session.buffering;
         return ValueListenableBuilder<int>(
-          valueListenable: mountTick,
+          valueListenable: _session.mountTick,
           builder: (context, _, _) {
             return Stack(
               fit: StackFit.expand,
               children: [
                 const ColoredBox(color: Colors.black),
-                if (shouldMountWebView) buildWebViewHost(),
+                if (_session.shouldMountWebView) _buildWebViewHost(),
                 if (_session.tapToPlayHintActive && !showPoster)
                   _YoutubeTapToPlayHint(
                     label:
@@ -327,65 +324,17 @@ class YoutubePlayerEngine implements PlayerEngine {
     _session.playbackCompleted = false;
   }
 
-  Future<void> idleAfterClear({bool keepMounted = false}) =>
-      _webView.idleAfterClear(keepMounted: keepMounted);
-
   @override
   Future<Uint8List?> screenshot({String? format}) async => null;
 
   @override
-  void warmVideoSurface() => ensureWebViewAttached();
+  void warmVideoSurface() => _ensureWebViewAttached();
 
   @override
   Future<void> dispose() async {
     await _webView.dispose();
     await _session.closeStreams();
   }
-
-  Future<void> onSignInNavigationBlocked(InAppWebViewController controller) =>
-      _webView.onSignInNavigationBlocked(controller);
-
-  void onWebResourceHttpError({
-    required String? url,
-    required int? statusCode,
-    required bool isForMainFrame,
-  }) {
-    if (!isForMainFrame) return;
-    _logYoutube.warning('youtube main-frame HTTP $statusCode url=${url ?? ''}');
-  }
-
-  void onWebResourceLoadError({
-    required String url,
-    required String description,
-  }) {
-    _logYoutube.warning('youtube load error url=$url msg=$description');
-  }
-
-  Future<void> onWebViewProcessTerminated() =>
-      _webView.onWebViewProcessTerminated();
-
-  void onWebViewCreated(
-    InAppWebViewController controller, {
-    bool initialWatchUrlRequested = false,
-  }) {
-    _webView.onWebViewCreated(
-      controller,
-      initialWatchUrlRequested: initialWatchUrlRequested,
-    );
-  }
-
-  void onWebViewDisposed(InAppWebViewController? controller) {
-    _webView.onWebViewDisposed(controller);
-  }
-
-  Future<void> onPageFinished(InAppWebViewController controller, String? url) =>
-      _webView.onPageFinished(controller, url);
-
-  Future<void> exitNativeFullscreen(InAppWebViewController controller) =>
-      _webView.exitNativeFullscreen(controller);
-
-  Future<void> onNativeFullscreenExit(InAppWebViewController controller) =>
-      _webView.onNativeFullscreenExit(controller);
 
   void _logInitPhase(String phase) {
     _session.logInitPhase(phase, (m) => _logYoutube.fine(m));

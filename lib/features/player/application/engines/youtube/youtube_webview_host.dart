@@ -1,4 +1,8 @@
 /// Shared [InAppWebView] host for [YoutubePlayerEngine] (single instance per engine).
+///
+/// Speaks only to [YoutubeWebViewController] — the WebView lifecycle owner —
+/// plus a `currentVideoId` reader for the watch-navigation policy. The engine
+/// itself stays behind the [PlayerEngine] contract (issue #630).
 library;
 
 import 'dart:async';
@@ -8,15 +12,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import 'package:enjoy_player/core/webview/platform_webview_environment.dart';
-import 'youtube_player_engine.dart';
 import 'youtube_watch_navigation_policy.dart';
 import 'youtube_webview_bridge.dart';
+import 'youtube_webview_controller.dart';
 
-/// One [InAppWebView] per [YoutubePlayerEngine]; mounted in the video stage slot.
+/// One [InAppWebView] per engine; mounted in the video stage slot.
 class YoutubeWebViewHost extends StatefulWidget {
-  const YoutubeWebViewHost({required this.engine, super.key});
+  const YoutubeWebViewHost({
+    super.key,
+    required this.controller,
+    required this.currentVideoId,
+  });
 
-  final YoutubePlayerEngine engine;
+  final YoutubeWebViewController controller;
+
+  /// Watch-navigation policy needs the id of the video the engine opened.
+  final String Function() currentVideoId;
 
   @override
   State<YoutubeWebViewHost> createState() => _YoutubeWebViewHostState();
@@ -27,7 +38,7 @@ class _YoutubeWebViewHostState extends State<YoutubeWebViewHost> {
 
   @override
   void dispose() {
-    widget.engine.onWebViewDisposed(_controller);
+    widget.controller.onWebViewDisposed(_controller);
     super.dispose();
   }
 
@@ -36,7 +47,7 @@ class _YoutubeWebViewHostState extends State<YoutubeWebViewHost> {
     NavigationAction action,
   ) async {
     final url = action.request.url?.toString() ?? '';
-    final videoId = widget.engine.currentVideoId;
+    final videoId = widget.currentVideoId();
     final allowed = shouldAllowYoutubeWatchNavigation(
       url: url,
       videoId: videoId,
@@ -48,7 +59,7 @@ class _YoutubeWebViewHostState extends State<YoutubeWebViewHost> {
         action.isForMainFrame &&
         url.contains('accounts.google.com') &&
         videoId.isNotEmpty) {
-      unawaited(widget.engine.onSignInNavigationBlocked(controller));
+      unawaited(widget.controller.onSignInNavigationBlocked(controller));
     }
     return allowed
         ? NavigationActionPolicy.ALLOW
@@ -57,8 +68,9 @@ class _YoutubeWebViewHostState extends State<YoutubeWebViewHost> {
 
   @override
   Widget build(BuildContext context) {
-    final e = widget.engine;
-    final vid = e.currentVideoId;
+    // Distinct name from the InAppWebViewController closure parameters.
+    final lifecycle = widget.controller;
+    final vid = widget.currentVideoId();
     final iosInlinePlayback = defaultTargetPlatform == TargetPlatform.iOS;
 
     final initialUrl = vid.isEmpty
@@ -73,26 +85,26 @@ class _YoutubeWebViewHostState extends State<YoutubeWebViewHost> {
           _controller = controller;
           // [initialUrlRequest] already navigates on cold mount when [vid] is set;
           // avoid a second [loadWatchPage] that interrupts the first playback start.
-          e.onWebViewCreated(
+          lifecycle.onWebViewCreated(
             controller,
             initialWatchUrlRequested: vid.isNotEmpty,
           );
         },
         onEnterFullscreen: iosInlinePlayback
             ? (controller) {
-                unawaited(e.exitNativeFullscreen(controller));
+                unawaited(lifecycle.exitNativeFullscreen(controller));
               }
             : null,
         onExitFullscreen: iosInlinePlayback
             ? (controller) {
-                unawaited(e.onNativeFullscreenExit(controller));
+                unawaited(lifecycle.onNativeFullscreenExit(controller));
               }
             : null,
         onLoadStop: (controller, url) async {
-          await e.onPageFinished(controller, url?.toString());
+          await lifecycle.onPageFinished(controller, url?.toString());
         },
         onReceivedHttpError: (controller, request, response) {
-          e.onWebResourceHttpError(
+          lifecycle.onWebResourceHttpError(
             url: request.url.toString(),
             statusCode: response.statusCode,
             isForMainFrame: request.isForMainFrame ?? false,
@@ -100,16 +112,16 @@ class _YoutubeWebViewHostState extends State<YoutubeWebViewHost> {
         },
         onReceivedError: (controller, request, error) {
           if (request.isForMainFrame != true) return;
-          e.onWebResourceLoadError(
+          lifecycle.onWebResourceLoadError(
             url: request.url.toString(),
             description: error.description,
           );
         },
         onWebContentProcessDidTerminate: (controller) {
-          unawaited(e.onWebViewProcessTerminated());
+          unawaited(lifecycle.onWebViewProcessTerminated());
         },
         onRenderProcessGone: (controller, detail) {
-          unawaited(e.onWebViewProcessTerminated());
+          unawaited(lifecycle.onWebViewProcessTerminated());
         },
         shouldOverrideUrlLoading: _onShouldOverrideUrlLoading,
         initialUrlRequest: URLRequest(url: initialUrl),
