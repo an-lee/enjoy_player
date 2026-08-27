@@ -10,6 +10,7 @@ import 'package:enjoy_player/features/player/application/engines/youtube/youtube
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_playback_stall_watchdog.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_session.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_watch_navigation_policy.dart';
+import 'package:enjoy_player/features/player/application/engines/youtube/youtube_video_event.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_webview_bridge.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_webview_events.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_webview_navigation.dart';
@@ -186,7 +187,7 @@ class YoutubeWebViewController {
     }
 
     controller.addJavaScriptHandler(
-      handlerName: 'onAdReload',
+      handlerName: YoutubeJsHandlerName.onAdReload,
       callback: (List<dynamic> args) {
         if (args.isNotEmpty) {
           session.pendingSeekSeconds = (args[0] as num?)?.toDouble() ?? 0;
@@ -196,7 +197,7 @@ class YoutubeWebViewController {
     );
 
     controller.addJavaScriptHandler(
-      handlerName: 'onVideoEvent',
+      handlerName: YoutubeJsHandlerName.onVideoEvent,
       callback: _events.handle,
     );
 

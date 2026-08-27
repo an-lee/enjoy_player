@@ -177,9 +177,7 @@ class YoutubeWebViewBridge {
       source:
           '''
         (function(){
-          var p=document.querySelector('.html5-video-player');
-          var v=p?p.querySelector('video'):null;
-          if(!v) v=document.querySelector('video');
+          $_findVideoAndPlayer
           if(v) v.currentTime=$seconds;
         })();
       ''',
@@ -209,9 +207,7 @@ class YoutubeWebViewBridge {
       source:
           '''
         (function(){
-          var p=document.querySelector('.html5-video-player');
-          var v=p?p.querySelector('video'):null;
-          if(!v) v=document.querySelector('video');
+          $_findVideoAndPlayer
           if(v) v.playbackRate=$speed;
         })();
       ''',
@@ -274,11 +270,10 @@ class YoutubeWebViewBridge {
   /// Re-applies `playsinline` on the active `<video>` (iOS WKWebView safety net).
   static Future<void> forceInlinePlayback(InAppWebViewController? web) async {
     await web?.evaluateJavascript(
-      source: '''
+      source:
+          '''
         (function(){
-          var p=document.querySelector('.html5-video-player');
-          var v=p?p.querySelector('video'):null;
-          if(!v) v=document.querySelector('video');
+          $_findVideoAndPlayer
           if(!v) return;
           v.setAttribute('playsinline','');
           v.setAttribute('webkit-playsinline','');
