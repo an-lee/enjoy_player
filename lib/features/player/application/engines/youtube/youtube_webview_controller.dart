@@ -61,9 +61,9 @@ class YoutubeWebViewController {
       currentNavGeneration: () => _navGeneration,
       onStaleWebView: () {
         _webController = null;
-        session.webViewMounted = false;
+        session.noteWebViewUnmounted();
         _pollLoop.stop();
-        session.mountTick.value++;
+        session.bumpMountTick();
       },
     );
   }
@@ -92,11 +92,8 @@ class YoutubeWebViewController {
     _navigation.cancelNudge();
     _events.cancelPendingVolumeRestore();
     _bumpVerifyGeneration();
-    session.initStopwatch = Stopwatch()..start();
-    session.loggedFirstPlaying = false;
-    session.watchPageLoadStopReceived = false;
-    session.awaitingColdInitialNavigation = false;
-    session.nonWatchRecoveryScheduled = false;
+    session.startInitTiming();
+    session.resetWatchPageExpectations(firstPlaying: true);
     _stallRecoveryCount = 0;
     onLogInitPhase('open_start');
   }
@@ -109,12 +106,7 @@ class YoutubeWebViewController {
     _navigation.cancelNudge();
     _events.cancelPendingVolumeRestore();
     _bumpVerifyGeneration();
-    session.watchPageLoadStopReceived = false;
-    session.awaitingColdInitialNavigation = false;
-    session.nonWatchRecoveryScheduled = false;
-    if (resetFirstPlaying) {
-      session.loggedFirstPlaying = false;
-    }
+    session.resetWatchPageExpectations(firstPlaying: resetFirstPlaying);
     if (resetStallRecovery) {
       _stallRecoveryCount = 0;
     }
@@ -123,7 +115,7 @@ class YoutubeWebViewController {
   void onFirstPlayingFromSession() {
     _stallWatchdog.onFirstPlaying();
     if (!session.loggedFirstPlaying) {
-      session.loggedFirstPlaying = true;
+      session.markFirstPlayingLogged();
       _navigation.cancelNudge();
       onLogInitPhase('first_playing');
     }
@@ -198,18 +190,18 @@ class YoutubeWebViewController {
     bool initialWatchUrlRequested = false,
   }) {
     _webController = controller;
-    session.webViewMounted = true;
+    session.noteWebViewMounted();
     onLogInitPhase('webview_created');
 
     if (initialWatchUrlRequested && session.videoId.isNotEmpty) {
-      session.awaitingColdInitialNavigation = true;
+      session.noteAwaitingColdInitialNavigation();
     }
 
     controller.addJavaScriptHandler(
       handlerName: YoutubeJsHandlerName.onAdReload,
       callback: (List<dynamic> args) {
         if (args.isNotEmpty) {
-          session.pendingSeekSeconds = (args[0] as num?)?.toDouble() ?? 0;
+          session.setPendingSeekSeconds((args[0] as num?)?.toDouble() ?? 0);
         }
         return null;
       },
@@ -240,17 +232,15 @@ class YoutubeWebViewController {
   void onWebViewDisposed(InAppWebViewController? controller) {
     if (identical(_webController, controller)) {
       _webController = null;
-      session.webViewMounted = false;
-      session.awaitingColdInitialNavigation = false;
+      session.noteWebViewUnmounted();
+      session.clearAwaitingColdInitialNavigation();
       _navigation.cancelNudge();
       _events.cancelPendingVolumeRestore();
       _bumpVerifyGeneration();
       _pollLoop.stop();
       // Defer: notifying during StatefulElement.unmount locks the tree
       // (ValueListenableBuilder markNeedsBuild assertion).
-      scheduleMicrotask(() {
-        session.mountTick.value++;
-      });
+      session.scheduleMountTickBump();
     }
   }
 
@@ -265,9 +255,7 @@ class YoutubeWebViewController {
       _navigation.scheduleNonWatchRecovery();
       return;
     }
-    session.awaitingColdInitialNavigation = false;
-    session.watchPageLoadStopReceived = true;
-    session.nonWatchRecoveryScheduled = false;
+    session.noteWatchPageLoaded();
     // Fresh document: its <video> starts muted, so the next `playing` event
     // re-arms the per-document volume restore (covers cold open AND the
     // post-ad page reload).

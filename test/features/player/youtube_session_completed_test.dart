@@ -71,8 +71,8 @@ void main() {
       'scheduleRecoveryHint shows overlay after failed explicit play',
       () async {
         session
-          ..loggedFirstPlaying = true
-          ..explicitPlayAttempted = true
+          ..markFirstPlayingLogged()
+          ..markExplicitPlayAttempt()
           ..emitBuffering(false)
           ..emitPlaying(false);
 
@@ -85,8 +85,8 @@ void main() {
 
     test('playing clears the recovery overlay', () async {
       session
-        ..loggedFirstPlaying = true
-        ..explicitPlayAttempted = true
+        ..markFirstPlayingLogged()
+        ..markExplicitPlayAttempt()
         ..emitBuffering(false);
       session.scheduleRecoveryHint();
       await Future<void>.delayed(const Duration(milliseconds: 1300));

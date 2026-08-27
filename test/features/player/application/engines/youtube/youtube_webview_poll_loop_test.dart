@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_session.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_webview_poll_loop.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -157,7 +159,7 @@ void main() {
         onFirstPlaying: () => firstPlayingCalls++,
       );
 
-      session.disposed = true;
+      unawaited(session.closeStreams());
       loop.start();
       await Future<void>.delayed(const Duration(milliseconds: 300));
       expect(firstPlayingCalls, 0);
@@ -165,7 +167,7 @@ void main() {
     });
 
     test('resets pausedPollStreak to 0 on start()', () {
-      session.pausedPollStreak = 5;
+      session.notePauseStreak(5);
       final loop = YoutubeWebViewPollLoop(
         session: session,
         webController: () => null,
@@ -180,8 +182,7 @@ void main() {
     test('confirms pause after streak and keeps polling', () async {
       final driver = _FakePollDriver();
       session.emitPlaying(true);
-      session.lastPlayingAt = DateTime.now();
-      session.explicitPlayAttempted = true;
+      session.markExplicitPlayAttempt();
 
       final loop = YoutubeWebViewPollLoop(
         session: session,
@@ -255,8 +256,7 @@ void main() {
       final driver = _FakePollDriver();
       var retryCalls = 0;
       session.emitPlaying(true);
-      session.lastPlayingAt = DateTime.now();
-      session.userPlayInFlight = true;
+      session.beginUserPlay();
 
       final loop = YoutubeWebViewPollLoop(
         session: session,
@@ -283,8 +283,7 @@ void main() {
       final driver = _FakePollDriver();
       var retryCalls = 0;
       session.emitPlaying(true);
-      session.lastPlayingAt = DateTime.now();
-      session.userPlayInFlight = true;
+      session.beginUserPlay();
 
       final loop = YoutubeWebViewPollLoop(
         session: session,
@@ -317,7 +316,6 @@ void main() {
         final driver = _FakePollDriver();
         var retryCalls = 0;
         session.emitPlaying(true);
-        session.lastPlayingAt = DateTime.now();
 
         final loop = YoutubeWebViewPollLoop(
           session: session,
