@@ -34,24 +34,24 @@ void main() {
       language: 'en-US',
     );
     expect(reference.words.where((w) => w.text == 'the'), hasLength(2));
-    final manhattan = reference.words.firstWhere(
-      (w) => w.text == 'Manhattan',
-    );
+    final manhattan = reference.words.firstWhere((w) => w.text == 'Manhattan');
     expect(manhattan.endTime, greaterThan(manhattan.startTime));
   });
 
-  test('cue 2 numeral 77 is one word carrying the full pronunciation',
-      () async {
-    final reference = await EspeakSynthHost.synthesize(
-      text: cues[1],
-      language: 'en-US',
-    );
-    expect(reference.words.where((w) => w.text == '77'), hasLength(1));
-    final seventySeven = reference.words.firstWhere((w) => w.text == '77');
-    // "seventy seven" spans both eSpeak events, so it must own phones from
-    // both slots.
-    expect(seventySeven.phones.length, greaterThanOrEqualTo(10));
-  });
+  test(
+    'cue 2 numeral 77 is one word carrying the full pronunciation',
+    () async {
+      final reference = await EspeakSynthHost.synthesize(
+        text: cues[1],
+        language: 'en-US',
+      );
+      expect(reference.words.where((w) => w.text == '77'), hasLength(1));
+      final seventySeven = reference.words.firstWhere((w) => w.text == '77');
+      // "seventy seven" spans both eSpeak events, so it must own phones from
+      // both slots.
+      expect(seventySeven.phones.length, greaterThanOrEqualTo(10));
+    },
+  );
 
   test('cue 3 zero-length events land on table and legs', () async {
     final reference = await EspeakSynthHost.synthesize(
@@ -61,8 +61,8 @@ void main() {
     final table = reference.words.firstWhere((w) => w.text == 'table');
     final legs = reference.words.firstWhere((w) => w.text == 'legs');
     final three = reference.words.firstWhere((w) => w.text == 'three');
-    final inAfterLegs = reference.words[
-        reference.words.indexWhere((w) => w.text == 'legs') + 1];
+    final inAfterLegs = reference
+        .words[reference.words.indexWhere((w) => w.text == 'legs') + 1];
     expect(table.endTime, lessThanOrEqualTo(three.startTime + 1e-9));
     expect(legs.startTime, greaterThan(4.0));
     expect(inAfterLegs.text, 'in');

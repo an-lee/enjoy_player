@@ -87,10 +87,7 @@ final class EspeakPhoneEvent {
 /// expansion duplicates (`77` + `7`) collapse onto one token, and stale or
 /// zero-length events land on the token they were spoken for.
 @visibleForTesting
-List<int> mapWordEventsToTokenSpans(
-  List<WordSpan> spans,
-  List<int> positions,
-) {
+List<int> mapWordEventsToTokenSpans(List<WordSpan> spans, List<int> positions) {
   if (spans.isEmpty) return const <int>[];
   final owners = List<int>.filled(positions.length, 0);
   var cursor = 0;
