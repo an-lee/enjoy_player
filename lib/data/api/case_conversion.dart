@@ -39,32 +39,26 @@ String _snakeToCamelToken(String input) {
   return b.toString();
 }
 
-dynamic convertKeysToSnake(dynamic value) {
+dynamic _convertKeysRecursive(
+  dynamic value,
+  String Function(String) transform,
+) {
   if (value is Map) {
     return value.map<dynamic, dynamic>(
       (k, v) => MapEntry(
-        k is String ? _camelToSnakeToken(k) : k,
-        convertKeysToSnake(v),
+        k is String ? transform(k) : k,
+        _convertKeysRecursive(v, transform),
       ),
     );
   }
   if (value is List) {
-    return value.map(convertKeysToSnake).toList();
+    return value.map((e) => _convertKeysRecursive(e, transform)).toList();
   }
   return value;
 }
 
-dynamic convertKeysToCamel(dynamic value) {
-  if (value is Map) {
-    return value.map<dynamic, dynamic>(
-      (k, v) => MapEntry(
-        k is String ? _snakeToCamelToken(k) : k,
-        convertKeysToCamel(v),
-      ),
-    );
-  }
-  if (value is List) {
-    return value.map(convertKeysToCamel).toList();
-  }
-  return value;
-}
+dynamic convertKeysToSnake(dynamic value) =>
+    _convertKeysRecursive(value, _camelToSnakeToken);
+
+dynamic convertKeysToCamel(dynamic value) =>
+    _convertKeysRecursive(value, _snakeToCamelToken);
