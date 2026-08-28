@@ -19,12 +19,14 @@ void main() {
   ];
 
   for (var i = 0; i < enUSCues.length; i++) {
-    test('en-US cue ${i + 1} keeps every source word in order', () async {
+    final cue = enUSCues[i];
+    final cueNumber = i + 1;
+    test('en-US cue $cueNumber keeps every source word in order', () async {
       final reference = await EspeakSynthHost.synthesize(
-        text: enUSCues[i],
+        text: cue,
         language: 'en-US',
       );
-      expect(reference.words.map((w) => w.text), tokenizeWords(enUSCues[i]));
+      expect(reference.words.map((w) => w.text), tokenizeWords(cue));
       for (final word in reference.words) {
         expect(word.startTime, lessThanOrEqualTo(word.endTime));
       }

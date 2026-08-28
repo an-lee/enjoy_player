@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import '../failures.dart';
 
 /// Letters, digits, ASCII apostrophe (contractions), typographic apostrophes
-/// (`don’t`), and combining marks (NFD `é`). Token spans are the displayed
+/// (`don’t`), and combining marks (NFD `e\u0301`). Token spans are the displayed
 /// orthography, so anything eSpeak pronounces as part of one word must stay
 /// one token (issue #621).
 final _wordPattern = RegExp(r"[\p{L}\p{N}\p{M}'’‘]+", unicode: true);
