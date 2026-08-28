@@ -47,20 +47,32 @@ bool espeakFfiIsAvailable() {
   }
 }
 
-final class _WordMark {
-  _WordMark({
+/// One eSpeak `espeak_EVENT_WORD` mark.
+///
+/// [textPosition] is 1-based and [length] counts source characters, but
+/// eSpeak does not emit one event per orthographic token: function words can
+/// be swallowed (no event), expansions can emit several events with shifted
+/// positions (`77` → "seventy seven"), and some events report `length == 0`.
+/// Display labels never come from these fields; only [textPosition] and
+/// [audioMs] drive the mapping, and [length] is informational.
+final class EspeakWordEvent {
+  const EspeakWordEvent({
     required this.textPosition,
     required this.length,
     required this.audioMs,
   });
 
   final int textPosition;
+
+  /// Informational: captured verbatim from eSpeak but never read by the
+  /// token mapping.
   final int length;
   final int audioMs;
 }
 
-final class _PhoneMark {
-  _PhoneMark({
+/// One eSpeak `espeak_EVENT_PHONEME` mark.
+final class EspeakPhoneEvent {
+  const EspeakPhoneEvent({
     required this.phone,
     required this.audioMs,
     required this.textPosition,
@@ -69,6 +81,71 @@ final class _PhoneMark {
   final String phone;
   final int audioMs;
   final int textPosition;
+}
+
+/// Zero-based token index for each eSpeak word event, in event order.
+///
+/// Events map onto [spans] — the app's tokenizer output, which stays the
+/// authoritative orthography. Each event takes the nearest span it has not
+/// already passed, so swallowed-word neighbours keep their own events,
+/// expansion duplicates (`77` + `7`) collapse onto one token, and stale or
+/// zero-length events land on the token they were spoken for.
+///
+/// [positions] are zero-based character offsets into the same string the
+/// spans were tokenized from, in UTF-16 code units (convert eSpeak's
+/// code-point positions with [_utf16Offset] first). Values outside the text
+/// clamp to the nearest span.
+@visibleForTesting
+List<int> mapWordEventsToTokenSpans(List<WordSpan> spans, List<int> positions) {
+  if (spans.isEmpty) return const <int>[];
+  final owners = List<int>.filled(positions.length, 0);
+  var cursor = 0;
+  for (var i = 0; i < positions.length; i++) {
+    final position = math.max(0, math.min(spans.last.end, positions[i]));
+    var best = cursor;
+    var bestDistance = _distanceToSpan(spans[best], position);
+    for (var t = cursor + 1; t < spans.length; t++) {
+      final distance = _distanceToSpan(spans[t], position);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = t;
+      }
+      if (spans[t].start > position) break;
+    }
+    owners[i] = best;
+    cursor = best;
+  }
+  return owners;
+}
+
+/// UTF-16 offset table for zero-based code-point positions, or null when
+/// every code point of [text] is one UTF-16 unit (the common case).
+///
+/// eSpeak counts characters (code points) while Dart string indexes count
+/// code units, so any non-BMP character (emoji, rare CJK) before a word
+/// shifts its event by one without this conversion.
+List<int>? _codePointOffsetTable(String text) {
+  if (text.runes.length == text.length) return null;
+  final table = List<int>.filled(text.runes.length + 1, 0);
+  var codePoint = 0;
+  var unit = 0;
+  for (final rune in text.runes) {
+    table[codePoint++] = unit;
+    unit += rune > 0xFFFF ? 2 : 1;
+  }
+  table[codePoint] = unit;
+  return table;
+}
+
+int _utf16Offset(List<int>? table, int zeroBasedCodePoint) {
+  if (table == null) return zeroBasedCodePoint;
+  return table[math.max(0, math.min(table.length - 1, zeroBasedCodePoint))];
+}
+
+int _distanceToSpan(WordSpan span, int position) {
+  if (position >= span.start && position < span.end) return 0;
+  if (position < span.start) return span.start - position;
+  return position - (span.end - 1);
 }
 
 /// Production spoken reference: eSpeak-NG `espeak_Synth` + WORD/PHONEME events.
@@ -89,8 +166,8 @@ final class EspeakNgSynthesizer implements SpokenReferenceSynthesizer {
   static Int16List _pcm = Int16List(0);
   static int _pcmCount = 0;
   static bool _capturePcm = true;
-  static final List<_WordMark> _words = <_WordMark>[];
-  static final List<_PhoneMark> _phones = <_PhoneMark>[];
+  static final List<EspeakWordEvent> _words = <EspeakWordEvent>[];
+  static final List<EspeakPhoneEvent> _phones = <EspeakPhoneEvent>[];
   static bool Function()? _cancelHook;
 
   static void _appendPcm(Pointer<Int16> wav, int n) {
@@ -121,7 +198,7 @@ final class EspeakNgSynthesizer implements SpokenReferenceSynthesizer {
         if (event.type == espeakEventListTerminated) break;
         if (event.type == espeakEventWord) {
           _words.add(
-            _WordMark(
+            EspeakWordEvent(
               textPosition: event.textPosition,
               length: event.length,
               audioMs: event.audioPosition,
@@ -131,7 +208,7 @@ final class EspeakNgSynthesizer implements SpokenReferenceSynthesizer {
           final phone = _readPhoneme(event);
           if (phone.isNotEmpty) {
             _phones.add(
-              _PhoneMark(
+              EspeakPhoneEvent(
                 phone: phone,
                 audioMs: event.audioPosition,
                 textPosition: event.textPosition,
@@ -310,6 +387,10 @@ final class EspeakNgSynthesizer implements SpokenReferenceSynthesizer {
     return ReferenceAudio(pcm: pcm, words: words, durationSeconds: duration);
   }
 
+  /// Event-clock duration for the phonemesOnly (YouTube IPA) path, which has
+  /// no PCM to measure. Ends at the last event's *onset*, so the final
+  /// phoneme collapses to zero width — pre-existing eSpeak limitation, kept
+  /// because stretching the clock would shift every IPA phone.
   static double _eventDurationSeconds() {
     var maxMs = 0;
     for (final word in _words) {
@@ -327,92 +408,231 @@ final class EspeakNgSynthesizer implements SpokenReferenceSynthesizer {
     double duration, {
     bool requireWordEvents = true,
   }) {
-    if (_words.isEmpty) {
-      final tokens = tokenizeWords(text);
-      if (tokens.isEmpty) return const [];
+    return buildWords(
+      text: text,
+      duration: duration,
+      wordEvents: _words,
+      phoneEvents: _phones,
+      requireWordEvents: requireWordEvents,
+    );
+  }
+
+  /// Reference words for [text], one per [tokenizeWordSpans] span.
+  ///
+  /// Spans are the authoritative orthography: eSpeak word events only
+  /// contribute timing (mapped back onto spans by [mapWordEventsToTokenSpans]),
+  /// so swallowed words, numeral expansions, and hyphenated compounds can
+  /// never change the displayed word sequence (issue #621).
+  ///
+  /// Tokens tile the audio from the first event to [duration]; leading
+  /// silence stays unclaimed. A token owning events keeps the audio up to
+  /// the next owned event; tokens without an event share the surrounding
+  /// region proportionally by length so every source word stays visible with
+  /// a usable window. Phones attach by audio time within the token's span.
+  @visibleForTesting
+  static List<ReferenceWord> buildWords({
+    required String text,
+    required double duration,
+    required List<EspeakWordEvent> wordEvents,
+    required List<EspeakPhoneEvent> phoneEvents,
+    bool requireWordEvents = true,
+  }) {
+    final spans = tokenizeWordSpans(text);
+    if (spans.isEmpty) return const [];
+    // eSpeak emits events in text order and time order in practice; sorting
+    // keeps the region math sane for callers that do not.
+    final words = [...wordEvents]
+      ..sort((a, b) => a.audioMs.compareTo(b.audioMs));
+    final phones = [...phoneEvents]
+      ..sort((a, b) => a.audioMs.compareTo(b.audioMs));
+    final codePointTable = _codePointOffsetTable(text);
+    if (words.isEmpty) {
       if (requireWordEvents) {
         throw const SpokenReferenceException(
           message: 'eSpeak-NG produced PCM but no word events',
         );
       }
-      return _wordsFromTokenSpans(text, duration);
+      return _wordsFromTokenSpans(spans, phones, duration, codePointTable);
     }
-    final tokens = tokenizeWords(text);
-    final built = <ReferenceWord>[];
-    for (var i = 0; i < _words.length; i++) {
-      final mark = _words[i];
-      final start = (mark.audioMs / 1000.0).clamp(0.0, duration);
-      final endMs = i + 1 < _words.length
-          ? _words[i + 1].audioMs
-          : duration * 1000;
-      final end = (endMs / 1000.0).clamp(start, duration);
-      var label = _sliceText(text, mark.textPosition, mark.length);
-      if (label.isEmpty && i < tokens.length) label = tokens[i];
-      if (label.isEmpty) continue;
-      final phones = <ReferencePhone>[];
-      for (final phone in _phones) {
-        final t = phone.audioMs / 1000.0;
-        final nextStart = i + 1 < _words.length
-            ? _words[i + 1].audioMs / 1000.0
-            : duration + 1;
-        if (t >= start && t < nextStart) {
-          final pe = phones.isEmpty ? end : (t + 0.02).clamp(t, end);
-          if (phones.isNotEmpty) {
-            final prev = phones.removeLast();
-            phones.add(
-              ReferencePhone(
-                phone: prev.phone,
-                startTime: prev.startTime,
-                endTime: t.clamp(prev.startTime, end),
-                wordIndex: i,
-              ),
-            );
-          }
-          phones.add(
-            ReferencePhone(
-              phone: phone.phone,
-              startTime: t.clamp(start, end),
-              endTime: pe,
-              wordIndex: i,
-            ),
-          );
-        }
-      }
-      built.add(
+
+    final owners = mapWordEventsToTokenSpans(spans, [
+      for (final event in words)
+        _utf16Offset(codePointTable, event.textPosition - 1),
+    ]);
+
+    final firstEvent = List<int?>.filled(spans.length, null);
+    for (var k = 0; k < owners.length; k++) {
+      firstEvent[owners[k]] ??= k;
+    }
+    final claimed = <int>[
+      for (var t = 0; t < spans.length; t++)
+        if (firstEvent[t] != null) t,
+    ];
+    final eventStartSec = <double>[
+      for (final event in words)
+        math.max(0.0, math.min(duration, event.audioMs / 1000.0)),
+    ];
+
+    final starts = List<double>.filled(spans.length, 0);
+    final ends = List<double>.filled(spans.length, 0);
+    _distributeRegion(
+      spans,
+      starts,
+      ends,
+      0,
+      claimed.first,
+      0,
+      eventStartSec[firstEvent[claimed.first]!],
+    );
+    for (var g = 0; g < claimed.length; g++) {
+      final token = claimed[g];
+      final regionEnd = g + 1 < claimed.length
+          ? eventStartSec[firstEvent[claimed[g + 1]]!]
+          : duration;
+      _distributeRegion(
+        spans,
+        starts,
+        ends,
+        token,
+        g + 1 < claimed.length ? claimed[g + 1] : spans.length,
+        eventStartSec[firstEvent[token]!],
+        regionEnd,
+      );
+    }
+
+    final phonesByToken = _phonesByToken(phones, starts, ends);
+    return [
+      for (var t = 0; t < spans.length; t++)
         ReferenceWord(
-          text: label,
-          startTime: start,
-          endTime: end,
-          phones: phones,
+          text: spans[t].text,
+          startTime: starts[t],
+          endTime: ends[t],
+          phones: _phonesForSpan(phonesByToken[t], starts[t], ends[t], t),
+        ),
+    ];
+  }
+
+  /// Assign tokens `[startToken, endToken)` a share of
+  /// `[regionStart, regionEnd)`.
+  ///
+  /// A lone token keeps the whole region (the previous
+  /// word-end = next-event-start convention); a run of event-less tokens
+  /// shares it proportionally by token length. An inverted region (events
+  /// reporting non-monotonic audio positions) collapses to zero width
+  /// instead of producing a token that ends before it starts.
+  static void _distributeRegion(
+    List<WordSpan> spans,
+    List<double> starts,
+    List<double> ends,
+    int startToken,
+    int endToken,
+    double regionStart,
+    double regionEnd,
+  ) {
+    if (endToken <= startToken) return;
+    if (regionEnd < regionStart) regionEnd = regionStart;
+    if (endToken - startToken == 1) {
+      starts[startToken] = regionStart;
+      ends[startToken] = regionEnd;
+      return;
+    }
+    final totalLength = regionEnd - regionStart;
+    final weights = [
+      for (var t = startToken; t < endToken; t++) spans[t].text.length,
+    ];
+    final weightSum = weights.fold<int>(0, (a, b) => a + b);
+    var cursor = regionStart;
+    for (var t = startToken; t < endToken; t++) {
+      final share = weightSum <= 0
+          ? totalLength / (endToken - startToken)
+          : totalLength * weights[t - startToken] / weightSum;
+      starts[t] = cursor;
+      cursor += share;
+      ends[t] = t + 1 == endToken ? regionEnd : cursor;
+    }
+  }
+
+  /// Chronological phone marks bucketed by the token whose span contains them.
+  static List<List<EspeakPhoneEvent>> _phonesByToken(
+    List<EspeakPhoneEvent> phoneEvents,
+    List<double> starts,
+    List<double> ends,
+  ) {
+    final buckets = List<List<EspeakPhoneEvent>>.generate(
+      starts.length,
+      (_) => <EspeakPhoneEvent>[],
+    );
+    if (buckets.isEmpty) return buckets;
+    var cursor = 0;
+    for (final event in phoneEvents) {
+      final time = event.audioMs / 1000.0;
+      while (cursor + 1 < buckets.length && time >= ends[cursor]) {
+        cursor++;
+      }
+      buckets[cursor].add(event);
+    }
+    return buckets;
+  }
+
+  /// Phone spans for one token, preserving the previous shape: the first
+  /// phone reaches the token end and each mark closes the previous one.
+  /// Bounds use min/max rather than [double.clamp], which throws when a
+  /// caller's end precedes its start.
+  static List<ReferencePhone> _phonesForSpan(
+    List<EspeakPhoneEvent> events,
+    double start,
+    double end,
+    int wordIndex,
+  ) {
+    final phones = <ReferencePhone>[];
+    for (final event in events) {
+      final t = math.min(end, math.max(start, event.audioMs / 1000.0));
+      final pe = phones.isEmpty ? end : math.min(end, t + 0.02);
+      if (phones.isNotEmpty) {
+        final prev = phones.removeLast();
+        phones.add(
+          ReferencePhone(
+            phone: prev.phone,
+            startTime: prev.startTime,
+            endTime: math.min(end, math.max(prev.startTime, t)),
+            wordIndex: wordIndex,
+          ),
+        );
+      }
+      phones.add(
+        ReferencePhone(
+          phone: event.phone,
+          startTime: t,
+          endTime: pe,
+          wordIndex: wordIndex,
         ),
       );
     }
-    return built;
+    return phones;
   }
 
   /// IPA-only fallback when eSpeak emitted phones but no WORD events.
+  /// Maps phone text positions with the same rule as the word-event path so
+  /// both paths agree for identical text.
   static List<ReferenceWord> _wordsFromTokenSpans(
-    String text,
+    List<WordSpan> spans,
+    List<EspeakPhoneEvent> phoneEvents,
     double duration,
+    List<int>? codePointTable,
   ) {
-    final spans = tokenizeWordSpans(text);
     if (spans.isEmpty) return const [];
     final phonesByWord = List<List<String>>.generate(
       spans.length,
       (_) => <String>[],
     );
-    for (final phone in _phones) {
-      var pos = phone.textPosition;
-      if (pos >= 1) pos -= 1;
-      var idx = 0;
-      for (var i = 0; i < spans.length; i++) {
-        if (pos >= spans[i].start && pos < spans[i].end) {
-          idx = i;
-          break;
-        }
-        if (pos >= spans[i].end) idx = i;
+    final owners = mapWordEventsToTokenSpans(spans, [
+      for (final phone in phoneEvents)
+        _utf16Offset(codePointTable, phone.textPosition - 1),
+    ]);
+    for (var i = 0; i < phoneEvents.length; i++) {
+      if (phoneEvents[i].phone.isNotEmpty) {
+        phonesByWord[owners[i]].add(phoneEvents[i].phone);
       }
-      if (phone.phone.isNotEmpty) phonesByWord[idx].add(phone.phone);
     }
     return [
       for (var i = 0; i < spans.length; i++)
@@ -431,16 +651,6 @@ final class EspeakNgSynthesizer implements SpokenReferenceSynthesizer {
           ],
         ),
     ];
-  }
-
-  static String _sliceText(String text, int position, int length) {
-    if (length <= 0) return '';
-    var start = position;
-    if (start >= 1) start -= 1;
-    start = start.clamp(0, text.length);
-    final end = (start + length).clamp(start, text.length);
-    if (end <= start) return '';
-    return text.substring(start, end).trim();
   }
 }
 
