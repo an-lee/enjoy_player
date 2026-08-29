@@ -8,6 +8,9 @@ library;
 
 import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
+
 /// True when running on a Linux host.
 bool get isLinux => Platform.isLinux;
 
@@ -17,6 +20,18 @@ bool get isLinux => Platform.isLinux;
 /// `webkit2gtk-4.0` — not present on a default Ubuntu 22.04 LTS install.
 /// Re-evaluate in a follow-up ADR (ADR-0048, R1 / R6).
 const youtubeEngineAvailableOnLinux = false;
+
+/// True when this runtime is Linux **and** the [youtubeEngineAvailableOnLinux]
+/// opt-out applies — every YouTube engine install/mount gate uses this single
+/// predicate (ADR-0048).
+///
+/// Reads [defaultTargetPlatform] (not `Platform.isLinux`) so tests can flip it
+/// with `debugDefaultTargetPlatformOverride` on any host. When a future ADR
+/// flips [youtubeEngineAvailableOnLinux] to `true`, this becomes `false`
+/// everywhere with no call-site changes.
+bool get youTubeEngineOptedOutHere =>
+    !youtubeEngineAvailableOnLinux &&
+    defaultTargetPlatform == TargetPlatform.linux;
 
 /// Google native sign-in is **not available** on Linux.
 ///

@@ -151,6 +151,7 @@
   "youtubeLoginClose": "关闭",
   "youtubeLoginScreenTitle": "YouTube 登录",
   "youtubeLogout": "退出登录（清除 Cookie）",
+  "youtubeLinuxUnavailable": "YouTube 在 Linux 上暂不可用——即将推出。",
   "youtubeTapToPlayHint": "点一下视频即可播放",
   "searchHint": "搜索",
   "transportRepeat": "循环",

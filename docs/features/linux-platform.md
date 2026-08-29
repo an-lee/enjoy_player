@@ -48,7 +48,7 @@ No `apt install`, no `sudo`, no Snap/Flatpak abstraction layer. The AppImage is 
 
 | Feature | Linux status |
 |---------|-------------|
-| **YouTube import / playback** | **Not available** (coming soon). The YouTube engine depends on `flutter_inappwebview`'s Linux backend, which requires `webkit2gtk-4.0` — not present on a default Ubuntu install. When you try to open a YouTube video on Linux, the app shows "YouTube is not yet available on Linux — coming soon." |
+| **YouTube import / playback** | **Not available** (coming soon). `flutter_inappwebview` ships no Linux backend (Android/iOS/macOS/Windows/web only), so the WebView engine can never mount. Opening a YouTube video — or opening the YouTube sign-in screen — shows the localized "YouTube is not yet available on Linux — coming soon" notice instead ([ADR-0048](../decisions/0048-linux-platform-support.md)). |
 | **In-app auto-update** | **Not available.** The `auto_updater: ^1.0.0` plugin is Windows/macOS-only. To update, download a new AppImage from the landing page. AppImageUpdate integration is planned for a future release. |
 | **Package manager installs (.deb / .rpm / Flatpak / snap)** | Not available. Only AppImage for v1. |
 
@@ -97,7 +97,7 @@ Performance budgets for playback, scrolling, and transcript rendering are identi
 
 ### "YouTube is not yet available on Linux — coming soon"
 
-This is expected. YouTube will be enabled in a future release. In the meantime, download the video locally (e.g., with `yt-dlp`) and import the local file — the transcript and everything else work.
+This is expected. YouTube will be enabled in a future release. The notice replaces the player screen (with a back button) and the YouTube sign-in screen. In the meantime, download the video locally (e.g., with `yt-dlp`) and import the local file — the transcript and everything else work.
 
 ### AppImage won't run: "Permission denied"
 

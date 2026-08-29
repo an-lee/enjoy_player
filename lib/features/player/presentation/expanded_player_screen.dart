@@ -11,6 +11,7 @@ import 'package:enjoy_player/features/player/application/player_ui_provider.dart
 import 'package:enjoy_player/features/player/domain/media_relocate_exception.dart';
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
 import 'package:enjoy_player/features/player/domain/player_launch_request.dart';
+import 'package:enjoy_player/features/player/domain/youtube_playback_unavailable_exception.dart';
 
 import 'expanded_player_widgets.dart';
 import 'locate_media_screen.dart';
@@ -57,6 +58,10 @@ class _ExpandedPlayerScreenState extends ConsumerState<ExpandedPlayerScreen> {
       final err = open.error;
       if (err is MediaNeedsRelocateException) {
         return LocateMediaScreen(info: err);
+      }
+      // ADR-0048: dedicated "coming soon" body — not the generic failure.
+      if (err is YouTubePlaybackUnavailableException) {
+        return ExpandedPlayerYoutubeUnavailableBody(colorScheme: cs);
       }
       return ExpandedPlayerGenericErrorBody(colorScheme: cs);
     }

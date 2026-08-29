@@ -819,6 +819,12 @@ abstract class AppLocalizations {
   /// **'Sign out (clear cookies)'**
   String get youtubeLogout;
 
+  /// No description provided for @youtubeLinuxUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube is not yet available on Linux — coming soon.'**
+  String get youtubeLinuxUnavailable;
+
   /// Overlay when YouTube autoplay needs a user gesture or playback stopped immediately after play
   ///
   /// In en, this message translates to:

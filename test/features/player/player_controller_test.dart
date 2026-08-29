@@ -14,6 +14,8 @@ import 'package:enjoy_player/features/player/application/player_preferences_prov
 import 'package:enjoy_player/features/player/domain/media_relocate_exception.dart';
 import 'package:enjoy_player/features/player/domain/player_settings.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_repository_provider.dart';
+import 'package:flutter/foundation.dart'
+    show debugDefaultTargetPlatformOverride, TargetPlatform;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
@@ -885,5 +887,54 @@ void main() {
         // seek is present and not overwritten.
       },
     );
+  });
+
+  group('PlayerController.warmYoutubeSurface Linux opt-out (ADR-0048)', () {
+    // No playerEngineTestDoubleProvider override here — the warm gate under
+    // test sits below the test-double short-circuit in the real controller.
+    late AppDatabase db;
+    late ProviderContainer container;
+
+    setUp(() {
+      db = AppDatabase(executor: NativeDatabase.memory());
+      container = ProviderContainer(
+        overrides: [appDatabaseProvider.overrideWithValue(db)],
+      );
+    });
+
+    tearDown(() async {
+      debugDefaultTargetPlatformOverride = null;
+      await pumpEventQueue();
+      container.dispose();
+      await db.close();
+    });
+
+    test('does not install the YouTube engine when opted out', () {
+      debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+
+      final n = container.read(playerControllerProvider.notifier);
+      n.warmYoutubeSurface();
+
+      expect(
+        n.ownedEngine,
+        isNull,
+        reason: 'feed-scroll warm must not install a YouTube engine on Linux',
+      );
+      expect(
+        container.read(playerEngineRevProvider),
+        0,
+        reason: 'no engine swap happened, so the host rev must not bump',
+      );
+    });
+
+    test('installs and warms a YouTube engine on other targets', () {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+
+      final n = container.read(playerControllerProvider.notifier);
+      n.warmYoutubeSurface();
+
+      expect(n.ownedEngine, isA<YoutubePlayerEngine>());
+      expect(container.read(playerEngineRevProvider), 1);
+    });
   });
 }

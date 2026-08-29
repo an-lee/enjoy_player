@@ -128,6 +128,45 @@ class ExpandedPlayerGenericErrorBody extends StatelessWidget {
   }
 }
 
+/// YouTube open on an opted-out platform (ADR-0048): localized "coming soon"
+/// notice instead of the generic failure body.
+class ExpandedPlayerYoutubeUnavailableBody extends StatelessWidget {
+  const ExpandedPlayerYoutubeUnavailableBody({
+    super.key,
+    required this.colorScheme,
+  });
+
+  final ColorScheme colorScheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Scaffold(
+      backgroundColor: colorScheme.surface,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                l10n.youtubeLinuxUnavailable,
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+          // The user is stranded without a way back otherwise — mirror the
+          // loading body's collapse-only chrome.
+          const Align(
+            alignment: Alignment.topCenter,
+            child: _VideoCollapseOnlyOverlay(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Main expanded player: AppBar + ambient backdrop + video/audio layout.
 class ExpandedPlayerChromeBody extends ConsumerWidget {
   const ExpandedPlayerChromeBody({
