@@ -99,6 +99,8 @@ Performance budgets for playback, scrolling, and transcript rendering are identi
 
 This is expected. YouTube will be enabled in a future release. The notice replaces the player screen (with a back button) and the YouTube sign-in screen. In the meantime, download the video locally (e.g., with `yt-dlp`) and import the local file — the transcript and everything else work.
 
+The open fails **before any engine swap**: a YouTube open never installs the WebView engine and never disposes the running `media_kit` engine, so audio/video playback opened afterwards keeps working (the 2026-08-29 regression briefly left every later open stuck on the loading skeleton after a failed YouTube open). Local/URL opens are additionally bounded by a 30 s `engine.open` timeout that surfaces a wedged native layer as an open failure instead of an infinite spinner.
+
 ### AppImage won't run: "Permission denied"
 
 Run `chmod +x enjoy-player-*.AppImage` first.

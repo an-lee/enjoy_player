@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:enjoy_player/core/platform/linux_platform_availability.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_player_engine.dart';
 import 'package:enjoy_player/features/player/domain/playable_source.dart';
 import 'package:enjoy_player/features/player/application/player_engine.dart';
@@ -39,6 +40,15 @@ Future<void> ensureEngineForPlayableSource(
   final wantYt = playable is YoutubePlayableSource;
   final owned = getOwnedEngine();
   final haveYt = owned?.supportsYouTubePlayback ?? false;
+
+  // ADR-0048 defense in depth: no WebView backend exists on opted-out
+  // platforms, so a YouTube engine can never mount. Installing one would
+  // dispose the live MediaKit engine (and its native mpv player) for
+  // nothing — the 2026-08-29 field report traced every later audio open
+  // hanging on the loading skeleton back to exactly that swap. The open
+  // coordinator gates YouTube opens before this call; callers that open the
+  // source anyway fail with the typed unavailable exception.
+  if (wantYt && youTubeEngineOptedOutHere) return;
 
   if (owned != null && haveYt == wantYt) return;
   if (currentOpenGeneration() != openGeneration) return;

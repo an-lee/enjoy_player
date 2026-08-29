@@ -8,6 +8,14 @@ library;
 class YouTubePlaybackUnavailableException implements Exception {
   const YouTubePlaybackUnavailableException(this.message);
 
+  /// The canonical ADR-0048 opt-out failure, shared by the open coordinator's
+  /// pre-swap gate and [YoutubePlayerEngine.open]'s own guard so the two
+  /// cannot drift.
+  const YouTubePlaybackUnavailableException.linuxOptedOut()
+    : message =
+          'YouTube is not yet available on Linux — coming soon '
+          '(ADR-0048, R1 / R6: webview2gtk-4.0 dependency).';
+
   /// Human-readable description (already safe to log).
   final String message;
 

@@ -6,11 +6,14 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:enjoy_player/core/logging/log.dart';
+import 'package:enjoy_player/core/platform/linux_platform_availability.dart';
 import 'package:enjoy_player/core/utils/remote_thumbnail_url.dart';
 import 'package:enjoy_player/data/db/app_database_provider.dart';
 import 'package:enjoy_player/features/library/domain/media.dart';
 import 'package:enjoy_player/features/player/application/echo_mode_provider.dart';
+import 'package:enjoy_player/features/player/application/player_controller.dart';
 import 'package:enjoy_player/features/player/application/player_engine.dart';
+import 'package:enjoy_player/features/player/application/player_engine_constants.dart';
 import 'package:enjoy_player/features/player/application/playback_open_resolver.dart';
 import 'package:enjoy_player/features/player/application/player_engine_binding.dart';
 import 'package:enjoy_player/features/player/application/player_open_side_effects.dart';
@@ -21,6 +24,7 @@ import 'package:enjoy_player/features/player/domain/media_relocate_exception.dar
 import 'package:enjoy_player/features/player/domain/open_media_options.dart';
 import 'package:enjoy_player/features/player/domain/playable_source.dart';
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
+import 'package:enjoy_player/features/player/domain/youtube_playback_unavailable_exception.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_blur_mode_provider.dart';
 
 final _openLog = logNamed('PlayerOpenCoordinator');
@@ -42,6 +46,7 @@ Future<void> runPlayerOpen(
   Ref ref,
   String mediaId, {
   OpenMediaOptions options = OpenMediaOptions.defaults,
+  Duration openTimeout = kEngineOpenTimeout,
 }) async {
   final gen = host.openGeneration;
 
@@ -60,6 +65,17 @@ Future<void> runPlayerOpen(
   final dexie = resolved.dexieTargetType;
   final title = resolved.title;
   final playable = resolved.playable;
+
+  // ADR-0048: Linux has no YouTube WebView backend, so the open can never
+  // proceed. Fail with the typed exception BEFORE any engine swap — the
+  // swap would dispose the live MediaKit engine (and its native mpv
+  // player) to install a YouTube engine that can never mount, and after it
+  // every later local/URL open rebuilds MediaKit against a wedged native
+  // event pump: `engine.open` never completes and the player screen stays
+  // on the loading skeleton forever (2026-08-29 field report).
+  if (playable is YoutubePlayableSource && youTubeEngineOptedOutHere) {
+    throw const YouTubePlaybackUnavailableException.linuxOptedOut();
+  }
 
   schedulePlayerOpenSideEffects(
     ref,
@@ -99,7 +115,21 @@ Future<void> runPlayerOpen(
 
   await host.positionTracker.cancel();
 
-  await engine.open(playable);
+  try {
+    await engine.open(playable).timeout(openTimeout);
+  } on TimeoutException {
+    // The native event pump can stop delivering events (wedged mpv). Without
+    // this bound the await — and therefore openMedia and the loading screen —
+    // hangs forever. Bump the generation so everything still in flight for
+    // this open (side effects, tracker) observes a stale generation, and the
+    // engine left half-open cannot leak state into the next open's checks.
+    _openLog.severe(
+      'engine.open timed out after $openTimeout for media $mediaId '
+      '(${engine.runtimeType}); invalidating open generation',
+    );
+    ref.read(playerControllerProvider.notifier).abandonPendingOpen();
+    rethrow;
+  }
   if (host.isOpenStale(gen)) {
     try {
       await engine.stop();
