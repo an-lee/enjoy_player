@@ -1,10 +1,13 @@
 # Changelog
 
-## 3.0.1+enjoy.1
+## 3.0.2+enjoy.1
 
-Vendored copy of upstream `flutter_secure_storage_linux` 3.0.1 with one fix;
-drop this package and the `dependency_overrides` entry once an upstream
-release includes the fix.
+Vendored copy of upstream `flutter_secure_storage_linux` **3.0.2** with the
+fixes below; drop this package and the `dependency_overrides` entry once an
+upstream release ships both (upstream master still has them as of 3.0.2).
+The only file modified versus upstream 3.0.2 is
+`linux/include/Secret.hpp`; `resolution: workspace` was removed from
+`pubspec.yaml` because it only applies inside upstream's melos workspace.
 
 ### Fixed: garbage `xdg:schema` attribute breaks session persistence
 
@@ -22,8 +25,7 @@ so items were written with a garbage `xdg:schema` attribute:
   lost on restart),
 - re-stores never matched the existing item, so gnome-keyring received
   repeated colliding creates ("asked to register item … but it's already
-  registered") and could end up serving stale snapshots of the single JSON
-  blob that holds all keys, dropping freshly written tokens mid-sign-in.
+  registered").
 
 The schema name is now the static-storage string literal `"default"`, which
 also matches what short-application-id installs were already storing, so no
@@ -47,8 +49,11 @@ The plugin now:
 - treats a non-NULL **empty** lookup result as a failed secret transfer
   (never a legitimate state — the blob is always a JSON object, at minimum
   `{}`) and retries the lookup ~8×/25 ms before throwing
-  `KeyringSecretEmpty` instead of handing callers a phantom-empty blob;
+  `LibsecretError(code: "KeyringSecretEmpty")` instead of handing callers a
+  phantom-empty blob;
 - verifies every store by reading the secret back and retries the store
   (3 attempts) when it did not land;
 - lets `addItem` rebuild from an empty base when the existing item is
-  persistently poisoned, healing the item instead of blocking writes.
+  persistently poisoned, healing the item instead of blocking writes
+  (app-level serialization in `enjoy_player` guarantees no concurrent
+  operation is reading the blob meanwhile).

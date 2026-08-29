@@ -96,11 +96,23 @@ class SecureTokenStore {
       _serialized(() => _deleteBestEffort(_kTokenExpiresAtKey));
 
   /// Clears bearer token, refresh token, cached profile, and token expiry (sign out / invalid session).
+  ///
+  /// Best-effort by design: sign-out must always complete (the caller flips
+  /// the UI to signed-out right after), so each delete failure is logged and
+  /// the remaining keys are still attempted instead of aborting on the first.
   Future<void> clearAllAuthSecrets() => _serialized(() async {
-    await _deleteRaw(_kAccessTokenKey);
-    await _deleteRaw(_kRefreshTokenKey);
-    await _deleteRaw(_kCachedProfileJsonKey);
-    await _deleteRaw(_kTokenExpiresAtKey);
+    for (final key in const [
+      _kAccessTokenKey,
+      _kRefreshTokenKey,
+      _kCachedProfileJsonKey,
+      _kTokenExpiresAtKey,
+    ]) {
+      try {
+        await _deleteRaw(key);
+      } on PlatformException catch (e) {
+        _log.warning('secure storage delete failed for "$key"', e);
+      }
+    }
   });
 
   Future<T> _serialized<T>(Future<T> Function() operation) =>
@@ -142,14 +154,16 @@ class SecureTokenStore {
     // item left with an empty secret and a garbled `xdg:schema` attribute),
     // so a write that reports success may not be readable back. Verify and
     // self-heal once; if it still doesn't stick, fail loudly instead of
-    // silently dropping the session.
-    if (await _storage.read(key: key) == value) return;
+    // silently dropping the session. (Empty values are unverifiable because
+    // the backend maps a stored "" back to null — never written here, but
+    // guard anyway so verification can't false-fail.)
+    if (value.isEmpty || await _storage.read(key: key) == value) return;
     _log.warning(
       'secure storage write did not stick for "$key"; deleting and retrying',
     );
     await _deleteRaw(key);
     await _writeWithDuplicateHeal(key, value);
-    if (await _storage.read(key: key) == value) return;
+    if (value.isEmpty || await _storage.read(key: key) == value) return;
     throw PlatformException(
       code: 'secure_storage_write_lost',
       message:

@@ -1,18 +1,19 @@
 name: flutter_secure_storage_linux
 description: Linux implementation of flutter_secure_storage
 repository: https://github.com/mogol/flutter_secure_storage
-# Vendored copy of 3.0.1 with the SSO schema-name fix (see CHANGELOG.md).
-# Upstream master still has the bug; drop this override once a release fixes it.
-version: 3.0.1+enjoy.1
+# Vendored copy of upstream 3.0.2 with the fixes listed in CHANGELOG.md
+# (workspace-resolution marker removed; it only applies inside upstream's
+# melos workspace). Drop this override once an upstream release ships both.
+version: 3.0.2+enjoy.1
 
 environment:
-  sdk: '>=3.3.0 <4.0.0'
+  sdk: '>=3.5.0 <4.0.0'
   flutter: '>=3.19.0'
 
 dependencies:
   flutter:
     sdk: flutter
-  flutter_secure_storage_platform_interface: ^2.0.0
+  flutter_secure_storage_platform_interface: ^2.0.1
 
 flutter:
   plugin:

@@ -2,10 +2,65 @@
 #include "json.hpp"
 #include <libsecret/secret.h>
 #include <memory>
-#include <cstring>
+#include <stdexcept>
+#include <string>
 
 #define secret_autofree _GLIB_CLEANUP(secret_cleanup_free)
 static inline void secret_cleanup_free(gchar **p) { secret_password_free(*p); }
+
+class LibsecretError : public std::runtime_error {
+  std::string error_code;
+
+  static const char *codeFromGError(const GError *error) {
+    if (error == nullptr) {
+      return "Libsecret error";
+    }
+
+    if (g_error_matches(error, SECRET_ERROR, SECRET_ERROR_IS_LOCKED)) {
+      return "KeyringLocked";
+    }
+
+    if (g_error_matches(error, SECRET_ERROR, SECRET_ERROR_NO_SUCH_OBJECT)) {
+      return "SecretNotFound";
+    }
+
+    return "Libsecret error";
+  }
+
+  static std::string messageWithContext(const char *context,
+                                        const char *message) {
+    if (message == nullptr) {
+      return context == nullptr ? "Libsecret error" : context;
+    }
+
+    if (context == nullptr || context[0] == '\0') {
+      return message;
+    }
+
+    std::string result(context);
+    result += ": ";
+    result += message;
+    return result;
+  }
+
+public:
+  explicit LibsecretError(const char *message)
+      : LibsecretError("Libsecret error", message) {}
+
+  LibsecretError(const char *code, const char *message)
+      : std::runtime_error(
+            message == nullptr
+                ? (code == nullptr ? "Libsecret error" : code)
+                : message),
+        error_code(code == nullptr ? "Libsecret error" : code) {}
+
+  LibsecretError(const char *context, const GError *error)
+      : std::runtime_error(messageWithContext(
+            context, error == nullptr ? nullptr : error->message)),
+        error_code(codeFromGError(error)) {}
+
+  const char *code() const { return error_code.c_str(); }
+};
 
 class SecretStorage {
   FHashTable m_attributes;
@@ -30,6 +85,7 @@ public:
     // cleanly and concurrent writers collide on the unfindable item
     // (gnome-keyring: "asked to register item … but it's already registered").
     // A string literal has static storage, so the name stays valid forever.
+    // Still present in upstream 3.0.2.
     the_schema = {"default",
                   SECRET_SCHEMA_NONE,
                   {
@@ -42,14 +98,17 @@ public:
   }
 
   bool addItem(const char *key, const char *value) {
-    nlohmann::json root;
+    nlohmann::json root = nlohmann::json::object();
     try {
       root = readFromKeyring();
-    } catch (const gchar *e) {
+    } catch (const LibsecretError &e) {
       // A persistently poisoned item (exists, empty secret) must not block
       // writes: its contents are unrecoverable either way, so rebuild the
-      // blob from scratch — the store below heals the item.
-      if (strcmp(e, "KeyringSecretEmpty") != 0) {
+      // blob from scratch — the verified store below heals the item.
+      // Note this only triggers after readFromKeyring has already retried
+      // through the transient window, and Dart-side serialization guarantees
+      // no other operation is touching the blob meanwhile.
+      if (strcmp(e.code(), "KeyringSecretEmpty") != 0) {
         throw;
       }
     }
@@ -69,24 +128,18 @@ public:
   }
 
   void deleteItem(const char *key) {
-    try {
-      nlohmann::json root = readFromKeyring();
-      if (root.is_null()) {
-          return;
-      }
-      root.erase(key);
-      storeToKeyring(root);
-    } catch (const gchar *e) {
-      // Deleted-but-unreadable items leave nothing to preserve; swallowing
-      // here matches the original std::exception handling below.
+    nlohmann::json root = readFromKeyring();
+    if (!root.is_object() || !root.contains(key)) {
       return;
-    } catch (const std::exception& e) {
-        return;
     }
+    root.erase(key);
+    storeToKeyring(root);
   }
 
   bool deleteKeyring() {
-    warmupKeyring();
+    if (!warmupKeyring()) {
+      return true;
+    }
     return this->storeToKeyring(nlohmann::json::object());
   }
 
@@ -99,8 +152,7 @@ public:
           output.c_str(), nullptr, &err);
 
       if (err) {
-        gchar *msg = g_strdup(err->message);
-        throw msg;
+        throw LibsecretError("secret_password_storev_sync", err);
       }
 
       // gnome-keyring can report a successful store while leaving the item's
@@ -116,17 +168,21 @@ public:
         return result;
       }
       if (attempt >= 2) {
-        throw g_strdup("KeyringSecretEmpty");
+        throw LibsecretError(
+            "KeyringSecretEmpty",
+            "secret_password_storev_sync left the item's secret empty");
       }
       g_usleep(30000); // 30ms
     }
   }
 
   nlohmann::json readFromKeyring() {
-    nlohmann::json value;
-    GError *err = nullptr;
+    nlohmann::json value = nlohmann::json::object();
+    g_autoptr(GError) err = nullptr;
 
-    warmupKeyring();
+    if (!warmupKeyring()) {
+      return value;
+    }
 
     // A non-NULL but EMPTY lookup result means the item exists with an empty
     // secret — a failed secret transfer, never a legitimate state for this
@@ -135,64 +191,76 @@ public:
     // than hand callers a phantom-empty blob whose read-modify-write would
     // wipe the keys that are actually stored.
     for (int attempt = 0;; attempt++) {
-      gchar *result = secret_password_lookupv_sync(
+      secret_autofree gchar *result = secret_password_lookupv_sync(
           &the_schema, m_attributes.getGHashTable(), nullptr, &err);
 
       if (err) {
-        gchar *msg = g_strdup(err->message);
-        g_error_free(err);
-        secret_password_free(result);
-        throw msg;
+        throw LibsecretError("secret_password_lookupv_sync", err);
       }
-
-      if (result == NULL) {
-        break; // no item at all: legitimate cold state
-      }
-      const bool empty = strcmp(result, "") == 0;
-      if (!empty) {
+      if (result != NULL && strcmp(result, "") != 0) {
         value = nlohmann::json::parse(result);
-      }
-      secret_password_free(result);
-      if (!empty) {
-        break;
+        return value;
       }
       if (attempt >= 8) {
-        throw g_strdup("KeyringSecretEmpty");
+        throw LibsecretError(
+            "KeyringSecretEmpty",
+            "secret_password_lookupv_sync keeps returning an empty secret");
       }
       g_usleep(25000); // 25ms
     }
-    return value;
   }
 
 private:
-  // Ensures the default keyring is accessible. Uses the libsecret service API
-  // to detect a locked keyring and throw a distinct "KeyringLocked" sentinel so
-  // callers can surface the right error code to Dart.
-  // Loading all collections also resolves cold-keyring lookup failures:
-  // https://gitlab.gnome.org/GNOME/gnome-keyring/-/issues/89
-  void warmupKeyring() {
+  // Ensures the default keyring is accessible and distinguishes a locked
+  // collection from other storage errors. A missing default collection is
+  // the normal state of a fresh profile, not a locked keyring. Do not load
+  // all collections here: some Secret Service backends fail when an
+  // unrelated stale item exists in another collection.
+  bool warmupKeyring() {
     g_autoptr(GError) err = nullptr;
 
     SecretService *service = secret_service_get_sync(
-        static_cast<SecretServiceFlags>(SECRET_SERVICE_OPEN_SESSION | SECRET_SERVICE_LOAD_COLLECTIONS),
-        nullptr, &err);
+        SECRET_SERVICE_OPEN_SESSION, nullptr, &err);
 
     if (!service) {
-      throw g_strdup("KeyringLocked");
+      throw LibsecretError("secret_service_get_sync", err);
     }
 
     SecretCollection *collection = secret_collection_for_alias_sync(
         service, SECRET_COLLECTION_DEFAULT, SECRET_COLLECTION_NONE, nullptr, &err);
 
     if (!collection) {
+      const bool missingDefaultCollection = err == nullptr;
+      if (missingDefaultCollection) {
+        g_autoptr(GError) searchError = nullptr;
+        GList *matchingItems = secret_service_search_sync(
+            service, &the_schema, m_attributes.getGHashTable(),
+            SECRET_SEARCH_NONE, nullptr, &searchError);
+        const bool hasMatchingItems = matchingItems != nullptr;
+        if (matchingItems) {
+          g_list_free_full(matchingItems, g_object_unref);
+        }
+        g_object_unref(service);
+
+        // With no alias and no matching item this is a fresh profile. If data
+        // exists elsewhere, fail closed before a write can create a second
+        // default collection and orphan the original item.
+        if (searchError) {
+          throw LibsecretError("secret_service_search_sync", searchError);
+        }
+        if (hasMatchingItems) {
+          throw LibsecretError("KeyringLocked", "KeyringLocked");
+        }
+        return false;
+      }
       g_object_unref(service);
-      throw g_strdup("KeyringLocked");
+      throw LibsecretError("secret_collection_for_alias_sync", err);
     }
 
     if (!secret_collection_get_locked(collection)) {
       g_object_unref(collection);
       g_object_unref(service);
-      return;
+      return true;
     }
 
     GList *to_unlock = g_list_append(nullptr, collection);
@@ -206,7 +274,9 @@ private:
     g_object_unref(service);
 
     if (n == 0) {
-      throw g_strdup("KeyringLocked");
+      throw LibsecretError("KeyringLocked", "KeyringLocked");
     }
+
+    return true;
   }
 };

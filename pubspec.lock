@@ -727,7 +727,7 @@ packages:
       path: "packages/flutter_secure_storage_linux"
       relative: true
     source: path
-    version: "3.0.1+enjoy.1"
+    version: "3.0.2+enjoy.1"
   flutter_secure_storage_platform_interface:
     dependency: transitive
     description:
