@@ -2,12 +2,32 @@ import 'dart:io' show Platform;
 
 import 'package:enjoy_player/core/platform/linux_platform_availability.dart'
     as linux_avail;
+import 'package:flutter/foundation.dart'
+    show debugDefaultTargetPlatformOverride, TargetPlatform;
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('linux_platform_availability predicates', () {
     test('isLinux matches Platform.isLinux', () {
       expect(linux_avail.isLinux, Platform.isLinux);
+    });
+
+    group('youTubeEngineOptedOutHere', () {
+      tearDown(() {
+        debugDefaultTargetPlatformOverride = null;
+      });
+
+      test('is true on the Linux target while the v1 opt-out stands', () {
+        debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+        expect(linux_avail.youTubeEngineOptedOutHere, isTrue);
+      });
+
+      test('is false on other targets', () {
+        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        expect(linux_avail.youTubeEngineOptedOutHere, isFalse);
+        debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+        expect(linux_avail.youTubeEngineOptedOutHere, isFalse);
+      });
     });
 
     test(

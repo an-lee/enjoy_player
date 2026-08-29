@@ -419,6 +419,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get youtubeLogout => 'Sign out (clear cookies)';
 
   @override
+  String get youtubeLinuxUnavailable =>
+      'YouTube is not yet available on Linux — coming soon.';
+
+  @override
   String get youtubeTapToPlayHint => 'Tap the video to play';
 
   @override

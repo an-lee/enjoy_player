@@ -9,6 +9,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:enjoy_player/core/platform/linux_platform_availability.dart';
 import 'package:enjoy_player/core/webview/platform_webview_environment.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_webview_bridge.dart';
 import 'package:enjoy_player/features/player/application/youtube_auth_provider.dart';
@@ -37,6 +38,35 @@ class _YoutubeLoginScreenState extends ConsumerState<YoutubeLoginScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final l10n = AppLocalizations.of(context)!;
+
+    // ADR-0048: no inappwebview backend on Linux — the sign-in WebView cannot
+    // mount, so show the "coming soon" notice instead of asserting.
+    if (youTubeEngineOptedOutHere) {
+      return Scaffold(
+        backgroundColor: colorScheme.surface,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          leading: IconButton(
+            icon: const Icon(Icons.close_rounded, size: 24),
+            color: colorScheme.onSurface,
+            onPressed: () {
+              ref.invalidate(youtubeLoginStateProvider);
+              context.pop();
+            },
+            tooltip: l10n.youtubeLoginClose,
+          ),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              l10n.youtubeLinuxUnavailable,
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: colorScheme.surface,

@@ -3,8 +3,6 @@ library;
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart'
-    show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart' as mk;
@@ -14,6 +12,7 @@ import 'package:enjoy_player/core/platform/linux_platform_availability.dart';
 import 'package:enjoy_player/features/player/application/player_engine.dart';
 import 'package:enjoy_player/features/player/domain/playable_source.dart';
 import 'package:enjoy_player/features/player/domain/transport_decisions.dart';
+import 'package:enjoy_player/features/player/domain/youtube_playback_unavailable_exception.dart';
 import 'package:enjoy_player/features/player/presentation/widgets/youtube_video_poster.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 import 'youtube_session.dart';
@@ -93,6 +92,9 @@ class YoutubePlayerEngine implements PlayerEngine {
   void markOpenTimingStart() => _webView.markOpenTimingStart();
 
   void _ensureWebViewAttached() {
+    // ADR-0048: on opted-out platforms never request a mount — constructing
+    // InAppWebView without a platform backend asserts on every rebuild.
+    if (youTubeEngineOptedOutHere) return;
     _session.requestMount();
     _logInitPhase('mount_requested');
   }
@@ -101,6 +103,7 @@ class YoutubePlayerEngine implements PlayerEngine {
   Future<bool> _awaitWebViewMounted({
     Duration timeout = const Duration(seconds: 8),
   }) async {
+    if (youTubeEngineOptedOutHere) return false;
     _ensureWebViewAttached();
     if (_session.webViewMounted) return true;
     final deadline = DateTime.now().add(timeout);
@@ -128,9 +131,10 @@ class YoutubePlayerEngine implements PlayerEngine {
 
   @override
   Future<void> open(PlayableSource source) async {
-    if (!youtubeEngineAvailableOnLinux &&
-        defaultTargetPlatform == TargetPlatform.linux) {
-      throw UnsupportedError(
+    if (youTubeEngineOptedOutHere) {
+      // Typed so the player surface can show the ADR-0048 "coming soon"
+      // message instead of the generic open-failure body.
+      throw const YouTubePlaybackUnavailableException(
         'YouTube is not yet available on Linux — coming soon '
         '(ADR-0048, R1 / R6: webview2gtk-4.0 dependency).',
       );
@@ -170,7 +174,11 @@ class YoutubePlayerEngine implements PlayerEngine {
               fit: StackFit.expand,
               children: [
                 const ColoredBox(color: Colors.black),
-                if (_session.shouldMountWebView) _buildWebViewHost(),
+                // ADR-0048: on opted-out platforms the host must never mount
+                // (defense in depth — mount requests are gated too, but the
+                // InAppWebView constructor itself asserts without a backend).
+                if (!youTubeEngineOptedOutHere && _session.shouldMountWebView)
+                  _buildWebViewHost(),
                 if (_session.tapToPlayHintActive && !showPoster)
                   _YoutubeTapToPlayHint(
                     label:

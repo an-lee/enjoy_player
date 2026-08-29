@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:cross_file/cross_file.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'package:enjoy_player/core/platform/linux_platform_availability.dart';
 import 'package:enjoy_player/features/library/application/library_repository_provider.dart';
 import 'package:enjoy_player/features/player/application/completion_loop.dart';
 import 'package:enjoy_player/features/player/application/echo_mode_provider.dart';
@@ -284,6 +285,9 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
 
   void warmYoutubeSurface() {
     if (ref.read(playerEngineTestDoubleProvider) != null) return;
+    // ADR-0048: on Linux the YouTube engine has no inappwebview backend and
+    // can never mount — do not install or warm it from feed scrolling.
+    if (youTubeEngineOptedOutHere) return;
     final owned = _ownedEngine;
     if (owned != null && owned.supportsYouTubePlayback) {
       owned.warmVideoSurface();

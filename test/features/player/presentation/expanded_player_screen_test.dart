@@ -10,6 +10,7 @@ import 'package:enjoy_player/features/auth/domain/user_profile.dart';
 import 'package:enjoy_player/features/player/application/open_media_provider.dart';
 import 'package:enjoy_player/features/player/application/player_engine_test_double_provider.dart';
 import 'package:enjoy_player/features/player/domain/player_launch_request.dart';
+import 'package:enjoy_player/features/player/domain/youtube_playback_unavailable_exception.dart';
 import 'package:enjoy_player/features/player/presentation/expanded_player_screen.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -130,5 +131,59 @@ void main() {
         expect(find.byType(SkeletonAppBootstrap), findsOneWidget);
       },
     );
+
+    testWidgets('shows the YouTube coming-soon body when open fails with the '
+        'ADR-0048 Linux opt-out exception', (tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          authCtrlProvider.overrideWith(_SignedInAuthCtrl.new),
+          playerEngineTestDoubleProvider.overrideWithValue(fake),
+          openMediaLaunchProvider.overrideWith((ref, request) async {
+            throw const YouTubePlaybackUnavailableException(
+              'YouTube is not yet available on Linux — coming soon',
+            );
+          }),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        _wrap(
+          container: container,
+          child: const ExpandedPlayerScreen(
+            launch: PlayerLaunchRequest(mediaId: 'yt1'),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      // Localized ADR-0048 notice — not the generic open-failure copy.
+      expect(
+        find.text('YouTube is not yet available on Linux — coming soon.'),
+        findsOneWidget,
+      );
+
+      // The override drops the provider's `retry: null`, so Riverpod's
+      // default backoff (10 retries: 200ms×2^n capped at 6.4s) re-runs the
+      // throwing body. Pump through the whole sequence so the error state
+      // settles and no FakeTimer is left pending at teardown.
+      const backoffMs = [
+        200,
+        400,
+        800,
+        1600,
+        3200,
+        6400,
+        6400,
+        6400,
+        6400,
+        6400,
+      ];
+      for (final ms in backoffMs) {
+        await tester.pump(Duration(milliseconds: ms));
+      }
+    });
   });
 }
