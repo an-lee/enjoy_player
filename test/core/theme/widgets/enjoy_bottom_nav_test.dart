@@ -259,5 +259,75 @@ void main() {
       expect(find.text('Home'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
+
+    // Regression: the nav's root Align used to expand to the
+    // bottomNavigationBar slot's loose maxHeight (the whole screen). Scaffold
+    // then reported a full-height bottom widget: contentBottom collapsed to 0,
+    // so every floating SnackBar on the shell tripped the "Floating SnackBar
+    // presented off screen" layout assert (which aborts frames in debug and
+    // froze the player-exit transition), and the body MediaQuery leaked
+    // padding.bottom = screen height into AppNotice margins.
+    testWidgets(
+      'in a bottomNavigationBar slot measures intrinsic height, not the screen',
+      (tester) async {
+        tester.view.physicalSize = const Size(392.7 * 3, 850.9 * 3);
+        tester.view.devicePixelRatio = 3;
+        tester.view.padding = FakeViewPadding(
+          left: 0,
+          top: 72,
+          right: 0,
+          bottom: 102,
+        );
+        tester.view.viewPadding = FakeViewPadding(
+          left: 0,
+          top: 72,
+          right: 0,
+          bottom: 102,
+        );
+        addTearDown(tester.view.reset);
+
+        final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF7B61FF));
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: ThemeData(
+              colorScheme: scheme,
+              useMaterial3: true,
+              extensions: [EnjoyThemeTokens.build(scheme)],
+            ),
+            home: Scaffold(
+              extendBody: true,
+              body: Builder(
+                builder: (context) => Center(
+                  child: Text('pad:${MediaQuery.of(context).padding.bottom}'),
+                ),
+              ),
+              bottomNavigationBar: EnjoyBottomNav(
+                selectedIndex: 0,
+                onDestinationSelected: (_) {},
+                destinations: _sampleDestinations(),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final navBox = tester.renderObject<RenderBox>(
+          find.byType(EnjoyBottomNav),
+        );
+        // Capsule + SafeArea insets — far below the 850.9 logical screen.
+        expect(navBox.size.height, lessThan(200));
+        // extendBody feeds max(padding.bottom, bottomWidgetHeight) into the
+        // body MediaQuery; with an intrinsic nav this stays sane too.
+        expect(
+          double.parse(
+            tester
+                .widget<Text>(find.textContaining('pad:'))
+                .data!
+                .split(':')[1],
+          ),
+          lessThan(200),
+        );
+      },
+    );
   });
 }

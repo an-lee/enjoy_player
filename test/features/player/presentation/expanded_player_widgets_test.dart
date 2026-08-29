@@ -7,6 +7,7 @@ import 'package:enjoy_player/features/auth/domain/user_profile.dart';
 import 'package:enjoy_player/features/player/application/player_preferences_provider.dart';
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
 import 'package:enjoy_player/features/player/presentation/expanded_player_widgets.dart';
+import 'package:enjoy_player/features/player/presentation/widgets/player_frosted_back_button.dart';
 import 'package:enjoy_player/features/player/presentation/widgets/player_surface_target.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -72,8 +73,28 @@ void main() {
   });
 
   testWidgets(
-    'ExpandedPlayerLoadingBody shows the local loading stage for non-YouTube',
+    'ExpandedPlayerLoadingBody shows the local loading stage for a video row',
     (tester) async {
+      final now = DateTime(2026, 1, 1);
+      await db.videoDao.insertRow(
+        VideoRow(
+          id: 'm1',
+          vid: 'vid-1',
+          provider: 'user',
+          title: 'Local video',
+          durationSeconds: 0,
+          language: 'und',
+          source: null,
+          localUri: '/tmp/foo.mp4',
+          bookmarkData: null,
+          md5: 'deadbeef',
+          size: 1024,
+          localMtimeMs: now.millisecondsSinceEpoch,
+          mediaUrl: null,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
       final container = _containerFor(db);
       addTearDown(container.dispose);
       final scheme = ColorScheme.fromSeed(seedColor: Colors.blue);
@@ -84,12 +105,38 @@ void main() {
           child: ExpandedPlayerLoadingBody(colorScheme: scheme, mediaId: 'm1'),
         ),
       );
-      // Two pumps to settle the AsyncValue's loading -> data (null for non-YouTube).
+      // Pumps to settle the preview / row AsyncValues (loading -> data).
+      await tester.pump();
       await tester.pump();
       await tester.pump();
 
-      // Non-YouTube path → PlayerSurfaceTarget for the loading viewport.
+      // Local video → PlayerSurfaceTarget claims the loading viewport.
       expect(find.byType(PlayerSurfaceTarget), findsWidgets);
+    },
+  );
+
+  // Audio has no 16:9 video stage to claim — flashing a black video box
+  // before the audio layout reads as a broken player.
+  testWidgets(
+    'ExpandedPlayerLoadingBody shows no video stage for audio (no video row)',
+    (tester) async {
+      final container = _containerFor(db);
+      addTearDown(container.dispose);
+      final scheme = ColorScheme.fromSeed(seedColor: Colors.blue);
+
+      await tester.pumpWidget(
+        _wrap(
+          container: container,
+          child: ExpandedPlayerLoadingBody(colorScheme: scheme, mediaId: 'a1'),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byType(PlayerSurfaceTarget), findsNothing);
+      // The collapse control must still be reachable while opening.
+      expect(find.byType(PlayerFrostedBackButton), findsOneWidget);
     },
   );
 

@@ -126,8 +126,13 @@ abstract final class AppNotice {
       final mq = MediaQuery.of(context);
       final shellExtra = RootShellBottomInset.clearanceOf(context);
       final horizontal = tokens?.space16 ?? 16.0;
-      final bottomPad =
-          mq.padding.bottom + shellExtra + (tokens?.space16 ?? 16.0);
+      // padding.bottom can exceed the physical safe inset when an ancestor
+      // Scaffold reports an over-tall bottomNavigationBar (extendBody feeds
+      // max(padding, bottomWidgetsHeight) into the body MediaQuery). Clamp to
+      // viewPadding so a leaked inset can never push the notice off screen —
+      // a floating SnackBar taller than the screen aborts every layout.
+      final safeBottom = math.min(mq.padding.bottom, mq.viewPadding.bottom);
+      final bottomPad = safeBottom + shellExtra + (tokens?.space16 ?? 16.0);
       final maxW = mq.size.width;
       final innerMax = math.max(0.0, maxW - horizontal * 2);
       final snackMaxWidth = maxW >= 600 && innerMax > 0
