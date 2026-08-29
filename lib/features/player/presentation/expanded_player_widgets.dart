@@ -237,7 +237,7 @@ class ExpandedPlayerChromeBody extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         // Video only: body draws under overlay chrome so the 16:9 stage does
         // not jump on play/pause. Audio has no AppBar — collapse lives in
-        // [AudioPlayerLayout] as a compact top-left chevron (ADR-0077).
+        // [AudioPlayerLayout] as a floating frosted control (ADR-0085).
         extendBodyBehindAppBar: isVideo,
         appBar: null,
         body: mediaBody,
