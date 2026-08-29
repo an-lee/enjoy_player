@@ -19,6 +19,13 @@ apple_sanitize_git_env_for_spm() {
     unset "GIT_CONFIG_KEY_${i}" "GIT_CONFIG_VALUE_${i}" 2>/dev/null || true
     i=$((i + 1))
   done
+  # Keep git itself on HTTP/1.1: this host's route to github.com drops
+  # HTTP/2 connections mid-transfer, which SPM surfaces as SSL_ERROR_SYSCALL
+  # clone failures ("xcodebuild encountered an error (74)"). Unlike
+  # safe.bareRepository, http.version is inert for bare-cache resolution.
+  export GIT_CONFIG_COUNT=1
+  export GIT_CONFIG_KEY_0="http.version"
+  export GIT_CONFIG_VALUE_0="HTTP/1.1"
 }
 
 apple_clear_spm_caches() {
@@ -88,7 +95,7 @@ apple_with_spm_host_lock() {
   return "${cmd_status}"
 }
 
-# Retry a command up to 3 times on SPM-shaped failures.
+# Retry a command up to 5 times with escalating backoff on SPM-shaped failures.
 # Usage: apple_retry_spm_command <repo_root> <command> [args...]
 apple_retry_spm_command() {
   local root="${1:?apple_retry_spm_command: repo root required}"
@@ -101,7 +108,10 @@ apple_retry_spm_command() {
   apple_sanitize_git_env_for_spm
 
   local attempt logfile cmd_status
-  for attempt in 1 2 3; do
+  # Escalating backoff bridges multi-minute network brownouts on this host;
+  # three 15s-apart attempts all landed inside one outage on 2026-08-28.
+  local backoffs=(15 30 60 120)
+  for attempt in 1 2 3 4 5; do
     logfile="$(mktemp -t enjoy-apple-spm.XXXXXX)"
     set +e
     "$@" 2>&1 | tee "${logfile}"
@@ -111,11 +121,12 @@ apple_retry_spm_command() {
       rm -f "${logfile}"
       return 0
     fi
-    if [[ "${attempt}" -lt 3 ]] && apple_spm_failure_match <"${logfile}"; then
-      echo "Apple SPM-related failure (attempt ${attempt}/3); clearing caches and retrying in 15s…" >&2
+    if [[ "${attempt}" -lt 5 ]] && apple_spm_failure_match <"${logfile}"; then
+      local delay="${backoffs[$((attempt - 1))]}"
+      echo "Apple SPM-related failure (attempt ${attempt}/5); clearing caches and retrying in ${delay}s…" >&2
       rm -f "${logfile}"
       apple_clear_spm_caches "${root}"
-      sleep 15
+      sleep "${delay}"
       continue
     fi
     rm -f "${logfile}"
