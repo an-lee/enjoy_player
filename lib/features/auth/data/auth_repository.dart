@@ -174,7 +174,14 @@ class AuthRepository {
       } on ApiException catch (e) {
         _log.warning('refresh session failed', e);
         if (_shouldRevokeSessionOnApiException(e)) {
-          await clearSession();
+          // clearSession must never escape this handler: this completer is
+          // shared with every concurrent 401 awaiter (single-flight), and a
+          // throw here would leave them awaiting forever.
+          try {
+            await clearSession();
+          } catch (e2, st2) {
+            _log.warning('clearSession failed during refresh', e2, st2);
+          }
         }
         completer.complete(false);
         return false;

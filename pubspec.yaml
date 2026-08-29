@@ -81,6 +81,16 @@ dependencies:
   # ABI-compatible with the surface the app exercises.
   jni_flutter: ^1.0.2
 
+# Vendored fork of flutter_secure_storage_linux 3.0.1 (see
+# packages/flutter_secure_storage_linux/CHANGELOG.md): upstream builds the
+# libsecret schema name from a std::string buffer that setLabel() invalidates,
+# so with long application ids every keyring item is stored with a garbage
+# xdg:schema attribute and sessions cannot survive a restart. Remove once an
+# upstream release ships the fix.
+dependency_overrides:
+  flutter_secure_storage_linux:
+    path: packages/flutter_secure_storage_linux
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
