@@ -8,12 +8,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:enjoy_player/core/theme/widgets/app_background.dart';
 import 'package:enjoy_player/core/theme/widgets/skeleton.dart';
+import 'package:enjoy_player/core/utils/local_thumbnail.dart';
 import 'package:enjoy_player/features/player/application/player_collapse.dart';
 import 'package:enjoy_player/features/player/application/player_engine_provider.dart';
 import 'package:enjoy_player/features/player/application/player_preferences_provider.dart';
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
 import 'package:enjoy_player/features/player/presentation/layouts/audio_player_layout.dart';
 import 'package:enjoy_player/features/player/presentation/layouts/video_player_layout.dart';
+import 'package:enjoy_player/features/transcript/application/video_row_for_media_provider.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
 import 'package:enjoy_player/features/player/application/player_surface_registry.dart';
@@ -42,6 +44,13 @@ class ExpandedPlayerLoadingBody extends ConsumerWidget {
       data: (p) => p != null,
       orElse: () => false,
     );
+    // Video rows only — audio has no 16:9 stage to claim, and flashing a
+    // black video box before the audio layout reads as a broken player.
+    final videoRow = ref.watch(videoRowForMediaProvider(mediaId));
+    final isLocalVideo = videoRow.maybeWhen(
+      data: (row) => row != null,
+      orElse: () => false,
+    );
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -57,13 +66,17 @@ class ExpandedPlayerLoadingBody extends ConsumerWidget {
                     const _VideoCollapseOnlyOverlay(useSafeArea: false),
               ),
             )
-          else
+          else if (isLocalVideo)
             // Claim the chrome viewport during open (ADR-0057) so Video is
             // not unmounted for the whole resolve → open window.
-            const Align(
+            Align(
               alignment: Alignment.topCenter,
-              child: _LocalLoadingVideoStage(),
-            ),
+              child: _LocalLoadingVideoStage(
+                thumbnailUrl: videoRow.value!.thumbnailUrl,
+              ),
+            )
+          else
+            const Center(child: SkeletonAppBootstrap()),
           if (!isYoutube)
             const Align(
               alignment: Alignment.topCenter,
@@ -77,13 +90,19 @@ class ExpandedPlayerLoadingBody extends ConsumerWidget {
 
 /// 16:9 portal target while local / URL [openMedia] is in flight.
 class _LocalLoadingVideoStage extends StatelessWidget {
-  const _LocalLoadingVideoStage();
+  const _LocalLoadingVideoStage({this.thumbnailUrl});
 
   static const double aspectWidth = 16;
   static const double aspectHeight = 9;
 
+  /// Local artwork for the media being opened, shown under the skeleton so
+  /// the open window reads as "this video is loading" instead of a black
+  /// flash.
+  final String? thumbnailUrl;
+
   @override
   Widget build(BuildContext context) {
+    final thumb = localThumbnailFile(thumbnailUrl);
     return SafeArea(
       top: true,
       bottom: false,
@@ -97,9 +116,16 @@ class _LocalLoadingVideoStage extends StatelessWidget {
           // and left ~1s of picture then a black stage until resize.
           id: PlayerSurfaceIds.expandedPlayer,
           overlayBuilder: (_) => const SizedBox.shrink(),
-          child: const ColoredBox(
+          child: ColoredBox(
             color: Colors.black,
-            child: Center(child: SkeletonAppBootstrap()),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (thumb != null)
+                  Image.file(thumb, fit: BoxFit.cover, gaplessPlayback: true),
+                const Center(child: SkeletonAppBootstrap()),
+              ],
+            ),
           ),
         ),
       ),
