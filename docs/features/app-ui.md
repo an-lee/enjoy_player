@@ -71,8 +71,8 @@ Use `EnjoyPage` + `EnjoyPageMetrics` (or `pageGutterOf`) — never invent per-sc
 | `SignInScreen` | Editorial centered hero; no glass card |
 | `HomeScreen` | `EditorialHeader` + media grid via `MediaCardTile` |
 | `LibraryScreen` | `EditorialHeader` + `SegmentedButton` + `MediaCardRow` / `MediaCardTile` |
-| `ExpandedPlayerScreen` | `PlayerAmbientBackdrop` around scaffold; video: no AppBar (stage overlay); audio: no AppBar — collapse chevron in `AudioPlayerLayout` ([ADR-0077](../decisions/0077-audio-reserved-collapse-chrome.md)) |
-| `AudioPlayerLayout` | Compact top-left collapse chevron + transcript-first body (`contentMaxWidth`); no HeroArtwork stage |
+| `ExpandedPlayerScreen` | `PlayerAmbientBackdrop` around scaffold; video: no AppBar (stage overlay); audio: no AppBar — floating frosted collapse control in `AudioPlayerLayout` ([ADR-0085](../decisions/0085-audio-floating-collapse-chrome.md)) |
+| `AudioPlayerLayout` | Floating top-left frosted collapse control over a transcript-first body (`contentMaxWidth`); cues scroll under its blur; desktop adds a `space32` top inset; no HeroArtwork stage |
 | `VideoPlayerLayout` | Side-by-side when layout is landscape (`width > height`); stacked 16:9 video over transcript in portrait/square ([ADR-0059](../decisions/0059-phone-tablet-orientation-and-player-aspect-layout.md)). Split: draggable transcript column (**≥360** px min, max 50% width), persisted `splitPx` preference, dark zinc panel, 1px left border; top **SafeArea** on video when expanded chrome hides the app bar. Transport packing still uses `breakpointTranscriptSideBySide` (720). |
 | `GlobalTransportBar` | Player route only ([ADR-0082](../decisions/0082-home-continue-no-mini-player.md)); inset floating glass capsule (`RootShell` `extendBody` + transparent scaffold, same as bottom nav); dynamic-accent play ring; tabular timestamps; narrow ≤720px: play/echo/cc/speed always-on, blur/hide in the CC sheet |
 | `TranscriptPanel` | Source Serif 4 body; editorial left-rail active line; neutral echo card with 8px orange rail |

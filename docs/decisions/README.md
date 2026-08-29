@@ -100,7 +100,7 @@ Trade-offs, follow-up work, risks.
 | [0074](0074-karaoke-word-highlight.md) | Karaoke word highlight — opt-in in-place current-word highlight from stored timings (default off; independent of Craft enrichment) |
 | [0075](0075-word-level-practice.md) | Word-level practice + stored IPA overlay — two default-off Settings toggles; annotation-layer IPA; hit-test seek; ephemeral loop; inspect sheet (no G2P / play-time alignment / new Player) |
 | [0076](0076-stacked-ipa-player-controls.md) | Stacked IPA columns + familiar mapping + Noto Sans; tap IPA to play; karaoke/IPA in CC subtitle sheet; eSpeak phoneme UTF-8; Craft enrichment always-on (supersedes 0073 default-off + 0075 overlay/inspect/Settings hub) |
-| [0077](0077-audio-reserved-collapse-chrome.md) | Audio expanded chrome is a compact body collapse chevron (no blank AppBar); video keeps in-stage overlay |
+| [0077](0077-audio-reserved-collapse-chrome.md) | Audio expanded chrome is a compact body collapse chevron (no blank AppBar); video keeps in-stage overlay (audio clause superseded by 0085) |
 | [0078](0078-on-demand-transcript-enrichment.md) | On-demand transcript enrichment — gated karaoke/IPA, explicit CC-sheet generate, owned `alignSegments`, YouTube IPA-only untimed words (supplements 0070; supersedes 0076 “no generate path” for this button only) |
 | [0079](0079-azure-word-boundaries-stay-craft-timing-source.md) | Azure TTS word boundaries stay the Craft line-timing source — rejects #540 §5 deprecation; boundaries = cue windows, DTW = nested word/phone spans |
 | [0080](0080-macos-security-scoped-bookmarks.md) | macOS security-scoped bookmarks for path-linked local media — sandbox-restart resilience + file-move resilience for externally linked imports (supplements ADR-0050) |
@@ -108,3 +108,4 @@ Trade-offs, follow-up work, risks.
 | [0082](0082-home-continue-no-mini-player.md) | Home Continue practicing card; no global mini player; leave player clears live session (supersedes ADR-0035 E1–E7) |
 | [0083](0083-paper-graphite-light-dark.md) | Paper / graphite dual theme + System/Light/Dark appearance (supersedes 0011) |
 | [0084](0084-linux-google-signin-off-and-pkce-deeplink.md) | Disable native Google Sign-In on Linux (ADR-0048 kill switch); GTK single-instance `enjoyplayer://` forwarding + AppImage scheme registration for PKCE callbacks |
+| [0085](0085-audio-floating-collapse-chrome.md) | Audio expanded chrome is the shared floating frosted collapse control over the transcript; desktop gets a roomier top inset (supersedes 0077 audio clause) |

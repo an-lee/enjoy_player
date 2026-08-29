@@ -1,9 +1,9 @@
-/// Audio-only expanded player: collapse chevron + transcript body.
+/// Audio-only expanded player: floating collapse control + transcript body.
 ///
 /// Unlike video, there is no separate media stage — playback chrome lives in
-/// the global transport bar. Collapse is a compact top-left control in the
-/// body (not a blank [AppBar]) so transcript never sits under floating chrome
-/// (ADR-0077).
+/// the global transport bar. Collapse is the same floating frosted control as
+/// the video stage's, layered over the transcript; cues scroll under its blur
+/// and there is no reserved toolbar slot (ADR-0085 supersedes ADR-0077).
 library;
 
 import 'dart:async';
@@ -12,7 +12,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
+import 'package:enjoy_player/core/window/desktop_window.dart';
 import 'package:enjoy_player/features/player/application/player_collapse.dart';
+import 'package:enjoy_player/features/player/presentation/widgets/player_frosted_back_button.dart';
 
 class AudioPlayerLayout extends ConsumerWidget {
   const AudioPlayerLayout({required this.transcript, super.key});
@@ -22,50 +24,50 @@ class AudioPlayerLayout extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = EnjoyThemeTokens.of(context);
-    final cs = Theme.of(context).colorScheme;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SafeArea(
-          bottom: false,
-          left: false,
-          right: false,
-          child: SizedBox(
-            height: kToolbarHeight,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: IconButton(
-                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-                icon: Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: cs.onSurface,
-                  size: 28,
-                ),
+    return SafeArea(
+      bottom: false,
+      left: false,
+      right: false,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: t.contentMaxWidth),
+              child: Padding(
+                // Desktop windows have no status-bar inset — add a roomier
+                // top inset so the column doesn't hug the window edge.
+                padding: isDesktop
+                    ? EdgeInsets.fromLTRB(
+                        t.space12,
+                        t.space32,
+                        t.space12,
+                        t.space16,
+                      )
+                    : EdgeInsets.fromLTRB(
+                        t.space12,
+                        t.space16,
+                        t.space12,
+                        t.space16,
+                      ),
+                child: transcript,
+              ),
+            ),
+          ),
+          Align(
+            alignment: Alignment.topLeft,
+            child: Padding(
+              padding: EdgeInsets.only(left: t.space8, top: t.space8),
+              child: PlayerFrostedBackButton(
                 onPressed: () =>
                     unawaited(collapseExpandedPlayer(ref, context)),
               ),
             ),
           ),
-        ),
-        Expanded(
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: t.contentMaxWidth),
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  t.space12,
-                  t.space8,
-                  t.space12,
-                  t.space16,
-                ),
-                child: transcript,
-              ),
-            ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

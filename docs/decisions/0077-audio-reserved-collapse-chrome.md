@@ -1,7 +1,7 @@
 # ADR-0077: Audio expanded chrome is a reserved collapse strip
 
 ## Status
-Accepted
+Superseded by [ADR-0085](0085-audio-floating-collapse-chrome.md) (audio chrome; video rules unaffected)
 
 ## Context
 Video expanded chrome overlays the 16:9 stage (no reserved `AppBar` slot) so play/pause does not jump stage geometry. Audio reused the same overlay pattern: a transparent `AppBar` with `extendBodyBehindAppBar` when paused. Without a video stage, that chrome sat on the first transcript cue — often the same sentence as the media title — and looked broken. Hiding the AppBar while playing and wrapping the body in `SafeArea` caused a second layout jump. A title-less Material `AppBar` (chevron only) still read as a blank toolbar on mobile.
