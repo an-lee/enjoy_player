@@ -1,12 +1,15 @@
 /// Encrypted storage for API bearer token.
 library;
 
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'package:enjoy_player/core/logging/log.dart';
+import 'package:enjoy_player/data/api/secure_storage_op_lock.dart';
 
 part 'secure_token_store.g.dart';
 
@@ -42,62 +45,80 @@ SecureTokenStore secureTokenStore(Ref ref) {
 }
 
 /// Thin wrapper around [FlutterSecureStorage].
+///
+/// Every operation is routed through [sharedSecureStorageOpLock]: on Linux
+/// the backend keeps all keys in a single libsecret item and overlapping
+/// operations interleave inside the GTK main loop, corrupting or losing the
+/// freshly written session (see [SecureStorageOpLock]).
 class SecureTokenStore {
-  SecureTokenStore(this._storage);
+  SecureTokenStore(this._storage, {SecureStorageOpLock? opLock})
+    : _opLock = opLock ?? sharedSecureStorageOpLock;
 
   final FlutterSecureStorage _storage;
+  final SecureStorageOpLock _opLock;
 
-  Future<String?> readAccessToken() => _storage.read(key: _kAccessTokenKey);
+  Future<String?> readAccessToken() =>
+      _serialized(() => _storage.read(key: _kAccessTokenKey));
 
   Future<void> writeAccessToken(String token) =>
-      _writeResilient(_kAccessTokenKey, token);
+      _serialized(() => _writeResilient(_kAccessTokenKey, token));
 
-  Future<String?> readRefreshToken() => _storage.read(key: _kRefreshTokenKey);
+  Future<String?> readRefreshToken() =>
+      _serialized(() => _storage.read(key: _kRefreshTokenKey));
 
   Future<void> writeRefreshToken(String token) =>
-      _writeResilient(_kRefreshTokenKey, token);
+      _serialized(() => _writeResilient(_kRefreshTokenKey, token));
 
-  Future<void> clearAccessToken() => _deleteBestEffort(_kAccessTokenKey);
+  Future<void> clearAccessToken() =>
+      _serialized(() => _deleteBestEffort(_kAccessTokenKey));
 
-  Future<void> clearRefreshToken() => _deleteBestEffort(_kRefreshTokenKey);
+  Future<void> clearRefreshToken() =>
+      _serialized(() => _deleteBestEffort(_kRefreshTokenKey));
 
   /// JSON from [UserProfile.toJson] for cold-start UI before network fetch.
   Future<String?> readCachedProfileJson() =>
-      _storage.read(key: _kCachedProfileJsonKey);
+      _serialized(() => _storage.read(key: _kCachedProfileJsonKey));
 
   Future<void> writeCachedProfileJson(String json) =>
-      _writeResilient(_kCachedProfileJsonKey, json);
+      _serialized(() => _writeResilient(_kCachedProfileJsonKey, json));
 
   Future<void> clearCachedProfile() =>
-      _deleteBestEffort(_kCachedProfileJsonKey);
+      _serialized(() => _deleteBestEffort(_kCachedProfileJsonKey));
 
   /// ISO 8601 UTC timestamp when the stored access token expires.
   Future<String?> readTokenExpiresAt() =>
-      _storage.read(key: _kTokenExpiresAtKey);
+      _serialized(() => _storage.read(key: _kTokenExpiresAtKey));
 
   Future<void> writeTokenExpiresAt(String expiresAt) =>
-      _writeResilient(_kTokenExpiresAtKey, expiresAt);
+      _serialized(() => _writeResilient(_kTokenExpiresAtKey, expiresAt));
 
-  Future<void> clearTokenExpiresAt() => _deleteBestEffort(_kTokenExpiresAtKey);
+  Future<void> clearTokenExpiresAt() =>
+      _serialized(() => _deleteBestEffort(_kTokenExpiresAtKey));
 
   /// Clears bearer token, refresh token, cached profile, and token expiry (sign out / invalid session).
-  Future<void> clearAllAuthSecrets() async {
-    await _deleteBestEffort(_kAccessTokenKey);
-    await _deleteBestEffort(_kRefreshTokenKey);
-    await _deleteBestEffort(_kCachedProfileJsonKey);
-    await _deleteBestEffort(_kTokenExpiresAtKey);
-  }
+  Future<void> clearAllAuthSecrets() => _serialized(() async {
+    await _deleteRaw(_kAccessTokenKey);
+    await _deleteRaw(_kRefreshTokenKey);
+    await _deleteRaw(_kCachedProfileJsonKey);
+    await _deleteRaw(_kTokenExpiresAtKey);
+  });
+
+  Future<T> _serialized<T>(Future<T> Function() operation) =>
+      _opLock.run(operation);
 
   Future<void> _deleteBestEffort(String key) async {
     try {
-      await _storage.delete(key: key);
+      await _deleteRaw(key);
     } on PlatformException catch (e) {
       _log.warning('secure storage delete failed for "$key"', e);
     }
   }
 
+  Future<void> _deleteRaw(String key) => _storage.delete(key: key);
+
   /// Writes to the keychain/keystore, self-healing from a stale entry that
-  /// conflicts with the current write.
+  /// conflicts with the current write, and — on Linux — verifying the value
+  /// actually stuck.
   ///
   /// On iOS/macOS, `flutter_secure_storage`'s `write()` first checks
   /// existence with a query that includes `kSecAttrAccessible` (our pinned
@@ -113,6 +134,31 @@ class SecureTokenStore {
   /// (which searches without an accessibility filter) and retrying once
   /// clears any such stale entry regardless of its accessibility level.
   Future<void> _writeResilient(String key, String value) async {
+    await _writeWithDuplicateHeal(key, value);
+    if (defaultTargetPlatform != TargetPlatform.linux) return;
+
+    // The Linux backend stores all keys in a single libsecret item and its
+    // D-Bus round-trips can silently misfire under gnome-keyring (observed:
+    // item left with an empty secret and a garbled `xdg:schema` attribute),
+    // so a write that reports success may not be readable back. Verify and
+    // self-heal once; if it still doesn't stick, fail loudly instead of
+    // silently dropping the session.
+    if (await _storage.read(key: key) == value) return;
+    _log.warning(
+      'secure storage write did not stick for "$key"; deleting and retrying',
+    );
+    await _deleteRaw(key);
+    await _writeWithDuplicateHeal(key, value);
+    if (await _storage.read(key: key) == value) return;
+    throw PlatformException(
+      code: 'secure_storage_write_lost',
+      message:
+          'Secure storage failed to persist "$key" (write not readable back '
+          'after retry). The system keyring may be broken or locked.',
+    );
+  }
+
+  Future<void> _writeWithDuplicateHeal(String key, String value) async {
     try {
       await _storage.write(key: key, value: value);
     } on PlatformException catch (e) {
@@ -122,7 +168,7 @@ class SecureTokenStore {
         '(errSecDuplicateItem); deleting and retrying once',
         e,
       );
-      await _storage.delete(key: key);
+      await _deleteRaw(key);
       await _storage.write(key: key, value: value);
     }
   }
