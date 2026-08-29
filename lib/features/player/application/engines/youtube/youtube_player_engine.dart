@@ -133,11 +133,10 @@ class YoutubePlayerEngine implements PlayerEngine {
   Future<void> open(PlayableSource source) async {
     if (youTubeEngineOptedOutHere) {
       // Typed so the player surface can show the ADR-0048 "coming soon"
-      // message instead of the generic open-failure body.
-      throw const YouTubePlaybackUnavailableException(
-        'YouTube is not yet available on Linux — coming soon '
-        '(ADR-0048, R1 / R6: webview2gtk-4.0 dependency).',
-      );
+      // message instead of the generic open-failure body. The open
+      // coordinator gates Linux YouTube opens before any engine swap; this
+      // guard is defense in depth.
+      throw const YouTubePlaybackUnavailableException.linuxOptedOut();
     }
     if (source is! YoutubePlayableSource) {
       throw UnsupportedError(

@@ -21,3 +21,13 @@ const double kVideoTextureKickMinViewportDelta = 32;
 
 /// Temporary inset applied for one frame to force a Texture present.
 const double kVideoTextureKickInset = 1;
+
+/// Ceiling for [PlayerEngine.open] before the open fails with a timeout.
+///
+/// `media_kit`'s `open` completes on the mpv `loadlist` command ACK (not on
+/// buffering), so even slow network sources settle far below this. The bound
+/// exists for the wedge class where the native event pump stops delivering
+/// events: without it `openMedia` awaits forever and the player screen shows
+/// the loading skeleton indefinitely (issue: YouTube open on Linux wedged
+/// every later audio open — 2026-08-29 field report).
+const Duration kEngineOpenTimeout = Duration(seconds: 30);

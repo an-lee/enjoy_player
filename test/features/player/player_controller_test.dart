@@ -13,6 +13,7 @@ import 'package:enjoy_player/features/player/application/player_engine_test_doub
 import 'package:enjoy_player/features/player/application/player_preferences_provider.dart';
 import 'package:enjoy_player/features/player/domain/media_relocate_exception.dart';
 import 'package:enjoy_player/features/player/domain/player_settings.dart';
+import 'package:enjoy_player/features/player/domain/youtube_playback_unavailable_exception.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_repository_provider.dart';
 import 'package:flutter/foundation.dart'
     show debugDefaultTargetPlatformOverride, TargetPlatform;
@@ -608,6 +609,62 @@ void main() {
       expect(container.read(playerControllerProvider), isNull);
       expect(fake.stopCallCount, greaterThan(0));
     });
+
+    test(
+      'Linux YouTube open throws typed unavailable, keeps engines untouched, '
+      'and later audio still opens (ADR-0048 regression)',
+      () async {
+        // 2026-08-29 field report: opening a YouTube item on Linux swapped the
+        // live MediaKit engine for a YouTube engine that can never mount and
+        // threw; every later audio open then rebuilt MediaKit against the
+        // wedged native mpv layer and stayed on the loading skeleton forever.
+        // The gate must fail the open BEFORE any engine swap.
+        debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+        addTearDown(() => debugDefaultTargetPlatformOverride = null);
+        final now = DateTime.now();
+        await db.videoDao.insertRow(
+          VideoRow(
+            id: 'yt-linux-1',
+            vid: 'dQw4w9WgXcQ',
+            provider: 'youtube',
+            title: 'YouTube on Linux',
+            description: null,
+            thumbnailUrl: null,
+            durationSeconds: 212,
+            language: 'en',
+            source: 'youtube',
+            localUri: null,
+            md5: null,
+            size: null,
+            mediaUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            syncStatus: null,
+            serverUpdatedAt: null,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+        final audioId = await insertMedia(id: 'audio-after-yt');
+
+        final n = container.read(playerControllerProvider.notifier);
+        final revBefore = container.read(playerEngineRevProvider);
+
+        await expectLater(
+          n.openMedia('yt-linux-1'),
+          throwsA(isA<YouTubePlaybackUnavailableException>()),
+        );
+
+        // No engine was installed or swapped for the failed YouTube open.
+        expect(n.ownedEngine, isNull);
+        expect(container.read(playerEngineRevProvider), revBefore);
+        expect(fake.openUris, isEmpty);
+
+        // The follow-up local open must still succeed — the regression that
+        // stranded the learner on the loading skeleton.
+        await n.openMedia(audioId);
+        expect(container.read(playerControllerProvider)?.mediaId, audioId);
+        expect(fake.openUris, isNotEmpty);
+      },
+    );
 
     test('clear retains YoutubePlayerEngine without rev bump', () async {
       Future<String> insertYoutube({required String id}) async {
