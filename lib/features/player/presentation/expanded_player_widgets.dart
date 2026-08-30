@@ -6,7 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:enjoy_player/core/theme/widgets/app_background.dart';
 import 'package:enjoy_player/core/theme/widgets/skeleton.dart';
-import 'package:enjoy_player/core/utils/local_thumbnail.dart';
+import 'package:enjoy_player/core/utils/local_thumbnail.dart'
+    show thumbnailCacheWidthFor;
+import 'package:enjoy_player/features/player/application/local_thumbnail_provider.dart';
 import 'package:enjoy_player/features/player/application/player_engine_provider.dart';
 import 'package:enjoy_player/features/player/application/player_preferences_provider.dart';
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
@@ -90,7 +92,7 @@ class ExpandedPlayerLoadingBody extends ConsumerWidget {
 }
 
 /// 16:9 portal target while local / URL [openMedia] is in flight.
-class _LocalLoadingVideoStage extends StatelessWidget {
+class _LocalLoadingVideoStage extends ConsumerWidget {
   const _LocalLoadingVideoStage({this.thumbnailUrl});
 
   /// Local artwork for the media being opened, shown under the skeleton so
@@ -99,24 +101,40 @@ class _LocalLoadingVideoStage extends StatelessWidget {
   final String? thumbnailUrl;
 
   @override
-  Widget build(BuildContext context) {
-    final thumb = localThumbnailFile(thumbnailUrl);
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Resolved off the UI thread and memoized per path — the old
+    // `File.existsSync()` in build blocked the UI thread on every rebuild
+    // (issue #663). Until it lands (or when there is none) only the skeleton
+    // shows, which is exactly the no-thumbnail case.
+    final thumbAsync = ref.watch(localThumbnailFileProvider(thumbnailUrl));
+    final thumb = thumbAsync.value;
     return PlayerLoadingStage(
       // Share the chrome viewport id so loading → player does not park
       // (unmount) the media_kit Texture. A distinct id raced detach/attach
       // and left ~1s of picture then a black stage until resize.
       surfaceId: PlayerSurfaceIds.expandedPlayer,
       overlayBuilder: (_) => const SizedBox.shrink(),
-      child: ColoredBox(
-        color: Colors.black,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (thumb != null)
-              Image.file(thumb, fit: BoxFit.cover, gaplessPlayback: true),
-            const Center(child: SkeletonAppBootstrap()),
-          ],
-        ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return ColoredBox(
+            color: Colors.black,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (thumb != null)
+                  Image.file(
+                    thumb,
+                    fit: BoxFit.cover,
+                    gaplessPlayback: true,
+                    // Fixed 16:9 slot: never decode the stored full-resolution
+                    // artwork for it (issue #663).
+                    cacheWidth: thumbnailCacheWidthFor(constraints.maxWidth),
+                  ),
+                const Center(child: SkeletonAppBootstrap()),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
