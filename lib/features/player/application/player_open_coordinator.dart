@@ -29,6 +29,39 @@ import 'package:enjoy_player/features/transcript/application/transcript_blur_mod
 
 final _openLog = logNamed('PlayerOpenCoordinator');
 
+/// Ceiling for post-open engine commands (preference application, subtitle
+/// disabling, position-restore seek).
+///
+/// `engine.open` is bounded by [kEngineOpenTimeout], but the mpv-command
+/// steps after it were not: on the wedge class where the native event pump
+/// stops delivering events (2026-08-30 field report — local audio after a
+/// YouTube session stuck on the loading skeleton; cf. the Linux
+/// engine-swap wedge, PR #647), any of them can await forever, and the
+/// playback session — which is what dismisses the loading skeleton —
+/// publishes only after all of them. Degrade instead: skip the step, log,
+/// continue the open (preferences re-apply on the next user interaction).
+const Duration kEngineCommandTimeout = Duration(seconds: 5);
+
+/// Runs [step] bounded by [limit]; a timeout is logged and swallowed so a
+/// wedged engine command cannot hold the open (and the loading screen)
+/// hostage.
+Future<void> runBoundedEngineStep(
+  String what,
+  Future<void> Function() step, {
+  Duration limit = kEngineCommandTimeout,
+  void Function(String message)? logWarning,
+}) async {
+  final warn = logWarning ?? _openLog.warning;
+  try {
+    await step().timeout(limit);
+  } on TimeoutException {
+    warn(
+      '$what timed out after $limit (engine event pump wedged?); '
+      'continuing without it',
+    );
+  }
+}
+
 /// Host surface [runPlayerOpen] needs from [PlayerController].
 abstract interface class PlayerOpenHost {
   int get openGeneration;
@@ -47,6 +80,7 @@ Future<void> runPlayerOpen(
   String mediaId, {
   OpenMediaOptions options = OpenMediaOptions.defaults,
   Duration openTimeout = kEngineOpenTimeout,
+  Duration engineCommandTimeout = kEngineCommandTimeout,
 }) async {
   final gen = host.openGeneration;
 
@@ -85,13 +119,21 @@ Future<void> runPlayerOpen(
     dexieTargetType: dexie,
   );
 
-  await ensureEngineForPlayableSource(
-    ref,
-    playable: playable,
-    openGeneration: gen,
-    currentOpenGeneration: () => host.openGeneration,
-    getOwnedEngine: () => host.ownedEngine,
-    setOwnedEngine: (e) => host.ownedEngine = e,
+  // Bounded: the swap awaits the OLD engine's dispose, and MediaKit's
+  // dispose is an mpv round-trip that can hang on the wedged-pump class —
+  // the new engine is already installed at that point, so a timed-out
+  // dispose (leaked old engine) is better than an eternal loading screen.
+  await runBoundedEngineStep(
+    'engine swap',
+    limit: engineCommandTimeout,
+    () => ensureEngineForPlayableSource(
+      ref,
+      playable: playable,
+      openGeneration: gen,
+      currentOpenGeneration: () => host.openGeneration,
+      getOwnedEngine: () => host.ownedEngine,
+      setOwnedEngine: (e) => host.ownedEngine = e,
+    ),
   );
   if (host.isOpenStale(gen)) return;
 
@@ -140,11 +182,20 @@ Future<void> runPlayerOpen(
   }
 
   if (engine.supportsSubtitleDisabling) {
-    await engine.disableRenderedSubtitles();
+    await runBoundedEngineStep(
+      'disableRenderedSubtitles',
+      engine.disableRenderedSubtitles,
+      limit: engineCommandTimeout,
+    );
     if (host.isOpenStale(gen)) return;
   }
 
-  await ref.read(playerPreferencesCtrlProvider.notifier).applyCurrentToEngine();
+  await runBoundedEngineStep(
+    'applyCurrentToEngine',
+    () =>
+        ref.read(playerPreferencesCtrlProvider.notifier).applyCurrentToEngine(),
+    limit: engineCommandTimeout,
+  );
   if (host.isOpenStale(gen)) return;
 
   final persisted = await db.echoSessionDao.getLatestForTarget(dexie, mediaId);
@@ -152,7 +203,11 @@ Future<void> runPlayerOpen(
 
   final posMs = options.restorePosition ? (persisted?.currentTimeMs ?? 0) : 0;
   if (posMs > 0) {
-    await engine.seek(Duration(milliseconds: posMs));
+    await runBoundedEngineStep(
+      'position restore seek',
+      () => engine.seek(Duration(milliseconds: posMs)),
+      limit: engineCommandTimeout,
+    );
   }
   if (host.isOpenStale(gen)) return;
 
