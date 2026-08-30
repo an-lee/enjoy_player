@@ -43,8 +43,11 @@ class _YoutubeLoadingVideoStageState
       _attachScheduled = false;
       if (!mounted) return;
       final engine = ref.read(playerEngineProvider);
-      if (!engine.supportsYouTubePlayback) return;
-      engine.setPosterUrl(_lastPosterUrl);
+      final metadata = engine.metadata;
+      // Poster plumbing is a capability (issue #664) — an engine without one
+      // renders decoded frames and has nothing to preload.
+      if (metadata == null) return;
+      metadata.setPosterUrl(_lastPosterUrl);
       // warmVideoSurface is idempotent + build-safe; still never call from
       // build.
       engine.warmVideoSurface();

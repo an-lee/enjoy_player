@@ -1,15 +1,20 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart' as mk;
 
 import 'package:enjoy_player/features/player/domain/playable_source.dart';
 import 'package:enjoy_player/features/player/application/player_engine.dart';
 
 /// Test double with controllable streams ([mkTracksStream] is null — no embedded extract).
-class FakePlayerEngine implements PlayerEngine {
+///
+/// Implements [PlayerEngineMetadata] like [YoutubePlayerEngine] does, so tests
+/// that need a loading poster / source identity can still drive them.
+class FakePlayerEngine implements PlayerEngine, PlayerEngineMetadata {
   FakePlayerEngine();
+
+  @override
+  PlayerEngineMetadata get metadata => this;
 
   final StreamController<Duration> _position =
       StreamController<Duration>.broadcast();
@@ -149,13 +154,6 @@ class FakePlayerEngine implements PlayerEngine {
 
   @override
   Stream<double> get videoAspectRatioStream => Stream<double>.value(16 / 9);
-
-  @override
-  Widget buildVideoStage({
-    required BuildContext context,
-    required double maxWidth,
-    required double maxHeight,
-  }) => const SizedBox.shrink();
 
   void _recordUriFromSource(PlayableSource source) {
     switch (source) {

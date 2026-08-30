@@ -2,9 +2,10 @@ import 'package:enjoy_player/core/platform/linux_platform_availability.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_player_engine.dart';
 import 'package:enjoy_player/features/player/domain/playable_source.dart';
 import 'package:enjoy_player/features/player/domain/youtube_playback_unavailable_exception.dart';
+import 'package:enjoy_player/features/player/presentation/widgets/player_stage_resolver.dart';
 import 'package:flutter/foundation.dart'
     show debugDefaultTargetPlatformOverride, TargetPlatform;
-import 'package:flutter/material.dart' show Builder, MaterialApp, Scaffold;
+import 'package:flutter/material.dart' show MaterialApp, Scaffold;
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -60,7 +61,7 @@ void main() {
     );
 
     testWidgets(
-      'warmVideoSurface + buildVideoStage never mount the WebView host on Linux',
+      'warmVideoSurface + the video stage never mount the WebView host on Linux',
       (tester) async {
         final engine = YoutubePlayerEngine();
         // try/finally so the override is cleared *before* the testWidgets
@@ -76,12 +77,10 @@ void main() {
           await tester.pumpWidget(
             MaterialApp(
               home: Scaffold(
-                body: Builder(
-                  builder: (context) => engine.buildVideoStage(
-                    context: context,
-                    maxWidth: 400,
-                    maxHeight: 300,
-                  ),
+                body: buildPlayerVideoStage(
+                  engine,
+                  maxWidth: 400,
+                  maxHeight: 300,
                 ),
               ),
             ),

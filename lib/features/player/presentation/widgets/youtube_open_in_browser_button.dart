@@ -14,7 +14,7 @@ class YoutubeOpenInBrowserButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final engine = ref.watch(playerEngineProvider);
-    final videoId = engine.currentVideoId;
+    final videoId = engine.metadata?.currentVideoId ?? '';
     if (videoId.isEmpty) return const SizedBox.shrink();
 
     final l10n = AppLocalizations.of(context)!;
