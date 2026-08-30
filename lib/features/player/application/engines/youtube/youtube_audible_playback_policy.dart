@@ -191,6 +191,18 @@ class YoutubeAudiblePlaybackPolicy {
         session.needsVolumeRestore) {
       return;
     }
+    // The poll loop's D8 retry can target the same pause when the budget
+    // outlived the first `playing`; a second playVideo tens of ms later
+    // breaks the "exactly once" accounting against a state machine this
+    // module exists to avoid poking redundantly. Defer to the retry. The
+    // window adds one poll tick so the retry's confirm-lag jitter can never
+    // land on the boundary.
+    final retriedAt = session.lastAutoPlayRetryAt;
+    if (retriedAt != null &&
+        DateTime.now().difference(retriedAt) <
+            postRestoreHealDelay + pollTick) {
+      return;
+    }
     _logPolicy.info('youtube post-restore pause heal vid=${session.videoId}');
     unawaited(healPlay());
   }

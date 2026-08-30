@@ -245,36 +245,44 @@ void main() {
       await session.closeStreams();
     });
 
-    test('playing and playRejected resolve an in-flight user play', () async {
-      final session = YoutubeSession()..resetForOpen('abc12345678');
-      final events = buildEvents(
-        session,
-        onFirstPlaying: () {},
-        startPolling: () {},
-        stopPolling: () {},
-        reapplyVolume: () async {},
-      );
+    test(
+      'playing keeps an in-flight user play armed; playRejected resolves it',
+      () async {
+        final session = YoutubeSession()..resetForOpen('abc12345678');
+        final events = buildEvents(
+          session,
+          onFirstPlaying: () {},
+          startPolling: () {},
+          stopPolling: () {},
+          reapplyVolume: () async {},
+        );
 
-      session.beginUserPlay();
-      events.handle(['playing']);
-      expect(session.userPlayInFlight, isFalse);
+        session.beginUserPlay();
+        events.handle(['playing']);
+        // Armed through the first `playing` — the D8 retry must stay
+        // reachable while playback is still inside the immediate window.
+        expect(session.userPlayInFlight, isTrue);
 
-      session.beginUserPlay();
-      events.handle(['playRejected', 'NotAllowedError']);
-      expect(session.userPlayInFlight, isFalse);
+        events.handle(['playRejected', 'NotAllowedError']);
+        expect(session.userPlayInFlight, isFalse);
 
-      await session.closeStreams();
-    });
+        await session.closeStreams();
+      },
+    );
 
     test('resetForOpen and resetForClear reset userPlayInFlight', () {
       final session = YoutubeSession()..resetForOpen('abc12345678');
       session.beginUserPlay();
+      session.noteAutoPlayRetry();
       session.resetForOpen('other123456');
       expect(session.userPlayInFlight, isFalse);
+      expect(session.lastAutoPlayRetryAt, isNull);
 
       session.beginUserPlay();
+      session.noteAutoPlayRetry();
       session.resetForClear();
       expect(session.userPlayInFlight, isFalse);
+      expect(session.lastAutoPlayRetryAt, isNull);
     });
   });
 

@@ -252,38 +252,83 @@ void main() {
       loop.stop();
     });
 
-    test('immediate pause with in-flight user play retries once', () async {
-      final driver = _FakePollDriver();
-      var retryCalls = 0;
-      session.emitPlaying(true);
-      session.beginUserPlay();
+    test(
+      'play → playing → page pauses again: retries once (production order)',
+      () async {
+        // Regression (PR #620 follow-up): the page player state machine can
+        // correct a freshly started video back to paused. This is the exact
+        // field sequence — beginUserPlay, playing resolves the command, THEN
+        // the pause confirms — and the retry must still fire. Seeding
+        // emitPlaying(true) after beginUserPlay() hid the bug: production can
+        // only reach playing via notePlayingConfirmed, which used to consume
+        // the budget ~750 ms before the pause could confirm.
+        final driver = _FakePollDriver();
+        var retryCalls = 0;
+        session.beginUserPlay();
+        session.notePlayingConfirmed();
 
-      final loop = YoutubeWebViewPollLoop(
-        session: session,
-        webController: () => null,
-        onFirstPlaying: () {},
-        pollFn: driver.poll,
-        retryPlay: (_) async => retryCalls++,
-      );
+        final loop = YoutubeWebViewPollLoop(
+          session: session,
+          webController: () => null,
+          onFirstPlaying: () {},
+          pollFn: driver.poll,
+          retryPlay: (_) async => retryCalls++,
+        );
 
-      loop.start();
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-      for (var i = 0; i < YoutubeSession.pauseConfirmPollTicks; i++) {
-        driver.emit(position: Duration(milliseconds: i * 10), jsPaused: true);
-      }
+        loop.start();
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        // Position magnitude is irrelevant — the immediate-pause decision is
+        // wall-clock from the playing transition; simple increasing ticks.
+        for (var i = 0; i < YoutubeSession.pauseConfirmPollTicks; i++) {
+          driver.emit(position: Duration(milliseconds: i * 10), jsPaused: true);
+        }
 
-      expect(retryCalls, 1);
-      expect(session.userPlayInFlight, isFalse);
-      expect(session.playing, isFalse);
+        expect(retryCalls, 1);
+        expect(session.userPlayInFlight, isFalse);
+        expect(session.playing, isFalse);
 
-      loop.stop();
-    });
+        loop.stop();
+      },
+    );
+
+    test(
+      'deliberate user pause within the immediate window is not retried',
+      () async {
+        // The inverse defect: a pause-intent command (toggle while playing)
+        // must consume the budget, or the retry un-pauses a video the user
+        // just paused.
+        final driver = _FakePollDriver();
+        var retryCalls = 0;
+        session.beginUserPlay();
+        session.notePlayingConfirmed();
+        session.noteUserPauseCommand();
+
+        final loop = YoutubeWebViewPollLoop(
+          session: session,
+          webController: () => null,
+          onFirstPlaying: () {},
+          pollFn: driver.poll,
+          retryPlay: (_) async => retryCalls++,
+        );
+
+        loop.start();
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        for (var i = 0; i < YoutubeSession.pauseConfirmPollTicks; i++) {
+          driver.emit(position: Duration(milliseconds: i * 10), jsPaused: true);
+        }
+
+        expect(retryCalls, 0);
+        expect(session.playing, isFalse);
+
+        loop.stop();
+      },
+    );
 
     test('second immediate pause is not retried (one-shot budget)', () async {
       final driver = _FakePollDriver();
       var retryCalls = 0;
-      session.emitPlaying(true);
       session.beginUserPlay();
+      session.notePlayingConfirmed();
 
       final loop = YoutubeWebViewPollLoop(
         session: session,
@@ -306,6 +351,79 @@ void main() {
 
       expect(retryCalls, 1);
       expect(session.playing, isFalse);
+
+      loop.stop();
+    });
+
+    test(
+      'failed retry surfaces a warning instead of an unhandled rejection',
+      () async {
+        // The one-shot budget is spent before retryPlay runs; a rejected
+        // evaluateJavascript (e.g. renderer gone) must not escape as a
+        // context-free zone error.
+        final driver = _FakePollDriver();
+        session.beginUserPlay();
+        session.notePlayingConfirmed();
+
+        final loop = YoutubeWebViewPollLoop(
+          session: session,
+          webController: () => null,
+          onFirstPlaying: () {},
+          pollFn: driver.poll,
+          retryPlay: (_) async => throw StateError('renderer gone'),
+        );
+
+        loop.start();
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        for (var i = 0; i < YoutubeSession.pauseConfirmPollTicks; i++) {
+          driver.emit(position: Duration(milliseconds: i * 10), jsPaused: true);
+        }
+        // Give the rejected future a microtask turn to prove it is caught.
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        expect(session.playing, isFalse);
+        expect(session.lastAutoPlayRetryAt, isNotNull);
+
+        loop.stop();
+      },
+    );
+
+    test('budget expires once playback outlives the attempt window', () async {
+      // A page-UI resume the app never commanded refreshes the playing
+      // clock without arming a new budget; a pause confirmed long after
+      // the budget's episode must not spend it — even when the pause is
+      // "immediate" relative to the resume. Injectable expiry keeps this
+      // deterministic instead of sleeping past the real 2 s window.
+      final fastSession = YoutubeSession(
+        playAttemptExpiry: const Duration(milliseconds: 200),
+      )..resetForOpen('abc12345678');
+      addTearDown(fastSession.closeStreams);
+      final driver = _FakePollDriver();
+      var retryCalls = 0;
+      fastSession.beginUserPlay();
+      fastSession.notePlayingConfirmed();
+
+      final loop = YoutubeWebViewPollLoop(
+        session: fastSession,
+        webController: () => null,
+        onFirstPlaying: () {},
+        pollFn: driver.poll,
+        retryPlay: (_) async => retryCalls++,
+      );
+
+      loop.start();
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      expect(fastSession.userPlayInFlight, isFalse);
+
+      // A later playing episode (page-UI resume: no beginUserPlay) inside
+      // the 2 s immediate window, then a quick pause — the stale budget
+      // must not be spent.
+      fastSession.emitPlaying(false);
+      fastSession.notePlayingConfirmed();
+      for (var i = 0; i < YoutubeSession.pauseConfirmPollTicks; i++) {
+        driver.emit(position: Duration(milliseconds: i * 10), jsPaused: true);
+      }
+      expect(retryCalls, 0);
 
       loop.stop();
     });
