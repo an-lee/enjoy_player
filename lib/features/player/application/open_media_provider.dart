@@ -39,11 +39,19 @@ final openMediaLaunchProvider = FutureProvider.autoDispose
         await player.openMedia(request.mediaId);
       }
 
+      // Leaving the player mid-launch runs clearLivePlaybackSessionIfNeeded,
+      // whose clear() bumps the open generation. YouTube readiness can block
+      // for seconds, so every step after openMedia re-checks and bails instead
+      // of driving seek/play into the cleared engine (#654).
+      final gen = player.openGeneration;
+
       await player.activeEngine.awaitSurfaceReady();
+      if (player.isOpenStale(gen)) return;
 
       final start = request.startSec;
       if (start != null) {
         await player.seekToSeconds(start);
+        if (player.isOpenStale(gen)) return;
       }
 
       final end = request.endSec;
@@ -57,6 +65,7 @@ final openMediaLaunchProvider = FutureProvider.autoDispose
       }
 
       if (request.autoplay) {
+        if (player.isOpenStale(gen)) return;
         await player.play();
       }
     }, retry: null);
