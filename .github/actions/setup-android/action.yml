@@ -1,0 +1,97 @@
+name: Setup Android SDK
+description: >-
+  Install Android cmdline-tools and the requested SDK packages with retries.
+  android-actions/setup-android fails the job outright when the flaky
+  self-hosted network cannot fetch the dl.google.com package manifests
+  ("IO exception while downloading manifest" → "Failed to find package"),
+  which is transient: the same runner succeeds on the next run. This wrapper
+  tolerates the bootstrap failure and retries the package install with
+  backoff; once the packages persist on the runner's local disk, later runs
+  skip the network entirely.
+
+inputs:
+  packages:
+    description: >-
+      SDK packages to install, e.g. "platforms;android-36 build-tools;36.0.0"
+      (same package ids sdkmanager takes, separated by whitespace).
+    required: true
+  cmdline-tools-version:
+    description: cmdline-tools version passed to android-actions/setup-android.
+    required: false
+    default: "12266719"
+  attempts:
+    description: sdkmanager install attempts before the step fails.
+    required: false
+    default: "5"
+
+runs:
+  using: composite
+  steps:
+    - name: Bootstrap SDK (manifest fetch may flake; retried below)
+      uses: android-actions/setup-android@v3
+      continue-on-error: true
+      with:
+        packages: ${{ inputs.packages }}
+        cmdline-tools-version: ${{ inputs.cmdline-tools-version }}
+        accept-android-sdk-licenses: true
+        log-accepted-android-sdk-licenses: true
+
+    - name: Install SDK packages (retry on flaky dl.google.com)
+      shell: bash
+      env:
+        PACKAGES: ${{ inputs.packages }}
+        ATTEMPTS: ${{ inputs.attempts }}
+      run: |
+        set -euo pipefail
+
+        # The bootstrap step exports ANDROID_HOME only when it fully succeeds;
+        # fall back to its documented default location so a flaky bootstrap
+        # that still installed cmdline-tools does not strand us.
+        sdk="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/.android/sdk}}"
+        echo "ANDROID_HOME=$sdk" >> "$GITHUB_ENV"
+        echo "ANDROID_SDK_ROOT=$sdk" >> "$GITHUB_ENV"
+
+        sdkmanager_bin=""
+        for cand in "$sdk/cmdline-tools/latest/bin/sdkmanager" \
+          "$sdk"/cmdline-tools/*/bin/sdkmanager; do
+          if [ -x "$cand" ]; then sdkmanager_bin="$cand"; break; fi
+        done
+        if [ -z "$sdkmanager_bin" ]; then
+          echo "::error::sdkmanager not found under $sdk/cmdline-tools — the bootstrap step failed before installing cmdline-tools"
+          exit 1
+        fi
+
+        # Package id → directory: "platforms;android-36" is installed at
+        # "$sdk/platforms/android-36", "build-tools;36.0.0" likewise.
+        missing=()
+        for pkg in $PACKAGES; do
+          dir="$sdk/$(printf '%s' "$pkg" | tr ';' '/')"
+          if [ -d "$dir" ]; then
+            echo "SDK package present: $pkg"
+          else
+            missing+=("$pkg")
+          fi
+        done
+        if [ "${#missing[@]}" -eq 0 ]; then
+          echo "setup-android: all requested SDK packages already installed."
+          exit 0
+        fi
+        echo "setup-android: installing missing SDK packages: ${missing[*]}"
+
+        max="${ATTEMPTS:-5}"
+        for attempt in $(seq 1 "$max"); do
+          # License acceptance needs the remote manifest too, so only run it
+          # when no accepted licenses are on disk yet.
+          if [ ! -d "$sdk/licenses" ] || [ -z "$(ls -A "$sdk/licenses" 2>/dev/null)" ]; then
+            yes | "$sdkmanager_bin" --licenses >/dev/null || true
+          fi
+          if "$sdkmanager_bin" --install "${missing[@]}"; then
+            echo "setup-android: SDK packages installed (attempt $attempt/$max)."
+            exit 0
+          fi
+          echo "::warning::sdkmanager install failed (attempt $attempt/$max) — flaky dl.google.com fetch; retrying in $((attempt * 15))s"
+          sleep "$((attempt * 15))"
+        done
+
+        echo "::error::sdkmanager could not install ${missing[*]} after $max attempts"
+        exit 1

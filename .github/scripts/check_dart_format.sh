@@ -28,6 +28,7 @@ if ! dart format --output=none --set-exit-if-changed "${paths[@]}"; then
   echo "check_dart_format: sources need formatting." >&2
   echo "  Fix with: bash .github/scripts/check_dart_format.sh --fix" >&2
   echo "  Then stage the reformatted files." >&2
+  echo "  Local formatter: $(dart --version 2>&1). CI formats with the Flutter pinned in .github/flutter-version — formatter releases can disagree, so reformat with that SDK if this passes locally but fails CI." >&2
   exit 1
 fi
 

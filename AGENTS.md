@@ -47,7 +47,7 @@ dart run build_runner build
 bash .github/scripts/check_codegen_drift.sh --fix
 ```
 
-Never hand-edit `*.g.dart` / `*.freezed.dart`. A source change without regenerating the matching generated file fails the **Codegen drift** workflow.
+Never hand-edit `*.g.dart` / `*.freezed.dart`. A source change without regenerating the matching generated file fails the **Codegen drift** workflow — and a stale generated file that lands on `main` blocks every subsequent PR with the same drift (riverpod neighbour hashes cascade, so one forgotten regeneration turns into a red `*.g.dart` for unrelated providers too). Never merge with a red Codegen drift run; fix forward by regenerating in the **main checkout** (not an agent worktree — `build_runner` deletes checked-in generated files there).
 
 ## Verification
 

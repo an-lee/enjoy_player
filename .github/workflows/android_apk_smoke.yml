@@ -13,6 +13,7 @@ on:
       - "tool/prefetch_media_kit_android_libs.sh"
       - ".github/flutter-version"
       - ".github/actions/setup-flutter/**"
+      - ".github/actions/setup-android/**"
       - ".github/scripts/ensure_linux_tooling.sh"
       - ".github/workflows/android_apk_smoke.yml"
   push:
@@ -30,6 +31,10 @@ permissions:
 jobs:
   apk:
     runs-on: [self-hosted, Linux]
+    # Successful runs land in 11–23 min; 45 min absorbs the setup-android
+    # retry backoff without letting a hung dl.google.com fetch hold the
+    # runner forever (self-hosted jobs have no default timeout).
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v6
 
@@ -40,7 +45,7 @@ jobs:
 
       - uses: ./.github/actions/setup-flutter
 
-      - uses: android-actions/setup-android@v3
+      - uses: ./.github/actions/setup-android
         with:
           packages: >-
             platforms;android-36
