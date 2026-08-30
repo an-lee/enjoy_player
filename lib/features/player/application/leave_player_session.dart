@@ -16,14 +16,43 @@ bool shouldClearLiveSessionOnRouteChange({
 }
 
 /// Flushes and [PlayerController.clear]s when the learner left the player.
+///
+/// Widget-tree entry point (`collapseExpandedPlayer`). Router-side callers —
+/// the route observer and the mid-launch safety net in `app_router.dart` —
+/// have a provider [Ref] and use [clearLivePlaybackSession].
 Future<void> clearLivePlaybackSessionIfNeeded(
   WidgetRef ref, {
   required bool onPlayerRoute,
+}) {
+  return _clearLiveSession(
+    onPlayerRoute: onPlayerRoute,
+    hasLiveSession: ref.read(playerControllerProvider) != null,
+    practiceOwnsVideoStage: ref
+        .read(vocabularyReviewSessionProvider)
+        .practiceOwnsVideoStage,
+    clear: () => ref.read(playerControllerProvider.notifier).clear(),
+  );
+}
+
+/// [Ref] variant of [clearLivePlaybackSessionIfNeeded] for teardowns that run
+/// outside the widget tree (never on a player route when it is called).
+Future<void> clearLivePlaybackSession(Ref ref) {
+  return _clearLiveSession(
+    onPlayerRoute: false,
+    hasLiveSession: ref.read(playerControllerProvider) != null,
+    practiceOwnsVideoStage: ref
+        .read(vocabularyReviewSessionProvider)
+        .practiceOwnsVideoStage,
+    clear: () => ref.read(playerControllerProvider.notifier).clear(),
+  );
+}
+
+Future<void> _clearLiveSession({
+  required bool onPlayerRoute,
+  required bool hasLiveSession,
+  required bool practiceOwnsVideoStage,
+  required Future<void> Function() clear,
 }) async {
-  final hasLiveSession = ref.read(playerControllerProvider) != null;
-  final practiceOwnsVideoStage = ref
-      .read(vocabularyReviewSessionProvider)
-      .practiceOwnsVideoStage;
   if (!shouldClearLiveSessionOnRouteChange(
     onPlayerRoute: onPlayerRoute,
     hasLiveSession: hasLiveSession,
@@ -31,5 +60,5 @@ Future<void> clearLivePlaybackSessionIfNeeded(
   )) {
     return;
   }
-  await ref.read(playerControllerProvider.notifier).clear();
+  await clear();
 }

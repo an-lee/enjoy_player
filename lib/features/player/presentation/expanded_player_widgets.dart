@@ -198,7 +198,10 @@ class ExpandedPlayerChromeBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isVideo = chrome.mediaType == 'video';
-    final engine = ref.read(playerEngineProvider);
+    // Watch, not read: the engine is swapped for the same mediaId on re-open
+    // (playerEngineRevProvider bumps), and a stale read would keep driving the
+    // discarded engine's poster/capabilities into the layout.
+    final engine = ref.watch(playerEngineProvider);
     final splitPx = ref.watch(
       playerPreferencesCtrlProvider.select(
         (p) => p.videoTranscriptSplitWidthPx,

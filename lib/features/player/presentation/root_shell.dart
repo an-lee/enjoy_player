@@ -1,8 +1,6 @@
 /// Application shell: adaptive navigation + page stack + player-route transport.
 library;
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -18,10 +16,8 @@ import 'package:enjoy_player/features/subscription/presentation/tier_reconcile_h
 import 'package:enjoy_player/features/sync/application/sync_controller.dart';
 import 'package:enjoy_player/features/discover/application/discover_providers.dart';
 import 'package:enjoy_player/features/update/application/update_controller.dart';
-import 'package:enjoy_player/features/vocabulary/application/vocabulary_review_session.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
-import '../application/leave_player_session.dart';
 import '../application/player_controller.dart';
 import 'widgets/app_sidebar.dart';
 import 'widgets/global_transport_bar.dart';
@@ -69,9 +65,6 @@ class _RootShellState extends ConsumerState<RootShell> {
     ref.watch(discoverFeedRefreshSchedulerProvider);
     final sessionActive = ref.watch(
       playerControllerProvider.select((s) => s != null),
-    );
-    final suppressTransportForVocabularyPractice = ref.watch(
-      vocabularyReviewSessionProvider.select((s) => s.practiceOwnsVideoStage),
     );
     final updateBadge = ref.watch(updateAvailableBadgeProvider);
     final l10n = AppLocalizations.of(context)!;
@@ -157,18 +150,12 @@ class _RootShellState extends ConsumerState<RootShell> {
               /// space via [bottomNavigationBar] instead.
               final playerWithTransport = sessionActive && onPlayer;
 
-              if (shouldClearLiveSessionOnRouteChange(
-                onPlayerRoute: onPlayer,
-                hasLiveSession: sessionActive,
-                practiceOwnsVideoStage: suppressTransportForVocabularyPractice,
-              )) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (!mounted) return;
-                  unawaited(
-                    clearLivePlaybackSessionIfNeeded(ref, onPlayerRoute: false),
-                  );
-                });
-              }
+              // Leaving the player tears the live session down in
+              // [LeavePlayerRouteObserver] (registered on the shell navigator
+              // in `app_router.dart`) — never from a build: a build-posted
+              // teardown re-fires on every rebuild that still holds the
+              // condition, and only stayed safe because clear() bumps the
+              // open generation.
 
               final bottomClearance = !useSidebar && !onPlayer && !onReview
                   ? rootShellBottomNavClearance(context)

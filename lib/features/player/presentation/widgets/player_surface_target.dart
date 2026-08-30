@@ -57,6 +57,10 @@ class _PlayerSurfaceTargetState extends ConsumerState<PlayerSurfaceTarget> {
   @override
   void didUpdateWidget(covariant PlayerSurfaceTarget oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // Only identity / enablement / overlay changes matter; anything else is
+    // picked up by the post-frame `_sync`, which is gated on real geometry
+    // deltas. Never write to the registry synchronously here — a host
+    // notification mid-build marks it dirty while the framework is building.
     if (oldWidget.id != widget.id ||
         oldWidget.enabled != widget.enabled ||
         oldWidget.overlayBuilder != widget.overlayBuilder) {
@@ -71,8 +75,6 @@ class _PlayerSurfaceTargetState extends ConsumerState<PlayerSurfaceTarget> {
         });
       }
       WidgetsBinding.instance.addPostFrameCallback((_) => _sync());
-    } else if (widget.enabled) {
-      _registry.update(id: widget.id, overlayBuilder: widget.overlayBuilder);
     }
   }
 

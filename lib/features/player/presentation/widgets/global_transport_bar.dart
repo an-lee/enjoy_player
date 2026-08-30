@@ -321,6 +321,31 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
       isPlaying ? l10n.pause : l10n.play,
     );
 
+    // Practice-tip scheduling listens are registered unconditionally: a
+    // `ref.listen` below the `chrome == null` early return would re-register
+    // on every chrome swap, silently dropping hasLines / echo transitions
+    // during the session-swap window. The chrome fallback lives inside the
+    // callbacks instead.
+    ref.listen(transcriptHasLinesForMediaProvider(mediaId ?? ''), (prev, next) {
+      final hasLines = next.asData?.value ?? false;
+      final id = mediaId ?? chrome?.mediaId;
+      if (!hasLines || id == null || id.isEmpty) return;
+      _schedulePracticeTips(
+        mediaId: id,
+        hasTranscript: true,
+        echoActive: ref.read(echoModeProvider).active,
+      );
+    });
+    ref.listen(echoModeProvider, (prev, next) {
+      final id = mediaId ?? chrome?.mediaId;
+      if (id == null || id.isEmpty || !hasTranscriptLines) return;
+      _schedulePracticeTips(
+        mediaId: id,
+        hasTranscript: true,
+        echoActive: next.active,
+      );
+    });
+
     if (chrome == null) return const SizedBox.shrink();
 
     final playRing = TransportPlayRingButton(
@@ -376,25 +401,6 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
       ),
     );
 
-    ref.listen(transcriptHasLinesForMediaProvider(mediaId ?? ''), (prev, next) {
-      final hasLines = next.asData?.value ?? false;
-      final id = mediaId ?? chrome.mediaId;
-      if (!hasLines || id.isEmpty) return;
-      _schedulePracticeTips(
-        mediaId: id,
-        hasTranscript: true,
-        echoActive: ref.read(echoModeProvider).active,
-      );
-    });
-    ref.listen(echoModeProvider, (prev, next) {
-      final id = mediaId ?? chrome.mediaId;
-      if (id.isEmpty || !hasTranscriptLines) return;
-      _schedulePracticeTips(
-        mediaId: id,
-        hasTranscript: true,
-        echoActive: next.active,
-      );
-    });
     if (hasTranscriptLines && chrome.mediaId.isNotEmpty) {
       _schedulePracticeTips(
         mediaId: chrome.mediaId,
