@@ -186,9 +186,9 @@ class AsrAudioExtractor {
 
     final cmd =
         '-nostdin -hide_banner -loglevel error -y '
-        '-i ${_shellEscape(input)} -vn '
+        '-i ${shellEscape(input)} -vn '
         '-af aformat=sample_fmts=s16:channel_layouts=mono -ar 16000 '
-        '-ac 1 -c:a pcm_s16le ${_shellEscape(outputWav)}';
+        '-ac 1 -c:a pcm_s16le ${shellEscape(outputWav)}';
     try {
       onProgress?.call(0.1);
       final session = await FFmpegKit.execute(cmd);
@@ -248,11 +248,4 @@ Future<({int exitCode, String stderr})> _windowsExtract(
     exitCode: r.exitCode,
     stderr: r.stderr is String ? r.stderr as String : '',
   );
-}
-
-String _shellEscape(String path) {
-  if (path.contains(' ') || path.contains('"')) {
-    return '"${path.replaceAll('"', r'\"')}"';
-  }
-  return path;
 }

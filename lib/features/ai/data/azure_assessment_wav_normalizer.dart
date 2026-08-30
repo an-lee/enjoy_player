@@ -18,13 +18,6 @@ import 'package:flutter/services.dart';
 
 final _log = logNamed('ai.azure_assessment_wav');
 
-String _shellEscape(String path) {
-  if (path.contains(' ') || path.contains('"')) {
-    return '"${path.replaceAll('"', r'\"')}"';
-  }
-  return path;
-}
-
 /// Top-level so the ffmpeg invocation can run inside a worker isolate
 /// (see [normalizeWavForAzureAssessment]). Returns the same
 /// `({int exitCode, String stderr})` shape we used to capture from
@@ -59,8 +52,8 @@ Future<bool> _runFfmpegKit({
   required String audioFilter,
 }) async {
   final cmd =
-      '-nostdin -hide_banner -loglevel error -y -i ${_shellEscape(inputPath)} '
-      '-vn -af $audioFilter -c:a pcm_s16le ${_shellEscape(outputWavPath)}';
+      '-nostdin -hide_banner -loglevel error -y -i ${shellEscape(inputPath)} '
+      '-vn -af $audioFilter -c:a pcm_s16le ${shellEscape(outputWavPath)}';
   try {
     final session = await FFmpegKit.execute(cmd);
     final code = await session.getReturnCode();
