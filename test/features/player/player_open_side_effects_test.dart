@@ -1,11 +1,17 @@
+import 'dart:async';
+
 import 'package:drift/native.dart';
 import 'package:enjoy_player/data/api/api_client.dart';
 import 'package:enjoy_player/data/api/services/recording_api.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
 import 'package:enjoy_player/data/db/app_database_provider.dart';
+import 'package:enjoy_player/data/files/file_storage.dart';
 import 'package:enjoy_player/features/auth/application/auth_controller.dart';
 import 'package:enjoy_player/features/auth/domain/auth_state.dart';
 import 'package:enjoy_player/features/auth/domain/user_profile.dart';
+import 'package:enjoy_player/features/library/application/library_repository_provider.dart';
+import 'package:enjoy_player/features/library/data/library_repository.dart';
+import 'package:enjoy_player/features/player/application/player_engine.dart';
 import 'package:enjoy_player/features/player/application/player_engine_test_double_provider.dart';
 import 'package:enjoy_player/features/player/application/player_open_side_effects.dart';
 import 'package:enjoy_player/features/sync/application/sync_providers.dart';
@@ -97,6 +103,29 @@ class _FakeRecordingTargetSyncService extends RecordingTargetSyncService {
   }
 }
 
+/// Records refresh calls without touching real DB / network.
+class _FakeMediaLibraryRepository extends MediaLibraryRepository {
+  _FakeMediaLibraryRepository(AppDatabase db)
+    : super(db, FileStorage(), enqueueSync: null);
+
+  static List<String> refreshCalls = [];
+  static Object? throwError;
+
+  static void reset() {
+    refreshCalls = [];
+    throwError = null;
+  }
+
+  @override
+  Future<YoutubeMetadataPatch?> refreshYoutubeMetadataIfNeeded(
+    String mediaId,
+  ) async {
+    refreshCalls.add(mediaId);
+    if (throwError != null) throw throwError!;
+    return null;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -113,6 +142,9 @@ ProviderContainer _container({
     overrides: [
       appDatabaseProvider.overrideWithValue(db),
       playerEngineTestDoubleProvider.overrideWithValue(FakePlayerEngine()),
+      mediaLibraryRepositoryProvider.overrideWithValue(
+        _FakeMediaLibraryRepository(db),
+      ),
       authCtrlProvider.overrideWith(
         signedIn ? _SignedInAuthCtrl.new : _SignedOutAuthCtrl.new,
       ),
@@ -126,6 +158,38 @@ ProviderContainer _container({
 }
 
 Ref _ref(ProviderContainer container) => container.read(_refCapture);
+
+/// Schedules the refresh with [engine] plus host-style freshness callbacks,
+/// mirroring what [runPlayerOpen] passes — the helper itself must never read
+/// `playerControllerProvider` (issue #676).
+void _scheduleYoutubeRefresh(
+  ProviderContainer container, {
+  required String mediaId,
+  int openGeneration = 1,
+  PlayerEngine? engine,
+  int Function()? currentOpenGeneration,
+  String? Function()? currentSessionMediaId,
+}) {
+  scheduleYoutubeMetadataRefresh(
+    _ref(container),
+    mediaId: mediaId,
+    openGeneration: openGeneration,
+    engine: engine ?? FakePlayerEngine(),
+    currentOpenGeneration: currentOpenGeneration ?? () => openGeneration,
+    currentSessionMediaId: currentSessionMediaId ?? () => mediaId,
+  );
+}
+
+/// Emits `buffering=false` repeatedly for a short window so the helper
+/// catches it whenever it subscribes (its first DB read yields past the
+/// schedule call), then lets the whole side effect drain.
+Future<void> _driveYoutubeRefreshReady(FakePlayerEngine engine) async {
+  for (var i = 0; i < 20; i++) {
+    engine.emitBuffering(false);
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+  }
+  await pumpEventQueue();
+}
 
 Future<void> _insertVideoRow(
   AppDatabase db, {
@@ -172,6 +236,7 @@ void main() {
     db = AppDatabase(executor: NativeDatabase.memory());
     _FakeTranscriptFetchCtrl.reset();
     _FakeRecordingTargetSyncService.reset();
+    _FakeMediaLibraryRepository.reset();
   });
 
   tearDown(() async {
@@ -292,14 +357,10 @@ void main() {
       await container.read(authCtrlProvider.future);
 
       // No row inserted for 'missing-id' — should return early.
-      scheduleYoutubeMetadataRefresh(
-        _ref(container),
-        mediaId: 'missing-id',
-        openGeneration: 1,
-      );
+      _scheduleYoutubeRefresh(container, mediaId: 'missing-id');
 
       await pumpEventQueue();
-      // No crash; the function returned early after finding null row.
+      expect(_FakeMediaLibraryRepository.refreshCalls, isEmpty);
     });
 
     test('early return when provider is not youtube', () async {
@@ -314,14 +375,11 @@ void main() {
       addTearDown(container.dispose);
       await container.read(authCtrlProvider.future);
 
-      scheduleYoutubeMetadataRefresh(
-        _ref(container),
-        mediaId: 'v-user',
-        openGeneration: 1,
-      );
+      _scheduleYoutubeRefresh(container, mediaId: 'v-user');
 
       await pumpEventQueue();
-      // No crash; returned early because provider != 'youtube'.
+      // Returned early because provider != 'youtube'.
+      expect(_FakeMediaLibraryRepository.refreshCalls, isEmpty);
     });
 
     test('early return when metadata does not need refresh', () async {
@@ -337,21 +395,14 @@ void main() {
       addTearDown(container.dispose);
       await container.read(authCtrlProvider.future);
 
-      scheduleYoutubeMetadataRefresh(
-        _ref(container),
-        mediaId: 'v-complete',
-        openGeneration: 1,
-      );
+      _scheduleYoutubeRefresh(container, mediaId: 'v-complete');
 
       await pumpEventQueue();
-      // No crash; returned early because title is real and thumbnail exists.
+      // Returned early because title is real and thumbnail exists.
+      expect(_FakeMediaLibraryRepository.refreshCalls, isEmpty);
     });
 
     test('proceeds when title is placeholder (needs refresh)', () async {
-      // This row has a placeholder title — metadata needs refresh.
-      // The function will proceed past the guard but will fail at
-      // playerControllerProvider (no engine in test) — which is fine,
-      // we just verify it doesn't crash due to the unawaited wrapper.
       await _insertVideoRow(
         db,
         id: 'v-placeholder',
@@ -364,17 +415,15 @@ void main() {
       addTearDown(container.dispose);
       await container.read(authCtrlProvider.future);
 
-      // The function fires unawaited work that will hit the player controller.
-      // In test without a full player setup, this will throw internally but
-      // the error is swallowed by the unawaited future (no zone handler).
-      // We just verify no synchronous crash.
-      scheduleYoutubeMetadataRefresh(
-        _ref(container),
+      // Buffering settles so the readiness gate resolves.
+      final engine = FakePlayerEngine();
+      _scheduleYoutubeRefresh(
+        container,
         mediaId: 'v-placeholder',
-        openGeneration: 1,
+        engine: engine,
       );
-
-      await pumpEventQueue();
+      await _driveYoutubeRefreshReady(engine);
+      expect(_FakeMediaLibraryRepository.refreshCalls, ['v-placeholder']);
     });
 
     test('proceeds when thumbnail is empty string (needs refresh)', () async {
@@ -390,13 +439,60 @@ void main() {
       addTearDown(container.dispose);
       await container.read(authCtrlProvider.future);
 
+      final engine = FakePlayerEngine();
+      _scheduleYoutubeRefresh(
+        container,
+        mediaId: 'v-empty-thumb',
+        engine: engine,
+      );
+      await _driveYoutubeRefreshReady(engine);
+      expect(_FakeMediaLibraryRepository.refreshCalls, ['v-empty-thumb']);
+    });
+
+    test('skips refresh when open generation went stale', () async {
+      await _insertVideoRow(
+        db,
+        id: 'v-stale',
+        vid: 'dQw4w9WgXcQ',
+        provider: 'youtube',
+        title: 'YouTube video dQw4w9WgXcQ',
+      );
+      final container = _container(db: db, signedIn: false);
+      addTearDown(container.dispose);
+      await container.read(authCtrlProvider.future);
+
+      final engine = FakePlayerEngine();
       scheduleYoutubeMetadataRefresh(
         _ref(container),
-        mediaId: 'v-empty-thumb',
+        mediaId: 'v-stale',
         openGeneration: 1,
+        engine: engine,
+        // A newer open landed meanwhile — the host reports generation 2.
+        currentOpenGeneration: () => 2,
+        currentSessionMediaId: () => 'v-stale',
       );
+      await _driveYoutubeRefreshReady(engine);
+      expect(_FakeMediaLibraryRepository.refreshCalls, isEmpty);
+    });
 
-      await pumpEventQueue();
+    test('repository error is caught and does not escape', () async {
+      await _insertVideoRow(
+        db,
+        id: 'v-boom',
+        vid: 'dQw4w9WgXcQ',
+        provider: 'youtube',
+        title: 'YouTube video dQw4w9WgXcQ',
+      );
+      _FakeMediaLibraryRepository.throwError = StateError('oembed_boom');
+      final container = _container(db: db, signedIn: false);
+      addTearDown(container.dispose);
+      await container.read(authCtrlProvider.future);
+
+      // Should not surface as an unhandled async error despite the throw.
+      final engine = FakePlayerEngine();
+      _scheduleYoutubeRefresh(container, mediaId: 'v-boom', engine: engine);
+      await _driveYoutubeRefreshReady(engine);
+      expect(_FakeMediaLibraryRepository.refreshCalls, ['v-boom']);
     });
   });
 }

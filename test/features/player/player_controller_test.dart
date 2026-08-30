@@ -5,6 +5,9 @@ import 'dart:typed_data';
 import 'package:drift/native.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
 import 'package:enjoy_player/data/db/app_database_provider.dart';
+import 'package:enjoy_player/data/files/file_storage.dart';
+import 'package:enjoy_player/features/library/application/library_repository_provider.dart';
+import 'package:enjoy_player/features/library/data/library_repository.dart';
 import 'package:enjoy_player/features/player/application/echo_mode_provider.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_player_engine.dart';
 import 'package:enjoy_player/features/player/application/player_controller.dart';
@@ -667,6 +670,85 @@ void main() {
       },
     );
 
+    test('YouTube placeholder-row open refreshes metadata without self-dep '
+        'Ref read (issue #676 regression)', () async {
+      // The lazy oEmbed side effect runs on the controller's own Ref. It
+      // must never `read(playerControllerProvider)` — Riverpod asserts "A
+      // provider cannot depend on itself" — so the coordinator now passes
+      // the engine + host freshness callbacks instead.
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+      final repo = _FakeYoutubeRefreshRepository(db);
+      final ytContainer = ProviderContainer(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          playerEngineTestDoubleProvider.overrideWithValue(fake),
+          transcriptRepositoryProvider.overrideWithValue(
+            TranscriptRepository(db),
+          ),
+          mediaLibraryRepositoryProvider.overrideWithValue(repo),
+        ],
+      );
+      addTearDown(ytContainer.dispose);
+
+      final id = await insertYoutubeRow(
+        db,
+        id: 'yt-placeholder',
+        title: 'YouTube video dQw4w9WgXcQ',
+        thumbnailUrl: null,
+      );
+
+      final n = ytContainer.read(playerControllerProvider.notifier);
+      // Before the fix this threw the Riverpod self-dependency assertion
+      // once the unawaited refresh reached the controller read.
+      await n.openMedia(id);
+      await _settleYoutubeRefresh(fake);
+
+      expect(repo.refreshCalls, contains(id));
+      // The patch landed through PlayerMetadataNotifier.patchIfCurrent.
+      expect(
+        ytContainer.read(playerControllerProvider)?.mediaTitle,
+        'Refreshed title',
+      );
+    });
+
+    test('YouTube metadata refresh failure is logged, never escapes as an '
+        'unhandled async error (issue #676)', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+      final repo = _ThrowingYoutubeRefreshRepository(db);
+      final ytContainer = ProviderContainer(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          playerEngineTestDoubleProvider.overrideWithValue(fake),
+          transcriptRepositoryProvider.overrideWithValue(
+            TranscriptRepository(db),
+          ),
+          mediaLibraryRepositoryProvider.overrideWithValue(repo),
+        ],
+      );
+      addTearDown(ytContainer.dispose);
+
+      final id = await insertYoutubeRow(
+        db,
+        id: 'yt-boom',
+        title: 'YouTube video dQw4w9WgXcQ',
+        thumbnailUrl: null,
+      );
+
+      final n = ytContainer.read(playerControllerProvider.notifier);
+      await n.openMedia(id);
+      // A bare throw inside the unawaited helper would be reported by the
+      // test zone as an unhandled async error and fail this test.
+      await _settleYoutubeRefresh(fake);
+
+      expect(repo.refreshCalls, contains(id));
+      // Session survives the failed refresh, unpatched.
+      expect(ytContainer.read(playerControllerProvider)?.mediaId, id);
+    });
+
     test('clear retains YoutubePlayerEngine without rev bump', () async {
       Future<String> insertYoutube({required String id}) async {
         final now = DateTime.now();
@@ -1179,4 +1261,84 @@ void main() {
       },
     );
   });
+}
+
+// ---------------------------------------------------------------------------
+// Issue #676 helpers
+// ---------------------------------------------------------------------------
+
+/// Emits `buffering=false` repeatedly for a short window so the unawaited
+/// metadata refresh catches it whenever it subscribes (its first DB read
+/// yields past the open call), then lets the whole side effect drain.
+Future<void> _settleYoutubeRefresh(FakePlayerEngine fake) async {
+  for (var i = 0; i < 20; i++) {
+    fake.emitBuffering(false);
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+  }
+  await pumpEventQueue();
+}
+
+/// Seeds a YouTube-provider video row the resolver turns into a
+/// [YoutubePlayableSource] (same shape as the side-effects test fixture).
+Future<String> insertYoutubeRow(
+  AppDatabase db, {
+  required String id,
+  required String title,
+  String? thumbnailUrl,
+}) async {
+  final now = DateTime.now();
+  await db.videoDao.insertRow(
+    VideoRow(
+      id: id,
+      vid: 'dQw4w9WgXcQ',
+      provider: 'youtube',
+      title: title,
+      description: null,
+      thumbnailUrl: thumbnailUrl,
+      durationSeconds: 212,
+      language: 'en',
+      source: 'youtube',
+      localUri: null,
+      md5: null,
+      size: null,
+      mediaUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      syncStatus: null,
+      serverUpdatedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    ),
+  );
+  return id;
+}
+
+/// Returns a fixed metadata patch instead of hitting oEmbed / the DB write.
+class _FakeYoutubeRefreshRepository extends MediaLibraryRepository {
+  _FakeYoutubeRefreshRepository(AppDatabase db)
+    : super(db, FileStorage(), enqueueSync: null);
+
+  final List<String> refreshCalls = [];
+
+  @override
+  Future<YoutubeMetadataPatch?> refreshYoutubeMetadataIfNeeded(
+    String mediaId,
+  ) async {
+    refreshCalls.add(mediaId);
+    return (title: 'Refreshed title', thumbnailUrl: null);
+  }
+}
+
+/// Throws like a failing oEmbed fetch / DB write would.
+class _ThrowingYoutubeRefreshRepository extends MediaLibraryRepository {
+  _ThrowingYoutubeRefreshRepository(AppDatabase db)
+    : super(db, FileStorage(), enqueueSync: null);
+
+  final List<String> refreshCalls = [];
+
+  @override
+  Future<YoutubeMetadataPatch?> refreshYoutubeMetadataIfNeeded(
+    String mediaId,
+  ) async {
+    refreshCalls.add(mediaId);
+    throw StateError('oembed_boom');
+  }
 }

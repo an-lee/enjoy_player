@@ -45,6 +45,11 @@ class FakePlayerEngine implements PlayerEngine {
     if (!_duration.isClosed) _duration.add(d);
   }
 
+  /// Simulates a buffering transition (used by post-open readiness gates).
+  void emitBuffering(bool value) {
+    if (!_buffering.isClosed) _buffering.add(value);
+  }
+
   /// Simulates end-of-media (fires the [completed] stream once).
   void emitCompleted() {
     if (!_completed.isClosed) _completed.add(null);

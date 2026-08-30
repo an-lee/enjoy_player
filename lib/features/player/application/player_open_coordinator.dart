@@ -297,7 +297,14 @@ Future<void> runPlayerOpen(
   );
 
   if (playable is YoutubePlayableSource) {
-    scheduleYoutubeMetadataRefresh(ref, mediaId: mediaId, openGeneration: gen);
+    scheduleYoutubeMetadataRefresh(
+      ref,
+      mediaId: mediaId,
+      openGeneration: gen,
+      engine: engine,
+      currentOpenGeneration: () => host.openGeneration,
+      currentSessionMediaId: () => host.session?.mediaId,
+    );
   }
 
   if (kind == MediaKind.video &&
