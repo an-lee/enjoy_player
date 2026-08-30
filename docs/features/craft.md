@@ -25,6 +25,21 @@ Flows as a full-screen route; back returns to wherever the user came from.
 
 **Branding**: "Craft" is kept as an untranslated brand term in the Chinese locale (`craftScreenTitle` / `homeCraftAction` both render `"Craft"` in `app_zh.arb`), matching the existing `importCraftFromText` → `"Craft…"` convention — it is not translated to a Chinese word.
 
+### Remembered preferences
+
+Craft choices persist across sessions so learners don't re-pick them every time. `CraftPreferencesCtrl` (keepAlive, per-user) stores a JSON blob under the Drift settings key `craft.preferences_v1` (`SettingsKeys.craftPreferencesV1`):
+
+| Persisted | Notes |
+|-----------|-------|
+| Last screen mode | Express / Advanced — reopening Craft restores it |
+| Translation style **per mode** | `expressStyle` (first-run default `auto`) and `advancedStyle` (first-run default `natural`) |
+| Custom prompt | Remembered alongside the style it belongs to |
+| Voice **per base language** | Map like `{'en': 'en-US-GuyNeural'}`; entries validate against `kAzureVoices` on load and are dropped if the catalog changed |
+
+Deliberately **not** persisted: the language pair. It always re-seeds from the learner's profile settings on entry — `CraftController.build()` reads `AppPreferencesCtrl.effectiveNativeLanguage` / `effectiveLearningLanguage` synchronously (so the Express idle pill never renders the `—` placeholder), and the lazy per-widget seeding that used to live in `CaptureStage._startRecording` / `TranslateTool.initState` is gone.
+
+Sign-in semantics mirror `AppPreferencesCtrl`: the blob lives in the per-user DB, so reads/writes are skipped while signed out (translate still works; choices are session-only). `CraftController` setters write through to the prefs controller but never persist on programmatic restores — `loadForEdit` prefills an item's own values via `copyWith` and does not touch the blob. A late hydration never clobbers user input: every user-intent setter latches `_prefsHydrationMutated`, and hydration is skipped while an edit-from-history restore is in flight.
+
 ### Craft history (`/craft/history`)
 
 An in-app-bar history `IconButton` (tooltip `craftHistoryTooltip`) on the Craft screen opens `CraftHistoryScreen`, which lists every media item where `Audios.provider == 'craft'`, newest-updated first (`craftHistoryProvider` — a thin `StreamProvider` over the existing `mediaLibraryRepositoryProvider.watchAll()`, no new query or schema). Empty state uses `craftHistoryEmptyTitle` / `craftHistoryEmptyHint` / `craftHistoryEmptyAction`.
@@ -56,7 +71,7 @@ A linear three-stage pipeline (`CraftStage` enum: `capture` → `rewrite` → `a
 
 - **Editable native transcript card** (labelled "Your words") — STT / typed source is a `TextField` so learners can correct recognition errors; edits write to `rawTranscript` (+ synced `sourceText`). When the native text differs from the last successful rewrite input (`isRawTranscriptDirty`), a **Re-translate** action appears on the card (`craftReTranslateButton`)
 - **Editable target text card** (labelled "In [target]…") — `TextEditingController` synced to `state.translatedText` only when the field is not focused, so user edits are preserved across regenerations; field is height-capped (`maxLines: 10`) to avoid layout overflow
-- **Options panel** — always-visible `StylePicker` + Azure Neural `VoicePicker` before Generate; style defaults to **Auto**; voice defaults via `defaultVoiceForLanguage` when unset
+- **Options panel** — always-visible `StylePicker` + Azure Neural `VoicePicker` before Generate; style starts from the remembered Express style (**Auto** on first run); voice from the remembered per-language pick, falling back via `defaultVoiceForLanguage` when unset
 - Re-translate / Regenerate keep the form visible with inline progress when a target already exists (full-screen "Crafting…" spinner only for the first rewrite)
 - Three action buttons:
   - **Regenerate** → `controller.regenerate()` — re-runs the LLM rewrite on the current native transcript with the current style (same path as Re-translate; no-op if below `craftMinTextLength`)
@@ -77,7 +92,7 @@ A new `TranslationStyle.auto` is the **default** for Express mode. Instead of a 
 - **Unsaved hint** — when `hasUnsavedPreview` is true, an inline callout (`craftAudioUnsavedHint`) reminds the learner that TTS bytes are in memory only until a save CTA runs
 - Two save CTAs (labels make persistence explicit):
   - **Save & practice** (`saveAndPractice`) — primary `EnjoyButton`; saves and navigates to the player route with the new media ID
-  - **Save & say another** (`saveAndCaptureNext`) — outlined secondary; saves to library, shows a snackbar confirmation ("Saved to library"), then resets to the capture stage while preserving session preferences (language pair, style, voice). This is the **rapid-capture loop** for building a personal library in quick succession.
+  - **Save & say another** (`saveAndCaptureNext`) — outlined secondary; saves to library, shows a snackbar confirmation ("Saved to library"), then resets to the capture stage while preserving the language pair, style, and voice (remembered across sessions — see [Remembered preferences](#remembered-preferences)). This is the **rapid-capture loop** for building a personal library in quick succession.
 - **Leave / mode-switch guard** — `CraftScreen` blocks system back and the mode segmented control while `hasUnsavedPreview` (or while capturing). Confirming discard (`confirmDiscardUnsavedCraftPreview`) drops the in-memory preview; cancel keeps the learner on the audio stage. Preview is never written to SQLite until `saveToLibrary` succeeds.
 
 ### Failure handling in Express stages
@@ -239,8 +254,8 @@ No `isWide` width calculations or ad-hoc max widths live in Craft widgets — al
 
 | Layer | Key files |
 |-------|----------|
-| **Domain** | `craft_mode.dart`, `craft_screen_mode.dart`, `craft_stage.dart`, `craft_transcriber.dart`, `craft_failure.dart`, `craft_request.dart`, `craft_job_state.dart`, `craft_job_status.dart`, `craft_translator.dart`, `craft_synthesizer.dart`, `azure_voice.dart`, `translation_style.dart`, `word_boundary_segmenter.dart`, `transcript_timestamp_estimator.dart`, `wav_duration.dart` |
-| **Application** | `craft_controller.dart`, `craft_history_provider.dart` |
+| **Domain** | `craft_mode.dart`, `craft_screen_mode.dart`, `craft_stage.dart`, `craft_transcriber.dart`, `craft_failure.dart`, `craft_request.dart`, `craft_job_state.dart`, `craft_job_status.dart`, `craft_preferences.dart`, `craft_translator.dart`, `craft_synthesizer.dart`, `azure_voice.dart`, `translation_style.dart`, `word_boundary_segmenter.dart`, `transcript_timestamp_estimator.dart`, `wav_duration.dart` |
+| **Application** | `craft_controller.dart`, `craft_preferences_provider.dart`, `craft_history_provider.dart` |
 | **Data** | `craft_translation_service_translator.dart`, `craft_tts_service_synthesizer.dart`, `craft_asr_service_transcriber.dart` |
 | **Presentation** | `craft_screen.dart`, `craft_history_screen.dart`, `express_flow.dart`, `capture_stage.dart`, `rewrite_stage.dart`, `audio_stage.dart`, `advanced_tools.dart`, `translate_tool.dart`, `synthesize_tool.dart`, `voice_picker.dart`, `style_picker.dart` |
 | **Integration** | `LibraryRepository.importCraftedFromText()`, `getCraftEditSource()`, `updateCraftedFromText()` (library data layer); `CraftEditSource` (library domain layer) |

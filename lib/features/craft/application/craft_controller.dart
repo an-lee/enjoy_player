@@ -6,6 +6,8 @@ import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:enjoy_player/core/application/app_language_catalog.dart';
+import 'package:enjoy_player/core/application/app_preferences_provider.dart';
 import 'package:enjoy_player/core/errors/app_failure.dart';
 import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/core/riverpod/async_value_x.dart';
@@ -18,6 +20,7 @@ import 'package:enjoy_player/features/craft/data/craft_asr_service_transcriber.d
 import 'package:enjoy_player/features/craft/data/craft_translation_service_translator.dart';
 import 'package:enjoy_player/features/craft/data/craft_tts_service_synthesizer.dart';
 import 'package:enjoy_player/features/craft/application/craft_library_repository_provider.dart';
+import 'package:enjoy_player/features/craft/application/craft_preferences_provider.dart';
 import 'package:enjoy_player/features/craft/application/craft_timeline_enricher.dart';
 import 'package:enjoy_player/features/craft/domain/azure_voice.dart';
 import 'package:enjoy_player/features/craft/domain/craft_failure.dart';
@@ -50,8 +53,55 @@ final craftTranscriberProvider = Provider<CraftTranscriber>((ref) {
 
 /// Two-tool Craft controller for the full-screen Craft route.
 class CraftController extends Notifier<CraftJobState> {
+  /// Set by every user-intent setter so a late preference hydration never
+  /// clobbers choices the user already made this session.
+  bool _prefsHydrationMutated = false;
+
   @override
-  CraftJobState build() => const CraftJobState();
+  CraftJobState build() {
+    _prefsHydrationMutated = false;
+    // Seed the language pair synchronously from the learner's profile
+    // settings so the Express idle screen never renders '—'. The router
+    // gates on prefs having data, so valueOrNull is resolved in practice;
+    // 'en' is the cold-start fallback.
+    final prefs = ref.read(appPreferencesCtrlProvider).valueOrNull;
+    final native = canonicalMediaLanguageTag(
+      prefs?.effectiveNativeLanguage ?? 'en',
+    );
+    final learn = canonicalMediaLanguageTag(
+      prefs?.effectiveLearningLanguage ?? 'en',
+    );
+    unawaited(Future<void>.microtask(_hydrateFromPreferences));
+    return const CraftJobState().copyWith(
+      sourceLanguage: native,
+      targetLanguage: learn,
+    );
+  }
+
+  /// Overlay persisted craft preferences (mode / per-mode style / prompt /
+  /// remembered voice). Skipped when the user already interacted (their
+  /// setters write through) or when an edit-from-history restore is in
+  /// flight ([loadForEdit] sets fields directly and must not be clobbered).
+  Future<void> _hydrateFromPreferences() async {
+    if (!ref.mounted) return;
+    final prefs = await ref.read(craftPreferencesCtrlProvider.notifier).load();
+    if (!ref.mounted) return;
+    if (_prefsHydrationMutated || state.editingMediaId != null) return;
+
+    final base = _baseLang(state.targetLanguage);
+    final remembered = prefs.voices[base];
+    final rememberedValid =
+        remembered != null &&
+        voicesForLanguage(base).any((v) => v.id == remembered);
+
+    state = state.copyWith(
+      screenMode: prefs.screenMode,
+      style: prefs.styleFor(prefs.screenMode),
+      customPrompt: prefs.customPrompt,
+      // null (invalid / absent) keeps the current voice in copyWith.
+      selectedVoice: rememberedValid ? remembered : null,
+    );
+  }
 
   // === Translate tool actions ===
 
@@ -60,10 +110,12 @@ class CraftController extends Notifier<CraftJobState> {
   }
 
   void setSourceLanguage(String? lang) {
+    _prefsHydrationMutated = true;
     state = state.copyWith(sourceLanguage: lang, clearFailure: true);
   }
 
   void setTargetLanguage(String lang) {
+    _prefsHydrationMutated = true;
     state = state.copyWith(
       targetLanguage: lang,
       selectedVoice: _voiceMatchingLanguage(lang, state.selectedVoice),
@@ -72,11 +124,21 @@ class CraftController extends Notifier<CraftJobState> {
   }
 
   void setStyle(TranslationStyle style) {
+    _prefsHydrationMutated = true;
     state = state.copyWith(style: style, clearFailure: true);
+    unawaited(
+      ref
+          .read(craftPreferencesCtrlProvider.notifier)
+          .setStyleFor(state.screenMode, style),
+    );
   }
 
   void setCustomPrompt(String? prompt) {
+    _prefsHydrationMutated = true;
     state = state.copyWith(customPrompt: prompt, clearFailure: true);
+    unawaited(
+      ref.read(craftPreferencesCtrlProvider.notifier).setCustomPrompt(prompt),
+    );
   }
 
   /// Inline edit of the translated result.
@@ -97,6 +159,7 @@ class CraftController extends Notifier<CraftJobState> {
   }
 
   void swapLanguages() {
+    _prefsHydrationMutated = true;
     final src = state.sourceLanguage;
     state = state.copyWith(
       sourceLanguage: state.targetLanguage,
@@ -165,6 +228,7 @@ class CraftController extends Notifier<CraftJobState> {
 
   void setSynthLanguage(String lang) {
     // Auto-pick default voice for the new language if current voice doesn't match.
+    _prefsHydrationMutated = true;
     state = state.copyWith(
       synthLanguage: lang,
       selectedVoice: _voiceMatchingLanguage(lang, state.selectedVoice),
@@ -173,8 +237,23 @@ class CraftController extends Notifier<CraftJobState> {
     );
   }
 
-  void setSelectedVoice(String? voice) {
-    state = state.copyWith(selectedVoice: voice, clearPreview: true);
+  /// Selects a voice, remembering it under [forLanguage]'s base code so the
+  /// pick survives sessions. Defaults to [CraftJobState.synthLanguage]; the
+  /// RewriteStage picker passes [CraftJobState.targetLanguage] explicitly
+  /// because synthLanguage may still be stale there.
+  void setSelectedVoice(String? voice, {String? forLanguage}) {
+    _prefsHydrationMutated = true;
+    final language = forLanguage ?? state.synthLanguage;
+    state = state.copyWith(
+      selectedVoice: voice,
+      clearSelectedVoice: voice == null,
+      clearPreview: true,
+    );
+    unawaited(
+      ref
+          .read(craftPreferencesCtrlProvider.notifier)
+          .setVoice(_baseLang(language), voice),
+    );
   }
 
   Future<void> synthesize() async {
@@ -406,16 +485,19 @@ class CraftController extends Notifier<CraftJobState> {
   // === Express mode actions ===
 
   /// Switch between Express and Advanced screen layouts.
-  /// Resets all working state so each mode starts fresh, and sets the
-  /// default translation style for the target mode.
+  /// Resets all working state so each mode starts fresh, restores the
+  /// remembered translation style for the target mode, and persists the
+  /// choice for the next session.
   void setScreenMode(CraftScreenMode mode) {
     if (mode == state.screenMode) return;
+    _prefsHydrationMutated = true;
+    final rememberedStyle = ref
+        .read(craftPreferencesCtrlProvider)
+        .styleFor(mode);
     state = state.copyWith(
       screenMode: mode,
       stage: CraftStage.capture,
-      style: mode == CraftScreenMode.express
-          ? TranslationStyle.auto
-          : TranslationStyle.natural,
+      style: rememberedStyle,
       isCapturing: false,
       isTranscribing: false,
       clearCapturedAudio: true,
@@ -430,15 +512,16 @@ class CraftController extends Notifier<CraftJobState> {
       sourceText: '',
       synthText: '',
     );
+    unawaited(
+      ref.read(craftPreferencesCtrlProvider.notifier).setScreenMode(mode),
+    );
   }
 
-  /// Begin voice capture — sets [isCapturing] flag and defaults the style
-  /// to [TranslationStyle.auto] for the Express flow.
+  /// Begin voice capture — sets [isCapturing] flag.
   /// The [CaptureStage] widget owns the actual AudioRecorder.
   void startCapture() {
     state = state.copyWith(
       isCapturing: true,
-      style: TranslationStyle.auto,
       clearFailure: true,
       clearCapturedAudio: true,
       clearRawTranscript: true,
@@ -468,13 +551,11 @@ class CraftController extends Notifier<CraftJobState> {
   }
 
   /// Text fallback: skip ASR, advance directly to rewrite.
-  /// Uses [TranslationStyle.auto] as the Express default.
   Future<void> useTextInput(String text) async {
     final normalized = normalizeCraftText(text);
     state = state.copyWith(
       rawTranscript: normalized.isEmpty ? null : normalized,
       sourceText: text,
-      style: TranslationStyle.auto,
       isTranscribing: false,
       clearFailure: true,
     );
@@ -643,15 +724,22 @@ class CraftController extends Notifier<CraftJobState> {
 
   // === Helpers ===
 
-  /// Keep [current] when it belongs to [language]; otherwise pick the default.
+  /// Keep [current] when it belongs to [language]; otherwise fall back to
+  /// the remembered voice for that language, then the catalog default.
   String? _voiceMatchingLanguage(String language, String? current) {
-    final base = language.split('-').first.toLowerCase();
+    final base = _baseLang(language);
     final voices = voicesForLanguage(base);
     if (current != null && voices.any((v) => v.id == current)) {
       return current;
     }
+    final remembered = ref.read(craftPreferencesCtrlProvider).voices[base];
+    if (remembered != null && voices.any((v) => v.id == remembered)) {
+      return remembered;
+    }
     return defaultVoiceForLanguage(base)?.id;
   }
+
+  String _baseLang(String tag) => tag.split('-').first.toLowerCase();
 
   bool _sameBaseLanguage(String a, String b) {
     final aBase = a.split('-').first.toLowerCase();

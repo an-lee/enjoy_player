@@ -5,9 +5,12 @@ import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:enjoy_player/core/application/app_preferences_provider.dart';
 import 'package:enjoy_player/core/errors/app_failure.dart';
 import 'package:enjoy_player/data/api/api_exception.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
+import 'package:enjoy_player/data/db/app_database_provider.dart';
+import 'package:enjoy_player/data/db/settings_keys.dart';
 import 'package:enjoy_player/data/files/file_storage.dart';
 import 'package:enjoy_player/features/ai/domain/byok_not_configured_failure.dart';
 import 'package:enjoy_player/features/ai/domain/modality_kind.dart';
@@ -15,9 +18,11 @@ import 'package:enjoy_player/features/auth/application/auth_controller.dart';
 import 'package:enjoy_player/features/auth/domain/auth_state.dart';
 import 'package:enjoy_player/features/auth/domain/user_profile.dart';
 import 'package:enjoy_player/features/craft/application/craft_controller.dart';
+import 'package:enjoy_player/features/craft/application/craft_preferences_provider.dart';
 import 'package:enjoy_player/features/craft/application/craft_timeline_enricher.dart';
 import 'package:enjoy_player/features/craft/domain/craft_failure.dart';
 import 'package:enjoy_player/features/craft/domain/craft_job_state.dart';
+import 'package:enjoy_player/features/craft/domain/craft_preferences.dart';
 import 'package:enjoy_player/features/craft/domain/craft_synthesizer.dart';
 import 'package:enjoy_player/features/craft/domain/craft_transcriber.dart';
 import 'package:enjoy_player/features/craft/domain/craft_translator.dart';
@@ -41,6 +46,16 @@ class _SignedInAuthCtrl extends AuthCtrl {
 class _SignedOutAuthCtrl extends AuthCtrl {
   @override
   Future<AuthState> build() async => const AuthSignedOut();
+}
+
+/// Resolved app prefs without the real controller's server-sync pipeline.
+class _FixedPrefsCtrl extends AppPreferencesCtrl {
+  @override
+  Future<AppPreferencesState> build() async => const AppPreferencesState(
+    locale: kAppDefaultDisplayLocale,
+    learningLanguage: 'en-US',
+    nativeLanguage: 'zh-CN',
+  );
 }
 
 class _TogglableAuthCtrl extends AuthCtrl {
@@ -295,6 +310,8 @@ void main() {
         craftTimelineEnricherProvider.overrideWithValue(
           CraftTimelineEnricher(enabled: false),
         ),
+        appDatabaseProvider.overrideWithValue(db),
+        appPreferencesCtrlProvider.overrideWith(_FixedPrefsCtrl.new),
         if (profile == null)
           authCtrlProvider.overrideWith(_SignedOutAuthCtrl.new)
         else
@@ -303,8 +320,13 @@ void main() {
     );
   }
 
-  CraftController notifierOf(ProviderContainer c) =>
-      c.read(craftControllerProvider.notifier);
+  /// Mirrors the CraftScreen subscriber: keeps the autoDispose controller
+  /// alive across awaits so preference hydration applies as in production.
+  /// Call after auth has resolved — Craft is only reachable when signed in.
+  CraftController notifierOf(ProviderContainer c) {
+    c.listen(craftControllerProvider, (_, _) {});
+    return c.read(craftControllerProvider.notifier);
+  }
 
   CraftJobState stateOf(ProviderContainer c) => c.read(craftControllerProvider);
 
@@ -314,8 +336,10 @@ void main() {
       addTearDown(c.dispose);
       final s = stateOf(c);
       expect(s.sourceText, '');
-      expect(s.sourceLanguage, isNull);
-      expect(s.targetLanguage, 'en');
+      // Languages are seeded synchronously from app prefs. Prefs are still
+      // resolving at this instant in tests → the 'en-US' cold-start fallback.
+      expect(s.sourceLanguage, 'en-US');
+      expect(s.targetLanguage, 'en-US');
       expect(s.style, TranslationStyle.natural);
       expect(s.customPrompt, isNull);
       expect(s.translatedText, isNull);
@@ -447,14 +471,15 @@ void main() {
       expect(stateOf(c).targetLanguage, 'zh');
     });
 
-    test('keeps target when source is null', () {
+    test('swaps the seeded pair when only target was changed', () {
       final c = container();
       addTearDown(c.dispose);
       final n = notifierOf(c);
+      // Build seeds sourceLanguage, so swapping exchanges both sides.
       n.setTargetLanguage('fr');
       n.swapLanguages();
       expect(stateOf(c).sourceLanguage, 'fr');
-      expect(stateOf(c).targetLanguage, 'fr');
+      expect(stateOf(c).targetLanguage, 'en-US');
     });
   });
 
@@ -504,14 +529,15 @@ void main() {
       expect(stateOf(c).translatedText, isNull);
     });
 
-    test('returns early when source language is null', () async {
+    test('build-seeded languages make a bare translate hit the same-language '
+        'guard instead of calling the translator', () async {
       final c = container();
       addTearDown(c.dispose);
       final n = notifierOf(c);
-      n.setTargetLanguage('en');
       n.setSourceText('long enough text');
       await n.translate();
       expect(translator.callCount, 0);
+      expect(stateOf(c).failure, isA<CraftSameLanguageFailure>());
       expect(stateOf(c).translatedText, isNull);
     });
 
@@ -812,6 +838,7 @@ void main() {
           craftTimelineEnricherProvider.overrideWithValue(
             CraftTimelineEnricher(enabled: false),
           ),
+          appDatabaseProvider.overrideWithValue(db),
           authCtrlProvider.overrideWith(() => auth),
         ],
       );
@@ -976,6 +1003,7 @@ void main() {
             craftTranscriberProvider.overrideWithValue(transcriber),
             craftLibraryRepositoryProvider.overrideWithValue(repo),
             craftTimelineEnricherProvider.overrideWithValue(enricher),
+            appDatabaseProvider.overrideWithValue(db),
             authCtrlProvider.overrideWith(() => _SignedInAuthCtrl(_profile)),
           ],
         );
@@ -1025,6 +1053,7 @@ void main() {
             craftTranscriberProvider.overrideWithValue(transcriber),
             craftLibraryRepositoryProvider.overrideWithValue(repo),
             craftTimelineEnricherProvider.overrideWithValue(enricher),
+            appDatabaseProvider.overrideWithValue(db),
             authCtrlProvider.overrideWith(() => _SignedInAuthCtrl(_profile)),
           ],
         );
@@ -1685,6 +1714,274 @@ void main() {
       expect(result, isNull);
       expect(stateOf(c).failure, isA<CraftSaveFailure>());
       expect(repo.importCalls, 0);
+    });
+  });
+
+  // === Remembered preferences ===
+
+  Future<String?> storedRaw() =>
+      db.settingsDao.getValue(SettingsKeys.craftPreferencesV1);
+
+  group('preference hydration', () {
+    test(
+      'seeds languages from app prefs when they are already resolved',
+      () async {
+        final c = container();
+        addTearDown(c.dispose);
+        // Resolve prefs before the first read so build() sees real values.
+        await c.read(appPreferencesCtrlProvider.future);
+        c.invalidate(craftControllerProvider);
+
+        final s = stateOf(c);
+        expect(s.targetLanguage, 'en-US');
+        expect(s.sourceLanguage, 'zh-CN');
+      },
+    );
+
+    test(
+      'applies persisted mode, style, prompt, and voice after settle',
+      () async {
+        const persisted = CraftPreferences(
+          screenMode: CraftScreenMode.advanced,
+          advancedStyle: TranslationStyle.formal,
+          customPrompt: 'keep it short',
+          voices: {'en': 'en-US-GuyNeural'},
+        );
+        await db.settingsDao.setValue(
+          SettingsKeys.craftPreferencesV1,
+          jsonEncode(persisted.toJson()),
+        );
+
+        final c = container();
+        addTearDown(c.dispose);
+        await c.read(authCtrlProvider.future);
+        notifierOf(c); // attach + build, mirroring entry to the Craft screen
+        await pumpEventQueue(); // hydration lands
+
+        final s = stateOf(c);
+        expect(s.screenMode, CraftScreenMode.advanced);
+        expect(s.style, TranslationStyle.formal);
+        expect(s.customPrompt, 'keep it short');
+        expect(s.selectedVoice, 'en-US-GuyNeural');
+      },
+    );
+
+    test('signed-out build does not touch the DB and uses fallbacks', () async {
+      final c = container(profile: null);
+      addTearDown(c.dispose);
+      await c.read(authCtrlProvider.future);
+      notifierOf(c);
+      await pumpEventQueue();
+
+      final s = stateOf(c);
+      expect(s.sourceLanguage, 'en-US');
+      expect(s.targetLanguage, 'en-US');
+      expect(s.style, TranslationStyle.auto); // express default after hydrate
+      expect(s.screenMode, CraftScreenMode.express);
+      expect(await storedRaw(), isNull);
+    });
+
+    test('rebuild re-applies hydration', () async {
+      const persisted = CraftPreferences(
+        screenMode: CraftScreenMode.advanced,
+        advancedStyle: TranslationStyle.formal,
+      );
+      await db.settingsDao.setValue(
+        SettingsKeys.craftPreferencesV1,
+        jsonEncode(persisted.toJson()),
+      );
+
+      final c = container();
+      addTearDown(c.dispose);
+      await c.read(authCtrlProvider.future);
+      notifierOf(c);
+      await pumpEventQueue();
+      expect(stateOf(c).screenMode, CraftScreenMode.advanced);
+
+      c.invalidate(craftControllerProvider);
+      await pumpEventQueue();
+      expect(stateOf(c).screenMode, CraftScreenMode.advanced);
+      expect(stateOf(c).style, TranslationStyle.formal);
+    });
+
+    test('user input before hydration wins', () async {
+      const persisted = CraftPreferences(expressStyle: TranslationStyle.formal);
+      await db.settingsDao.setValue(
+        SettingsKeys.craftPreferencesV1,
+        jsonEncode(persisted.toJson()),
+      );
+
+      final c = container();
+      addTearDown(c.dispose);
+      await c.read(authCtrlProvider.future);
+      final n = notifierOf(c); // build() scheduled the hydration microtask
+      n.setStyle(TranslationStyle.casual); // synchronous, before H1 can run
+      await pumpEventQueue();
+
+      expect(stateOf(c).style, TranslationStyle.casual);
+      // The user's choice is what got persisted.
+      expect(
+        CraftPreferences.fromJson(
+          jsonDecode((await storedRaw())!) as Map<String, dynamic>,
+        ).expressStyle,
+        TranslationStyle.casual,
+      );
+    });
+
+    test(
+      'loadForEdit after hydration replaces prefs and persists nothing',
+      () async {
+        const persisted = CraftPreferences(
+          advancedStyle: TranslationStyle.formal,
+          voices: {'en': 'en-US-GuyNeural'},
+        );
+        final seededJson = jsonEncode(persisted.toJson());
+        await db.settingsDao.setValue(
+          SettingsKeys.craftPreferencesV1,
+          seededJson,
+        );
+        repo.editSource = const CraftEditSource(
+          mediaId: 'media-direct',
+          practiceText: 'Speak this text directly.',
+          language: 'en-US',
+          voice: 'en-US-JennyNeural',
+          sourceFlag: 'craft-direct',
+        );
+
+        final c = container();
+        addTearDown(c.dispose);
+        await c.read(authCtrlProvider.future);
+        await pumpEventQueue(); // hydration lands first
+
+        final ok = await notifierOf(c).loadForEdit('media-direct');
+        await pumpEventQueue();
+
+        expect(ok, isTrue);
+        final s = stateOf(c);
+        expect(s.editingMediaId, 'media-direct');
+        expect(s.selectedVoice, 'en-US-JennyNeural'); // the item's own voice
+        expect(await storedRaw(), seededJson); // no write happened
+      },
+    );
+  });
+
+  group('preference persistence', () {
+    test('setStyle persists under the current screen mode', () async {
+      final c = container();
+      addTearDown(c.dispose);
+      await c.read(authCtrlProvider.future);
+      await pumpEventQueue();
+      final n = notifierOf(c);
+      CraftPreferences prefsOf() => c.read(craftPreferencesCtrlProvider);
+
+      n.setScreenMode(CraftScreenMode.advanced);
+      n.setStyle(TranslationStyle.formal);
+      await pumpEventQueue();
+      expect(prefsOf().advancedStyle, TranslationStyle.formal);
+
+      n.setScreenMode(CraftScreenMode.express);
+      n.setStyle(TranslationStyle.casual);
+      await pumpEventQueue();
+      expect(prefsOf().expressStyle, TranslationStyle.casual);
+      expect(prefsOf().advancedStyle, TranslationStyle.formal);
+    });
+
+    test('setScreenMode restores the remembered per-mode style', () async {
+      const persisted = CraftPreferences(
+        expressStyle: TranslationStyle.casual,
+        advancedStyle: TranslationStyle.formal,
+      );
+      await db.settingsDao.setValue(
+        SettingsKeys.craftPreferencesV1,
+        jsonEncode(persisted.toJson()),
+      );
+      final c = container();
+      addTearDown(c.dispose);
+      await c.read(authCtrlProvider.future);
+      final n = notifierOf(c);
+      await pumpEventQueue(); // hydration lands before the user acts
+
+      n.setScreenMode(CraftScreenMode.advanced);
+      expect(stateOf(c).style, TranslationStyle.formal);
+      n.setScreenMode(CraftScreenMode.express);
+      expect(stateOf(c).style, TranslationStyle.casual);
+    });
+
+    test('startCapture and useTextInput keep the chosen style', () async {
+      final c = container();
+      addTearDown(c.dispose);
+      await c.read(authCtrlProvider.future);
+      final n = notifierOf(c);
+
+      n.setStyle(TranslationStyle.casual);
+      n.startCapture();
+      expect(stateOf(c).style, TranslationStyle.casual);
+
+      await n.useTextInput('This is a test of text input mode.');
+      expect(stateOf(c).style, TranslationStyle.casual);
+    });
+
+    test(
+      'voice is filed under the picked language, not a stale synthLanguage',
+      () async {
+        final c = container();
+        addTearDown(c.dispose);
+        await c.read(authCtrlProvider.future);
+        await pumpEventQueue();
+        final n = notifierOf(c);
+
+        n.setSynthLanguage('zh-CN'); // makes synthLanguage the wrong key
+        n.setSelectedVoice('en-US-GuyNeural', forLanguage: 'en-US');
+        await pumpEventQueue();
+
+        final voices = c.read(craftPreferencesCtrlProvider).voices;
+        expect(voices['en'], 'en-US-GuyNeural');
+        expect(voices.containsKey('zh'), isFalse);
+      },
+    );
+
+    test('remembered voice survives a target-language round trip', () async {
+      const persisted = CraftPreferences(voices: {'en': 'en-US-GuyNeural'});
+      await db.settingsDao.setValue(
+        SettingsKeys.craftPreferencesV1,
+        jsonEncode(persisted.toJson()),
+      );
+      final c = container();
+      addTearDown(c.dispose);
+      await c.read(authCtrlProvider.future);
+      await pumpEventQueue();
+      final n = notifierOf(c);
+
+      n.setTargetLanguage('ja-JP');
+      expect(stateOf(c).selectedVoice, 'ja-JP-NanamiNeural');
+      // Let the first prefs load land so the remembered tier can consult it.
+      await pumpEventQueue();
+      n.setTargetLanguage('en-US');
+      expect(stateOf(c).selectedVoice, 'en-US-GuyNeural');
+    });
+
+    test('resetForNextCapture keeps hydrated preferences', () async {
+      const persisted = CraftPreferences(
+        expressStyle: TranslationStyle.casual,
+        voices: {'en': 'en-US-GuyNeural'},
+      );
+      await db.settingsDao.setValue(
+        SettingsKeys.craftPreferencesV1,
+        jsonEncode(persisted.toJson()),
+      );
+      final c = container();
+      addTearDown(c.dispose);
+      await c.read(authCtrlProvider.future);
+      final n = notifierOf(c);
+      await pumpEventQueue(); // hydration lands before the user acts
+
+      await n.useTextInput('This is a test of text input mode.');
+      n.resetForNextCapture();
+
+      final s = stateOf(c);
+      expect(s.style, TranslationStyle.casual);
+      expect(s.selectedVoice, 'en-US-GuyNeural');
+      expect(s.screenMode, CraftScreenMode.express);
     });
   });
 }

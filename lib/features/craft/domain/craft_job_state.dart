@@ -155,6 +155,7 @@ class CraftJobState {
     int? generation,
     String? editingMediaId,
     bool clearPreview = false,
+    bool clearSelectedVoice = false,
     bool clearFailure = false,
     bool clearCapturedAudio = false,
     bool clearRawTranscript = false,
@@ -190,7 +191,9 @@ class CraftJobState {
       captureCancelTick: captureCancelTick ?? this.captureCancelTick,
       synthText: synthText ?? this.synthText,
       synthLanguage: synthLanguage ?? this.synthLanguage,
-      selectedVoice: selectedVoice ?? this.selectedVoice,
+      selectedVoice: clearSelectedVoice
+          ? null
+          : (selectedVoice ?? this.selectedVoice),
       previewAudioBytes: clearPreview
           ? null
           : (previewAudioBytes ?? this.previewAudioBytes),

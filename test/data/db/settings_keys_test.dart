@@ -68,6 +68,10 @@ void main() {
     test('player preferences v1', () {
       expect(SettingsKeys.playerPreferencesV1, 'player_preferences_v1');
     });
+
+    test('craft preferences v1', () {
+      expect(SettingsKeys.craftPreferencesV1, 'craft.preferences_v1');
+    });
   });
 
   group('SettingsKeys dynamic helpers', () {
@@ -119,6 +123,7 @@ void main() {
         SettingsKeys.transcriptKaraokeHighlight,
         SettingsKeys.transcriptIpaOverlay,
         SettingsKeys.playerPreferencesV1,
+        SettingsKeys.craftPreferencesV1,
         SettingsKeys.hotkeysCustomBindings,
         SettingsKeys.aiModalityConfigsV1,
         SettingsKeys.youtubeClientProfilesV1,

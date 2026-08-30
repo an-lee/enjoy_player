@@ -72,7 +72,10 @@ class _RewriteStageState extends ConsumerState<RewriteStage> {
       if (current.selectedVoice == null) {
         ref
             .read(craftControllerProvider.notifier)
-            .setSelectedVoice(defaultVoice.id);
+            .setSelectedVoice(
+              defaultVoice.id,
+              forLanguage: current.targetLanguage,
+            );
       }
     });
   }
@@ -203,7 +206,10 @@ class _RewriteStageState extends ConsumerState<RewriteStage> {
                     if (state.isBusy) return;
                     ref
                         .read(craftControllerProvider.notifier)
-                        .setSelectedVoice(voice);
+                        .setSelectedVoice(
+                          voice,
+                          forLanguage: state.targetLanguage,
+                        );
                   },
                 ),
               ],

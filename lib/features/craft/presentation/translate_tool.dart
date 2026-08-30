@@ -8,8 +8,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:enjoy_player/core/application/app_language_catalog.dart';
-import 'package:enjoy_player/core/application/app_preferences_provider.dart';
 import 'package:enjoy_player/core/notices/app_notice.dart';
 import 'package:enjoy_player/core/presentation/loading_icon.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
@@ -40,20 +38,6 @@ class _TranslateToolState extends ConsumerState<TranslateTool> {
     super.initState();
     _sourceCtrl = TextEditingController();
     _resultCtrl = TextEditingController();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final prefs = ref.read(appPreferencesCtrlProvider);
-      final prefsState = prefs.whenOrNull(data: (s) => s);
-      final nativeLang = canonicalMediaLanguageTag(
-        prefsState?.effectiveNativeLanguage ?? 'en',
-      );
-      final learnLang = canonicalMediaLanguageTag(
-        prefsState?.effectiveLearningLanguage ?? 'en',
-      );
-      ref.read(craftControllerProvider.notifier)
-        ..setSourceLanguage(nativeLang)
-        ..setTargetLanguage(learnLang);
-    });
   }
 
   @override
