@@ -51,6 +51,16 @@ abstract class PlayerEngine {
   /// Native engines are ready immediately; the WebView engine awaits mount.
   Future<void> awaitSurfaceReady();
 
+  /// Completes when this engine's platform view has been dropped (or was
+  /// never mounted). Used by the YouTube → MediaKit swap so mpv is not
+  /// allocated while InAppWebView is still tearing down.
+  Future<void> awaitSurfaceDetached();
+
+  /// Allows native backend allocation (MediaKit `[Player]`). YouTube is a
+  /// no-op. Must run *after* the previous engine's surface has detached so
+  /// the first mpv construct cannot race WebView destroy.
+  void prepareNativeBackend();
+
   /// Poster shown while the surface is loading/buffering; `null` for engines
   /// that render decoded frames directly.
   String? get posterUrl;
@@ -141,7 +151,18 @@ class MediaKitPlayerEngine implements PlayerEngine {
 
   mk.Player? __player;
 
-  mk.Player get _player => __player ??= mk.Player();
+  /// Set by [prepareNativeBackend] after the previous platform view has
+  /// detached. Stream / snapshot getters must not construct [mk.Player]
+  /// before this — a YouTube → local open otherwise allocates mpv in the
+  /// same frame the WebView starts destroying (2026-08-30 field report).
+  var _nativeBackendAllowed = false;
+
+  mk.Player get _player {
+    if (!_nativeBackendAllowed) {
+      _nativeBackendAllowed = true;
+    }
+    return __player ??= mk.Player();
+  }
 
   mk.Player get player => _player;
 
@@ -174,19 +195,22 @@ class MediaKitPlayerEngine implements PlayerEngine {
   }
 
   @override
-  Stream<Duration> get position => _player.stream.position;
+  Stream<Duration> get position =>
+      __player?.stream.position ?? const Stream<Duration>.empty();
 
   /// [_player.stream.duration] is a broadcast stream that does not replay.
   /// [PlayerController] subscribes after `open` + other awaits, so the first
   /// duration event can be missed on Android. Seed from [_player.state.duration].
   @override
   Stream<Duration> get duration {
+    final player = __player;
+    if (player == null) return const Stream<Duration>.empty();
     return Stream.multi((controller) {
-      final current = _player.state.duration;
+      final current = player.state.duration;
       if (current > Duration.zero) {
         controller.add(current);
       }
-      final sub = _player.stream.duration.listen(
+      final sub = player.stream.duration.listen(
         controller.add,
         onError: controller.addError,
         onDone: controller.close,
@@ -196,16 +220,19 @@ class MediaKitPlayerEngine implements PlayerEngine {
   }
 
   @override
-  Stream<bool> get playing => _player.stream.playing;
+  Stream<bool> get playing =>
+      __player?.stream.playing ?? const Stream<bool>.empty();
 
   @override
-  Stream<bool> get buffering => _player.stream.buffering;
+  Stream<bool> get buffering =>
+      __player?.stream.buffering ?? const Stream<bool>.empty();
 
   @override
-  Stream<void> get completed => _player.stream.completed;
+  Stream<void> get completed =>
+      __player?.stream.completed ?? const Stream<void>.empty();
 
   @override
-  Stream<mk.Tracks>? get mkTracksStream => _player.stream.tracks;
+  Stream<mk.Tracks>? get mkTracksStream => __player?.stream.tracks;
 
   @override
   bool get supportsVideoPosterCapture => true;
@@ -218,6 +245,14 @@ class MediaKitPlayerEngine implements PlayerEngine {
 
   @override
   Future<void> awaitSurfaceReady() async {}
+
+  @override
+  Future<void> awaitSurfaceDetached() async {}
+
+  @override
+  void prepareNativeBackend() {
+    _nativeBackendAllowed = true;
+  }
 
   @override
   String? get posterUrl => null;
@@ -238,16 +273,25 @@ class MediaKitPlayerEngine implements PlayerEngine {
   Future<void> teardownAfterClear({required bool keepSurfaceMounted}) => stop();
 
   @override
-  ({bool playing, bool buffering}) get transportSnapshot =>
-      (playing: _player.state.playing, buffering: _player.state.buffering);
+  ({bool playing, bool buffering}) get transportSnapshot {
+    final player = __player;
+    if (player == null) {
+      return (playing: false, buffering: false);
+    }
+    return (playing: player.state.playing, buffering: player.state.buffering);
+  }
 
   @override
   bool get keepSurfaceWhenParked => false;
 
   @override
-  Stream<double> get videoAspectRatioStream => _player.stream.videoParams
-      .map((vp) => aspectRatioFromVideoParams(vp, _player.state))
-      .distinct((a, b) => (a - b).abs() < kAspectRatioEpsilon);
+  Stream<double> get videoAspectRatioStream {
+    final player = __player;
+    if (player == null) return const Stream<double>.empty();
+    return player.stream.videoParams
+        .map((vp) => aspectRatioFromVideoParams(vp, player.state))
+        .distinct((a, b) => (a - b).abs() < kAspectRatioEpsilon);
+  }
 
   @override
   Widget buildVideoStage({
@@ -257,6 +301,11 @@ class MediaKitPlayerEngine implements PlayerEngine {
   }) {
     if (maxWidth <= 0 || maxHeight <= 0) {
       return const SizedBox.shrink();
+    }
+    if (!_nativeBackendAllowed) {
+      // Host has already keyed to this engine (YouTube stage dropped) but
+      // mpv must not be allocated until the WebView has detached.
+      return const ColoredBox(color: Colors.black);
     }
 
     // Fill the host slot and let [Video] letterbox. An outer [ClipRect] plus a

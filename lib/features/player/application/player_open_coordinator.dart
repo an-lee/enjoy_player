@@ -29,6 +29,26 @@ import 'package:enjoy_player/features/transcript/application/transcript_blur_mod
 
 final _openLog = logNamed('PlayerOpenCoordinator');
 
+/// Runs [step] bounded by [limit]; a timeout is logged and swallowed so a
+/// wedged engine command cannot hold the open (and the loading screen)
+/// hostage.
+Future<void> runBoundedEngineStep(
+  String what,
+  Future<void> Function() step, {
+  Duration limit = kEngineCommandTimeout,
+  void Function(String message)? logWarning,
+}) async {
+  final warn = logWarning ?? _openLog.warning;
+  try {
+    await step().timeout(limit);
+  } on TimeoutException {
+    warn(
+      '$what timed out after $limit (engine event pump wedged?); '
+      'continuing without it',
+    );
+  }
+}
+
 /// Host surface [runPlayerOpen] needs from [PlayerController].
 abstract interface class PlayerOpenHost {
   int get openGeneration;
@@ -47,6 +67,7 @@ Future<void> runPlayerOpen(
   String mediaId, {
   OpenMediaOptions options = OpenMediaOptions.defaults,
   Duration openTimeout = kEngineOpenTimeout,
+  Duration engineCommandTimeout = kEngineCommandTimeout,
 }) async {
   final gen = host.openGeneration;
 
@@ -85,7 +106,15 @@ Future<void> runPlayerOpen(
     dexieTargetType: dexie,
   );
 
-  await ensureEngineForPlayableSource(
+  // Drop position listeners before the swap so YouTube closeStreams is
+  // not blocked by the tracker still subscribed to the old engine.
+  await host.positionTracker.cancel();
+
+  // The swap waits for surface detach, then fire-and-forgets old dispose.
+  // Do not wrap it in [engineCommandTimeout] — that would cut off
+  // [prepareNativeBackend] and leave MediaKit allocating mpv while the
+  // YouTube WebView is still destroying.
+  final swapped = await ensureEngineForPlayableSource(
     ref,
     playable: playable,
     openGeneration: gen,
@@ -113,22 +142,36 @@ Future<void> runPlayerOpen(
   engine.setPosterUrl(openPosterUrl);
   engine.warmVideoSurface();
 
-  await host.positionTracker.cancel();
-
+  // After a YouTube → MediaKit swap the first `open` races WebView
+  // teardown and can hang (2026-08-30: skeleton until back + reopen).
+  // Use the short command ceiling for that first attempt, then retry
+  // once — reopen works because the native side has settled / a fresh
+  // player is installed. A timeout must not fail the open on try 1.
+  final firstTimeout = swapped ? engineCommandTimeout : openTimeout;
   try {
-    await engine.open(playable).timeout(openTimeout);
+    await engine.open(playable).timeout(firstTimeout);
   } on TimeoutException {
-    // The native event pump can stop delivering events (wedged mpv). Without
-    // this bound the await — and therefore openMedia and the loading screen —
-    // hangs forever. Bump the generation so everything still in flight for
-    // this open (side effects, tracker) observes a stale generation, and the
-    // engine left half-open cannot leak state into the next open's checks.
-    _openLog.severe(
-      'engine.open timed out after $openTimeout for media $mediaId '
-      '(${engine.runtimeType}); invalidating open generation',
+    _openLog.warning(
+      'engine.open timed out after $firstTimeout for media $mediaId '
+      '(${engine.runtimeType}); retrying once',
     );
-    ref.read(playerControllerProvider.notifier).abandonPendingOpen();
-    rethrow;
+    await replaceWedgedLocalEngine(
+      ref,
+      getOwnedEngine: () => host.ownedEngine,
+      setOwnedEngine: (e) => host.ownedEngine = e,
+    );
+    if (host.isOpenStale(gen)) return;
+    final retryEngine = host.activeEngine;
+    try {
+      await retryEngine.open(playable).timeout(openTimeout);
+    } on TimeoutException {
+      _openLog.severe(
+        'engine.open retry timed out after $openTimeout for media $mediaId '
+        '(${retryEngine.runtimeType}); invalidating open generation',
+      );
+      ref.read(playerControllerProvider.notifier).abandonPendingOpen();
+      rethrow;
+    }
   }
   if (host.isOpenStale(gen)) {
     try {
@@ -140,11 +183,20 @@ Future<void> runPlayerOpen(
   }
 
   if (engine.supportsSubtitleDisabling) {
-    await engine.disableRenderedSubtitles();
+    await runBoundedEngineStep(
+      'disableRenderedSubtitles',
+      engine.disableRenderedSubtitles,
+      limit: engineCommandTimeout,
+    );
     if (host.isOpenStale(gen)) return;
   }
 
-  await ref.read(playerPreferencesCtrlProvider.notifier).applyCurrentToEngine();
+  await runBoundedEngineStep(
+    'applyCurrentToEngine',
+    () =>
+        ref.read(playerPreferencesCtrlProvider.notifier).applyCurrentToEngine(),
+    limit: engineCommandTimeout,
+  );
   if (host.isOpenStale(gen)) return;
 
   final persisted = await db.echoSessionDao.getLatestForTarget(dexie, mediaId);
@@ -152,7 +204,11 @@ Future<void> runPlayerOpen(
 
   final posMs = options.restorePosition ? (persisted?.currentTimeMs ?? 0) : 0;
   if (posMs > 0) {
-    await engine.seek(Duration(milliseconds: posMs));
+    await runBoundedEngineStep(
+      'position restore seek',
+      () => engine.seek(Duration(milliseconds: posMs)),
+      limit: engineCommandTimeout,
+    );
   }
   if (host.isOpenStale(gen)) return;
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_player_engine.dart';
 import 'package:enjoy_player/features/player/application/player_engine.dart';
 import 'package:enjoy_player/features/player/application/player_engine_binding.dart';
@@ -7,6 +9,8 @@ import 'package:flutter/foundation.dart'
     show debugDefaultTargetPlatformOverride, TargetPlatform;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../../support/fake_player_engine.dart';
 
 Ref _refOf(ProviderContainer container) {
   late Ref captured;
@@ -40,7 +44,8 @@ void main() {
 
     expect(owned, isA<MediaKitPlayerEngine>());
     expect(owned!.keepSurfaceWhenParked, isFalse);
-    expect(container.read(playerEngineRevProvider), revBefore + 1);
+    // Install bump + prepareNativeBackend bump (Video may mount after).
+    expect(container.read(playerEngineRevProvider), revBefore + 2);
 
     await owned!.dispose();
   });
@@ -95,8 +100,83 @@ void main() {
 
       expect(owned, isA<MediaKitPlayerEngine>());
       expect(owned, isNot(same(youtube)));
-      expect(container.read(playerEngineRevProvider), revBefore + 1);
+      // Drop-YouTube bump + prepareNativeBackend bump.
+      expect(container.read(playerEngineRevProvider), revBefore + 2);
 
+      await owned?.dispose();
+    },
+  );
+
+  test(
+    'YouTube to MediaKit swap does not finish until the prior surface detaches',
+    () async {
+      // 2026-08-30: allocating mk.Player while InAppWebView is still
+      // destroying wedges the first local open. The swap must wait.
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final ref = _refOf(container);
+
+      final gate = Completer<void>();
+      final prior = FakePlayerEngine()..supportsYouTubePlaybackValue = true;
+      prior.surfaceDetachGate = gate;
+      addTearDown(() async {
+        if (!gate.isCompleted) gate.complete();
+        await prior.dispose();
+      });
+      PlayerEngine? owned = prior;
+      var gen = 1;
+
+      final done = Completer<void>();
+      unawaited(
+        ensureEngineForPlayableSource(
+          ref,
+          playable: const LocalFilePlayableSource('file:///tmp/a.mp4'),
+          openGeneration: gen,
+          currentOpenGeneration: () => gen,
+          getOwnedEngine: () => owned,
+          setOwnedEngine: (next) => owned = next,
+        ).then((_) => done.complete()),
+      );
+
+      await pumpEventQueue();
+      expect(owned, isA<MediaKitPlayerEngine>());
+      expect(done.isCompleted, isFalse, reason: 'must wait for WebView detach');
+
+      gate.complete();
+      await done.future;
+      expect(owned, isA<MediaKitPlayerEngine>());
+      await owned?.dispose();
+    },
+  );
+
+  test(
+    'YouTube to MediaKit swap does not wait for a hanging prior dispose',
+    () async {
+      // Field log 2026-08-30: awaiting YouTube dispose held the loading
+      // skeleton for the full 5 s command timeout on a 4 s local file.
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final ref = _refOf(container);
+
+      final hang = Completer<void>();
+      final prior = FakePlayerEngine()..supportsYouTubePlaybackValue = true;
+      prior.disposeGate = hang;
+      addTearDown(() {
+        if (!hang.isCompleted) hang.complete();
+      });
+      PlayerEngine? owned = prior;
+      var gen = 1;
+
+      await ensureEngineForPlayableSource(
+        ref,
+        playable: const LocalFilePlayableSource('file:///tmp/a.mp4'),
+        openGeneration: gen,
+        currentOpenGeneration: () => gen,
+        getOwnedEngine: () => owned,
+        setOwnedEngine: (next) => owned = next,
+      ).timeout(const Duration(seconds: 1));
+
+      expect(owned, isA<MediaKitPlayerEngine>());
       await owned?.dispose();
     },
   );

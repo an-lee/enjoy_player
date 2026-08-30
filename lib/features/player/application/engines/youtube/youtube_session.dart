@@ -43,6 +43,7 @@ class YoutubeSession {
   String? _posterUrl;
   bool _mountRequested = false;
   bool _webViewMounted = false;
+  Completer<void>? _surfaceDetached;
   bool _loggedFirstPlaying = false;
   bool _watchPageLoadStopReceived = false;
   bool _awaitingColdInitialNavigation = false;
@@ -434,7 +435,22 @@ class YoutubeSession {
 
   void noteWebViewMounted() => _webViewMounted = true;
 
-  void noteWebViewUnmounted() => _webViewMounted = false;
+  void noteWebViewUnmounted() {
+    _webViewMounted = false;
+    final waiter = _surfaceDetached;
+    _surfaceDetached = null;
+    if (waiter != null && !waiter.isCompleted) {
+      waiter.complete();
+    }
+  }
+
+  /// Completes when the WebView widget has unmounted, or immediately if it
+  /// is not mounted. Does not wait for native view destruction.
+  Future<void> awaitSurfaceDetached() async {
+    if (!_webViewMounted) return;
+    final waiter = _surfaceDetached ??= Completer<void>();
+    return waiter.future;
+  }
 
   void requestMount() {
     if (_disposed) return;

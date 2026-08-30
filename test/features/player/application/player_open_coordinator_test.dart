@@ -155,6 +155,119 @@ void main() {
       await pumpEventQueue();
       expect(host.session, isNull);
     });
+
+    test(
+      'a wedged first engine.open retries and still publishes the session',
+      () async {
+        // Field report 2026-08-30: the hang is engine.open after a YouTube
+        // session (WebView teardown racing mk.Player), not post-open
+        // commands. Back + reopen recovered because the second open ran
+        // after the native side settled. Retry that automatically.
+        var attempts = 0;
+        fake.openDelay = () async {
+          attempts++;
+          if (attempts == 1) {
+            await Completer<void>().future;
+          }
+        };
+
+        final host = _Host(_refOf(container), fake);
+        await runPlayerOpen(
+          host,
+          _refOf(container),
+          'hang-1',
+          openTimeout: const Duration(milliseconds: 50),
+        );
+
+        expect(attempts, 2);
+        expect(
+          host.session,
+          isNotNull,
+          reason: 'session must publish after the open retry',
+        );
+      },
+    );
+
+    test(
+      'a wedged post-open command degrades instead of hanging the open',
+      () async {
+        // Field report 2026-08-30: local audio opened right after a YouTube
+        // session stuck on the loading skeleton (back + reopen recovered).
+        // engine.open is bounded, but the mpv-command steps after it were
+        // not — a wedged event pump held the open forever because the
+        // session (which dismisses the skeleton) publishes only after them.
+        final now = DateTime.now();
+        await db.echoSessionDao.upsert(
+          EchoSessionRow(
+            id: 'es-wedge-1',
+            targetType: 'Audio',
+            targetId: 'hang-1',
+            language: 'en',
+            currentTimeMs: 120000,
+            playbackRate: 1,
+            volume: 1,
+            recordingsCount: 0,
+            recordingsDurationMs: 0,
+            currentSegmentIndex: -1,
+            echoActive: false,
+            echoStartLine: -1,
+            echoEndLine: -1,
+            blurActive: false,
+            createdAt: now,
+            updatedAt: now,
+            startedAt: now,
+            lastActiveAt: now,
+          ),
+        );
+        final gate = Completer<void>();
+        fake.seekGate = gate;
+        addTearDown(() {
+          if (!gate.isCompleted) gate.complete();
+        });
+
+        final host = _Host(_refOf(container), fake);
+        await runPlayerOpen(
+          host,
+          _refOf(container),
+          'hang-1',
+          engineCommandTimeout: const Duration(milliseconds: 50),
+        );
+
+        expect(
+          host.session,
+          isNotNull,
+          reason: 'session must publish despite the never-completing seek',
+        );
+        expect(fake.seekCalls, isNotEmpty, reason: 'the seek was attempted');
+      },
+    );
+  });
+
+  group('runBoundedEngineStep', () {
+    test('completes when the step completes', () async {
+      var ran = false;
+      await runBoundedEngineStep('x', () async => ran = true);
+      expect(ran, isTrue);
+    });
+
+    test('a wedged step times out, logs, and does not throw', () async {
+      final logs = <String>[];
+      await runBoundedEngineStep(
+        'wedged step',
+        () => Completer<void>().future,
+        limit: const Duration(milliseconds: 20),
+        logWarning: logs.add,
+      );
+      expect(logs, hasLength(1));
+      expect(logs.single, contains('wedged step timed out'));
+    });
+
+    test('a failing step still throws (only timeouts are swallowed)', () async {
+      await expectLater(
+        runBoundedEngineStep('boom', () async => throw StateError('boom')),
+        throwsStateError,
+      );
+    });
   });
 }
 
