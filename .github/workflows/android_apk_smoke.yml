@@ -11,6 +11,7 @@ on:
       - "android/**"
       - "tool/patch_agp9_pub_plugins.sh"
       - "tool/prefetch_media_kit_android_libs.sh"
+      - "tool/prefetch_sqlite3_libs.sh"
       - ".github/flutter-version"
       - ".github/actions/setup-flutter/**"
       - ".github/actions/setup-android/**"
@@ -64,6 +65,12 @@ jobs:
 
       - name: Prefetch media_kit Android native libs
         run: bash tool/prefetch_media_kit_android_libs.sh
+
+      # The sqlite3 build hook downloads libsqlite3.so from GitHub Releases
+      # with no retries; a blip there kills the whole gradle build
+      # ("Target dart_build failed"). Prefetch like release_android.sh does.
+      - name: Prefetch sqlite3 Android native libs
+        run: bash tool/prefetch_sqlite3_libs.sh
 
       - name: Flutter build apk (debug)
         run: flutter build apk --debug --flavor store
