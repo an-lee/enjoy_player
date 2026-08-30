@@ -83,6 +83,16 @@ EchoWindow? normalizeEchoWindow(NormalizeEchoWindowInput input) {
   if (!start.isFinite || !end.isFinite) return null;
   if (end <= start) return null;
 
+  // A window narrower than `endGuard + seekEpsilon` has no playable position:
+  // the end guard fires pause-and-rewind the instant the rewind-to-start seek
+  // lands, looping seek → pause → seek (issue #659 — arbitrary start/end query
+  // params or a sub-40 ms cue). Widen to the minimum; when the media is too
+  // short to allow even that, drop the window — enforcing it can only churn.
+  final minEnd =
+      start + defaultEchoEndGuardSeconds + defaultEchoSeekEpsilonSeconds;
+  if (minEnd > maxTime) return null;
+  if (end < minEnd) return (start: start, end: minEnd);
+
   return (start: start, end: end);
 }
 

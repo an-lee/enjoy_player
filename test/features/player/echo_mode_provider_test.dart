@@ -224,6 +224,103 @@ void main() {
         expect(lastState.active, isFalse);
       });
     });
+    group('re-segmented transcript (issue #659)', () {
+      // `restoreFromSession` persists line indices without validation; a
+      // re-import that shortened the transcript leaves them past the end.
+      final shortLines = <TranscriptLine>[
+        const TranscriptLine(text: 'only', startMs: 0, durationMs: 2000),
+      ];
+
+      test('restoreFromSession with out-of-range indices', () {
+        notifier.restoreFromSession(
+          startLine: 4,
+          endLine: 4,
+          echoStartMs: 8000,
+          echoEndMs: 10000,
+        );
+        expect(lastState.active, isTrue);
+        expect(lastState.startLineIndex, 4);
+      });
+
+      test('expandEchoBackward does not throw past the end', () {
+        notifier.restoreFromSession(
+          startLine: 4,
+          endLine: 4,
+          echoStartMs: 8000,
+          echoEndMs: 10000,
+        );
+
+        notifier.expandEchoBackward(shortLines);
+
+        expect(lastState.startLineIndex, 4);
+        expect(lastState.endLineIndex, 4);
+      });
+
+      test('shrinkEchoBackward does not throw past the end', () {
+        notifier.restoreFromSession(
+          startLine: 0,
+          endLine: 6,
+          echoStartMs: 0,
+          echoEndMs: 14000,
+        );
+
+        notifier.shrinkEchoBackward(shortLines);
+
+        expect(lastState.startLineIndex, 0);
+        expect(lastState.endLineIndex, 6);
+      });
+
+      test('shrinkEchoForward does not throw past the end', () {
+        notifier.restoreFromSession(
+          startLine: 0,
+          endLine: 6,
+          echoStartMs: 0,
+          echoEndMs: 14000,
+        );
+
+        notifier.shrinkEchoForward(shortLines);
+
+        expect(lastState.startLineIndex, 0);
+        expect(lastState.endLineIndex, 6);
+      });
+
+      test('expandEchoForward does not throw with a negative start', () {
+        notifier.restoreFromSession(
+          startLine: -1,
+          endLine: 3,
+          echoStartMs: 0,
+          echoEndMs: 6000,
+        );
+
+        notifier.expandEchoForward(shortLines);
+
+        expect(lastState.startLineIndex, -1);
+        expect(lastState.endLineIndex, 3);
+      });
+
+      test(
+        'echo keeps working once indices fit the re-imported transcript',
+        () {
+          notifier.restoreFromSession(
+            startLine: 0,
+            endLine: 6,
+            echoStartMs: 0,
+            echoEndMs: 14000,
+          );
+          notifier.shrinkEchoForward(shortLines);
+          expect(lastState.endLineIndex, 6);
+
+          notifier.activate(
+            startLineIndex: 0,
+            endLineIndex: 0,
+            startTimeSeconds: 0,
+            endTimeSeconds: 2,
+          );
+          notifier.expandEchoForward(shortLines);
+          expect(lastState.endLineIndex, 0);
+        },
+      );
+    });
   });
 
   group('EchoState', () {
