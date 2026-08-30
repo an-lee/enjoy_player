@@ -225,19 +225,13 @@ class YoutubeWebViewPollLoop {
                     _pauseConfirmed = true;
                     _pauseQuiet = !positionMoved;
                     final immediate = session.isImmediatePause();
-                    // The budget's state moved into the retry policy
-                    // (issue #665); this loop only supplies the session
-                    // facts that veto a retry.
-                    final retry = decideImmediatePauseRetry(
+                    // The budget, its coverage arms, and the escalation cap
+                    // live in the retry policy (issue #665); this loop only
+                    // supplies the session facts that veto a retry.
+                    final retry = session.playRetry.decideConfirmedPause(
                       immediate: immediate,
-                      userPlayInFlight: session.playRetry.userPlayInFlight,
                       disposed: session.disposed,
                       playbackCompleted: session.playbackCompleted,
-                      lastPlayingFromAutoRetry:
-                          session.playRetry.lastPlayingFromAutoRetry,
-                      autoRetriesIssued: session.playRetry.autoRetriesIssued,
-                      maxAutoRetries:
-                          YouTubePlayRetryPolicy.defaultMaxAutoRetries,
                     );
                     _logPoll.fine(
                       'youtube pause confirmed vid=${session.videoId} '

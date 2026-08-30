@@ -5,9 +5,9 @@ import 'package:enjoy_player/features/player/application/engines/youtube/youtube
 import 'package:flutter_test/flutter_test.dart';
 
 /// Protocol coverage for [YouTubePlayRetryPolicy] — the immediate-pause
-/// retry budget (D8) and the clocks it reads (issue #665). Drives the policy
-/// directly: no WebView, no session beyond the timing constants the joint
-/// invariant is checked against.
+/// retry budget (D8), the transport-toggle latch (D9), and the clocks both
+/// read (issue #665). Drives the policy directly: no WebView, no session
+/// beyond the timing constants the joint invariant is checked against.
 void main() {
   group('joint timing invariant', () {
     // The three-way constraint that previously spanned four files with no
@@ -61,6 +61,170 @@ void main() {
       expect(
         policy.maxAutoRetries,
         YouTubePlayRetryPolicy.defaultMaxAutoRetries,
+      );
+    });
+  });
+
+  group('D8 — decideConfirmedPause', () {
+    test('retries once for an immediate pause with an in-flight user play', () {
+      final policy = YouTubePlayRetryPolicy()..beginUserPlay();
+      expect(
+        policy.decideConfirmedPause(
+          immediate: true,
+          disposed: false,
+          playbackCompleted: false,
+        ),
+        isA<RetryPlayOnce>(),
+      );
+    });
+
+    test('surfaces a pause that is not immediate', () {
+      final policy = YouTubePlayRetryPolicy()..beginUserPlay();
+      expect(
+        policy.decideConfirmedPause(
+          immediate: false,
+          disposed: false,
+          playbackCompleted: false,
+        ),
+        isA<SurfacePause>(),
+      );
+    });
+
+    test('surfaces when no user play is in flight', () {
+      final policy = YouTubePlayRetryPolicy();
+      expect(
+        policy.decideConfirmedPause(
+          immediate: true,
+          disposed: false,
+          playbackCompleted: false,
+        ),
+        isA<SurfacePause>(),
+      );
+    });
+
+    test('never retries when disposed', () {
+      final policy = YouTubePlayRetryPolicy()..beginUserPlay();
+      expect(
+        policy.decideConfirmedPause(
+          immediate: true,
+          disposed: true,
+          playbackCompleted: false,
+        ),
+        isA<SurfacePause>(),
+      );
+    });
+
+    test('never retries after end-of-media', () {
+      final policy = YouTubePlayRetryPolicy()..beginUserPlay();
+      expect(
+        policy.decideConfirmedPause(
+          immediate: true,
+          disposed: false,
+          playbackCompleted: true,
+        ),
+        isA<SurfacePause>(),
+      );
+    });
+
+    test(
+      'escalates when the dying episode was an auto retry, under the cap',
+      () {
+        // Field wedge (echo mode, Android): the page re-paused the retried
+        // play too; the command budget is spent but the episode was ours.
+        final policy = YouTubePlayRetryPolicy()
+          ..beginUserPlay()
+          ..notePlayingTransition(true) // the user episode
+          ..notePlayingTransition(false) // it dies
+          ..consumeBudget() // the poll loop spent the budget on it
+          ..noteAutoPlayRetry() // retry #1
+          ..notePlayingTransition(true); // the retried episode
+
+        expect(policy.userPlayInFlight, isFalse);
+        expect(policy.lastPlayingFromAutoRetry, isTrue);
+        expect(policy.autoRetriesIssued, 1);
+        expect(
+          policy.decideConfirmedPause(
+            immediate: true,
+            disposed: false,
+            playbackCompleted: false,
+          ),
+          isA<RetryPlayOnce>(),
+        );
+      },
+    );
+
+    test('stops escalating at the auto-retry cap', () {
+      final policy = YouTubePlayRetryPolicy()
+        ..beginUserPlay()
+        ..notePlayingTransition(true) // the user episode
+        ..notePlayingTransition(false)
+        ..consumeBudget()
+        ..noteAutoPlayRetry() // retry #1
+        ..notePlayingTransition(true) // the retried episode
+        ..notePlayingTransition(false)
+        ..consumeBudget()
+        ..noteAutoPlayRetry() // retry #2 — at the cap
+        ..notePlayingTransition(true);
+
+      expect(policy.autoRetriesIssued, 2);
+      expect(policy.lastPlayingFromAutoRetry, isTrue);
+      expect(
+        policy.decideConfirmedPause(
+          immediate: true,
+          disposed: false,
+          playbackCompleted: false,
+        ),
+        isA<SurfacePause>(),
+      );
+    });
+
+    test('no escalation when the dying episode was not an auto retry', () {
+      // e.g. a page-UI resume the app never commanded: no coverage.
+      final policy = YouTubePlayRetryPolicy()
+        ..beginUserPlay()
+        ..notePlayingTransition(true)
+        ..consumeBudget();
+
+      expect(policy.lastPlayingFromAutoRetry, isFalse);
+      expect(
+        policy.decideConfirmedPause(
+          immediate: true,
+          disposed: false,
+          playbackCompleted: false,
+        ),
+        isA<SurfacePause>(),
+      );
+    });
+  });
+
+  group('D9 — classifyTransportToggle', () {
+    test('DOM play arms the retry budget', () {
+      expect(
+        YouTubePlayRetryPolicy().classifyTransportToggle(domDirection: 'play'),
+        isA<ArmRetryBudget>(),
+      );
+    });
+
+    test('DOM pause consumes the retry budget', () {
+      expect(
+        YouTubePlayRetryPolicy().classifyTransportToggle(domDirection: 'pause'),
+        isA<ConsumeRetryBudget>(),
+      );
+    });
+
+    test('no video found leaves the latch untouched', () {
+      expect(
+        YouTubePlayRetryPolicy().classifyTransportToggle(domDirection: null),
+        isA<LeaveRetryBudget>(),
+      );
+    });
+
+    test('unknown direction leaves the latch untouched', () {
+      expect(
+        YouTubePlayRetryPolicy().classifyTransportToggle(
+          domDirection: 'nonsense',
+        ),
+        isA<LeaveRetryBudget>(),
       );
     });
   });

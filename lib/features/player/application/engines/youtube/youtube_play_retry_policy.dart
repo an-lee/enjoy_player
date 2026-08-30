@@ -6,10 +6,10 @@
 /// `transport_decisions.dart` (`decideImmediatePauseRetry`,
 /// `decideTransportToggleLatch`), the `PauseStreaking` arm of
 /// `YoutubeWebViewPollLoop`, and the recent-retry suppression in the audible
-/// policy's `_healPostRestorePause`. The protocol's state, its constants, and
-/// its clock now live here; the callers keep only their side effects
-/// (re-issuing play, surfacing the recovery hint, and arming or consuming
-/// through the session's transition verbs).
+/// policy's `_healPostRestorePause`. The protocol's state, its constants, its
+/// clock, and both decisions now live here; the callers keep only their side
+/// effects (re-issuing play, surfacing the recovery hint, and arming or
+/// consuming through the session's transition verbs).
 ///
 /// ## D8 — the one-shot immediate-pause budget, its fulfilment clock, and
 /// escalation
@@ -53,6 +53,14 @@
 /// app-commanded start is indistinguishable from a page correction and is
 /// retried once — self-limiting, since the budget is then spent.
 ///
+/// ## D9 — what a transport toggle did to the budget
+///
+/// Classified from the direction the DOM actually took — the value returned by
+/// the atomic playOrPause script — never from session `playing` state: pause
+/// confirmation lags DOM pauses by ~750 ms, so session state can read opposite
+/// to the command really issued during exactly the windows where the latch
+/// matters (a page-corrected pause, or the D8 retry's own play).
+///
 /// ## Clock
 ///
 /// All three budgets (immediate-pause window, attempt expiry, retry recency)
@@ -62,6 +70,57 @@
 library;
 
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_monotonic_clock.dart';
+
+// ---------------------------------------------------------------------------
+// D8 result — what the poll loop must do about a confirmed pause.
+// ---------------------------------------------------------------------------
+
+sealed class ImmediatePauseRetryDecision {
+  const ImmediatePauseRetryDecision();
+
+  static const ImmediatePauseRetryDecision retry = RetryPlayOnce();
+  static const ImmediatePauseRetryDecision surface = SurfacePause();
+}
+
+/// Re-issue play once for this pause; the budget has been spent on it.
+final class RetryPlayOnce extends ImmediatePauseRetryDecision {
+  const RetryPlayOnce();
+}
+
+/// Surface the pause to the user (the recovery hint is the consumer's
+/// decision).
+final class SurfacePause extends ImmediatePauseRetryDecision {
+  const SurfacePause();
+}
+
+// ---------------------------------------------------------------------------
+// D9 result — what a transport toggle did to the budget.
+// ---------------------------------------------------------------------------
+
+sealed class TransportToggleLatchDecision {
+  const TransportToggleLatchDecision();
+
+  static const TransportToggleLatchDecision arm = ArmRetryBudget();
+  static const TransportToggleLatchDecision consume = ConsumeRetryBudget();
+  static const TransportToggleLatchDecision leave = LeaveRetryBudget();
+}
+
+/// The toggle issued a play — arm the D8 budget.
+final class ArmRetryBudget extends TransportToggleLatchDecision {
+  const ArmRetryBudget();
+}
+
+/// The toggle issued a pause — consume the D8 budget so the deliberate pause
+/// is never auto-resumed.
+final class ConsumeRetryBudget extends TransportToggleLatchDecision {
+  const ConsumeRetryBudget();
+}
+
+/// No `<video>` found — nothing was issued; leave the latch (the attempt
+/// expiry bounds any stale budget).
+final class LeaveRetryBudget extends TransportToggleLatchDecision {
+  const LeaveRetryBudget();
+}
 
 /// Owns the immediate-pause retry budget, its attribution, the escalation
 /// chain, and every clock the protocol reads.
@@ -295,5 +354,47 @@ class YouTubePlayRetryPolicy {
     _pendingAutoRetryAttribution = false;
     _lastPlayingAt = null;
     _episodeLive = false;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Decisions.
+  // ---------------------------------------------------------------------------
+
+  /// D8: reduce a confirmed pause into the retry verdict. [immediate] is the
+  /// [isImmediatePause] measurement taken at confirmation; [disposed] and
+  /// [playbackCompleted] are the session facts that veto a retry regardless
+  /// of coverage.
+  ImmediatePauseRetryDecision decideConfirmedPause({
+    required bool immediate,
+    required bool disposed,
+    required bool playbackCompleted,
+  }) {
+    // The fulfilment-filtered budget, not the raw armed latch: an attempt
+    // whose resolving episode outlived [playAttemptExpiry] is no longer
+    // coverage, even though it was never explicitly consumed.
+    final covered =
+        userPlayInFlight ||
+        (_lastPlayingFromAutoRetry && _autoRetriesIssued < maxAutoRetries);
+    if (immediate && covered && !disposed && !playbackCompleted) {
+      return ImmediatePauseRetryDecision.retry;
+    }
+    return ImmediatePauseRetryDecision.surface;
+  }
+
+  /// D9: classify a transport toggle's retry-latch effect from the direction
+  /// the DOM actually took ([domDirection] — the value returned by the atomic
+  /// playOrPause script), never from session `playing` state (see the
+  /// class-level rationale).
+  TransportToggleLatchDecision classifyTransportToggle({
+    required String? domDirection,
+  }) {
+    switch (domDirection) {
+      case 'play':
+        return TransportToggleLatchDecision.arm;
+      case 'pause':
+        return TransportToggleLatchDecision.consume;
+      case _:
+        return TransportToggleLatchDecision.leave;
+    }
   }
 }

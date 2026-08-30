@@ -12,6 +12,7 @@ import 'package:enjoy_player/features/player/application/player_engine.dart';
 import 'package:enjoy_player/features/player/domain/playable_source.dart';
 import 'package:enjoy_player/features/player/domain/transport_decisions.dart';
 import 'package:enjoy_player/features/player/domain/youtube_playback_unavailable_exception.dart';
+import 'youtube_play_retry_policy.dart';
 import 'youtube_session.dart';
 import 'youtube_webview_controller.dart';
 import 'youtube_webview_bridge.dart';
@@ -254,7 +255,9 @@ class YoutubePlayerEngine implements PlayerEngine, PlayerEngineMetadata {
           // silent retry), and the mirror race after the D8 retry's own
           // play (session still not-playing → toggle pauses → budget
           // wrongly armed → deliberate pause auto-resumed).
-          switch (decideTransportToggleLatch(domDirection: domDirection)) {
+          switch (_session.playRetry.classifyTransportToggle(
+            domDirection: domDirection,
+          )) {
             case ArmRetryBudget():
               _session.beginUserPlay();
             case ConsumeRetryBudget():
