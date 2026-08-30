@@ -15,6 +15,7 @@ import 'package:enjoy_player/features/player/application/player_controller.dart'
 import 'package:enjoy_player/features/player/application/player_engine.dart';
 import 'package:enjoy_player/features/player/application/player_engine_constants.dart';
 import 'package:enjoy_player/features/player/application/playback_open_resolver.dart';
+import 'package:enjoy_player/features/player/application/playback_session_persister.dart';
 import 'package:enjoy_player/features/player/application/player_engine_binding.dart';
 import 'package:enjoy_player/features/player/application/player_open_side_effects.dart';
 import 'package:enjoy_player/features/player/application/player_position_tracker.dart';
@@ -70,6 +71,29 @@ Future<void> runPlayerOpen(
   Duration engineCommandTimeout = kEngineCommandTimeout,
 }) async {
   final gen = host.openGeneration;
+
+  // Flush the previous media's pending debounced write while its echo/blur
+  // state is still live in the providers. The restore below replaces that
+  // state with the NEW media's values; a stale debounce/max-age timer firing
+  // afterwards would write the new media's echo window + blur flag into the
+  // old media's row (issue #653).
+  final previous = host.session;
+  final persister = ref.read(playbackSessionPersisterProvider);
+  if (previous != null) {
+    try {
+      await persister.flush(
+        mediaId: previous.mediaId,
+        dexieTargetType: previous.dexieTargetType,
+        session: previous,
+      );
+    } catch (e, st) {
+      // Best-effort: opening the new media must not fail because the
+      // previous media's trailing position write hit the DB.
+      _openLog.warning('flushing previous playback session failed', e, st);
+    }
+  } else {
+    persister.cancel();
+  }
 
   final db = ref.read(appDatabaseProvider);
   final resolved = await resolvePlaybackOpen(db, mediaId);
