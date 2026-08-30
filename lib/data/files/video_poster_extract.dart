@@ -146,13 +146,13 @@ Future<bool> writeVideoPosterJpeg({
       if (accurate) {
         cmd =
             '-y -hide_banner $proto'
-            '-i ${_shellEscape(input)} -ss $seekStr '
-            '-frames:v 1 -q:v 3 ${_shellEscape(outputJpegPath)}';
+            '-i ${shellEscape(input)} -ss $seekStr '
+            '-frames:v 1 -q:v 3 ${shellEscape(outputJpegPath)}';
       } else {
         cmd =
             '-y -hide_banner $proto'
-            '-ss $seekStr -i ${_shellEscape(input)} '
-            '-frames:v 1 -q:v 3 ${_shellEscape(outputJpegPath)}';
+            '-ss $seekStr -i ${shellEscape(input)} '
+            '-frames:v 1 -q:v 3 ${shellEscape(outputJpegPath)}';
       }
       final session = await FFmpegKit.execute(cmd);
       final code = await session.getReturnCode();
@@ -174,11 +174,4 @@ Future<bool> writeVideoPosterJpeg({
     _log.fine('video poster extract error', e, st);
     return false;
   }
-}
-
-String _shellEscape(String path) {
-  if (path.contains(' ') || path.contains('"')) {
-    return '"${path.replaceAll('"', r'\"')}"';
-  }
-  return path;
 }

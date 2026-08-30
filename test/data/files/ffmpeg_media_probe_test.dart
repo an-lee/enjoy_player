@@ -209,4 +209,26 @@ Stream #0:5(en): Subtitle: subrip
       );
     });
   });
+
+  group('shellEscape', () {
+    test('returns plain paths unchanged', () {
+      expect(shellEscape('/tmp/audio.wav'), '/tmp/audio.wav');
+    });
+
+    test('wraps paths containing a space in double quotes', () {
+      expect(shellEscape('/tmp/has space.wav'), '"/tmp/has space.wav"');
+    });
+
+    test('wraps paths containing a double quote in double quotes and escapes it', () {
+      expect(shellEscape(r'/tmp/odd"name.wav'), r'"/tmp/odd\"name.wav"');
+    });
+
+    test('wraps paths containing both space and quote', () {
+      expect(shellEscape(r'/tmp/a "b".wav'), r'"/tmp/a \"b\".wav"');
+    });
+
+    test('returns the empty string unchanged', () {
+      expect(shellEscape(''), '');
+    });
+  });
 }

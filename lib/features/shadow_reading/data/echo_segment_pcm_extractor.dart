@@ -221,8 +221,8 @@ Future<void> _runFfmpegExtract({
 
   final cmd =
       '-nostdin -hide_banner -loglevel error -y -ss $ss '
-      '-i ${_shellEscape(mediaPath)} -t $dur -vn -ac 1 '
-      '-ar $kEchoPcmSampleRate -f f32le ${_shellEscape(outPath)}';
+      '-i ${shellEscape(mediaPath)} -t $dur -vn -ac 1 '
+      '-ar $kEchoPcmSampleRate -f f32le ${shellEscape(outPath)}';
   await _runFfmpegKit(
     command: cmd,
     token: token,
@@ -266,8 +266,8 @@ Future<void> _runFfmpegFullDecode({
   }
 
   final cmd =
-      '-nostdin -hide_banner -loglevel error -y -i ${_shellEscape(mediaPath)} '
-      '-vn -ac 1 -ar $kEchoPcmSampleRate -f f32le ${_shellEscape(outPath)}';
+      '-nostdin -hide_banner -loglevel error -y -i ${shellEscape(mediaPath)} '
+      '-vn -ac 1 -ar $kEchoPcmSampleRate -f f32le ${shellEscape(outPath)}';
   await _runFfmpegKit(
     command: cmd,
     token: token,
@@ -430,11 +430,4 @@ Future<void> _runFfmpegKit({
       '$failLabel: $e',
     );
   }
-}
-
-String _shellEscape(String path) {
-  if (path.contains(' ') || path.contains('"')) {
-    return '"${path.replaceAll('"', r'\"')}"';
-  }
-  return path;
 }
