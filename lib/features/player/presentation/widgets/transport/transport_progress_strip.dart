@@ -11,6 +11,7 @@ import 'package:enjoy_player/core/interaction/mouse_tracker_safe.dart';
 import 'package:enjoy_player/core/platform/mobile_platform.dart';
 import 'package:enjoy_player/core/utils/time_format.dart';
 import 'package:enjoy_player/features/player/application/player_interactions.dart';
+import 'package:enjoy_player/features/player/application/position_buckets.dart';
 import 'package:enjoy_player/features/player/application/transport_slider_position_provider.dart';
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
 
@@ -74,6 +75,23 @@ class _TransportProgressStripState
   /// (issue #470).
   double? _dragFraction;
 
+  /// Non-null for a short window after the drag ends: the engine position
+  /// stream keeps reporting the PRE-seek position until the seek lands, so
+  /// dropping [_dragFraction] immediately makes the thumb rubber-band back to
+  /// where the user came from and then jump forward once the seek arrives
+  /// (issue #660 — worst on YouTube, whose 250 ms poll cadence + JS seek keep
+  /// the stale position on screen for 300-800 ms). While held, the thumb and
+  /// the elapsed label render the requested target instead.
+  double? _pendingSeekFraction;
+
+  /// How long [_pendingSeekFraction] may pin the thumb when the stream never
+  /// reports the target (swallowed / failed seek). Comfortably above
+  /// YouTube's 250 ms poll cadence so a healthy seek always releases through
+  /// the catch-up check below rather than through this bound.
+  static const Duration _pendingSeekHold = Duration(milliseconds: 1500);
+
+  Timer? _pendingSeekTimer;
+
   /// Hover state is managed locally so the parent transport bar does not
   /// rebuild when the cursor enters/exits the slider thumb area (issue #471).
   bool _hovered = false;
@@ -81,6 +99,40 @@ class _TransportProgressStripState
   int? _scrubSecond;
 
   bool get _hapticScrub => isMobilePlatform;
+
+  @override
+  void dispose() {
+    _pendingSeekTimer?.cancel();
+    super.dispose();
+  }
+
+  /// True once the engine position stream reports a position within one
+  /// scrubber bucket ([kPositionBucketScrubberMs]) of the held target, i.e.
+  /// the seek landed and the real position can take over again.
+  ///
+  /// Compared on magnitude, not just "has the stream passed the target": for
+  /// a *backward* seek the stale pre-seek position is already beyond the
+  /// target, so a one-sided test would release instantly and resurrect the
+  /// very snap-back this hold exists to hide (issue #660).
+  bool _streamCaughtUp(Duration pos, double durationSec) {
+    final pending = _pendingSeekFraction;
+    if (pending == null) return false;
+    final targetMs = (pending * durationSec * 1000).round();
+    return (pos.inMilliseconds - targetMs).abs() <= kPositionBucketScrubberMs;
+  }
+
+  void _holdPendingSeek(double fraction) {
+    _pendingSeekFraction = fraction;
+    _pendingSeekTimer?.cancel();
+    _pendingSeekTimer = Timer(_pendingSeekHold, _releasePendingSeek);
+  }
+
+  void _releasePendingSeek() {
+    _pendingSeekTimer?.cancel();
+    _pendingSeekTimer = null;
+    if (!mounted || _pendingSeekFraction == null) return;
+    setState(() => _pendingSeekFraction = null);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,9 +150,20 @@ class _TransportProgressStripState
     final streamFraction = durationSec > 0
         ? pos.inMilliseconds / 1000 / durationSec
         : 0.0;
-    // While dragging, render the thumb from the local drag value, not the
-    // stream position — the stream won't update until the seek completes.
-    final fraction = _dragFraction ?? streamFraction.clamp(0.0, 1.0);
+    // Render the thumb from the local override, not the stream position,
+    // while the user is dragging (#470) or while a just-issued seek has not
+    // landed yet (#660) — the stream reports the stale pre-seek position in
+    // both cases.
+    final holdFraction = _dragFraction ?? _pendingSeekFraction;
+    final fraction = holdFraction ?? streamFraction.clamp(0.0, 1.0);
+
+    // The stream caught up, so hand the thumb back to it. Done post-frame
+    // because this runs during build (pos arrives via ref.watch above).
+    if (_streamCaughtUp(pos, durationSec)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _releasePendingSeek();
+      });
+    }
 
     final timeStyle = tt.labelSmall?.copyWith(
       fontFeatures: const [FontFeature.tabularFigures()],
@@ -114,10 +177,9 @@ class _TransportProgressStripState
         children: [
           Text(
             formatDurationHms(
-              _dragFraction != null
+              holdFraction != null
                   ? Duration(
-                      milliseconds: (_dragFraction! * durationSec * 1000)
-                          .round(),
+                      milliseconds: (holdFraction * durationSec * 1000).round(),
                     )
                   : pos,
             ),
@@ -141,6 +203,10 @@ class _TransportProgressStripState
                   value: fraction.clamp(0, 1),
                   onChangeStart: (_) {
                     _scrubSecond = null;
+                    // A re-grab supersedes any hold from the previous seek;
+                    // the drag value wins for as long as the finger is down.
+                    _pendingSeekTimer?.cancel();
+                    _pendingSeekFraction = null;
                   },
                   onChanged: (v) {
                     if (_hapticScrub) {
@@ -153,7 +219,12 @@ class _TransportProgressStripState
                     setState(() => _dragFraction = v);
                   },
                   onChangeEnd: (v) {
-                    _dragFraction = null;
+                    // Keep the thumb on the target instead of snapping back
+                    // to the stale pre-seek stream position (issue #660).
+                    setState(() {
+                      _dragFraction = null;
+                      _holdPendingSeek(v);
+                    });
                     unawaited(
                       ref
                           .read(playerInteractionsProvider.notifier)
