@@ -55,20 +55,22 @@ void main() {
     );
   });
 
-  testWidgets('desktop adds a roomier top inset for optical balance', (
-    tester,
-  ) async {
-    await tester.pumpWidget(_wrap(transcript: const Text('body')));
-    await tester.pump();
+  testWidgets(
+    'desktop adds a roomier top inset for optical balance',
+    variant: TargetPlatformVariant.only(TargetPlatform.linux),
+    (tester) async {
+      await tester.pumpWidget(_wrap(transcript: const Text('body')));
+      await tester.pump();
 
-    final t = EnjoyThemeTokens.build(
-      ThemeData(brightness: Brightness.light).colorScheme,
-    );
-    expect(
-      _transcriptPadding(tester, 'body').padding,
-      EdgeInsets.fromLTRB(t.space12, t.space32, t.space12, t.space16),
-    );
-  }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
+      final t = EnjoyThemeTokens.build(
+        ThemeData(brightness: Brightness.light).colorScheme,
+      );
+      expect(
+        _transcriptPadding(tester, 'body').padding,
+        EdgeInsets.fromLTRB(t.space12, t.space32, t.space12, t.space16),
+      );
+    },
+  );
 
   testWidgets('mobile keeps compact top inset under the status-bar area', (
     tester,
