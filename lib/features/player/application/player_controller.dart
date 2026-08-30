@@ -51,6 +51,12 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
   /// Incremented on each [openMedia] call; stale async work bails out.
   int _openGeneration = 0;
 
+  /// True between [openMedia] bumping [_openGeneration] and the session being
+  /// published (or the open failing): `state` is still `null`, so this is the
+  /// only signal that an engine swap is already coordinated and in flight.
+  /// [warmYoutubeSurface] consults it — issue #657.
+  bool _openInFlight = false;
+
   /// Deterministic end-of-media loop (ADR-0044). Owns the playback
   /// generation counter, the cancelable `completed` await, and the repeat
   /// decision — see [CompletionLoop].
@@ -179,19 +185,31 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
     }
 
     final gen = ++_openGeneration;
+    // Marked before the first await so a speculative [warmYoutubeSurface] that
+    // lands inside this window sees the open that is already coordinating the
+    // engine (issue #657).
+    _openInFlight = true;
     _completionLoop.bump();
 
-    await runPlayerOpenGuarded(
-      this,
-      ref,
-      mediaId,
-      options: options,
-      onFailureResetSession: () {
-        if (gen == _openGeneration) {
-          state = null;
-        }
-      },
-    );
+    try {
+      await runPlayerOpenGuarded(
+        this,
+        ref,
+        mediaId,
+        options: options,
+        onFailureResetSession: () {
+          if (gen == _openGeneration) {
+            state = null;
+          }
+        },
+      );
+    } finally {
+      // Only a still-current open clears the flag — an open superseded by a
+      // newer one must not report "idle" while that newer one is still running.
+      if (gen == _openGeneration) {
+        _openInFlight = false;
+      }
+    }
 
     // Start the deterministic completion loop for the new playback stint
     // (ADR-0044). Only when the open actually landed (state's mediaId matches
@@ -271,6 +289,11 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
     }
 
     _openGeneration++;
+    // Clear invalidates any open still in flight, so drop the flag too — that
+    // open's `finally` skips the reset (its generation is stale) and the latch
+    // would otherwise disable speculative warming for the rest of the session
+    // (issue #657).
+    _openInFlight = false;
 
     final engine = activeEngine;
 
@@ -288,18 +311,32 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
     // ADR-0048: on Linux the YouTube engine has no inappwebview backend and
     // can never mount — do not install or warm it from feed scrolling.
     if (youTubeEngineOptedOutHere) return;
+    // Issue #657: warming is best-effort pre-work for a *possible* YouTube
+    // open, so it must never disturb a live engine. Disposing MediaKit outside
+    // the open path wedges the native mpv event pump (every later open then
+    // hangs on the loading skeleton), and swapping `_ownedEngine` while an open
+    // is in flight replaces the engine that open is about to drive — without
+    // generation coordination there is nothing to undo it.
+    if (_disposed || state != null || _openInFlight) return;
+
     final owned = _ownedEngine;
     if (owned != null && owned.supportsYouTubePlayback) {
       owned.warmVideoSurface();
       return;
     }
-    // Swap + bump first (ADR-0057) so PlayerSurfaceHost drops the old stage
-    // before the previous engine is disposed.
+    if (owned != null) {
+      // An idle MediaKit engine (cleared session, parked surface) is still
+      // alive. Keep it — only the open path swaps engines, and it does so with
+      // generation coordination ([ensureEngineForPlayableSource]). A
+      // speculative warm that disposed mpv here would buy a WebView we may
+      // never use and leave the next local open rebuilding against a wedged
+      // pump (2026-08-29 field report).
+      return;
+    }
+    // Genuinely no engine yet — install the YouTube one. Bump before warming
+    // (ADR-0057) so PlayerSurfaceHost keys a stage for the new engine.
     _ownedEngine = YoutubePlayerEngine();
     ref.read(playerEngineRevProvider.notifier).bump();
-    if (owned != null) {
-      unawaited(owned.dispose());
-    }
     _ownedEngine!.warmVideoSurface();
   }
 

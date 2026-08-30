@@ -225,14 +225,21 @@ class FakePlayerEngine implements PlayerEngine {
     return screenshotReturnValue;
   }
 
+  int warmVideoSurfaceCallCount = 0;
+
   @override
-  void warmVideoSurface() {}
+  void warmVideoSurface() {
+    warmVideoSurfaceCallCount++;
+  }
 
   /// When set, [dispose] waits on this completer before closing streams.
   Completer<void>? disposeGate;
 
+  int disposeCallCount = 0;
+
   @override
   Future<void> dispose() async {
+    disposeCallCount++;
     final gate = disposeGate;
     if (gate != null) await gate.future;
     await _position.close();

@@ -12,6 +12,7 @@ import 'package:enjoy_player/features/player/application/player_engine_rev.dart'
 import 'package:enjoy_player/features/player/application/player_engine_test_double_provider.dart';
 import 'package:enjoy_player/features/player/application/player_preferences_provider.dart';
 import 'package:enjoy_player/features/player/domain/media_relocate_exception.dart';
+import 'package:enjoy_player/features/player/domain/playback_session.dart';
 import 'package:enjoy_player/features/player/domain/player_settings.dart';
 import 'package:enjoy_player/features/player/domain/youtube_playback_unavailable_exception.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_repository_provider.dart';
@@ -993,5 +994,189 @@ void main() {
       expect(n.ownedEngine, isA<YoutubePlayerEngine>());
       expect(container.read(playerEngineRevProvider), 1);
     });
+  });
+
+  group('PlayerController.warmYoutubeSurface idle gate (issue #657)', () {
+    // No playerEngineTestDoubleProvider override here either — the test double
+    // short-circuits above the gates under test. Local engines are stand-ins
+    // ([FakePlayerEngine] installed through the [PlayerOpenHost] seam) so a
+    // live session needs no real MediaKit/mpv to observe.
+    late AppDatabase db;
+    late ProviderContainer container;
+
+    setUp(() {
+      db = AppDatabase(executor: NativeDatabase.memory());
+      container = ProviderContainer(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          transcriptRepositoryProvider.overrideWithValue(
+            TranscriptRepository(db),
+          ),
+        ],
+      );
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    });
+
+    tearDown(() async {
+      debugDefaultTargetPlatformOverride = null;
+      await pumpEventQueue();
+      container.dispose();
+      await db.close();
+    });
+
+    Future<String> insertYoutube({required String id}) async {
+      final now = DateTime.now();
+      await db.videoDao.insertRow(
+        VideoRow(
+          id: id,
+          vid: 'dQw4w9WgXcQ',
+          provider: 'youtube',
+          title: 'YouTube test',
+          description: null,
+          // Non-null: a placeholder row schedules the lazy oEmbed refresh,
+          // which is out of scope here (and asserts in debug Riverpod).
+          thumbnailUrl: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg',
+          durationSeconds: 212,
+          language: 'en',
+          source: 'youtube',
+          localUri: null,
+          md5: null,
+          size: null,
+          mediaUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+          syncStatus: null,
+          serverUpdatedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      return id;
+    }
+
+    PlaybackSession liveSession(String mediaId) {
+      final now = DateTime.now();
+      return PlaybackSession(
+        mediaId: mediaId,
+        dexieTargetType: 'Audio',
+        mediaType: 'audio',
+        mediaTitle: 't',
+        durationSeconds: 600,
+        currentTimeSeconds: 12,
+        currentSegmentIndex: 0,
+        language: 'en',
+        startedAt: now,
+        lastActiveAt: now,
+      );
+    }
+
+    test('keeps a parked local engine instead of installing YouTube', () {
+      final n = container.read(playerControllerProvider.notifier);
+      final parked = FakePlayerEngine();
+      n.ownedEngine = parked;
+      final revBefore = container.read(playerEngineRevProvider);
+
+      n.warmYoutubeSurface();
+
+      expect(
+        identical(n.ownedEngine, parked),
+        isTrue,
+        reason: 'warming must not swap out a parked local engine',
+      );
+      expect(
+        parked.disposeCallCount,
+        0,
+        reason: 'disposing mpv outside the open path wedges the native pump',
+      );
+      expect(parked.warmVideoSurfaceCallCount, 0);
+      expect(
+        container.read(playerEngineRevProvider),
+        revBefore,
+        reason: 'no engine swap happened, so the host rev must not bump',
+      );
+    });
+
+    test('keeps the live engine while a local session is open', () {
+      final n = container.read(playerControllerProvider.notifier);
+      final live = FakePlayerEngine();
+      n.ownedEngine = live;
+      n.session = liveSession('local-live');
+      final revBefore = container.read(playerEngineRevProvider);
+
+      n.warmYoutubeSurface();
+
+      expect(
+        identical(n.ownedEngine, live),
+        isTrue,
+        reason: 'a live session must keep its engine — no mid-playback dispose',
+      );
+      expect(
+        live.disposeCallCount,
+        0,
+        reason: 'playback must be unaffected by feed-scroll warming',
+      );
+      expect(live.warmVideoSurfaceCallCount, 0);
+      expect(container.read(playerEngineRevProvider), revBefore);
+      expect(container.read(playerControllerProvider)?.mediaId, 'local-live');
+    });
+
+    test('does not install under an in-flight open', () async {
+      final id = await insertYoutube(id: 'yt-inflight');
+      final n = container.read(playerControllerProvider.notifier);
+      final revBefore = container.read(playerEngineRevProvider);
+
+      // No await: the open owns the engine swap from here until it lands.
+      final open = n.openMedia(id);
+      n.warmYoutubeSurface();
+
+      expect(
+        n.ownedEngine,
+        isNull,
+        reason: 'the in-flight open installs the engine, not the warm',
+      );
+      expect(container.read(playerEngineRevProvider), revBefore);
+
+      await open;
+      expect(n.ownedEngine, isA<YoutubePlayerEngine>());
+    });
+
+    test('still installs and warms YouTube when idle with no owned engine', () {
+      final n = container.read(playerControllerProvider.notifier);
+      n.warmYoutubeSurface();
+
+      final installed = n.ownedEngine;
+      expect(installed, isA<YoutubePlayerEngine>());
+      expect(container.read(playerEngineRevProvider), 1);
+
+      // A second idle warm reuses the installed engine — no churn.
+      n.warmYoutubeSurface();
+      expect(identical(n.ownedEngine, installed), isTrue);
+      expect(container.read(playerEngineRevProvider), 1);
+    });
+
+    test(
+      'reuses a retained YouTube engine without dispose or swap churn',
+      () async {
+        final id = await insertYoutube(id: 'yt-retain-warm');
+        final n = container.read(playerControllerProvider.notifier);
+        await n.openMedia(id);
+        final retained = n.ownedEngine;
+        expect(retained, isA<YoutubePlayerEngine>());
+        await n.clear();
+        expect(container.read(playerControllerProvider), isNull);
+
+        final revBefore = container.read(playerEngineRevProvider);
+        n.warmYoutubeSurface();
+
+        expect(
+          identical(n.ownedEngine, retained),
+          isTrue,
+          reason: 'an idle YouTube engine must be warmed, not replaced',
+        );
+        expect(
+          container.read(playerEngineRevProvider),
+          revBefore,
+          reason: 're-warming must not swap engines',
+        );
+      },
+    );
   });
 }
