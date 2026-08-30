@@ -239,8 +239,17 @@ class YoutubePlayerEngine implements PlayerEngine {
           return;
         }
         _webView.onExplicitPlayAttempt();
-        // In-flight latch + stale-buffering clear live in the transition.
-        _session.beginUserPlay();
+        // Latch by command intent, not by the DOM's toggle direction: while
+        // the session reports playing this toggle is a pause-intent, so it
+        // must CONSUME the D8 retry budget (a deliberate pause is never
+        // auto-resumed). Arming here unconditionally used to let the retry
+        // un-pause a video the user had just paused within the immediate
+        // window.
+        if (_session.playing) {
+          _session.noteUserPauseCommand();
+        } else {
+          _session.beginUserPlay();
+        }
         _logYoutube.fine(
           'youtube playOrPause command vid=${_session.videoId} '
           'sessionPlaying=${_session.playing} '
@@ -302,6 +311,10 @@ class YoutubePlayerEngine implements PlayerEngine {
 
   @override
   Future<void> pause() async {
+    // Pause-intent consumes the D8 retry budget — otherwise a confirmed
+    // pause right after this command (still within the immediate window of
+    // a fresh start) would be auto-resumed against the caller's intent.
+    _session.noteUserPauseCommand();
     _logYoutube.fine('youtube pause command vid=${_session.videoId}');
     try {
       await YoutubeWebViewBridge.pause(_webView.webController);
@@ -316,6 +329,7 @@ class YoutubePlayerEngine implements PlayerEngine {
 
   @override
   Future<void> stop() async {
+    _session.noteUserPauseCommand();
     await YoutubeWebViewBridge.stop(_webView.webController);
     _session.emitPlaying(false);
     _session.emitBuffering(false);

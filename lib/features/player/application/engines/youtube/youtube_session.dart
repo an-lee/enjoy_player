@@ -49,11 +49,19 @@ class YoutubeSession {
   /// User (or app) requested play; cancels autoplay assist and arms recovery UX.
   bool _explicitPlayAttempted = false;
 
-  /// An explicit user play has not yet resolved (playing/rejected/error).
+  /// An explicit play-intent command is still the live transport intent.
   /// Grants the poll loop exactly one automatic retry when a pause is
   /// confirmed almost immediately after playback started — the page player
   /// state machine can "correct" a freshly started video back to paused
   /// before it settles; one retry after it settles recovers without UX.
+  ///
+  /// The latch spans the WHOLE attempt: arming (play command) → the first
+  /// `playing` ([notePlayingConfirmed] deliberately keeps it armed — a play
+  /// is only fulfilled once playback outlives the immediate-pause window,
+  /// which is exactly the window the page's correction lands in) →
+  /// consumption (the retry itself, a rejecting/error transition, or any
+  /// explicit pause-intent command via [noteUserPauseCommand], so a
+  /// deliberate user pause is never auto-resumed).
   bool _userPlayInFlight = false;
 
   /// First-play unmute is deferred until [position] advances (or fallback).
@@ -218,11 +226,24 @@ class YoutubeSession {
     }
   }
 
-  /// `playing` observed (DOM event or poll): the user play resolved.
+  /// An explicit pause-intent command is on the wire (engine
+  /// [pause]/[stop]/the pause branch of [playOrPause]). Consumes the D8
+  /// retry budget so a deliberate pause is never auto-resumed — without
+  /// this, a user pausing within the immediate-pause window of a fresh
+  /// start would be un-paused by the retry.
+  void noteUserPauseCommand() {
+    _userPlayInFlight = false;
+  }
+
+  /// `playing` observed (DOM event or poll). The in-flight play latch stays
+  /// armed: the attempt resolves only when playback outlives the
+  /// immediate-pause window (or a failure/pause-intent transition consumes
+  /// it). Clearing it here made the D8 retry unreachable for the very
+  /// sequence it exists for — the page's post-`playing` correction always
+  /// confirmed after the latch was gone.
   void notePlayingConfirmed() {
     _pausedPollStreak = 0;
     _playbackCompleted = false;
-    _userPlayInFlight = false;
     emitPlaying(true);
   }
 

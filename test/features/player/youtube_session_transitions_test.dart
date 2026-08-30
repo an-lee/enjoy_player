@@ -5,30 +5,50 @@ import 'package:flutter_test/flutter_test.dart';
 /// (issue #627). No WebView, no poll loop — the verbs are the test surface.
 void main() {
   group('user-play in-flight invariant', () {
-    // The invariant the field's doc comment states: an explicit user play
-    // resolves on ANY of these transitions. Previously hand-enforced at 8
-    // call sites across five modules; now asserted once, here.
-    test('every resolving transition clears the in-flight latch', () {
-      final resolvers = <String, void Function(YoutubeSession)>{
-        'playing confirmed': (s) => s.notePlayingConfirmed(),
+    // The invariant the field's doc comment states: the latch spans the whole
+    // play attempt, so it survives the first `playing` (the page's
+    // post-playing correction is exactly what the D8 retry exists for) and is
+    // consumed only by the resolving failures, an explicit pause-intent
+    // command, or the session resets. Previously hand-enforced across five
+    // modules; now asserted once, here.
+    test('every consuming transition clears the in-flight latch', () {
+      final consumers = <String, void Function(YoutubeSession)>{
         'play rejected': (s) => s.noteUserPlayUnresolved(),
         'element error': (s) => s.noteUserPlayUnresolved(),
+        'user pause command': (s) => s.noteUserPauseCommand(),
         'ended': (s) => s.noteEnded(),
         'reset for open': (s) => s.resetForOpen('next1234567'),
         'reset for clear': (s) => s.resetForClear(),
       };
-      for (final entry in resolvers.entries) {
+      for (final entry in consumers.entries) {
         final session = YoutubeSession()..resetForOpen('abc12345678');
         session.beginUserPlay();
+        session.notePlayingConfirmed(); // survives — see test below
         expect(session.userPlayInFlight, isTrue, reason: 'seed: ${entry.key}');
         entry.value(session);
         expect(
           session.userPlayInFlight,
           isFalse,
-          reason: '${entry.key} must resolve the in-flight play',
+          reason: '${entry.key} must consume the in-flight play',
         );
       }
     });
+
+    test(
+      'notePlayingConfirmed keeps the latch armed (play not yet fulfilled)',
+      () {
+        final session = YoutubeSession()..resetForOpen('abc12345678');
+        session.beginUserPlay();
+        session.notePlayingConfirmed();
+        expect(
+          session.userPlayInFlight,
+          isTrue,
+          reason:
+              'the D8 retry must remain reachable for the page correcting a '
+              'fresh start back to paused — clearing here made it dead code',
+        );
+      },
+    );
 
     test('beginUserPlay clears stale buffering while not playing', () {
       final session = YoutubeSession()..resetForOpen('abc12345678');
@@ -48,7 +68,7 @@ void main() {
 
   group('notePlayingConfirmed', () {
     test(
-      'clears streak, completion latch, and in-flight; emits playing',
+      'clears streak and completion latch, keeps in-flight; emits playing',
       () async {
         final session = YoutubeSession()..resetForOpen('abc12345678');
         session
@@ -66,7 +86,7 @@ void main() {
         expect(session.playing, isTrue);
         expect(session.pausedPollStreak, 0);
         expect(session.playbackCompleted, isFalse);
-        expect(session.userPlayInFlight, isFalse);
+        expect(session.userPlayInFlight, isTrue);
         expect(playingEvents, [true]);
       },
     );
