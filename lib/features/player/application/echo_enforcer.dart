@@ -8,13 +8,19 @@
 /// gate (issue #280, P1/P6/M3).
 library;
 
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/data/subtitle/transcript_line.dart';
 import 'package:enjoy_player/features/player/application/echo_mode_provider.dart';
 import 'package:enjoy_player/features/player/application/player_engine.dart';
+import 'package:enjoy_player/features/player/application/player_engine_constants.dart';
 import 'package:enjoy_player/features/player/domain/echo_window.dart';
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
+
+final _echoLog = logNamed('EchoEnforcer');
 
 /// Serializes echo enforcement for one open generation.
 ///
@@ -52,6 +58,15 @@ class EchoEnforcer {
   /// two synchronous position events.
   Future<void>? _inFlight;
 
+  /// Inputs behind the memoized window in [_windowCache]: the fields the hot
+  /// path can compare for free (echo state by value, session duration). The
+  /// transcript is re-read on a miss only (see [_resolveWindow]). `null` until
+  /// the first derivation and after [reset].
+  (EchoState, double?)? _windowCacheKey;
+
+  /// Last derived non-override window for [_windowCacheKey].
+  EchoWindow? _windowCache;
+
   /// Reactive per-tick enforcement. Called on every position event — the
   /// decision is cheap (pure reads), so the segment-end pause fires promptly.
   /// If enforcement is already in flight, this tick is dropped (single-flight):
@@ -75,19 +90,26 @@ class EchoEnforcer {
 
   /// Proactive seek clamp (user tapped a cue / scrubbed). Clamps the requested
   /// target into the echo window and seeks, serialized against reactive ticks.
-  /// Returns the (possibly clamped) target actually sought.
+  /// Returns the (possibly clamped) target actually sought, or the unclamped
+  /// [requestedSeconds] when nothing was sought — a [reset] landed while
+  /// waiting, or the in-flight enforcement never settled within [waitTimeout].
   Future<double> clampAndSeek(
     double requestedSeconds, {
     EchoWindow? override,
+    Duration waitTimeout = kEngineCommandTimeout,
   }) async {
-    while (true) {
+    // Captured before the first await: if [reset] lands while we wait on an
+    // in-flight enforcement, the requested target belongs to media that is
+    // gone, and re-entering the loop with a fresh epoch would seek the old
+    // target onto the new engine (unclamped, its echo being inactive).
+    final epoch = _epoch;
+    while (_epoch == epoch) {
       final pending = _inFlight;
       if (pending == null) {
         final window = _resolveWindow(override: override);
         final target = window == null
             ? requestedSeconds
             : clampSeekTimeToEchoWindow(requestedSeconds, window);
-        final epoch = _epoch;
         final future = _seek(target, epoch);
         _inFlight = future;
         try {
@@ -97,9 +119,23 @@ class EchoEnforcer {
         }
         return target;
       }
-      // An enforcement is running; wait for it, then re-check.
-      await pending;
+      // An enforcement is running; wait for it (bounded — a wedged engine seek
+      // must not hold the slot forever), then re-check.
+      try {
+        await pending.timeout(waitTimeout);
+      } on TimeoutException {
+        _echoLog.warning(
+          'echo enforcement still in flight after $waitTimeout '
+          '(engine seek wedged?); releasing the slot and skipping the clamp '
+          'seek',
+        );
+        // The wedged op's own finally is guarded by identity, so clearing here
+        // cannot race it out of a slot it still owns.
+        if (_inFlight == pending) _inFlight = null;
+        return requestedSeconds;
+      }
     }
+    return requestedSeconds;
   }
 
   /// Neutralizes any in-flight enforcement and releases the slot. Called on
@@ -108,6 +144,10 @@ class EchoEnforcer {
   void reset() {
     _epoch++;
     _inFlight = null;
+    // The window is derived from the previous media's session; re-derive for
+    // the next one rather than serving a cached duration / transcript.
+    _windowCacheKey = null;
+    _windowCache = null;
   }
 
   Future<void> _applyDecision(EchoPlaybackDecision decision, int epoch) async {
@@ -132,15 +172,42 @@ class EchoEnforcer {
   }
 
   /// Resolves the effective echo window. When [override] is given (a freshly
-  /// tapped cue) it wins; otherwise seconds are re-derived from the line
-  /// indices + current transcript (single source of truth), falling back to the
-  /// cached seconds captured at activation / expand / shrink time when no
-  /// transcript is available.
+  /// tapped cue) it wins; otherwise the derivation is memoized on its inputs
+  /// (see [_deriveWindow]) so the per-position-event hot path only recomputes
+  /// when the echo state or the session duration actually changed.
   EchoWindow? _resolveWindow({EchoWindow? override}) {
     final echo = ref.read(echoModeProvider);
     if (!echo.active) return null;
     final durationSeconds = getSession()?.durationSeconds;
 
+    if (override != null) {
+      return _deriveWindow(
+        echo,
+        durationSeconds: durationSeconds,
+        override: override,
+      );
+    }
+
+    // EchoState compares by value, so this is a cheap no-allocation key. A
+    // transcript-only change (re-segmentation) is picked up on the next echo /
+    // duration change, or on [reset] at the next media switch.
+    final key = (echo, durationSeconds);
+    if (_windowCacheKey == key) return _windowCache;
+    final window = _deriveWindow(echo, durationSeconds: durationSeconds);
+    _windowCacheKey = key;
+    _windowCache = window;
+    return window;
+  }
+
+  /// Derives the effective window: [override] wins; otherwise seconds come
+  /// from [echo]'s line indices + current transcript (single source of truth),
+  /// falling back to the seconds cached at activation / expand / shrink time
+  /// when no transcript is available.
+  EchoWindow? _deriveWindow(
+    EchoState echo, {
+    double? durationSeconds,
+    EchoWindow? override,
+  }) {
     final double startSeconds;
     final double endSeconds;
     if (override != null) {
