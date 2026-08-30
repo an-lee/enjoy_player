@@ -16,8 +16,32 @@ import 'package:enjoy_player/features/player/application/transport_slider_positi
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
 
 /// Soft outer glow so the playhead reads clearly on glass backgrounds.
-class _TransportThumbShape extends RoundSliderThumbShape {
-  const _TransportThumbShape({required super.enabledThumbRadius});
+///
+/// Public so tests can subclass [paint] and count paints; the glow [Paint] is
+/// served from a per-color cache because the strip repaints on every scrubber
+/// bucket (~20 Hz while playing) and a `Paint` + `MaskFilter` per paint is
+/// pure garbage (issue #663).
+class TransportThumbShape extends RoundSliderThumbShape {
+  const TransportThumbShape({required super.enabledThumbRadius});
+
+  static final Map<Color, Paint> _glowPaints = <Color, Paint>{};
+
+  /// Number of distinct glow [Paint]s allocated so far — one per thumb color,
+  /// never one per paint (pinned by the transport strip perf test).
+  @visibleForTesting
+  static int get debugGlowPaintsCreated => _glowPaints.length;
+
+  /// Clears the cache. Only useful between tests.
+  @visibleForTesting
+  static void debugResetGlowPaints() => _glowPaints.clear();
+
+  static Paint _glowPaintFor(Color thumbColor) {
+    return _glowPaints.putIfAbsent(thumbColor, () {
+      return Paint()
+        ..color = thumbColor.withValues(alpha: 0.42)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7);
+    });
+  }
 
   @override
   void paint(
@@ -36,10 +60,7 @@ class _TransportThumbShape extends RoundSliderThumbShape {
   }) {
     final canvas = context.canvas;
     final color = sliderTheme.thumbColor ?? const Color(0xFF6750A4);
-    final glow = Paint()
-      ..color = color.withValues(alpha: 0.42)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7);
-    canvas.drawCircle(center, enabledThumbRadius + 4, glow);
+    canvas.drawCircle(center, enabledThumbRadius + 4, _glowPaintFor(color));
     super.paint(
       context,
       center,
@@ -100,6 +121,58 @@ class _TransportProgressStripState
 
   bool get _hapticScrub => isMobilePlatform;
 
+  /// Memoized thumb shapes: identity-stable so the [SliderThemeData] below (and
+  /// therefore the slider) does not get a new shape per scrubber bucket.
+  static const _thumbShapeIdle = TransportThumbShape(enabledThumbRadius: 4);
+  static const _thumbShapeHovered = TransportThumbShape(enabledThumbRadius: 6);
+
+  /// Memoized [SliderThemeData], invalidated when any of its inputs change.
+  /// The strip rebuilds once per scrubber bucket while playing; allocating a
+  /// fresh ~25-field theme data each time was the bulk of the per-tick
+  /// garbage left after the glow [Paint] (issue #663).
+  (SliderThemeData, Color, Color, bool)? _sliderThemeKey;
+  SliderThemeData? _sliderTheme;
+
+  SliderThemeData _sliderThemeFor(
+    BuildContext context,
+    ColorScheme cs,
+    bool hovered,
+  ) {
+    final base = SliderTheme.of(context);
+    final key = (base, cs.primary, cs.onSurface, hovered);
+    final cached = _sliderTheme;
+    if (cached != null && _sliderThemeKey == key) return cached;
+    final theme = base.copyWith(
+      trackHeight: 3,
+      thumbShape: hovered ? _thumbShapeHovered : _thumbShapeIdle,
+      overlayShape: SliderComponentShape.noOverlay,
+      activeTrackColor: cs.primary,
+      inactiveTrackColor: cs.onSurface.withValues(alpha: 0.12),
+      thumbColor: cs.primary,
+    );
+    _sliderThemeKey = key;
+    _sliderTheme = theme;
+    return theme;
+  }
+
+  /// Memoized elapsed/total label style — same rationale as the theme data.
+  (TextStyle?, Color)? _timeStyleKey;
+  TextStyle? _timeStyle;
+
+  TextStyle? _timeStyleFor(BuildContext context, ColorScheme cs) {
+    final base = Theme.of(context).textTheme.labelSmall;
+    final key = (base, cs.onSurfaceVariant);
+    final cached = _timeStyle;
+    if (cached != null && _timeStyleKey == key) return cached;
+    final style = base?.copyWith(
+      fontFeatures: const [FontFeature.tabularFigures()],
+      color: cs.onSurfaceVariant,
+    );
+    _timeStyleKey = key;
+    _timeStyle = style;
+    return style;
+  }
+
   @override
   void dispose() {
     _pendingSeekTimer?.cancel();
@@ -137,7 +210,6 @@ class _TransportProgressStripState
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
     final durationSec = widget.chrome.durationSeconds > 0
         ? widget.chrome.durationSeconds
         : 1.0;
@@ -165,10 +237,7 @@ class _TransportProgressStripState
       });
     }
 
-    final timeStyle = tt.labelSmall?.copyWith(
-      fontFeatures: const [FontFeature.tabularFigures()],
-      color: cs.onSurfaceVariant,
-    );
+    final timeStyle = _timeStyleFor(context, cs);
 
     return MouseRegion(
       onEnter: (_) => _setHovered(true),
@@ -189,16 +258,7 @@ class _TransportProgressStripState
           Expanded(
             child: ExcludeSemantics(
               child: SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  trackHeight: 3,
-                  thumbShape: _TransportThumbShape(
-                    enabledThumbRadius: _hovered ? 6 : 4,
-                  ),
-                  overlayShape: SliderComponentShape.noOverlay,
-                  activeTrackColor: cs.primary,
-                  inactiveTrackColor: cs.onSurface.withValues(alpha: 0.12),
-                  thumbColor: cs.primary,
-                ),
+                data: _sliderThemeFor(context, cs, _hovered),
                 child: Slider(
                   value: fraction.clamp(0, 1),
                   onChangeStart: (_) {

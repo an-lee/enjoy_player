@@ -227,17 +227,9 @@ void main() {
                     ),
                   ),
                 ),
-                Consumer(
-                  builder: (context, ref, _) {
-                    final park = ref.watch(
-                      playerSurfaceShouldParkForOverlayProvider,
-                    );
-                    return PlayerSurfaceHost(
-                      forcePark: park,
-                      stageBuilder: _keyedStageBuilder(),
-                    );
-                  },
-                ),
+                // No `forcePark` here: the host watches the overlay coordinator
+                // itself (issue #663), which is what these assertions cover.
+                PlayerSurfaceHost(stageBuilder: _keyedStageBuilder()),
               ],
             ),
           ),
@@ -310,17 +302,9 @@ void main() {
                       ),
                     ),
                   ),
-                  Consumer(
-                    builder: (context, ref, _) {
-                      final park = ref.watch(
-                        playerSurfaceShouldParkForOverlayProvider,
-                      );
-                      return PlayerSurfaceHost(
-                        forcePark: park,
-                        stageBuilder: _keyedStageBuilder(),
-                      );
-                    },
-                  ),
+                  // No `forcePark`: the host reads the coordinator itself
+                  // (issue #663), so the token below must park it.
+                  PlayerSurfaceHost(stageBuilder: _keyedStageBuilder()),
                 ],
               ),
             ),

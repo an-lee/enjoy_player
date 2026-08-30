@@ -22,8 +22,12 @@ for all transient overlays.
 ## Decision
 
 1. Introduce [`PlayerSurfaceOverlayCoordinator`](../../lib/core/player/player_surface_overlay_coordinator.dart):
-   a ref-counted set of overlay tokens. While any token is held,
-   `RootShell` passes `forcePark: true` to `PlayerSurfaceHost`.
+   a ref-counted set of overlay tokens. While any token is held, the surface
+   parks off-screen. (Amended by issue #663: the token set is watched inside
+   `PlayerSurfaceHost` rather than `RootShell` — the original shell-level watch
+   rebuilt the whole shell, nav and sidebar included, on every dialog / sheet /
+   notice token change. `forcePark` remains the explicit shell-route flag, e.g.
+   `/youtube/login`.)
 2. Attach [`PlayerSurfaceOverlayNavigatorObserver`](../../lib/core/player/player_surface_overlay_navigator_observer.dart)
    to **both** the root and shell navigators so every `PopupRoute` (dialog,
    modal bottom sheet, menu) acquires/releases a token automatically — including
