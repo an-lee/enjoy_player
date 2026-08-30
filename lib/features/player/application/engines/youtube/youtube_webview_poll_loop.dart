@@ -7,6 +7,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_audible_playback_policy.dart';
+import 'package:enjoy_player/features/player/application/engines/youtube/youtube_play_retry_policy.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_session.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_state_poller.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_webview_bridge.dart';
@@ -223,16 +224,20 @@ class YoutubeWebViewPollLoop {
                     // state [pausedPollBackoff] may apply to.
                     _pauseConfirmed = true;
                     _pauseQuiet = !positionMoved;
-                    final immediate = session.isImmediatePause(DateTime.now());
+                    final immediate = session.isImmediatePause();
+                    // The budget's state moved into the retry policy
+                    // (issue #665); this loop only supplies the session
+                    // facts that veto a retry.
                     final retry = decideImmediatePauseRetry(
                       immediate: immediate,
-                      userPlayInFlight: session.userPlayInFlight,
+                      userPlayInFlight: session.playRetry.userPlayInFlight,
                       disposed: session.disposed,
                       playbackCompleted: session.playbackCompleted,
                       lastPlayingFromAutoRetry:
-                          session.lastPlayingFromAutoRetry,
-                      autoRetriesIssued: session.autoRetriesIssued,
-                      maxAutoRetries: YoutubeSession.maxAutoRetries,
+                          session.playRetry.lastPlayingFromAutoRetry,
+                      autoRetriesIssued: session.playRetry.autoRetriesIssued,
+                      maxAutoRetries:
+                          YouTubePlayRetryPolicy.defaultMaxAutoRetries,
                     );
                     _logPoll.fine(
                       'youtube pause confirmed vid=${session.videoId} '

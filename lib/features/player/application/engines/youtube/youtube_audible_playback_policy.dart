@@ -24,6 +24,7 @@ import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, TargetPlatform;
 
 import 'package:enjoy_player/core/logging/log.dart';
+import 'package:enjoy_player/features/player/application/engines/youtube/youtube_monotonic_clock.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_session.dart';
 
 final _logPolicy = logNamed('YouTubeAudiblePlaybackPolicy');
@@ -48,14 +49,18 @@ typedef YoutubeHealPlayFn = Future<void> Function();
 /// — is asserted in `youtube_audible_playback_policy_test.dart` so the three
 /// constraints can no longer drift independently.
 class YoutubeAudiblePlaybackPolicy {
+  /// [clock] is injectable so tests can advance the restore's minimum-delay
+  /// window deterministically instead of sleeping past it.
   YoutubeAudiblePlaybackPolicy({
     required this.session,
     required this.reapplyVolume,
     required this.healPlay,
+    MonotonicClock? clock,
     Duration? volumeRestoreDelay,
     Duration? volumeRestoreFallback,
     Duration? postRestoreHealDelay,
-  }) : volumeRestoreDelay =
+  }) : _clock = clock ?? StopwatchClock(),
+       volumeRestoreDelay =
            volumeRestoreDelay ??
            (defaultTargetPlatform == TargetPlatform.windows
                ? windowsVolumeRestoreDelay
@@ -93,12 +98,19 @@ class YoutubeAudiblePlaybackPolicy {
   final Duration volumeRestoreFallback;
   final Duration postRestoreHealDelay;
 
+  /// Monotonic source for [volumeRestoreDelay] — an NTP step used to be able
+  /// to skip or freeze the minimum-delay gate (issue #665).
+  final MonotonicClock _clock;
+
   final YoutubeSession session;
   final YoutubeReapplyVolumeFn reapplyVolume;
   final YoutubeHealPlayFn healPlay;
 
   Timer? _volumeRestoreFallbackTimer;
-  DateTime? _volumeRestoreArmedAt;
+
+  /// Protocol time the progress gate was armed at; the [volumeRestoreDelay]
+  /// minimum is measured against it.
+  Duration? _volumeRestoreArmedAt;
 
   /// `playing` observed: arm the per-document restore if this document has
   /// not been restored yet. Later `playing` events in an already-restored
@@ -119,7 +131,7 @@ class YoutubeAudiblePlaybackPolicy {
     if (!session.playing) return;
     final armedAt = _volumeRestoreArmedAt;
     if (armedAt != null) {
-      final elapsed = DateTime.now().difference(armedAt);
+      final elapsed = _clock.now() - armedAt;
       if (elapsed < volumeRestoreDelay) return;
     }
     if (session.noteProgressForVolumeRestore(position)) {
@@ -138,7 +150,7 @@ class YoutubeAudiblePlaybackPolicy {
   void _armProgressGatedVolumeRestore() {
     cancelPending();
     session.armVolumeRestorePending(baseline: session.lastPosition);
-    _volumeRestoreArmedAt = DateTime.now();
+    _volumeRestoreArmedAt = _clock.now();
     _logPolicy.fine(
       'youtube volume restore armed vid=${session.videoId} '
       'fallbackMs=${volumeRestoreFallback.inMilliseconds} '
@@ -196,11 +208,13 @@ class YoutubeAudiblePlaybackPolicy {
     // breaks the "exactly once" accounting against a state machine this
     // module exists to avoid poking redundantly. Defer to the retry. The
     // window adds one poll tick so the retry's confirm-lag jitter can never
-    // land on the boundary.
-    final retriedAt = session.lastAutoPlayRetryAt;
-    if (retriedAt != null &&
-        DateTime.now().difference(retriedAt) <
-            postRestoreHealDelay + pollTick) {
+    // land on the boundary. Recency is asked of the retry protocol's own
+    // monotonic clock — the retry policy owns that timestamp (issue #665),
+    // and reading it here as a wall clock let an NTP step unsuppress the
+    // heal.
+    if (session.playRetry.recentAutoRetryWithin(
+      postRestoreHealDelay + pollTick,
+    )) {
       return;
     }
     _logPolicy.info('youtube post-restore pause heal vid=${session.videoId}');
