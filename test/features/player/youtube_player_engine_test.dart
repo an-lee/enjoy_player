@@ -5,6 +5,8 @@ import 'package:enjoy_player/features/player/application/engines/youtube/youtube
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_session.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_webview_events.dart';
 import 'package:enjoy_player/features/player/domain/playable_source.dart';
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, debugDefaultTargetPlatformOverride;
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -86,6 +88,103 @@ void main() {
       session.resetForClear(keepMounted: true);
       expect(session.shouldMountWebView, isTrue);
       expect(session.videoId, isEmpty);
+    });
+
+    // The mount waiter is a push from noteWebViewMounted, not a flag poll —
+    // the 40 ms loop used to sit on the awaitSurfaceReady critical path of
+    // every open (issue #661).
+    test('awaitWebViewMounted resolves immediately when already mounted', () {
+      final session = YoutubeSession()..noteWebViewMounted();
+      expect(session.awaitWebViewMounted(), completes);
+    });
+
+    test('awaitWebViewMounted resolves on the mount signal', () async {
+      final session = YoutubeSession();
+      final waiter = session.awaitWebViewMounted();
+      var completed = false;
+      unawaited(waiter.then((_) => completed = true));
+      await pumpEventQueue();
+      expect(completed, isFalse, reason: 'still waiting for the mount');
+
+      session.noteWebViewMounted();
+      await pumpEventQueue();
+      expect(completed, isTrue);
+      expect(session.webViewMounted, isTrue);
+    });
+
+    test(
+      'a second mount note is a no-op, and a remount arms a new waiter',
+      () async {
+        final session = YoutubeSession();
+        final first = session.awaitWebViewMounted();
+
+        session.noteWebViewMounted();
+        session.noteWebViewMounted(); // idempotent — must not throw
+        await expectLater(first, completes);
+
+        session.noteWebViewUnmounted();
+        expect(session.webViewMounted, isFalse);
+
+        final second = session.awaitWebViewMounted();
+        var secondCompleted = false;
+        unawaited(second.then((_) => secondCompleted = true));
+        await pumpEventQueue();
+        // A stale (already completed) waiter would have resolved this one too.
+        expect(secondCompleted, isFalse);
+
+        session.noteWebViewMounted();
+        await expectLater(second, completes);
+      },
+    );
+  });
+
+  group('YoutubePlayerEngine mount wait (issue #661)', () {
+    testWidgets('a mount resolves awaitSurfaceReady with no poll tick', (
+      tester,
+    ) async {
+      // Not Linux, so the ADR-0048 opt-out does not short-circuit the wait.
+      // try/finally so the override is cleared *before* the testWidgets
+      // verification check runs (same pattern as the Linux availability
+      // test).
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      final session = YoutubeSession();
+      final engine = YoutubePlayerEngine(session: session);
+      try {
+        var resolved = false;
+        unawaited(engine.awaitSurfaceReady().then((_) => resolved = true));
+        session.noteWebViewMounted();
+
+        // One millisecond is less than the old 40 ms poll period: under the
+        // flag-poll this stayed false until a timer tick was pumped.
+        await tester.pump(const Duration(milliseconds: 1));
+        expect(resolved, isTrue);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+      await engine.dispose();
+    });
+
+    testWidgets('a surface that never mounts still resolves via the timeout', (
+      tester,
+    ) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      final session = YoutubeSession();
+      final engine = YoutubePlayerEngine(session: session);
+      try {
+        var resolved = false;
+        unawaited(engine.awaitSurfaceReady().then((_) => resolved = true));
+        await tester.pump();
+
+        // Advance past the 8 s mount ceiling: the wait must give up on its
+        // own instead of hanging the open.
+        await tester.pump(const Duration(seconds: 8, milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 1));
+        expect(resolved, isTrue);
+        expect(session.webViewMounted, isFalse);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+      await engine.dispose();
     });
   });
 

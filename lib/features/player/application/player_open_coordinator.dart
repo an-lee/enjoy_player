@@ -142,6 +142,17 @@ Future<void> runPlayerOpen(
   engine.setPosterUrl(openPosterUrl);
   engine.warmVideoSurface();
 
+  // The echo-session read does not depend on the engine: issue it beside
+  // `engine.open` instead of after the post-open commands, so the restore
+  // below is not serialized behind a cold engine start (issue #661). It is
+  // still *consumed* only after the same `isOpenStale` guards as before, so
+  // a superseded generation can no more apply this row than it could when
+  // the read started late. `ignore` keeps a read nobody ever awaits (stale
+  // return, or the open retry gave up) from surfacing as an unhandled async
+  // error — the await below still sees the result and rethrows failures.
+  final persistedFuture = db.echoSessionDao.getLatestForTarget(dexie, mediaId)
+    ..ignore();
+
   // After a YouTube → MediaKit swap the first `open` races WebView
   // teardown and can hang (2026-08-30: skeleton until back + reopen).
   // Use the short command ceiling for that first attempt, then retry
@@ -199,7 +210,7 @@ Future<void> runPlayerOpen(
   );
   if (host.isOpenStale(gen)) return;
 
-  final persisted = await db.echoSessionDao.getLatestForTarget(dexie, mediaId);
+  final persisted = await persistedFuture;
   if (host.isOpenStale(gen)) return;
 
   final posMs = options.restorePosition ? (persisted?.currentTimeMs ?? 0) : 0;

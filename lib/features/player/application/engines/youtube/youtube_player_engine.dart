@@ -24,7 +24,10 @@ final _logYoutube = logNamed('YouTubePlayerEngine');
 
 /// See [YoutubeWebViewBridge.watchUri] — not iframe embed.
 class YoutubePlayerEngine implements PlayerEngine {
-  YoutubePlayerEngine() : _session = YoutubeSession() {
+  /// [session] is injectable so tests can drive the mount signal without a
+  /// WebView backend.
+  YoutubePlayerEngine({YoutubeSession? session})
+    : _session = session ?? YoutubeSession() {
     _webView = YoutubeWebViewController(
       session: _session,
       onStallRecovery: () => _webView.recoverStalledPlayback(),
@@ -104,17 +107,20 @@ class YoutubePlayerEngine implements PlayerEngine {
   }
 
   /// Completes when the WebView is mounted or [timeout] elapses.
+  ///
+  /// The mount is signalled by [YoutubeSession.noteWebViewMounted] (push from
+  /// `onWebViewCreated`), so waiting costs no periodic timer on the UI thread
+  /// — the 40 ms flag-poll used to sit on the `awaitSurfaceReady` critical
+  /// path of every open (issue #661). [timeout] only bounds a surface that
+  /// never mounts; the answer is still read off the session flag, exactly as
+  /// before.
   Future<bool> _awaitWebViewMounted({
     Duration timeout = const Duration(seconds: 8),
   }) async {
     if (youTubeEngineOptedOutHere) return false;
     _ensureWebViewAttached();
     if (_session.webViewMounted) return true;
-    final deadline = DateTime.now().add(timeout);
-    while (DateTime.now().isBefore(deadline)) {
-      if (_session.webViewMounted) return true;
-      await Future<void>.delayed(const Duration(milliseconds: 40));
-    }
+    await _session.awaitWebViewMounted().timeout(timeout, onTimeout: () {});
     return _session.webViewMounted;
   }
 

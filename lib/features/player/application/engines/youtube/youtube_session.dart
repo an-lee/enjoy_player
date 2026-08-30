@@ -44,6 +44,7 @@ class YoutubeSession {
   bool _mountRequested = false;
   bool _webViewMounted = false;
   Completer<void>? _surfaceDetached;
+  Completer<void>? _webViewMountedWaiter;
   bool _loggedFirstPlaying = false;
   bool _watchPageLoadStopReceived = false;
   bool _awaitingColdInitialNavigation = false;
@@ -433,7 +434,19 @@ class YoutubeSession {
   // WebView mount state.
   // ---------------------------------------------------------------------------
 
-  void noteWebViewMounted() => _webViewMounted = true;
+  void noteWebViewMounted() {
+    _webViewMounted = true;
+    // Push, don't poll: whoever is waiting on [awaitWebViewMounted] resolves
+    // here instead of re-reading the flag on a timer (issue #661). Idempotent
+    // — a second mount note with no waiter outstanding has nothing to
+    // complete, and the waiter is dropped once completed so a later
+    // unmount/remount cycle arms a fresh one.
+    final waiter = _webViewMountedWaiter;
+    _webViewMountedWaiter = null;
+    if (waiter != null && !waiter.isCompleted) {
+      waiter.complete();
+    }
+  }
 
   void noteWebViewUnmounted() {
     _webViewMounted = false;
@@ -442,6 +455,17 @@ class YoutubeSession {
     if (waiter != null && !waiter.isCompleted) {
       waiter.complete();
     }
+  }
+
+  /// Completes when the WebView next mounts, or immediately if it already is.
+  ///
+  /// The waiter is armed lazily so consecutive mount/unmount cycles each get
+  /// their own signal (same shape as [_surfaceDetached]). A waiter left
+  /// hanging by [closeStreams] is bounded by the caller's mount timeout, as
+  /// the flag-polling loop it replaces was.
+  Future<void> awaitWebViewMounted() {
+    if (_webViewMounted) return Future<void>.value();
+    return (_webViewMountedWaiter ??= Completer<void>()).future;
   }
 
   /// Completes when the WebView widget has unmounted, or immediately if it
