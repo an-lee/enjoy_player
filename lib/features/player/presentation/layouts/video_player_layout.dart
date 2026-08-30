@@ -279,55 +279,93 @@ class _VideoPausedTitleOverlay extends ConsumerWidget {
   }
 }
 
-class _VideoStageWithChrome extends ConsumerWidget {
+class _VideoStageWithChrome extends ConsumerStatefulWidget {
   const _VideoStageWithChrome({required this.engine});
 
   final PlayerEngine engine;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_VideoStageWithChrome> createState() =>
+      _VideoStageWithChromeState();
+}
+
+class _VideoStageWithChromeState extends ConsumerState<_VideoStageWithChrome> {
+  /// Identity-stable overlay chrome (issue #663).
+  ///
+  /// [PlayerSurfaceTarget] compares builders by identity, so a fresh closure
+  /// per build defeated the registry's delta gate: every ancestor rebuild —
+  /// each splitter-drag pointer move included — re-wrote the attachment and
+  /// re-created the chrome inside the host. The closure only captures this
+  /// State's `ref`, so it is allocated once per engine.
+  PlayerSurfaceOverlayBuilder? _overlayBuilder;
+
+  void _rebuildOverlayBuilder() {
+    final engine = widget.engine;
+    final isYoutube = engine.supportsYouTubePlayback;
+    _overlayBuilder = (ctx) => MouseRegion(
+      // opaque: false so empty regions pass hits through to the WebView
+      // below (YouTube needs a real WebView gesture; see
+      // docs/features/youtube.md).
+      opaque: false,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (!isYoutube)
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: Haptics.wrapTap(
+                  ctx,
+                  () =>
+                      ref.read(playerControllerProvider.notifier).togglePlay(),
+                ),
+                child: const ColoredBox(color: Colors.transparent),
+              ),
+            ),
+          const _VideoPausedTitleOverlay(),
+          const PlayerCollapseControl(),
+          if (isYoutube)
+            const Positioned(
+              bottom: 12,
+              right: 8,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  YoutubeOpenInBrowserButton(),
+                  SizedBox(width: 6),
+                  YoutubeLoginVideoFrameButton(),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _rebuildOverlayBuilder();
+  }
+
+  @override
+  void didUpdateWidget(covariant _VideoStageWithChrome oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // A new engine can flip `supportsYouTubePlayback`; the chrome depends on
+    // it, so the builder must be re-created with it.
+    if (!identical(oldWidget.engine, widget.engine)) {
+      _rebuildOverlayBuilder();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final engine = widget.engine;
     final isYoutube = engine.supportsYouTubePlayback;
 
     return PlayerSurfaceTarget(
       id: PlayerSurfaceIds.expandedPlayer,
-      // opaque: false so empty regions pass hits through to the WebView
-      // below (YouTube needs a real WebView gesture; see docs/features/youtube.md).
-      overlayBuilder: (ctx) => MouseRegion(
-        opaque: false,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (!isYoutube)
-              Positioned.fill(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: Haptics.wrapTap(
-                    ctx,
-                    () => ref
-                        .read(playerControllerProvider.notifier)
-                        .togglePlay(),
-                  ),
-                  child: const ColoredBox(color: Colors.transparent),
-                ),
-              ),
-            const _VideoPausedTitleOverlay(),
-            const PlayerCollapseControl(),
-            if (isYoutube)
-              const Positioned(
-                bottom: 12,
-                right: 8,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    YoutubeOpenInBrowserButton(),
-                    SizedBox(width: 6),
-                    YoutubeLoginVideoFrameButton(),
-                  ],
-                ),
-              ),
-          ],
-        ),
-      ),
+      overlayBuilder: _overlayBuilder,
       child: ColoredBox(
         color: Colors.black,
         child: !isYoutube
