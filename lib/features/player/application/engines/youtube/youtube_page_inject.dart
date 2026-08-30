@@ -11,16 +11,16 @@ const String kYoutubeMobileWatchInjectScript = r'''
   window.__enjoyYtMwc=1;
 
   // --- Focus pin ---
-  // The embedding app parks this WebView off-corner for overlays (ADR-0066);
-  // Android can clear the view's focus in ways the app cannot restore (the
-  // webview plugin exposes clearFocus but no requestFocus). When the document
-  // reports itself unfocused, m.youtube.com's player "corrects" programmatic
-  // playback back to paused within ~300-700 ms — the play-then-pause wedge
-  // (field-confirmed: every pause in a wedge carries ctx foc=0 while
-  // vis=visible). This page is an embedded, chrome-less player; nothing here
-  // legitimately needs a focus signal, so pin it focused and dispatch a
-  // synthetic focus event for page code that cached an unfocused flag from
-  // an earlier blur. Dart re-asserts this on surface unpark and before each
+  // The embedding app parks this WebView off-corner for overlays (ADR-0066)
+  // by translation only (size is preserved — a 320×180 shrink was itself
+  // a pause stimulus). Android can still clear the view's focus in ways
+  // the app cannot restore (the webview plugin exposes clearFocus but no
+  // requestFocus). When the document reports itself unfocused, m.youtube.com's
+  // player "corrects" programmatic playback back to paused within ~300-700 ms.
+  // This page is an embedded, chrome-less player; nothing here legitimately
+  // needs a focus signal, so pin it focused and dispatch a synthetic focus
+  // event for page code that cached an unfocused flag from an earlier blur.
+  // Dart re-asserts this on a real stage-size change and before each
   // automatic play retry (see YoutubeWebViewBridge.focusWindowScript).
   try{document.hasFocus=function(){return true;};}catch(e){}
   try{window.dispatchEvent(new Event('focus'));}catch(e){}

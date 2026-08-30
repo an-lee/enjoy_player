@@ -33,9 +33,13 @@ class PlayerSurfaceHost extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(playerEngineRevProvider);
-    final attachment = forcePark
-        ? null
-        : ref.watch(playerSurfaceRegistryProvider);
+    // Always watch the registry so a parked YouTube surface can keep the
+    // live target size. [forcePark] only suppresses on-screen placement —
+    // shrinking the WebView to [_parkWidth]×[_parkHeight] is the
+    // play-then-pause stimulus after every CC-sheet round-trip (YouTube
+    // treats 320 px as a mobile breakpoint and flushes ABR).
+    final registry = ref.watch(playerSurfaceRegistryProvider);
+    final attachment = forcePark ? null : registry;
 
     // Prefer the real owned engine; fall back to the test double when set.
     final engine =
@@ -49,6 +53,7 @@ class PlayerSurfaceHost extends ConsumerWidget {
       key: ObjectKey(engine),
       engine: engine,
       attachment: attachment,
+      overlayParkSize: registry?.size,
       parkWidth: _parkWidth,
       parkHeight: _parkHeight,
     );
@@ -60,12 +65,17 @@ class _EngineSurface extends StatefulWidget {
     super.key,
     required this.engine,
     required this.attachment,
+    required this.overlayParkSize,
     required this.parkWidth,
     required this.parkHeight,
   });
 
   final PlayerEngine engine;
   final PlayerSurfaceAttachment? attachment;
+
+  /// Live target size from the registry, even while [PlayerSurfaceHost.forcePark]
+  /// hides the surface. Used so YouTube parks at the last on-screen size.
+  final Size? overlayParkSize;
   final double parkWidth;
   final double parkHeight;
 
@@ -122,10 +132,18 @@ class _EngineSurfaceState extends State<_EngineSurface> {
       return const SizedBox.shrink();
     }
 
+    // YouTube (keepSurfaceWhenParked): park by translation only. A shrink
+    // to the 320×180 fallback crosses m.youtube.com's compact-player
+    // breakpoint and the page player then pauses every programmatic play
+    // within ~300–700 ms — the CC-sheet IPA-toggle wedge.
+    final size =
+        attachment?.size ??
+        widget.overlayParkSize ??
+        _heldAttachment?.size ??
+        Size(widget.parkWidth, widget.parkHeight);
     final offset = attachment != null
         ? _toLocal(attachment.offset)
-        : Offset(-widget.parkWidth - 64, 0);
-    final size = attachment?.size ?? Size(widget.parkWidth, widget.parkHeight);
+        : Offset(-size.width - 64, 0);
 
     Widget stageFor(double w, double h) {
       if (w <= 0 || h <= 0) return const SizedBox.shrink();
