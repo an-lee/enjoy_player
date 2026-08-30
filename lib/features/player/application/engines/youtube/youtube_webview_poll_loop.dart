@@ -72,6 +72,20 @@ class YoutubeWebViewPollLoop {
   Timer? _pollTimer;
   Timer? _pollKickTimer;
 
+  /// A poll is awaited but not finished yet. [Timer.periodic] does not wait
+  /// for the previous callback, so a read that outlives one
+  /// [YoutubeAudiblePlaybackPolicy.pollTick] — a heavy page, the inject
+  /// interval, a GC pause — used to let the next tick issue a second read
+  /// while the first was still outstanding. Two overlapping reads resolve in
+  /// completion order, not issue order, so the OLDER DOM snapshot could apply
+  /// last: a stale `s=1` landing after end-of-media runs
+  /// [YoutubeSession.notePlayingConfirmed], which clears `_playbackCompleted`
+  /// and re-emits `playing=true` on a video that is already over (issue #655).
+  /// Dropping the tick rather than queuing it keeps the cadence self-correcting
+  /// — the next period samples the DOM again, so a slow page loses nothing but
+  /// the ordering hazard.
+  bool _pollInFlight = false;
+
   bool get isRunning => _pollTimer != null;
 
   void scheduleKick() {
@@ -99,118 +113,128 @@ class YoutubeWebViewPollLoop {
   }
 
   Future<void> _tick() async {
-    await pollFn(
-      disposed: session.disposed,
-      web: webController(),
-      onResult:
-          ({
-            required Duration position,
-            Duration? newDuration,
-            required bool jsPaused,
-            required bool jsEnded,
-          }) {
-            if (session.disposed) return;
-            session.emitPosition(position);
-            if (newDuration != null &&
-                newDuration > Duration.zero &&
-                newDuration != session.lastDuration) {
-              session.emitDuration(newDuration);
-            }
-            if (!jsPaused && !jsEnded) {
-              onPlaybackProgress?.call(position);
-            }
-            final transition = decidePollTransition(
-              jsEnded: jsEnded,
-              jsPaused: jsPaused,
-              playing: session.playing,
-              pausedPollStreak: session.pausedPollStreak,
-              pauseConfirmThreshold: YoutubeSession.pauseConfirmPollTicks,
-              playbackCompleted: session.playbackCompleted,
-            );
-            switch (transition) {
-              case MediaJustEnded():
-                // Surface the transition only — the transport's CompletionLoop
-                // is the single consumer of `completed` for repeat policy
-                // (ADR-0044). Stop polling; the loop's replay re-arms it via
-                // the explicit-play path.
-                session.noteEnded();
-                stop();
-              case PauseStreaking(:final confirmed, :final newStreak):
-                session.notePauseStreak(newStreak);
-                if (confirmed) {
-                  final immediate = session.isImmediatePause(DateTime.now());
-                  final retry = decideImmediatePauseRetry(
-                    immediate: immediate,
-                    userPlayInFlight: session.userPlayInFlight,
-                    disposed: session.disposed,
-                    playbackCompleted: session.playbackCompleted,
-                    lastPlayingFromAutoRetry: session.lastPlayingFromAutoRetry,
-                    autoRetriesIssued: session.autoRetriesIssued,
-                    maxAutoRetries: YoutubeSession.maxAutoRetries,
-                  );
-                  _logPoll.fine(
-                    'youtube pause confirmed vid=${session.videoId} '
-                    'positionMs=${position.inMilliseconds} '
-                    'immediate=$immediate '
-                    'explicitPlay=${session.explicitPlayAttempted}',
-                  );
-                  if (immediate) {
-                    _logPoll.info(
-                      'youtube immediate pause vid=${session.videoId} '
-                      'positionMs=${position.inMilliseconds}',
+    // See [_pollInFlight]: one read at a time, never two overlapping ones.
+    if (_pollInFlight) return;
+    _pollInFlight = true;
+    // `finally`, not the happy path: a pollFn that throws must not leave the
+    // guard latched and silently starve the loop while `isRunning` stays true.
+    try {
+      await pollFn(
+        disposed: session.disposed,
+        web: webController(),
+        onResult:
+            ({
+              required Duration position,
+              Duration? newDuration,
+              required bool jsPaused,
+              required bool jsEnded,
+            }) {
+              if (session.disposed) return;
+              session.emitPosition(position);
+              if (newDuration != null &&
+                  newDuration > Duration.zero &&
+                  newDuration != session.lastDuration) {
+                session.emitDuration(newDuration);
+              }
+              if (!jsPaused && !jsEnded) {
+                onPlaybackProgress?.call(position);
+              }
+              final transition = decidePollTransition(
+                jsEnded: jsEnded,
+                jsPaused: jsPaused,
+                playing: session.playing,
+                pausedPollStreak: session.pausedPollStreak,
+                pauseConfirmThreshold: YoutubeSession.pauseConfirmPollTicks,
+                playbackCompleted: session.playbackCompleted,
+              );
+              switch (transition) {
+                case MediaJustEnded():
+                  // Surface the transition only — the transport's CompletionLoop
+                  // is the single consumer of `completed` for repeat policy
+                  // (ADR-0044). Stop polling; the loop's replay re-arms it via
+                  // the explicit-play path.
+                  session.noteEnded();
+                  stop();
+                case PauseStreaking(:final confirmed, :final newStreak):
+                  session.notePauseStreak(newStreak);
+                  if (confirmed) {
+                    final immediate = session.isImmediatePause(DateTime.now());
+                    final retry = decideImmediatePauseRetry(
+                      immediate: immediate,
+                      userPlayInFlight: session.userPlayInFlight,
+                      disposed: session.disposed,
+                      playbackCompleted: session.playbackCompleted,
+                      lastPlayingFromAutoRetry:
+                          session.lastPlayingFromAutoRetry,
+                      autoRetriesIssued: session.autoRetriesIssued,
+                      maxAutoRetries: YoutubeSession.maxAutoRetries,
                     );
-                  }
-                  session.notePauseConfirmed();
-                  switch (retry) {
-                    case RetryPlayOnce():
-                      // Consume the command budget before re-playing; further
-                      // retries for this pause chain come from the capped
-                      // escalation arm (auto-retry attribution), so a
-                      // deliberate pause is never fought indefinitely.
-                      session.clearUserPlayInFlight();
-                      // Timestamp the issue: the audible policy's
-                      // post-restore heal suppresses itself while a retry
-                      // is this recent (same pause, one play).
-                      session.noteAutoPlayRetry();
+                    _logPoll.fine(
+                      'youtube pause confirmed vid=${session.videoId} '
+                      'positionMs=${position.inMilliseconds} '
+                      'immediate=$immediate '
+                      'explicitPlay=${session.explicitPlayAttempted}',
+                    );
+                    if (immediate) {
                       _logPoll.info(
-                        'youtube immediate pause retry vid='
-                        '${session.videoId}',
+                        'youtube immediate pause vid=${session.videoId} '
+                        'positionMs=${position.inMilliseconds}',
                       );
-                      unawaited(
-                        retryPlay(webController()).catchError((
-                          Object error,
-                          StackTrace stackTrace,
-                        ) {
-                          // The budget is already spent; surface the failed
-                          // retry instead of an unhandled zone error that
-                          // reads as a crash with no context.
-                          _logPoll.warning(
-                            'youtube immediate pause retry failed '
-                            'vid=${session.videoId}',
-                            error,
-                            stackTrace,
-                          );
-                        }),
-                      );
-                    case SurfacePause():
-                      if (immediate || session.explicitPlayAttempted) {
-                        session.scheduleRecoveryHint();
-                      }
+                    }
+                    session.notePauseConfirmed();
+                    switch (retry) {
+                      case RetryPlayOnce():
+                        // Consume the command budget before re-playing; further
+                        // retries for this pause chain come from the capped
+                        // escalation arm (auto-retry attribution), so a
+                        // deliberate pause is never fought indefinitely.
+                        session.clearUserPlayInFlight();
+                        // Timestamp the issue: the audible policy's
+                        // post-restore heal suppresses itself while a retry
+                        // is this recent (same pause, one play).
+                        session.noteAutoPlayRetry();
+                        _logPoll.info(
+                          'youtube immediate pause retry vid='
+                          '${session.videoId}',
+                        );
+                        unawaited(
+                          retryPlay(webController()).catchError((
+                            Object error,
+                            StackTrace stackTrace,
+                          ) {
+                            // The budget is already spent; surface the failed
+                            // retry instead of an unhandled zone error that
+                            // reads as a crash with no context.
+                            _logPoll.warning(
+                              'youtube immediate pause retry failed '
+                              'vid=${session.videoId}',
+                              error,
+                              stackTrace,
+                            );
+                          }),
+                        );
+                      case SurfacePause():
+                        if (immediate || session.explicitPlayAttempted) {
+                          session.scheduleRecoveryHint();
+                        }
+                    }
+                    // Keep polling after pause so a subsequent play attempt can
+                    // detect DOM state even if `playing`/`playRejected` is missed.
+                    // Position updates while paused are cheap; stop only on ended.
                   }
-                  // Keep polling after pause so a subsequent play attempt can
-                  // detect DOM state even if `playing`/`playRejected` is missed.
-                  // Position updates while paused are cheap; stop only on ended.
-                }
-              case PollPlaying():
-                session.notePlayingConfirmed();
-                onFirstPlaying();
-                if (session.buffering) {
-                  session.emitBuffering(false);
-                }
-              case PollIdleTick():
-                session.resetPauseStreak();
-            }
-          },
-    );
+                case PollPlaying():
+                  session.notePlayingConfirmed();
+                  onFirstPlaying();
+                  if (session.buffering) {
+                    session.emitBuffering(false);
+                  }
+                case PollIdleTick():
+                  session.resetPauseStreak();
+              }
+            },
+      );
+    } finally {
+      _pollInFlight = false;
+    }
   }
 }
