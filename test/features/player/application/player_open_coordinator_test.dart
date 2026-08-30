@@ -4,12 +4,15 @@ import 'dart:io';
 import 'package:drift/native.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
 import 'package:enjoy_player/data/db/app_database_provider.dart';
+import 'package:enjoy_player/features/player/application/echo_mode_provider.dart';
+import 'package:enjoy_player/features/player/application/playback_session_persister.dart';
 import 'package:enjoy_player/features/player/application/player_controller.dart';
 import 'package:enjoy_player/features/player/application/player_engine.dart';
 import 'package:enjoy_player/features/player/application/player_engine_test_double_provider.dart';
 import 'package:enjoy_player/features/player/application/player_open_coordinator.dart';
 import 'package:enjoy_player/features/player/application/player_position_tracker.dart';
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
+import 'package:enjoy_player/features/transcript/application/transcript_blur_mode_provider.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_repository_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -239,6 +242,184 @@ void main() {
           reason: 'session must publish despite the never-completing seek',
         );
         expect(fake.seekCalls, isNotEmpty, reason: 'the seek was attempted');
+      },
+    );
+  });
+
+  group('runPlayerOpen persister hand-off (issue #653)', () {
+    late AppDatabase db;
+    late FakePlayerEngine fake;
+    late ProviderContainer container;
+    late PathProviderPlatform originalPathProvider;
+
+    setUp(() async {
+      originalPathProvider = PathProviderPlatform.instance;
+      PathProviderPlatform.instance = TestPathProvider(
+        Directory.systemTemp.createTempSync('enjoy_player_open_flush').path,
+      );
+      db = AppDatabase(executor: NativeDatabase.memory());
+      fake = FakePlayerEngine();
+      container = ProviderContainer(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          playerEngineTestDoubleProvider.overrideWithValue(fake),
+          transcriptRepositoryProvider.overrideWithValue(
+            TranscriptRepository(db),
+          ),
+        ],
+      );
+
+      final now = DateTime.now();
+      for (final id in const ['media-a', 'media-b']) {
+        final file = File(
+          p.join(
+            Directory.systemTemp.path,
+            'enjoy_flush_${id}_${DateTime.now().microsecondsSinceEpoch}.mp3',
+          ),
+        );
+        await file.writeAsBytes([1]);
+        addTearDown(() async {
+          if (await file.exists()) await file.delete();
+        });
+        await db.audioDao.insertRow(
+          AudioRow(
+            id: id,
+            aid: 'x-$id',
+            provider: 'user',
+            title: id,
+            description: null,
+            thumbnailUrl: null,
+            durationSeconds: 600,
+            language: 'en',
+            translationKey: null,
+            sourceText: null,
+            voice: null,
+            source: null,
+            localUri: Uri.file(file.path).toString(),
+            md5: null,
+            size: 1,
+            mediaUrl: null,
+            syncStatus: null,
+            serverUpdatedAt: null,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+      }
+
+      // Media B has a persisted echo window different from A's live one.
+      await db.echoSessionDao.upsert(
+        EchoSessionRow(
+          id: 'es-b',
+          targetType: 'Audio',
+          targetId: 'media-b',
+          language: 'en',
+          currentTimeMs: 5000,
+          playbackRate: 1,
+          volume: 1,
+          recordingsCount: 0,
+          recordingsDurationMs: 0,
+          currentSegmentIndex: -1,
+          echoActive: true,
+          echoStartLine: 7,
+          echoEndLine: 9,
+          echoStartMs: 30000,
+          echoEndMs: 40000,
+          blurActive: false,
+          createdAt: now,
+          updatedAt: now,
+          startedAt: now,
+          lastActiveAt: now,
+        ),
+      );
+    });
+
+    tearDown(() async {
+      PathProviderPlatform.instance = originalPathProvider;
+      await pumpEventQueue();
+      container.dispose();
+      await db.close();
+      await fake.dispose();
+    });
+
+    PlaybackSession sessionA() {
+      final now = DateTime(2026, 8, 30);
+      return PlaybackSession(
+        mediaId: 'media-a',
+        dexieTargetType: 'Audio',
+        mediaType: 'audio',
+        mediaTitle: 'A',
+        durationSeconds: 600,
+        currentTimeSeconds: 42,
+        currentSegmentIndex: 3,
+        language: 'en',
+        startedAt: now,
+        lastActiveAt: now,
+      );
+    }
+
+    test(
+      'a pending write keeps the previous media echo/blur when new media opens',
+      () async {
+        final ref = _refOf(container);
+        final persister = container.read(playbackSessionPersisterProvider);
+
+        // Media A is playing with an active echo window + transcript blur.
+        container
+            .read(echoModeProvider.notifier)
+            .activate(
+              startLineIndex: 2,
+              endLineIndex: 4,
+              startTimeSeconds: 10,
+              endTimeSeconds: 20,
+            );
+        container.read(transcriptBlurModeProvider.notifier).activate();
+
+        // Position-tracker cadence: one debounced write pending for media A.
+        persister.schedule(
+          mediaId: 'media-a',
+          dexieTargetType: 'Audio',
+          session: sessionA(),
+        );
+
+        final host = _Host(ref, fake);
+        host.session = sessionA();
+
+        // Opening B restores B's echo/blur into the live providers.
+        await runPlayerOpen(host, ref, 'media-b');
+        final echo = container.read(echoModeProvider);
+        expect(echo.active, isTrue);
+        expect(
+          echo.startTimeSeconds,
+          30,
+          reason: 'B restored echo must own the providers now',
+        );
+        expect(container.read(transcriptBlurModeProvider), isFalse);
+
+        // Advance past the debounce. Falsifiability (docs/perf-measurement.md
+        // Pattern 3): reverting the `runPlayerOpen` flush at the head of the
+        // open (lib/features/player/application/player_open_coordinator.dart)
+        // turns this test red — B's restored providers then write line `7`
+        // (echoStartMs 30_000 + blurActive=false) into media-a's row instead
+        // of lines 2–4 above. Verified against pre-fix code.
+        await Future<void>.delayed(
+          const Duration(milliseconds: kPlaybackSessionDebounceMs + 200),
+        );
+        await pumpEventQueue();
+
+        final rowA = await db.echoSessionDao.getLatestForTarget(
+          'Audio',
+          'media-a',
+        );
+        expect(rowA, isNotNull, reason: 'the open must flush media A');
+        expect(rowA!.currentTimeMs, 42000);
+        expect(rowA.currentSegmentIndex, 3);
+        expect(rowA.echoActive, isTrue);
+        expect(rowA.echoStartLine, 2);
+        expect(rowA.echoEndLine, 4);
+        expect(rowA.echoStartMs, 10000);
+        expect(rowA.echoEndMs, 20000);
+        expect(rowA.blurActive, isTrue);
       },
     );
   });

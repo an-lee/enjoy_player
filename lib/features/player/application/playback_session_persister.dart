@@ -86,7 +86,10 @@ class PlaybackSessionPersister {
   /// Flushes any pending debounced write synchronously (best-effort).
   ///
   /// [PlayerController.clear] calls this before [cancel] so swipe-to-dismiss
-  /// does not lose the last 450 ms of position updates.
+  /// does not lose the last 450 ms of position updates. `runPlayerOpen` calls
+  /// it for the previous session before the new media's echo/blur restore
+  /// overwrites the live providers, so a stale timer cannot write the new
+  /// media's echo window into the old media's row (issue #653).
   Future<void> flush({
     required String mediaId,
     required String dexieTargetType,
