@@ -121,7 +121,7 @@ class _DiscoverFeedTileState extends ConsumerState<DiscoverFeedTile> {
       provider: 'youtube',
       vid: widget.entry.videoId,
     );
-    warmYoutubeSurfaceForVideoId(ref);
+    warmYoutubeSurfaceIfNeeded(ref, provider: 'youtube');
     openPlayerRoute(context, mediaId);
   }
 

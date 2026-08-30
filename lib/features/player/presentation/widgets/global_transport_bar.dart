@@ -340,29 +340,28 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
       tooltip: ttPrev,
       icon: const EnjoyChromeIcon(EnjoyChromeGlyph.skipBack),
       enabled: !isBuffering && hasTranscriptLines,
-      onTap: () => ref.read(playerInteractionsProvider.notifier).prevLine(),
+      onTap: () => ref.read(playerInteractionsProvider).prevLine(),
     );
 
     final nextButton = _LineNavButton(
       tooltip: ttNext,
       icon: const EnjoyChromeIcon(EnjoyChromeGlyph.skipForward),
       enabled: !isBuffering && hasTranscriptLines,
-      onTap: () => ref.read(playerInteractionsProvider.notifier).nextLine(),
+      onTap: () => ref.read(playerInteractionsProvider).nextLine(),
     );
 
     final replayButton = _LineNavButton(
       tooltip: ttReplay,
       icon: const EnjoyChromeIcon(EnjoyChromeGlyph.replay),
       enabled: !isBuffering && hasTranscriptLines,
-      onTap: () => ref.read(playerInteractionsProvider.notifier).replayLine(),
+      onTap: () => ref.read(playerInteractionsProvider).replayLine(),
     );
 
     final transcriptControls = <Widget>[prevButton, nextButton, replayButton];
 
     final primaryTransport = <Widget>[playRing, ...transcriptControls];
 
-    void echoToggle() =>
-        ref.read(playerInteractionsProvider.notifier).toggleEcho();
+    void echoToggle() => ref.read(playerInteractionsProvider).toggleEcho();
     final echoButton = OnboardingTarget(
       tipId: OnboardingTipId.playerEcho,
       onTargetAction: echo.active || hasTranscriptLines ? echoToggle : null,
@@ -411,7 +410,7 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
       onPressed: blurEnabled || hasTranscriptLines
           ? Haptics.wrapTap(
               context,
-              () => ref.read(playerInteractionsProvider.notifier).toggleBlur(),
+              () => ref.read(playerInteractionsProvider).toggleBlur(),
             )
           : null,
       icon: Icon(

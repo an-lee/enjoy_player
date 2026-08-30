@@ -1,12 +1,12 @@
 // Coverage for lib/features/player/application/youtube_warm.dart
-// (warmYoutubeSurfaceIfNeeded, warmYoutubeSurfaceForVideoId) and
+// (warmYoutubeSurfaceIfNeeded) and
 // lib/core/audio/recording_preview_player_provider.dart
 // (recordingPreviewPlayerProvider).
 //
-// `youtube_warm` exposes two top-level helpers that take a `WidgetRef` and
-// read `playerControllerProvider` to call `warmYoutubeSurface()`. We wire
-// each through a real `Consumer` widget under `tester.pumpWidget` so the
-// real call sites are exercised end-to-end.
+// `youtube_warm` exposes a top-level helper that takes a `WidgetRef` and
+// reads `playerControllerProvider` to call `warmYoutubeSurface()`. We wire
+// it through a real `Consumer` widget under `tester.pumpWidget` so the
+// real call site is exercised end-to-end.
 import 'package:drift/native.dart';
 import 'package:enjoy_player/core/audio/recording_preview_player.dart';
 import 'package:enjoy_player/core/audio/recording_preview_player_provider.dart';
@@ -34,18 +34,6 @@ class _InvokeWarmIfNeeded extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     warmYoutubeSurfaceIfNeeded(ref, provider: provider);
-    onInvoked(ref.read(playerEngineRevProvider));
-    return const SizedBox.shrink();
-  }
-}
-
-class _InvokeWarmForVideoId extends ConsumerWidget {
-  const _InvokeWarmForVideoId({required this.onInvoked});
-  final void Function(int engineRev) onInvoked;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    warmYoutubeSurfaceForVideoId(ref);
     onInvoked(ref.read(playerEngineRevProvider));
     return const SizedBox.shrink();
   }
@@ -154,22 +142,27 @@ void main() {
       },
     );
 
-    testWidgets('warmYoutubeSurfaceForVideoId triggers immediately', (
-      tester,
-    ) async {
-      var observedRev = -1;
-      await tester.pumpWidget(
-        _scope(
-          fake: fake,
-          db: db,
-          child: _InvokeWarmForVideoId(onInvoked: (v) => observedRev = v),
-        ),
-      );
-      await tester.pump();
+    testWidgets(
+      'warmYoutubeSurfaceIfNeeded triggers immediately for an explicit youtube '
+      'provider (the folded-in no-argument call path)',
+      (tester) async {
+        var observedRev = -1;
+        await tester.pumpWidget(
+          _scope(
+            fake: fake,
+            db: db,
+            child: _InvokeWarmIfNeeded(
+              provider: 'youtube',
+              onInvoked: (v) => observedRev = v,
+            ),
+          ),
+        );
+        await tester.pump();
 
-      // Same short-circuit when the test-double provider is non-null.
-      expect(observedRev, 0);
-    });
+        // Same short-circuit when the test-double provider is non-null.
+        expect(observedRev, 0);
+      },
+    );
   });
 
   group('recordingPreviewPlayerProvider', () {

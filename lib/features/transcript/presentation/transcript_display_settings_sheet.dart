@@ -60,7 +60,7 @@ class TranscriptDisplaySettingsSection extends ConsumerWidget {
         subtitle: l10n.transcriptBlurToggleTooltip,
         value: blurOn,
         onChanged: (_) {
-          unawaited(ref.read(playerInteractionsProvider.notifier).toggleBlur());
+          unawaited(ref.read(playerInteractionsProvider).toggleBlur());
         },
       ),
       SubtitleToggleTile(

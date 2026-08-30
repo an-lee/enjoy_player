@@ -229,13 +229,17 @@ class YoutubeSession {
   /// directly instead of reloading the watch page (ADR-0044).
   void resetCompletionFlag() => _playbackCompleted = false;
 
-  void resetForOpen(String newVideoId) {
+  /// Latches and one-shot bookkeeping that open and clear must both clear, so
+  /// the two paths cannot drift apart (issue #668).
+  ///
+  /// Deliberately open-only stays out: [_loggedFirstPlaying],
+  /// [_firstBufferingOffReceived] and the document bump are open-specific, and
+  /// [_mountRequested] is clear-specific. Emits are left to the callers — open
+  /// and clear transition buffering in opposite directions.
+  void _resetTransportLatches({required String videoId}) {
     _cancelHint();
     _playBudgetEpisodeAt = null;
     _tapToPlayHintActive = false;
-    _loggedFirstPlaying = false;
-    resetWatchPageExpectations(firstPlaying: false);
-    _firstBufferingOffReceived = false;
     _explicitPlayAttempted = false;
     _userPlayInFlight = false;
     _lastAutoPlayRetryAt = null;
@@ -243,11 +247,18 @@ class YoutubeSession {
     _lastPlayingFromAutoRetry = false;
     _pendingAutoRetryAttribution = false;
     clearVolumeRestorePending();
-    noteWatchDocumentLoaded();
     _volumeRestoredDocGen = -1;
     _lastPlayingAt = null;
-    _videoId = newVideoId;
+    _videoId = videoId;
     _playbackCompleted = false;
+    resetWatchPageExpectations(firstPlaying: false);
+  }
+
+  void resetForOpen(String newVideoId) {
+    _resetTransportLatches(videoId: newVideoId);
+    _loggedFirstPlaying = false;
+    _firstBufferingOffReceived = false;
+    noteWatchDocumentLoaded();
     emitBuffering(true);
     emitPlaying(false);
     emitPosition(Duration.zero);
@@ -255,22 +266,8 @@ class YoutubeSession {
   }
 
   void resetForClear({bool keepMounted = false}) {
-    _cancelHint();
-    _playBudgetEpisodeAt = null;
-    _tapToPlayHintActive = false;
-    _explicitPlayAttempted = false;
-    _userPlayInFlight = false;
-    _lastAutoPlayRetryAt = null;
-    _autoRetriesIssued = 0;
-    _lastPlayingFromAutoRetry = false;
-    _pendingAutoRetryAttribution = false;
-    clearVolumeRestorePending();
-    _volumeRestoredDocGen = -1;
-    _lastPlayingAt = null;
-    _videoId = '';
+    _resetTransportLatches(videoId: '');
     _mountRequested = keepMounted;
-    _playbackCompleted = false;
-    resetWatchPageExpectations(firstPlaying: false);
     emitPlaying(false);
     emitBuffering(false);
     emitPosition(Duration.zero);

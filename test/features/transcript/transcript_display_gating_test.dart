@@ -29,6 +29,8 @@ class _SpyKaraoke extends KaraokeHighlightSettingsOverride {
 }
 
 class _ToggleBlurInteractions extends PlayerInteractions {
+  _ToggleBlurInteractions(super.ref);
+
   @override
   Future<void> toggleBlur() async {
     ref.read(transcriptBlurModeProvider.notifier).toggle();
@@ -111,7 +113,7 @@ void main() {
         karaoke: KaraokeHighlightSettingsOverride(false),
         extraOverrides: [
           playerInteractionsProvider.overrideWith(
-            () => _ToggleBlurInteractions(),
+            (ref) => _ToggleBlurInteractions(ref),
           ),
         ],
         readiness: const TranscriptDisplayReadiness(

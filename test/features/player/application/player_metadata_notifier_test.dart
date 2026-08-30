@@ -101,7 +101,7 @@ void main() {
 
     final captureGen = controller.openGeneration;
     container
-        .read(playerMetadataProvider.notifier)
+        .read(playerMetadataProvider)
         .patchIfCurrent(
           mediaId: id,
           openGeneration: captureGen,
@@ -127,7 +127,7 @@ void main() {
     await controller.openMedia(idB);
 
     container
-        .read(playerMetadataProvider.notifier)
+        .read(playerMetadataProvider)
         .patchIfCurrent(
           mediaId: idA,
           openGeneration: captureGen,
@@ -153,7 +153,7 @@ void main() {
     expect(newGen, isNot(captureGen));
 
     container
-        .read(playerMetadataProvider.notifier)
+        .read(playerMetadataProvider)
         .patchIfCurrent(
           mediaId: idB,
           openGeneration: captureGen, // stale snapshot
@@ -168,7 +168,7 @@ void main() {
   test('no-op when session is null (no media open)', () async {
     // No openMedia call — session is null.
     container
-        .read(playerMetadataProvider.notifier)
+        .read(playerMetadataProvider)
         .patchIfCurrent(
           mediaId: 'whatever',
           openGeneration: 0,
@@ -188,7 +188,7 @@ void main() {
 
     // First, set a thumbnail.
     container
-        .read(playerMetadataProvider.notifier)
+        .read(playerMetadataProvider)
         .patchIfCurrent(
           mediaId: id,
           openGeneration: captureGen,
@@ -202,7 +202,7 @@ void main() {
 
     // Now patch again with null thumbnail — implementation must preserve.
     container
-        .read(playerMetadataProvider.notifier)
+        .read(playerMetadataProvider)
         .patchIfCurrent(
           mediaId: id,
           openGeneration: controller.openGeneration,
@@ -223,7 +223,7 @@ void main() {
     expect(controller.openGeneration, exactGen);
 
     container
-        .read(playerMetadataProvider.notifier)
+        .read(playerMetadataProvider)
         .patchIfCurrent(
           mediaId: id,
           openGeneration: exactGen + 1, // not the real gen

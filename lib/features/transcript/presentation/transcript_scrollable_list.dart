@@ -579,7 +579,7 @@ class _TranscriptScrollableListState
                         )
                       : null,
                   onTap: () => ref
-                      .read(playerInteractionsProvider.notifier)
+                      .read(playerInteractionsProvider)
                       .seekToLine(line, lineIndex),
                 );
 

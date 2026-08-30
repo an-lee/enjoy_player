@@ -25,10 +25,9 @@ final PlaybackChrome _chrome = (
 
 /// Records the seeks the strip issues without dragging a real engine in.
 class _RecordingInteractions extends PlayerInteractions {
-  final List<double> seekFractions = [];
+  _RecordingInteractions(super.ref);
 
-  @override
-  int build() => 0;
+  final List<double> seekFractions = [];
 
   @override
   Future<void> seekToProgressFraction(double fraction) async {
@@ -73,11 +72,14 @@ void main() {
 
   setUp(() {
     positions = StreamController<Duration>.broadcast();
-    interactions = _RecordingInteractions();
     container = ProviderContainer(
       overrides: [
         transportSliderPositionProvider.overrideWith((ref) => positions.stream),
-        playerInteractionsProvider.overrideWith(() => interactions),
+        // Assigned here because the service now needs the provider's Ref
+        // (issue #668); the strip is pumped before [interactions] is read.
+        playerInteractionsProvider.overrideWith(
+          (ref) => interactions = _RecordingInteractions(ref),
+        ),
       ],
     );
   });
