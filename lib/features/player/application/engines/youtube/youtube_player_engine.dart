@@ -33,6 +33,10 @@ class YoutubePlayerEngine implements PlayerEngine {
   }
 
   final YoutubeSession _session;
+
+  /// Last logged video-stage size (park/unpark marker — see buildVideoStage).
+  double? _lastStageSizeWidth;
+  double? _lastStageSizeHeight;
   late final YoutubeWebViewController _webView;
 
   @override
@@ -159,6 +163,20 @@ class YoutubePlayerEngine implements PlayerEngine {
   }) {
     if (maxWidth <= 0 || maxHeight <= 0) {
       return const SizedBox.shrink();
+    }
+
+    // Diagnostic marker for surface parking (ADR-0066): overlays park the
+    // stage off-corner at 320×180, so a size change to/from those
+    // dimensions time-stamps park/unpark in the diagnostic log — needed to
+    // correlate overlay round-trips (e.g. the IPA sheet) with page-side
+    // behavior (field investigation of the echo-mode play-then-pause wedge).
+    if (maxWidth != _lastStageSizeWidth || maxHeight != _lastStageSizeHeight) {
+      _lastStageSizeWidth = maxWidth;
+      _lastStageSizeHeight = maxHeight;
+      _logYoutube.fine(
+        'youtube stage size ${maxWidth.round()}x${maxHeight.round()} '
+        'vid=${_session.videoId}',
+      );
     }
 
     return StreamBuilder<bool>(
