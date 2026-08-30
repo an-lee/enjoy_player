@@ -91,6 +91,53 @@ void main() {
       session.resetForOpen('next1234567');
       expect(session.lastAutoPlayRetryAt, isNull);
     });
+
+    test('auto-retry attribution marks only its own playing episode', () {
+      final session = YoutubeSession()..resetForOpen('abc12345678');
+      session.beginUserPlay();
+      session.notePlayingConfirmed();
+      expect(session.lastPlayingFromAutoRetry, isFalse);
+
+      session.noteAutoPlayRetry(); // retry #1 issued → count + attribution
+      expect(session.autoRetriesIssued, 1);
+      session.notePauseConfirmed(); // episode ends before the retry plays
+      session.notePlayingConfirmed(); // the retry's episode
+      expect(session.lastPlayingFromAutoRetry, isTrue);
+
+      // A deliberate pause drops the attribution — no further escalation.
+      session.noteUserPauseCommand();
+      expect(session.lastPlayingFromAutoRetry, isFalse);
+
+      // A fresh play command resets the chain entirely.
+      session.beginUserPlay();
+      expect(session.autoRetriesIssued, 0);
+      expect(session.lastPlayingFromAutoRetry, isFalse);
+    });
+
+    test(
+      'poll-tick re-confirmations do not erase the attribution (round-5 bug)',
+      () {
+        // The poll loop calls notePlayingConfirmed on EVERY tick while
+        // playing; per-call attribution consumption let the first tick after
+        // the retry's playing event erase it, so the escalation arm never
+        // fired for the second wedge pause. Attribution must latch per
+        // episode (false→true transition) instead.
+        final session = YoutubeSession()..resetForOpen('abc12345678');
+        session.beginUserPlay();
+        session.notePlayingConfirmed(); // user episode
+        session.noteAutoPlayRetry(); // retry #1 issued
+        session.notePauseConfirmed(); // episode ends (playing → false)
+
+        session.notePlayingConfirmed(); // retry episode begins (transition)
+        session.notePlayingConfirmed(); // poll tick re-confirms (no-op path)
+        session.notePlayingConfirmed(); // …and again
+        expect(
+          session.lastPlayingFromAutoRetry,
+          isTrue,
+          reason: 're-confirmation ticks must not erase the latch',
+        );
+      },
+    );
   });
 
   group('notePlayingConfirmed', () {

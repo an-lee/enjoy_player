@@ -11,6 +11,8 @@ import '../../support/fake_player_engine.dart';
 
 class _KeyedSurfaceEngine extends FakePlayerEngine {
   final surfaceKey = GlobalKey();
+  double? lastMaxWidth;
+  double? lastMaxHeight;
 
   @override
   Widget buildVideoStage({
@@ -18,6 +20,8 @@ class _KeyedSurfaceEngine extends FakePlayerEngine {
     required double maxWidth,
     required double maxHeight,
   }) {
+    lastMaxWidth = maxWidth;
+    lastMaxHeight = maxHeight;
     return ColoredBox(key: surfaceKey, color: Colors.black);
   }
 }
@@ -128,10 +132,143 @@ void main() {
       final box =
           engine.surfaceKey.currentContext!.findRenderObject()! as RenderBox;
       final origin = box.localToGlobal(Offset.zero);
-      // Parked at Offset(-parkWidth - 64, 0) — must not sit on the target.
+      // Parked at Offset(-size.width - 64, 0) — must not sit on the target.
       expect(origin.dx, lessThan(0));
     },
   );
+
+  testWidgets(
+    'parked YouTube surface keeps the live target size (no 320×180 shrink)',
+    (tester) async {
+      // Field: every CC-sheet round-trip (toggling IPA) used to shrink the
+      // WebView from the on-screen stage (e.g. 400×225) to the 320×180 park
+      // fallback. m.youtube.com treats 320 px as a compact-player breakpoint,
+      // flushes ABR, and then pauses every programmatic play within ~0.5 s.
+      final engine = _KeyedSurfaceEngine();
+      addTearDown(engine.dispose);
+      const targetSize = Size(400, 225);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [playerEngineTestDoubleProvider.overrideWithValue(engine)],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: SizedBox(
+                      width: 400,
+                      height: 225,
+                      child: PlayerSurfaceTarget(
+                        id: PlayerSurfaceIds.expandedPlayer,
+                        child: ColoredBox(color: Colors.grey),
+                      ),
+                    ),
+                  ),
+                  PlayerSurfaceHost(forcePark: true),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      expect(engine.lastMaxWidth, targetSize.width);
+      expect(engine.lastMaxHeight, targetSize.height);
+
+      final box =
+          engine.surfaceKey.currentContext!.findRenderObject()! as RenderBox;
+      expect(box.size, targetSize);
+      final origin = box.localToGlobal(Offset.zero);
+      expect(origin.dx, lessThanOrEqualTo(-targetSize.width));
+    },
+  );
+
+  testWidgets('overlay park then unpark does not change YouTube stage size', (
+    tester,
+  ) async {
+    final engine = _KeyedSurfaceEngine();
+    addTearDown(engine.dispose);
+    final container = ProviderContainer(
+      overrides: [playerEngineTestDoubleProvider.overrideWithValue(engine)],
+    );
+    addTearDown(container.dispose);
+    const targetSize = Size(400, 225);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          home: Scaffold(
+            body: Stack(
+              fit: StackFit.expand,
+              children: [
+                const Align(
+                  alignment: Alignment.centerRight,
+                  child: SizedBox(
+                    width: 400,
+                    height: 225,
+                    child: PlayerSurfaceTarget(
+                      id: PlayerSurfaceIds.expandedPlayer,
+                      child: ColoredBox(color: Colors.grey),
+                    ),
+                  ),
+                ),
+                Consumer(
+                  builder: (context, ref, _) {
+                    final park = ref.watch(
+                      playerSurfaceShouldParkForOverlayProvider,
+                    );
+                    return PlayerSurfaceHost(forcePark: park);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(engine.lastMaxWidth, targetSize.width);
+    expect(engine.lastMaxHeight, targetSize.height);
+    final attachedBox =
+        engine.surfaceKey.currentContext!.findRenderObject()! as RenderBox;
+    expect(attachedBox.size, targetSize);
+    expect(attachedBox.localToGlobal(Offset.zero).dx, greaterThanOrEqualTo(0));
+
+    final token = container
+        .read(playerSurfaceOverlayCoordinatorProvider.notifier)
+        .acquire('cc-sheet');
+    await tester.pump();
+    await tester.pump();
+
+    expect(engine.lastMaxWidth, targetSize.width);
+    expect(engine.lastMaxHeight, targetSize.height);
+    final parkedBox =
+        engine.surfaceKey.currentContext!.findRenderObject()! as RenderBox;
+    expect(parkedBox.size, targetSize);
+    expect(parkedBox.localToGlobal(Offset.zero).dx, lessThan(0));
+
+    container
+        .read(playerSurfaceOverlayCoordinatorProvider.notifier)
+        .release(token);
+    await tester.pump();
+    await tester.pump();
+
+    expect(engine.lastMaxWidth, targetSize.width);
+    expect(engine.lastMaxHeight, targetSize.height);
+    final restoredBox =
+        engine.surfaceKey.currentContext!.findRenderObject()! as RenderBox;
+    expect(restoredBox.size, targetSize);
+    expect(restoredBox.localToGlobal(Offset.zero).dx, greaterThanOrEqualTo(0));
+  });
 
   testWidgets(
     'overlay coordinator token parks stage without reparenting the surface',

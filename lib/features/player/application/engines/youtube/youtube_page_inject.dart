@@ -10,6 +10,21 @@ const String kYoutubeMobileWatchInjectScript = r'''
   if(window.__enjoyYtMwc){return;}
   window.__enjoyYtMwc=1;
 
+  // --- Focus pin ---
+  // The embedding app parks this WebView off-corner for overlays (ADR-0066)
+  // by translation only (size is preserved — a 320×180 shrink was itself
+  // a pause stimulus). Android can still clear the view's focus in ways
+  // the app cannot restore (the webview plugin exposes clearFocus but no
+  // requestFocus). When the document reports itself unfocused, m.youtube.com's
+  // player "corrects" programmatic playback back to paused within ~300-700 ms.
+  // This page is an embedded, chrome-less player; nothing here legitimately
+  // needs a focus signal, so pin it focused and dispatch a synthetic focus
+  // event for page code that cached an unfocused flag from an earlier blur.
+  // Dart re-asserts this on a real stage-size change and before each
+  // automatic play retry (see YoutubeWebViewBridge.focusWindowScript).
+  try{document.hasFocus=function(){return true;};}catch(e){}
+  try{window.dispatchEvent(new Event('focus'));}catch(e){}
+
   function mainVideo(){
     var p=document.querySelector('.html5-video-player');
     if(!p) return document.querySelector('video');
@@ -148,10 +163,50 @@ const String kYoutubeMobileWatchInjectScript = r'''
         if(isAd()) return;
         var args=[e];
         if(e==='loadedmetadata') args.push(video.duration||0);
+        if(e==='pause') args.push(pauseContext(video));
         window.flutter_inappwebview.callHandler(
           'onVideoEvent',args[0],args.length>1?args[1]:null);
       });
     });
+  }
+
+  // Page-side state at the moment of a pause — the Dart side cannot ask the
+  // page WHY it paused (a DOM pause carries no initiator), so every pause
+  // ships its context for diagnostic logs: page-corrected pauses (the
+  // play-then-pause bug class) correlate with hidden/unfocused documents or
+  // a specific page-player state.
+  function pauseContext(video){
+    var ps='?';
+    try{
+      var p=document.querySelector('#movie_player');
+      if(p&&typeof p.getPlayerState==='function') ps=p.getPlayerState();
+    }catch(e){}
+    var vis='?';
+    try{vis=document.visibilityState;}catch(e){}
+    var foc='?';
+    try{foc=document.hasFocus()?'1':'0';}catch(e){}
+    var muted='?';
+    try{muted=video.muted?'1':'0';}catch(e){}
+    // Starvation evidence (field round 5): a page pause with pstate=3
+    // (buffering), readyState < 3 and ~0 s buffered ahead is buffer
+    // exhaustion, not a policy pause — the retries must wait for data.
+    var rs='?';
+    try{rs=video.readyState;}catch(e){}
+    var buf='?';
+    try{
+      buf='0';
+      for(var i=0;i<video.buffered.length;i++){
+        if(video.buffered.start(i)<=video.currentTime&&
+           video.currentTime<video.buffered.end(i)){
+          buf=(video.buffered.end(i)-video.currentTime).toFixed(1);
+          break;
+        }
+      }
+    }catch(e){}
+    var vol='?';
+    try{vol=(video.volume==null?'?':video.volume);}catch(e){}
+    return 'vis='+vis+' foc='+foc+' muted='+muted+' vol='+vol+
+           ' pstate='+ps+' rs='+rs+' buf='+buf;
   }
 
   // --- Sync current video state to Dart ---
@@ -166,7 +221,8 @@ const String kYoutubeMobileWatchInjectScript = r'''
     }else if(video.ended){
       window.flutter_inappwebview.callHandler('onVideoEvent','ended');
     }else{
-      window.flutter_inappwebview.callHandler('onVideoEvent','pause');
+      window.flutter_inappwebview.callHandler(
+        'onVideoEvent','pause',pauseContext(video));
     }
   }
 

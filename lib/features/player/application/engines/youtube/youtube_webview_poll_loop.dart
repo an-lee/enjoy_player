@@ -45,7 +45,17 @@ class YoutubeWebViewPollLoop {
     YoutubePollFn? pollFn,
     YoutubeRetryPlayFn? retryPlay,
   }) : pollFn = pollFn ?? YoutubeStatePoller.poll,
-       retryPlay = retryPlay ?? YoutubeWebViewBridge.play;
+       // The default retry re-asserts the page's pinned focus first (focus
+       // loss was one field-confirmed pause trigger) and then plays only
+       // once the element actually has data — the wedge's dominant cause is
+       // buffer exhaustion (pause ctx pstate=3, decoder starved ~10× below
+       // realtime), and an immediate re-play just re-exhausts the buffer.
+       retryPlay =
+           retryPlay ??
+           ((web) async {
+             await YoutubeWebViewBridge.refocusWindow(web);
+             await YoutubeWebViewBridge.playWhenReady(web);
+           });
 
   final YoutubeSession session;
   final InAppWebViewController? Function() webController;
@@ -134,6 +144,9 @@ class YoutubeWebViewPollLoop {
                     userPlayInFlight: session.userPlayInFlight,
                     disposed: session.disposed,
                     playbackCompleted: session.playbackCompleted,
+                    lastPlayingFromAutoRetry: session.lastPlayingFromAutoRetry,
+                    autoRetriesIssued: session.autoRetriesIssued,
+                    maxAutoRetries: YoutubeSession.maxAutoRetries,
                   );
                   _logPoll.fine(
                     'youtube pause confirmed vid=${session.videoId} '
@@ -150,9 +163,10 @@ class YoutubeWebViewPollLoop {
                   session.notePauseConfirmed();
                   switch (retry) {
                     case RetryPlayOnce():
-                      // Consume the one-shot budget before re-playing so a
-                      // second immediate pause surfaces to the user instead
-                      // of looping.
+                      // Consume the command budget before re-playing; further
+                      // retries for this pause chain come from the capped
+                      // escalation arm (auto-retry attribution), so a
+                      // deliberate pause is never fought indefinitely.
                       session.clearUserPlayInFlight();
                       // Timestamp the issue: the audible policy's
                       // post-restore heal suppresses itself while a retry

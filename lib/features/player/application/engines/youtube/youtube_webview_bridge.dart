@@ -167,6 +167,75 @@ class YoutubeWebViewBridge {
     })();
   ''';
 
+  /// Re-asserts the pinned focus state in the watch page (see the focus pin
+  /// in the watch inject). Used when the video stage unparks — overlays park
+  /// the WebView off-corner (ADR-0066) and Android may clear its view focus,
+  /// which m.youtube.com's player treats as "not user-initiated" and answers
+  /// by pausing programmatic playback — and before each automatic play retry.
+  /// Idempotent; returns the page's (patched) focus reading.
+  static const String focusWindowScript = '''
+    (function(){
+      try{document.hasFocus=function(){return true;};}catch(e){}
+      try{window.dispatchEvent(new Event('focus'));}catch(e){}
+      try{return document.hasFocus();}catch(e){return null;}
+    })();
+  ''';
+
+  static Future<void> refocusWindow(InAppWebViewController? web) async {
+    await web?.evaluateJavascript(source: focusWindowScript);
+  }
+
+  /// Data-gated play for automatic retries (immediate-pause recovery).
+  ///
+  /// Field rounds 3–5: the page player pauses the element when playback
+  /// outruns the buffer (`ctx pstate=3` — buffering — with decoder input
+  /// arriving ~10× slower than realtime on the reporting device). Re-playing
+  /// immediately just burns the tiny re-buffered amount and pauses again; the
+  /// retry therefore waits (≤ ~5 s, 250 ms steps) until the element has
+  /// `readyState ≥ 3` AND ≥ 1 s buffered ahead, then plays. The
+  /// `__enjoyYtPlayAttempt` bump keeps this consistent with the stale-guard
+  /// protocol: any newer transport command supersedes the waiting retry.
+  static const String playWhenReadyScript =
+      '''
+    (function(){
+      $_findVideoAndPlayer
+      if(!v) return;
+      var attempt=(window.__enjoyYtPlayAttempt||0)+1;
+      window.__enjoyYtPlayAttempt=attempt;
+      var tries=0;
+      function ahead(){
+        try{
+          for(var i=0;i<v.buffered.length;i++){
+            if(v.buffered.start(i)<=v.currentTime&&v.currentTime<v.buffered.end(i)){
+              return v.buffered.end(i)-v.currentTime;
+            }
+          }
+        }catch(e){}
+        return 0;
+      }
+      function step(){
+        if(window.__enjoyYtPlayAttempt!==attempt) return;
+        if(tries++>20) return;
+        if(v.readyState>=3&&ahead()>=1){
+          try{
+            if(mp){mp.playVideo();}
+            else{
+              var r=v.play();
+              if(r&&typeof r.catch==='function') r.catch(function(){});
+            }
+          }catch(e){}
+          return;
+        }
+        setTimeout(step,250);
+      }
+      step();
+    })();
+  ''';
+
+  static Future<void> playWhenReady(InAppWebViewController? web) async {
+    await web?.evaluateJavascript(source: playWhenReadyScript);
+  }
+
   static Future<void> play(InAppWebViewController? web) async {
     await web?.evaluateJavascript(source: playScript);
   }

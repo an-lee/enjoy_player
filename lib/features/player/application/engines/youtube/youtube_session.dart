@@ -91,6 +91,20 @@ class YoutubeSession {
   /// Wall-clock of the poll loop's last D8 retry issue.
   DateTime? _lastAutoPlayRetryAt;
 
+  /// Cap on automatic retries per user play command (D8 escalation — the
+  /// field-observed echo-mode wedge survived the first retry).
+  static const int maxAutoRetries = 2;
+
+  /// Auto retries issued since the last play-intent command.
+  int _autoRetriesIssued = 0;
+
+  /// The current playing episode was produced by an auto retry (set when
+  /// the retry is issued, consumed by the next `playing` transition).
+  bool _pendingAutoRetryAttribution = false;
+
+  /// The most recent playing episode was produced by an auto retry.
+  bool _lastPlayingFromAutoRetry = false;
+
   /// First-play unmute is deferred until [position] advances (or fallback).
   bool _volumeRestorePending = false;
   Duration? _volumeRestoreBaselinePosition;
@@ -175,6 +189,8 @@ class YoutubeSession {
   }
 
   DateTime? get lastAutoPlayRetryAt => _lastAutoPlayRetryAt;
+  int get autoRetriesIssued => _autoRetriesIssued;
+  bool get lastPlayingFromAutoRetry => _lastPlayingFromAutoRetry;
   bool get volumeRestorePending => _volumeRestorePending;
   Duration get lastPosition => _lastPosition;
   Duration get lastDuration => _lastDuration;
@@ -222,6 +238,9 @@ class YoutubeSession {
     _explicitPlayAttempted = false;
     _userPlayInFlight = false;
     _lastAutoPlayRetryAt = null;
+    _autoRetriesIssued = 0;
+    _lastPlayingFromAutoRetry = false;
+    _pendingAutoRetryAttribution = false;
     clearVolumeRestorePending();
     noteWatchDocumentLoaded();
     _volumeRestoredDocGen = -1;
@@ -241,6 +260,9 @@ class YoutubeSession {
     _explicitPlayAttempted = false;
     _userPlayInFlight = false;
     _lastAutoPlayRetryAt = null;
+    _autoRetriesIssued = 0;
+    _lastPlayingFromAutoRetry = false;
+    _pendingAutoRetryAttribution = false;
     clearVolumeRestorePending();
     _volumeRestoredDocGen = -1;
     _lastPlayingAt = null;
@@ -268,6 +290,9 @@ class YoutubeSession {
     // Fresh attempt: its fulfillment clock starts at ITS resolving playing
     // episode, not at a previous attempt's.
     _playBudgetEpisodeAt = null;
+    _autoRetriesIssued = 0;
+    _lastPlayingFromAutoRetry = false;
+    _pendingAutoRetryAttribution = false;
     if (_buffering && !_playing) {
       emitBuffering(false);
     }
@@ -277,16 +302,28 @@ class YoutubeSession {
   /// [pause]/[stop]/the pause branch of [playOrPause]). Consumes the D8
   /// retry budget so a deliberate pause is never auto-resumed — without
   /// this, a user pausing within the immediate-pause window of a fresh
-  /// start would be un-paused by the retry. Delegates to
-  /// [clearUserPlayInFlight] so budget consumption stays defined in exactly
-  /// one place (issue #627).
-  void noteUserPauseCommand() => clearUserPlayInFlight();
+  /// start would be un-paused by the retry. Also drops auto-retry
+  /// attribution (escalation must stop for a deliberate pause) and
+  /// delegates the budget consumption to [clearUserPlayInFlight] so it
+  /// stays defined in exactly one place (issue #627).
+  void noteUserPauseCommand() {
+    _lastPlayingFromAutoRetry = false;
+    _pendingAutoRetryAttribution = false;
+    clearUserPlayInFlight();
+  }
 
   /// Records that the poll loop just spent the D8 budget on a retry. The
   /// audible policy's post-restore heal suppresses itself while a retry is
   /// this recent — both target the same page-corrected pause, and a double
   /// `playVideo` breaks the "re-issues play exactly once" accounting.
-  void noteAutoPlayRetry() => _lastAutoPlayRetryAt = DateTime.now();
+  /// Also steps the escalation bookkeeping: counts the retry against
+  /// [maxAutoRetries] and arms attribution so the playing episode this
+  /// retry produces is recognized as auto-retry-origin.
+  void noteAutoPlayRetry() {
+    _lastAutoPlayRetryAt = DateTime.now();
+    _autoRetriesIssued++;
+    _pendingAutoRetryAttribution = true;
+  }
 
   /// `playing` observed (DOM event or poll). The in-flight play latch stays
   /// armed: the attempt resolves only when playback outlives the
@@ -297,6 +334,16 @@ class YoutubeSession {
   void notePlayingConfirmed() {
     _pausedPollStreak = 0;
     _playbackCompleted = false;
+    // Attribution latches per EPISODE (the false→true transition): the poll
+    // loop re-confirms playing on every tick, and a per-call consumption let
+    // those ticks erase the auto-retry attribution ~250 ms into the retried
+    // episode — the escalation arm then never fired for the second wedge
+    // pause (field round 5: one retry logged, none after).
+    final wasPlaying = _playing;
+    if (!wasPlaying) {
+      _lastPlayingFromAutoRetry = _pendingAutoRetryAttribution;
+      _pendingAutoRetryAttribution = false;
+    }
     emitPlaying(true);
   }
 
@@ -304,6 +351,8 @@ class YoutubeSession {
   /// errored: the unresolved user play settles as not-playing.
   void noteUserPlayUnresolved() {
     _userPlayInFlight = false;
+    _pendingAutoRetryAttribution = false;
+    _lastPlayingFromAutoRetry = false;
     emitPlaying(false);
     emitBuffering(false);
   }
@@ -312,6 +361,8 @@ class YoutubeSession {
   void noteEnded() {
     _pausedPollStreak = 0;
     _userPlayInFlight = false;
+    _pendingAutoRetryAttribution = false;
+    _lastPlayingFromAutoRetry = false;
     markCompleted();
     emitPlaying(false);
     emitBuffering(false);

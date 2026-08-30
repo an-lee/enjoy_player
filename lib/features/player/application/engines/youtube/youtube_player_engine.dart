@@ -33,6 +33,10 @@ class YoutubePlayerEngine implements PlayerEngine {
   }
 
   final YoutubeSession _session;
+
+  /// Last logged video-stage size (park/unpark marker — see buildVideoStage).
+  double? _lastStageSizeWidth;
+  double? _lastStageSizeHeight;
   late final YoutubeWebViewController _webView;
 
   @override
@@ -165,6 +169,24 @@ class YoutubePlayerEngine implements PlayerEngine {
   }) {
     if (maxWidth <= 0 || maxHeight <= 0) {
       return const SizedBox.shrink();
+    }
+
+    // Diagnostic marker + focus re-assert when the stage size actually
+    // changes. ADR-0066 parks overlays off-corner; YouTube now keeps its
+    // last on-screen size (a 320×180 shrink was the play-then-pause
+    // stimulus — m.youtube.com treats 320 px as a compact-player
+    // breakpoint and flushes ABR). A remaining size change is therefore
+    // a real layout jump (rotation / split). Parking can still clear
+    // view focus (the plugin exposes no requestFocus); re-assert the
+    // pinned page focus. Idempotent, no-op without a live controller.
+    if (maxWidth != _lastStageSizeWidth || maxHeight != _lastStageSizeHeight) {
+      _lastStageSizeWidth = maxWidth;
+      _lastStageSizeHeight = maxHeight;
+      _logYoutube.fine(
+        'youtube stage size ${maxWidth.round()}x${maxHeight.round()} '
+        'vid=${_session.videoId}',
+      );
+      unawaited(YoutubeWebViewBridge.refocusWindow(_webView.webController));
     }
 
     return StreamBuilder<bool>(
