@@ -351,7 +351,10 @@ class _VideoStageWithChrome extends ConsumerWidget {
         color: Colors.black,
         child: !isYoutube
             ? const SizedBox.expand()
-            : YoutubeVideoPoster(primaryUrl: engine.posterUrl, visible: true),
+            : YoutubeVideoPoster(
+                primaryUrl: engine.metadata?.posterUrl,
+                visible: true,
+              ),
       ),
     );
   }

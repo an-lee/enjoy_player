@@ -11,12 +11,35 @@ import 'package:enjoy_player/data/files/security_scoped_bookmark.dart';
 import 'package:enjoy_player/features/player/application/player_engine_constants.dart';
 import 'package:enjoy_player/features/player/domain/playable_source.dart';
 
+/// Optional metadata capability of an engine (issue #664).
+///
+/// Poster plumbing, the identity of the currently-open source, and open-time
+/// init instrumentation. Engines that render decoded frames directly
+/// ([MediaKitPlayerEngine]) have none of it — [PlayerEngine.metadata] is
+/// `null` there and call sites null-check instead of branching on a
+/// capability flag or a concrete engine class.
+abstract interface class PlayerEngineMetadata {
+  /// Poster shown while the surface is loading/buffering; `null` until the
+  /// open path resolves one.
+  String? get posterUrl;
+
+  void setPosterUrl(String? url);
+
+  /// Id of the currently-open YouTube video; empty when not applicable.
+  String get currentVideoId;
+
+  /// Marks the start of open-time init instrumentation.
+  void markOpenTimingStart();
+}
+
 /// Contract implemented by [MediaKitPlayerEngine] / [YouTubePlayerEngine]; fakes in tests.
 ///
 /// Transport + streams + capabilities only. Widget building is *not* part of
 /// the contract: the presentation layer mounts a per-engine stage for the
 /// active engine (see `buildPlayerVideoStage`, issue #664) and reads the
-/// non-widget inputs each concrete engine publishes.
+/// non-widget inputs each concrete engine publishes. Source identity, poster
+/// plumbing and init timing live behind the optional [PlayerEngineMetadata]
+/// capability.
 abstract class PlayerEngine {
   Stream<Duration> get position;
 
@@ -64,18 +87,9 @@ abstract class PlayerEngine {
   /// the first mpv construct cannot race WebView destroy.
   void prepareNativeBackend();
 
-  /// Poster shown while the surface is loading/buffering; `null` for engines
-  /// that render decoded frames directly.
-  String? get posterUrl;
-
-  void setPosterUrl(String? url);
-
-  /// Id of the currently-open YouTube video; empty when not applicable.
-  String get currentVideoId;
-
-  /// Marks the start of open-time init instrumentation. Engines without init
-  /// timing treat this as a no-op.
-  void markOpenTimingStart();
+  /// This engine's [PlayerEngineMetadata] capability, or `null` when it has
+  /// none ([MediaKitPlayerEngine]).
+  PlayerEngineMetadata? get metadata;
 
   /// Clears any end-of-media latch so the next [play] drives the loaded
   /// media directly instead of restarting from the beginning. Engines
@@ -254,17 +268,10 @@ class MediaKitPlayerEngine implements PlayerEngine {
     _nativeBackendAllowed = true;
   }
 
+  /// No metadata capability: MediaKit renders decoded frames directly, so
+  /// there is no loading poster, no source identity, and no init timing.
   @override
-  String? get posterUrl => null;
-
-  @override
-  void setPosterUrl(String? url) {}
-
-  @override
-  String get currentVideoId => '';
-
-  @override
-  void markOpenTimingStart() {}
+  PlayerEngineMetadata? get metadata => null;
 
   @override
   void resetCompletionFlag() {}

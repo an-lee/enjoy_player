@@ -162,8 +162,13 @@ Future<void> runPlayerOpen(
       mediaUrl: video?.mediaUrl,
     );
   }
-  engine.markOpenTimingStart();
-  engine.setPosterUrl(openPosterUrl);
+  // Metadata is a capability (issue #664): engines without a loading poster /
+  // init timing have none, so the calls are skipped instead of no-oped.
+  final metadata = engine.metadata;
+  if (metadata != null) {
+    metadata.markOpenTimingStart();
+    metadata.setPosterUrl(openPosterUrl);
+  }
   engine.warmVideoSurface();
 
   // The echo-session read does not depend on the engine: issue it beside

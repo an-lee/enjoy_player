@@ -47,7 +47,7 @@ class VocabularyPracticeClipBody extends ConsumerWidget {
     final opening = phase == ReviewPracticePhase.clipOpening;
 
     final poster = YoutubeVideoPoster(
-      primaryUrl: engine?.posterUrl ?? session?.thumbnailUrl,
+      primaryUrl: engine?.metadata?.posterUrl ?? session?.thumbnailUrl,
       visible: true,
     );
 

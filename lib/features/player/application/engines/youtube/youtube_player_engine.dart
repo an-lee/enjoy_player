@@ -19,7 +19,10 @@ import 'youtube_webview_bridge.dart';
 final _logYoutube = logNamed('YouTubePlayerEngine');
 
 /// See [YoutubeWebViewBridge.watchUri] — not iframe embed.
-class YoutubePlayerEngine implements PlayerEngine {
+///
+/// Also implements [PlayerEngineMetadata]: YouTube is the only engine with a
+/// loading poster, a source identity, and open-time init instrumentation.
+class YoutubePlayerEngine implements PlayerEngine, PlayerEngineMetadata {
   /// [session] is injectable so tests can drive the mount signal without a
   /// WebView backend.
   YoutubePlayerEngine({YoutubeSession? session})
@@ -74,6 +77,10 @@ class YoutubePlayerEngine implements PlayerEngine {
 
   @override
   String? get posterUrl => _session.posterUrl;
+
+  /// This engine *is* its metadata capability.
+  @override
+  PlayerEngineMetadata get metadata => this;
 
   @override
   bool get supportsYouTubePlayback => true;
