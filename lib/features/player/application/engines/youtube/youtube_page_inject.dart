@@ -148,10 +148,31 @@ const String kYoutubeMobileWatchInjectScript = r'''
         if(isAd()) return;
         var args=[e];
         if(e==='loadedmetadata') args.push(video.duration||0);
+        if(e==='pause') args.push(pauseContext(video));
         window.flutter_inappwebview.callHandler(
           'onVideoEvent',args[0],args.length>1?args[1]:null);
       });
     });
+  }
+
+  // Page-side state at the moment of a pause — the Dart side cannot ask the
+  // page WHY it paused (a DOM pause carries no initiator), so every pause
+  // ships its context for diagnostic logs: page-corrected pauses (the
+  // play-then-pause bug class) correlate with hidden/unfocused documents or
+  // a specific page-player state.
+  function pauseContext(video){
+    var ps='?';
+    try{
+      var p=document.querySelector('#movie_player');
+      if(p&&typeof p.getPlayerState==='function') ps=p.getPlayerState();
+    }catch(e){}
+    var vis='?';
+    try{vis=document.visibilityState;}catch(e){}
+    var foc='?';
+    try{foc=document.hasFocus()?'1':'0';}catch(e){}
+    var muted='?';
+    try{muted=video.muted?'1':'0';}catch(e){}
+    return 'vis='+vis+' foc='+foc+' muted='+muted+' pstate='+ps;
   }
 
   // --- Sync current video state to Dart ---
@@ -166,7 +187,8 @@ const String kYoutubeMobileWatchInjectScript = r'''
     }else if(video.ended){
       window.flutter_inappwebview.callHandler('onVideoEvent','ended');
     }else{
-      window.flutter_inappwebview.callHandler('onVideoEvent','pause');
+      window.flutter_inappwebview.callHandler(
+        'onVideoEvent','pause',pauseContext(video));
     }
   }
 

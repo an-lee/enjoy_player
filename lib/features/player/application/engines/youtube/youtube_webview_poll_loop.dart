@@ -134,6 +134,9 @@ class YoutubeWebViewPollLoop {
                     userPlayInFlight: session.userPlayInFlight,
                     disposed: session.disposed,
                     playbackCompleted: session.playbackCompleted,
+                    lastPlayingFromAutoRetry: session.lastPlayingFromAutoRetry,
+                    autoRetriesIssued: session.autoRetriesIssued,
+                    maxAutoRetries: YoutubeSession.maxAutoRetries,
                   );
                   _logPoll.fine(
                     'youtube pause confirmed vid=${session.videoId} '
@@ -150,9 +153,10 @@ class YoutubeWebViewPollLoop {
                   session.notePauseConfirmed();
                   switch (retry) {
                     case RetryPlayOnce():
-                      // Consume the one-shot budget before re-playing so a
-                      // second immediate pause surfaces to the user instead
-                      // of looping.
+                      // Consume the command budget before re-playing; further
+                      // retries for this pause chain come from the capped
+                      // escalation arm (auto-retry attribution), so a
+                      // deliberate pause is never fought indefinitely.
                       session.clearUserPlayInFlight();
                       // Timestamp the issue: the audible policy's
                       // post-restore heal suppresses itself while a retry

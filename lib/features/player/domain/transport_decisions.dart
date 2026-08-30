@@ -251,22 +251,39 @@ final class SurfacePause extends ImmediatePauseRetryDecision {
 }
 
 /// When a pause is confirmed almost immediately after playback started
-/// ([immediate]) and the originating play attempt's budget is still live
-/// ([userPlayInFlight] — armed by a play-intent command, preserved through
-/// the first `playing`, expired once playback outlives the immediate
-/// window, and consumed by this retry, by failure transitions, or by
-/// pause-intent commands), grant exactly one automatic retry: the page
-/// player state machine can "correct" a freshly started video back to
-/// paused before it settles, and re-playing after it settles recovers
-/// without user-facing recovery UX. Every other confirmed pause surfaces
-/// normally (recovery hint is the consumer's decision).
+/// ([immediate]) and the dying episode still has retry coverage, grant an
+/// automatic retry: the page player state machine can "correct" a freshly
+/// started video back to paused before it settles, and re-playing after it
+/// settles recovers without user-facing recovery UX.
+///
+/// Coverage has two arms:
+/// - [userPlayInFlight] — armed by a play-intent command, preserved through
+///   the first `playing`, expired once playback outlives the immediate
+///   window, consumed by this retry / failure transitions / pause-intent
+///   commands.
+/// - [lastPlayingFromAutoRetry] with [autoRetriesIssued] < [maxAutoRetries]
+///   — escalation for the field-observed echo-mode wedge (Android): the
+///   page re-paused the retried play too (~600 ms in), spending the
+///   one-shot budget and wedging playback until a manual tap. Each attempt
+///   outlived the previous one, so further settled retries have a real
+///   chance; the cap bounds total auto-plays per user command so a
+///   deliberate pause is never fought indefinitely.
+///
+/// Every other confirmed pause surfaces normally (recovery hint is the
+/// consumer's decision).
 ImmediatePauseRetryDecision decideImmediatePauseRetry({
   required bool immediate,
   required bool userPlayInFlight,
   required bool disposed,
   required bool playbackCompleted,
+  required bool lastPlayingFromAutoRetry,
+  required int autoRetriesIssued,
+  required int maxAutoRetries,
 }) {
-  if (immediate && userPlayInFlight && !disposed && !playbackCompleted) {
+  final covered =
+      userPlayInFlight ||
+      (lastPlayingFromAutoRetry && autoRetriesIssued < maxAutoRetries);
+  if (immediate && covered && !disposed && !playbackCompleted) {
     return ImmediatePauseRetryDecision.retry;
   }
   return ImmediatePauseRetryDecision.surface;

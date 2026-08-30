@@ -91,6 +91,27 @@ void main() {
       session.resetForOpen('next1234567');
       expect(session.lastAutoPlayRetryAt, isNull);
     });
+
+    test('auto-retry attribution marks only its own playing episode', () {
+      final session = YoutubeSession()..resetForOpen('abc12345678');
+      session.beginUserPlay();
+      session.notePlayingConfirmed();
+      expect(session.lastPlayingFromAutoRetry, isFalse);
+
+      session.noteAutoPlayRetry(); // retry #1 issued → count + attribution
+      expect(session.autoRetriesIssued, 1);
+      session.notePlayingConfirmed(); // the retry's episode
+      expect(session.lastPlayingFromAutoRetry, isTrue);
+
+      // A deliberate pause drops the attribution — no further escalation.
+      session.noteUserPauseCommand();
+      expect(session.lastPlayingFromAutoRetry, isFalse);
+
+      // A fresh play command resets the chain entirely.
+      session.beginUserPlay();
+      expect(session.autoRetriesIssued, 0);
+      expect(session.lastPlayingFromAutoRetry, isFalse);
+    });
   });
 
   group('notePlayingConfirmed', () {

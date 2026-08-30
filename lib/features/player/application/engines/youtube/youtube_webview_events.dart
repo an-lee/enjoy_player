@@ -67,7 +67,11 @@ class YoutubeWebViewEvents {
         // previously extended the stale-`playing` window and made the next
         // transport toggle issue `pause()` instead of `play()`.
         audibility.onPause();
-        _logEvents.fine('youtube video paused vid=${session.videoId}');
+        final context = args.length > 1 ? '${args[1]}' : '';
+        _logEvents.fine(
+          'youtube video paused vid=${session.videoId}'
+          '${context.isEmpty ? '' : ' ctx=$context'}',
+        );
         break;
       case YoutubeVideoEventName.playRejected:
         audibility.cancelPending();

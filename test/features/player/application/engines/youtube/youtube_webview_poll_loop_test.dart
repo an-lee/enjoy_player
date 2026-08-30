@@ -356,6 +356,89 @@ void main() {
     });
 
     test(
+      'echo wedge: escalation retries the retried episode, capped',
+      () async {
+        // Field sequence (Android, echo mode): the user-commanded play dies
+        // immediately (retry #1), the RETRIED play dies immediately too —
+        // the old one-shot budget wedged here. Escalation grants retry #2
+        // because the dying episode was our own, then surfaces at the cap.
+        final driver = _FakePollDriver();
+        var retryCalls = 0;
+        session.beginUserPlay();
+        session.notePlayingConfirmed();
+
+        final loop = YoutubeWebViewPollLoop(
+          session: session,
+          webController: () => null,
+          onFirstPlaying: () {},
+          pollFn: driver.poll,
+          retryPlay: (_) async => retryCalls++,
+        );
+
+        loop.start();
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+
+        void confirmPause() {
+          for (var i = 0; i < YoutubeSession.pauseConfirmPollTicks; i++) {
+            driver.emit(
+              position: Duration(milliseconds: i * 10),
+              jsPaused: true,
+            );
+          }
+        }
+
+        // Episode 1 (user command) dies → retry #1.
+        confirmPause();
+        expect(retryCalls, 1);
+        // Retry #1's play resolves to playing (attribution consumed).
+        session.notePlayingConfirmed();
+        // Episode 2 (auto-retry) dies → escalation retry #2.
+        confirmPause();
+        expect(retryCalls, 2);
+        // Retry #2's play resolves to playing.
+        session.notePlayingConfirmed();
+        // Episode 3 dies at the cap → surfaced, no third retry.
+        confirmPause();
+        expect(retryCalls, 2);
+
+        loop.stop();
+      },
+    );
+
+    test('deliberate pause command stops the escalation chain', () async {
+      // A user pausing while an escalation chain is live must not be
+      // un-paused: the pause-intent command drops the attribution.
+      final driver = _FakePollDriver();
+      var retryCalls = 0;
+      session.beginUserPlay();
+      session.notePlayingConfirmed();
+
+      final loop = YoutubeWebViewPollLoop(
+        session: session,
+        webController: () => null,
+        onFirstPlaying: () {},
+        pollFn: driver.poll,
+        retryPlay: (_) async => retryCalls++,
+      );
+
+      loop.start();
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      for (var i = 0; i < YoutubeSession.pauseConfirmPollTicks; i++) {
+        driver.emit(position: Duration(milliseconds: i * 10), jsPaused: true);
+      }
+      expect(retryCalls, 1);
+      session.notePlayingConfirmed(); // retry #1 produced playing
+      session.noteUserPauseCommand(); // …but the user just chose pause
+
+      for (var i = 0; i < YoutubeSession.pauseConfirmPollTicks; i++) {
+        driver.emit(position: Duration(milliseconds: i * 10), jsPaused: true);
+      }
+      expect(retryCalls, 1);
+
+      loop.stop();
+    });
+
+    test(
       'failed retry surfaces a warning instead of an unhandled rejection',
       () async {
         // The one-shot budget is spent before retryPlay runs; a rejected

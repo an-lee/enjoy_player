@@ -215,6 +215,9 @@ void main() {
         userPlayInFlight: true,
         disposed: false,
         playbackCompleted: false,
+        lastPlayingFromAutoRetry: false,
+        autoRetriesIssued: 0,
+        maxAutoRetries: 2,
       );
       expect(d, isA<RetryPlayOnce>());
     });
@@ -225,6 +228,9 @@ void main() {
         userPlayInFlight: true,
         disposed: false,
         playbackCompleted: false,
+        lastPlayingFromAutoRetry: false,
+        autoRetriesIssued: 0,
+        maxAutoRetries: 2,
       );
       expect(d, isA<SurfacePause>());
     });
@@ -235,6 +241,9 @@ void main() {
         userPlayInFlight: false,
         disposed: false,
         playbackCompleted: false,
+        lastPlayingFromAutoRetry: false,
+        autoRetriesIssued: 0,
+        maxAutoRetries: 2,
       );
       expect(d, isA<SurfacePause>());
     });
@@ -245,6 +254,9 @@ void main() {
         userPlayInFlight: true,
         disposed: true,
         playbackCompleted: false,
+        lastPlayingFromAutoRetry: false,
+        autoRetriesIssued: 0,
+        maxAutoRetries: 2,
       );
       expect(d, isA<SurfacePause>());
     });
@@ -255,6 +267,54 @@ void main() {
         userPlayInFlight: true,
         disposed: false,
         playbackCompleted: true,
+        lastPlayingFromAutoRetry: false,
+        autoRetriesIssued: 0,
+        maxAutoRetries: 2,
+      );
+      expect(d, isA<SurfacePause>());
+    });
+
+    test(
+      'escalates when the dying episode was an auto retry, under the cap',
+      () {
+        // Field wedge (echo mode, Android): the page re-paused the retried
+        // play too; the command budget is spent but the episode was ours.
+        final d = decideImmediatePauseRetry(
+          immediate: true,
+          userPlayInFlight: false,
+          disposed: false,
+          playbackCompleted: false,
+          lastPlayingFromAutoRetry: true,
+          autoRetriesIssued: 1,
+          maxAutoRetries: 2,
+        );
+        expect(d, isA<RetryPlayOnce>());
+      },
+    );
+
+    test('stops escalating at the auto-retry cap', () {
+      final d = decideImmediatePauseRetry(
+        immediate: true,
+        userPlayInFlight: false,
+        disposed: false,
+        playbackCompleted: false,
+        lastPlayingFromAutoRetry: true,
+        autoRetriesIssued: 2,
+        maxAutoRetries: 2,
+      );
+      expect(d, isA<SurfacePause>());
+    });
+
+    test('no escalation when the dying episode was not an auto retry', () {
+      // e.g. a page-UI resume the app never commanded: no coverage.
+      final d = decideImmediatePauseRetry(
+        immediate: true,
+        userPlayInFlight: false,
+        disposed: false,
+        playbackCompleted: false,
+        lastPlayingFromAutoRetry: false,
+        autoRetriesIssued: 1,
+        maxAutoRetries: 2,
       );
       expect(d, isA<SurfacePause>());
     });

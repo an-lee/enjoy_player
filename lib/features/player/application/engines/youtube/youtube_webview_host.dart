@@ -11,10 +11,22 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
+import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/core/webview/platform_webview_environment.dart';
 import 'youtube_watch_navigation_policy.dart';
 import 'youtube_webview_bridge.dart';
 import 'youtube_webview_controller.dart';
+
+final _logWeb = logNamed('YouTubeWebViewHost');
+
+String _consoleLevelLabel(ConsoleMessageLevel level) => switch (level) {
+  ConsoleMessageLevel.TIP => 'TIP',
+  ConsoleMessageLevel.LOG => 'LOG',
+  ConsoleMessageLevel.WARNING => 'WARNING',
+  ConsoleMessageLevel.ERROR => 'ERROR',
+  ConsoleMessageLevel.DEBUG => 'DEBUG',
+  _ => level.toString(),
+};
 
 /// One [InAppWebView] per engine; mounted in the video stage slot.
 class YoutubeWebViewHost extends StatefulWidget {
@@ -102,6 +114,17 @@ class _YoutubeWebViewHostState extends State<YoutubeWebViewHost> {
             : null,
         onLoadStop: (controller, url) async {
           await lifecycle.onPageFinished(controller, url?.toString());
+        },
+        onConsoleMessage: (controller, consoleMessage) {
+          // YouTube/Chromium console warnings (autoplay policy, player
+          // errors) are the only page-side narration of WHY a pause
+          // happened — surface them in diagnostic logs.
+          final message = consoleMessage.message;
+          if (message.trim().isEmpty) return;
+          _logWeb.fine(
+            'youtube console [${_consoleLevelLabel(consoleMessage.messageLevel)}] '
+            '${message.length > 300 ? message.substring(0, 300) : message}',
+          );
         },
         onReceivedHttpError: (controller, request, response) {
           lifecycle.onWebResourceHttpError(
