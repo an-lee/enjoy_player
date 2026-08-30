@@ -123,9 +123,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Language pair shows target language (default 'en' → 'EN').
-    // Source language is null initially → shows '—'.
+    // Language pair seeds from app prefs at build time (native 'zh-CN',
+    // learning 'en-US') — the '—' placeholder never renders.
     expect(find.textContaining('EN'), findsWidgets);
+    expect(find.text('—'), findsNothing);
   });
 
   testWidgets('CaptureStage type instead toggles to text input', (

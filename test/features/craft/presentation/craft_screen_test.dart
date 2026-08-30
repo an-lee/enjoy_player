@@ -11,6 +11,9 @@ import 'package:enjoy_player/features/auth/application/auth_controller.dart';
 import 'package:enjoy_player/features/auth/domain/auth_state.dart';
 import 'package:enjoy_player/features/auth/domain/user_profile.dart';
 import 'package:enjoy_player/features/craft/application/craft_controller.dart';
+import 'package:enjoy_player/features/craft/application/craft_preferences_provider.dart';
+import 'package:enjoy_player/features/craft/domain/craft_preferences.dart';
+import 'package:enjoy_player/features/craft/domain/craft_screen_mode.dart';
 import 'package:enjoy_player/features/craft/domain/craft_synthesizer.dart';
 import 'package:enjoy_player/features/craft/domain/craft_transcriber.dart';
 import 'package:enjoy_player/features/craft/domain/craft_translator.dart';
@@ -38,6 +41,34 @@ class _FakePrefsCtrl extends AppPreferencesCtrl {
     learningLanguage: 'en-US',
     nativeLanguage: 'zh-CN',
   );
+}
+
+/// Fixed, DB-free craft preferences ([CraftPreferences] to inject, if any).
+class _StubCraftPrefsCtrl extends CraftPreferencesCtrl {
+  _StubCraftPrefsCtrl([this.initial]);
+
+  final CraftPreferences? initial;
+
+  @override
+  CraftPreferences build() => initial ?? CraftPreferences.defaults;
+
+  @override
+  Future<CraftPreferences> load() async => state;
+
+  @override
+  Future<void> setScreenMode(CraftScreenMode mode) async {}
+
+  @override
+  Future<void> setStyleFor(
+    CraftScreenMode mode,
+    TranslationStyle style,
+  ) async {}
+
+  @override
+  Future<void> setCustomPrompt(String? prompt) async {}
+
+  @override
+  Future<void> setVoice(String baseLang, String? voiceId) async {}
 }
 
 class _FakeTranslator implements CraftTranslator {
@@ -91,9 +122,12 @@ Widget _harness({required List<Override> overrides}) {
   );
 }
 
-List<Override> _baseOverrides() => [
+List<Override> _baseOverrides({CraftPreferences? craftPrefs}) => [
   authCtrlProvider.overrideWith(_AuthSignedInCtrl.new),
   appPreferencesCtrlProvider.overrideWith(_FakePrefsCtrl.new),
+  craftPreferencesCtrlProvider.overrideWith(
+    () => _StubCraftPrefsCtrl(craftPrefs),
+  ),
   craftTranslatorProvider.overrideWithValue(_FakeTranslator()),
   craftSynthesizerProvider.overrideWithValue(_FakeSynthesizer()),
   craftTranscriberProvider.overrideWithValue(_FakeTranscriber()),
@@ -110,6 +144,22 @@ void main() {
     expect(find.byType(ExpressFlow), findsOneWidget);
     expect(find.byType(AdvancedTools), findsNothing);
     expect(find.text('Express'), findsWidgets);
+  });
+
+  testWidgets('CraftScreen reopens in the last used mode', (tester) async {
+    await tester.pumpWidget(
+      _harness(
+        overrides: _baseOverrides(
+          craftPrefs: const CraftPreferences(
+            screenMode: CraftScreenMode.advanced,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AdvancedTools), findsOneWidget);
+    expect(find.byType(ExpressFlow), findsNothing);
   });
 
   testWidgets('CraftScreen switches to Advanced mode on tap', (tester) async {

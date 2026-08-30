@@ -258,7 +258,10 @@ class _AudioStageState extends ConsumerState<AudioStage> {
                 onVoiceChanged: (voice) {
                   ref
                       .read(craftControllerProvider.notifier)
-                      .setSelectedVoice(voice);
+                      .setSelectedVoice(
+                        voice,
+                        forLanguage: state.synthLanguage,
+                      );
                   unawaited(
                     ref.read(craftControllerProvider.notifier).generateAudio(),
                   );

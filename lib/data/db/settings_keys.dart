@@ -68,6 +68,10 @@ abstract final class SettingsKeys {
   /// JSON blob: volume, rate, repeat, split width ([PlayerPreferencesCtrl]).
   static const String playerPreferencesV1 = 'player_preferences_v1';
 
+  /// JSON blob: remembered Craft options — screen mode, per-mode translation
+  /// style, custom prompt, per-language voice map ([CraftPreferencesCtrl]).
+  static const String craftPreferencesV1 = 'craft.preferences_v1';
+
   /// JSON map of custom hotkey action id → binding string.
   static const String hotkeysCustomBindings = 'hotkeys_custom_bindings';
 
@@ -114,6 +118,7 @@ abstract final class SettingsKeys {
     transcriptKaraokeHighlight,
     transcriptIpaOverlay,
     playerPreferencesV1,
+    craftPreferencesV1,
     hotkeysCustomBindings,
     aiModalityConfigsV1,
     youtubeClientProfilesV1,

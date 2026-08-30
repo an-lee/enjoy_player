@@ -14,8 +14,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
-import 'package:enjoy_player/core/application/app_language_catalog.dart';
-import 'package:enjoy_player/core/application/app_preferences_provider.dart';
 import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/features/craft/application/craft_controller.dart';
 import 'package:enjoy_player/features/craft/domain/craft_job_state.dart';
@@ -41,7 +39,6 @@ class _CaptureStageState extends ConsumerState<CaptureStage> {
   AudioRecorder _recorder = AudioRecorder();
   bool _recordingPending = false;
   bool _textMode = false;
-  bool _prefsSeeded = false;
 
   /// True while this widget owns an in-flight capture on [CraftController].
   /// Tracked locally so [dispose] can clear the session flag without [ref].
@@ -108,23 +105,6 @@ class _CaptureStageState extends ConsumerState<CaptureStage> {
 
     if (state.isBusy) return;
     _recordingPending = true;
-
-    // Seed source/target language from prefs on first entry (mirrors
-    // TranslateTool's initState so the Express flow has a valid source lang).
-    if (!_prefsSeeded) {
-      _prefsSeeded = true;
-      final prefs = ref.read(appPreferencesCtrlProvider);
-      final prefsState = prefs.whenOrNull(data: (s) => s);
-      final nativeLang = canonicalMediaLanguageTag(
-        prefsState?.effectiveNativeLanguage ?? 'en',
-      );
-      final learnLang = canonicalMediaLanguageTag(
-        prefsState?.effectiveLearningLanguage ?? 'en',
-      );
-      ref.read(craftControllerProvider.notifier)
-        ..setSourceLanguage(nativeLang)
-        ..setTargetLanguage(learnLang);
-    }
 
     // Permission check.
     bool granted;
