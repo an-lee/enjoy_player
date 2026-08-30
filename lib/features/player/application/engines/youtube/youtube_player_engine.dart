@@ -165,11 +165,14 @@ class YoutubePlayerEngine implements PlayerEngine {
       return const SizedBox.shrink();
     }
 
-    // Diagnostic marker for surface parking (ADR-0066): overlays park the
-    // stage off-corner at 320×180, so a size change to/from those
-    // dimensions time-stamps park/unpark in the diagnostic log — needed to
-    // correlate overlay round-trips (e.g. the IPA sheet) with page-side
-    // behavior (field investigation of the echo-mode play-then-pause wedge).
+    // Diagnostic marker + focus re-assert for surface parking (ADR-0066):
+    // overlays park the stage off-corner at 320×180, so a size change
+    // to/from those dimensions marks park/unpark in the diagnostic log.
+    // Parking can clear the WebView's view focus (the plugin exposes no
+    // requestFocus), and m.youtube.com's player pauses programmatic playback
+    // while the document reports unfocused — the play-then-pause wedge
+    // (field-confirmed via pause ctx foc=0). Re-assert the pinned focus on
+    // every size change; idempotent, no-op without a live controller.
     if (maxWidth != _lastStageSizeWidth || maxHeight != _lastStageSizeHeight) {
       _lastStageSizeWidth = maxWidth;
       _lastStageSizeHeight = maxHeight;
@@ -177,6 +180,7 @@ class YoutubePlayerEngine implements PlayerEngine {
         'youtube stage size ${maxWidth.round()}x${maxHeight.round()} '
         'vid=${_session.videoId}',
       );
+      unawaited(YoutubeWebViewBridge.refocusWindow(_webView.webController));
     }
 
     return StreamBuilder<bool>(

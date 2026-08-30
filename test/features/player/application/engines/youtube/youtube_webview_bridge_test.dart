@@ -123,6 +123,20 @@ void main() {
     });
   });
 
+  group('focusWindowScript', () {
+    test('pins document focus and dispatches a synthetic focus event', () {
+      // The page player pauses programmatic playback while the document
+      // reports unfocused (field: every wedge pause carries ctx foc=0 with
+      // vis=visible). Parking (ADR-0066) can clear the WebView's view
+      // focus and the plugin has no requestFocus — the page signal is the
+      // only lever. A dropped patch or event silently re-opens the
+      // play-then-pause wedge.
+      final script = YoutubeWebViewBridge.focusWindowScript;
+      expect(script, contains('document.hasFocus=function(){return true;}'));
+      expect(script, contains("window.dispatchEvent(new Event('focus'))"));
+    });
+  });
+
   group('pauseScript / stopScript', () {
     test('pause routes through the page player with element fallback', () {
       expect(YoutubeWebViewBridge.pauseScript, contains('#movie_player'));

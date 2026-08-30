@@ -167,6 +167,24 @@ class YoutubeWebViewBridge {
     })();
   ''';
 
+  /// Re-asserts the pinned focus state in the watch page (see the focus pin
+  /// in the watch inject). Used when the video stage unparks — overlays park
+  /// the WebView off-corner (ADR-0066) and Android may clear its view focus,
+  /// which m.youtube.com's player treats as "not user-initiated" and answers
+  /// by pausing programmatic playback — and before each automatic play retry.
+  /// Idempotent; returns the page's (patched) focus reading.
+  static const String focusWindowScript = '''
+    (function(){
+      try{document.hasFocus=function(){return true;};}catch(e){}
+      try{window.dispatchEvent(new Event('focus'));}catch(e){}
+      try{return document.hasFocus();}catch(e){return null;}
+    })();
+  ''';
+
+  static Future<void> refocusWindow(InAppWebViewController? web) async {
+    await web?.evaluateJavascript(source: focusWindowScript);
+  }
+
   static Future<void> play(InAppWebViewController? web) async {
     await web?.evaluateJavascript(source: playScript);
   }

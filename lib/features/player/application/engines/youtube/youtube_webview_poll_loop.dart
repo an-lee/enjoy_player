@@ -45,7 +45,16 @@ class YoutubeWebViewPollLoop {
     YoutubePollFn? pollFn,
     YoutubeRetryPlayFn? retryPlay,
   }) : pollFn = pollFn ?? YoutubeStatePoller.poll,
-       retryPlay = retryPlay ?? YoutubeWebViewBridge.play;
+       // The default retry re-asserts the page's pinned focus first: the
+       // wedge this retry exists for is the page pausing playback it saw no
+       // focused window for (field-confirmed ctx foc=0), so a bare re-play
+       // would just be paused again.
+       retryPlay =
+           retryPlay ??
+           ((web) async {
+             await YoutubeWebViewBridge.refocusWindow(web);
+             await YoutubeWebViewBridge.play(web);
+           });
 
   final YoutubeSession session;
   final InAppWebViewController? Function() webController;
