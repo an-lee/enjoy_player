@@ -29,20 +29,44 @@ void main() {
       expect(find.byType(Image), findsNothing);
     });
 
-    testWidgets('renders SizedBox.shrink when visible is false', (
-      tester,
-    ) async {
+    testWidgets('fades out over 220ms before leaving the tree', (tester) async {
+      // Issue #662: `visible: false` used to return SizedBox.shrink()
+      // directly, so the AnimatedOpacity was replaced before it could animate
+      // to 0 — the fade-out was dead code.
+      var visible = true;
+      late StateSetter setVisible;
+
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
           home: Scaffold(
-            body: YoutubeVideoPoster(
-              primaryUrl: 'https://example.com/thumb.jpg',
-              visible: false,
+            body: StatefulBuilder(
+              builder: (context, setState) {
+                setVisible = setState;
+                return YoutubeVideoPoster(
+                  primaryUrl: 'https://example.com/thumb.jpg',
+                  visible: visible,
+                );
+              },
             ),
           ),
         ),
       );
+      await tester.pump();
+      expect(find.byType(AnimatedOpacity), findsOneWidget);
 
+      setVisible(() => visible = false);
+      await tester.pump();
+
+      // Mid-fade: still mounted, on its way to transparent.
+      final opacity = tester
+          .widget<AnimatedOpacity>(find.byType(AnimatedOpacity))
+          .opacity;
+      expect(opacity, 0, reason: 'the fade target is fully transparent');
+      expect(find.byType(Image), findsOneWidget);
+
+      // After the fade the poster leaves the tree instead of painting an
+      // invisible image forever.
+      await tester.pumpAndSettle();
       expect(find.byType(Image), findsNothing);
     });
 

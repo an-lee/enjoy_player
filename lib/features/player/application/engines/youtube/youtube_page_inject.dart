@@ -42,6 +42,9 @@ const String kYoutubeMobileWatchInjectScript = r'''
   var savedTime=0;        // last known main-video position
   var reloading=false;    // are we in the middle of a reload?
 
+  // --- Reactive enforcement ---
+  var enforcePending=false;  // a coalesced sweep is already queued
+
   // --- Utility ---
   function isAd(){
     return player && player.classList.contains('ad-showing');
@@ -96,18 +99,52 @@ const String kYoutubeMobileWatchInjectScript = r'''
     '.ytp-caption-window-rollup,.ytp-caption-segment,'+
     '.player-captions-container,.captions-text';
 
+  // --- Write-once styling (issue #662) ---
+  // Every element this script styles is stamped, and a stamped element is
+  // never re-written unless its block has actually been undone: the property
+  // blocks below are constants, so re-writing an intact one only invalidates
+  // layout. This is what makes a reactive sweep cheap — a settled DOM costs a
+  // handful of expando + CSS reads instead of ~40 !important property writes.
+  var STAMP='__enjoyYtStyled';
+
+  // [mark] is one property of the block, read back on later sweeps. Our
+  // declarations are !important, so a page write to the same property loses
+  // the cascade; only a removal or a wholesale style-attribute rewrite can
+  // undo us, and that is exactly what a cleared [mark] detects. One property
+  // read per element per sweep replaces the old 300 ms unconditional rewrite.
+  function styleOnce(el,props,mark){
+    if(!el) return;
+    if(el[STAMP]){
+      if(!mark) return;
+      try{
+        if(el.style.getPropertyValue(mark)===props[mark]) return;
+      }catch(e){return;}
+    }
+    el[STAMP]=1;
+    for(var k in props){
+      if(Object.prototype.hasOwnProperty.call(props,k)){
+        el.style.setProperty(k,props[k],'important');
+      }
+    }
+  }
+
   // Re-apply inline hide — YouTube sometimes sets competing inline styles
-  // that outrank a one-shot <style> rule after track changes.
+  // that outrank a one-shot <style> rule after track changes. Fresh caption
+  // nodes are unstamped, so each new window is hidden on the sweep that
+  // observes it. The <style> rule in [installInlineGuards] is the other
+  // backstop.
   function hideCaptionDom(){
     var root=player||document;
     var nodes=root.querySelectorAll
       ? root.querySelectorAll(captionSel)
       : [];
     for(var i=0;i<nodes.length;i++){
-      nodes[i].style.setProperty('display','none','important');
-      nodes[i].style.setProperty('visibility','hidden','important');
-      nodes[i].style.setProperty('opacity','0','important');
-      nodes[i].style.setProperty('pointer-events','none','important');
+      styleOnce(nodes[i],{
+        display:'none',
+        visibility:'hidden',
+        opacity:'0',
+        'pointer-events':'none'
+      },'display');
     }
   }
 
@@ -167,6 +204,17 @@ const String kYoutubeMobileWatchInjectScript = r'''
         window.flutter_inappwebview.callHandler(
           'onVideoEvent',args[0],args.length>1?args[1]:null);
       });
+    });
+    // Position sampler for the ad hand-off (issue #662): [savedTime] used to
+    // be refreshed by the same 300 ms tick that ran the layout pass, so with
+    // that tick gone it needs a driver of its own. `timeupdate` (~4 Hz while
+    // playing) is free — page-local, no Dart round-trip. Deliberately NOT in
+    // [events]: it must never reach the Dart transport switch.
+    video.addEventListener('timeupdate',function(){
+      if(isAd()) return;
+      if(isFinite(video.currentTime)&&video.currentTime>0){
+        savedTime=video.currentTime;
+      }
     });
   }
 
@@ -234,6 +282,145 @@ const String kYoutubeMobileWatchInjectScript = r'''
     while(tmp && tmp!==player){mids.push(tmp);tmp=tmp.parentElement;}
   }
 
+  // --- Reactive layout enforcement (issue #662) ---
+  // The heavy pass below used to run on a 300 ms interval for as long as the
+  // document lived: ~40 !important property writes across document / body /
+  // player / mids / video, a querySelectorAll sweep and the ancestor sibling
+  // scan — against a DOM that is settled a second after load. That is
+  // continuous style + layout invalidation inside the WebView for a whole
+  // session, for zero information. The pass now runs once per DOM shape and
+  // is re-run reactively (see [installLayoutObservers]); [STAMP] is the
+  // idempotence early-exit that keeps each reactive sweep cheap.
+
+  // Structural churn anywhere in the document: YouTube injecting overlays,
+  // caption windows or a rebuilt player, and any new sibling that the
+  // ancestor scan must hide.
+  // Attribute churn is watched on the pinned elements ONLY (subtree:false):
+  // the progress bar and spinner inside the player rewrite style every
+  // frame and must never schedule a sweep. `ad-showing` is a class on the
+  // player container, so an ad transition rides this same record — the
+  // ad-detection cadence is the observer, not a timer.
+  var mo=null;
+
+  function observeLayoutTargets(){
+    if(!mo) return;
+    mo.disconnect();
+    try{
+      mo.observe(document.documentElement,
+                 {childList:true,subtree:true,attributes:false});
+    }catch(e){}
+    var pinned=[];
+    if(player) pinned.push(player);
+    if(v) pinned.push(v);
+    for(var i=0;i<mids.length;i++){pinned.push(mids[i]);}
+    for(i=0;i<pinned.length;i++){
+      try{
+        mo.observe(pinned[i],{
+          childList:false,
+          subtree:false,
+          attributes:true,
+          attributeFilter:['class','style']
+        });
+      }catch(e){}
+    }
+  }
+
+  function installLayoutObservers(){
+    if(typeof MutationObserver!=='function') return;
+    try{mo=new MutationObserver(scheduleEnforce);}catch(e){mo=null;return;}
+    observeLayoutTargets();
+  }
+
+  // Coalesce a mutation burst into one sweep. A plain short timer, not
+  // requestAnimationFrame: rAF stops firing for a hidden/backgrounded view,
+  // and this page is exactly the surface that gets parked (ADR-0066) — the
+  // ad transition it would delay is the one we least want to miss.
+  function scheduleEnforce(){
+    if(enforcePending||reloading) return;
+    enforcePending=true;
+    setTimeout(function(){
+      enforcePending=false;
+      enforce();
+    },50);
+  }
+
+  function applyLayout(){
+    styleOnce(document.documentElement,
+              {overflow:'hidden',background:'#000'},'overflow');
+    styleOnce(document.body,
+              {margin:'0',padding:'0',overflow:'hidden',background:'#000'},
+              'margin');
+
+    if(player){
+      styleOnce(player,{
+        position:'fixed',
+        top:'0',
+        left:'0',
+        width:'100vw',
+        height:'100vh',
+        'z-index':'999999',
+        overflow:'hidden',
+        background:'#000',
+        margin:'0',
+        padding:'0',
+        transform:'none',
+        display:'block',
+        visibility:'visible',
+        opacity:'1'
+      },'position');
+    }
+
+    mids.forEach(function(el){
+      styleOnce(el,{
+        width:'100%',
+        height:'100%',
+        display:'block',
+        visibility:'visible',
+        opacity:'1',
+        position:'absolute',
+        top:'0',
+        left:'0',
+        overflow:'hidden',
+        'max-height':'none',
+        'max-width':'none',
+        'min-height':'0',
+        margin:'0',
+        padding:'0',
+        transform:'none',
+        background:'#000'
+      },'min-height');
+    });
+
+    if(v){
+      styleOnce(v,{
+        width:'100%',
+        height:'100%',
+        position:'absolute',
+        top:'0',
+        left:'0',
+        display:'block',
+        visibility:'visible',
+        'object-fit':'contain',
+        margin:'0',
+        padding:'0',
+        transform:'none',
+        background:'#000'
+      },'object-fit');
+    }
+
+    for(var i=0;i<chain.length;i++){
+      var parent=chain[i].parentElement;
+      if(!parent) continue;
+      Array.from(parent.children).forEach(function(sib){
+        if(sib===chain[i]) return;
+        var tag=sib.tagName;
+        if(tag==='STYLE'||tag==='SCRIPT'||tag==='LINK'
+           ||tag==='META'||tag==='HEAD') return;
+        styleOnce(sib,{display:'none'},'display');
+      });
+    }
+  }
+
   // --- Enforce layout + detect video swap + ad transition ---
   function enforce(){
     if(reloading) return;
@@ -264,6 +451,9 @@ const String kYoutubeMobileWatchInjectScript = r'''
       v.autoplay=false;
       v.removeAttribute('autoplay');
       v.loop=false;
+      // The swapped <video> and its wrappers are new elements: re-point the
+      // attribute observer at them before the next sweep.
+      observeLayoutTargets();
       setTimeout(function(){syncState(v);},200);
     }
     if(!v) return;
@@ -273,75 +463,7 @@ const String kYoutubeMobileWatchInjectScript = r'''
     hideCaptionDom();
     disableYoutubeCaptions();
 
-    var de=document.documentElement;
-    de.style.setProperty('overflow','hidden','important');
-    de.style.setProperty('background','#000','important');
-    var b=document.body;
-    b.style.setProperty('margin','0','important');
-    b.style.setProperty('padding','0','important');
-    b.style.setProperty('overflow','hidden','important');
-    b.style.setProperty('background','#000','important');
-
-    if(player){
-      player.style.setProperty('position','fixed','important');
-      player.style.setProperty('top','0','important');
-      player.style.setProperty('left','0','important');
-      player.style.setProperty('width','100vw','important');
-      player.style.setProperty('height','100vh','important');
-      player.style.setProperty('z-index','999999','important');
-      player.style.setProperty('overflow','hidden','important');
-      player.style.setProperty('background','#000','important');
-      player.style.setProperty('margin','0','important');
-      player.style.setProperty('padding','0','important');
-      player.style.setProperty('transform','none','important');
-      player.style.setProperty('display','block','important');
-      player.style.setProperty('visibility','visible','important');
-      player.style.setProperty('opacity','1','important');
-    }
-
-    mids.forEach(function(el){
-      el.style.setProperty('width','100%','important');
-      el.style.setProperty('height','100%','important');
-      el.style.setProperty('display','block','important');
-      el.style.setProperty('visibility','visible','important');
-      el.style.setProperty('opacity','1','important');
-      el.style.setProperty('position','absolute','important');
-      el.style.setProperty('top','0','important');
-      el.style.setProperty('left','0','important');
-      el.style.setProperty('overflow','hidden','important');
-      el.style.setProperty('max-height','none','important');
-      el.style.setProperty('max-width','none','important');
-      el.style.setProperty('min-height','0','important');
-      el.style.setProperty('margin','0','important');
-      el.style.setProperty('padding','0','important');
-      el.style.setProperty('transform','none','important');
-      el.style.setProperty('background','#000','important');
-    });
-
-    v.style.setProperty('width','100%','important');
-    v.style.setProperty('height','100%','important');
-    v.style.setProperty('position','absolute','important');
-    v.style.setProperty('top','0','important');
-    v.style.setProperty('left','0','important');
-    v.style.setProperty('display','block','important');
-    v.style.setProperty('visibility','visible','important');
-    v.style.setProperty('object-fit','contain','important');
-    v.style.setProperty('margin','0','important');
-    v.style.setProperty('padding','0','important');
-    v.style.setProperty('transform','none','important');
-    v.style.setProperty('background','#000','important');
-
-    for(var i=0;i<chain.length;i++){
-      var parent=chain[i].parentElement;
-      if(!parent) continue;
-      Array.from(parent.children).forEach(function(sib){
-        if(sib===chain[i]) return;
-        var tag=sib.tagName;
-        if(tag==='STYLE'||tag==='SCRIPT'||tag==='LINK'
-           ||tag==='META'||tag==='HEAD') return;
-        sib.style.setProperty('display','none','important');
-      });
-    }
+    applyLayout();
   }
 
   function setup(){
@@ -357,7 +479,15 @@ const String kYoutubeMobileWatchInjectScript = r'''
 
     installInlineGuards();
     enforce();
-    setInterval(enforce,300);
+    installLayoutObservers();
+
+    // Belt-and-braces only — the observers carry enforcement (see
+    // [installLayoutObservers]). One sweep a second costs a pass of expando
+    // reads because of [STAMP], where the 300 ms full rewrite this replaced
+    // invalidated layout for the whole session. It is also the only driver
+    // on a WebView without MutationObserver, and the last resort for a style
+    // overwrite on an element the attribute observer does not pin.
+    setInterval(enforce,1000);
 
     v.autoplay=false;
     v.removeAttribute('autoplay');

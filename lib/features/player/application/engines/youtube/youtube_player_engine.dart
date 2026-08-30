@@ -199,7 +199,14 @@ class YoutubePlayerEngine implements PlayerEngine {
       stream: buffering,
       initialData: _session.buffering,
       builder: (context, snapshot) {
-        final showPoster = snapshot.data ?? _session.buffering;
+        final bufferingNow = snapshot.data ?? _session.buffering;
+        // The poster is a "playback never started" affordance, not a
+        // buffering one (issue #662): keyed to the session's first-playing
+        // latch, so a mid-playback `waiting` no longer fades the static
+        // thumbnail OVER the live frame. A stall after playback has started
+        // gets the small spinner instead.
+        final posterVisible = bufferingNow && !_session.loggedFirstPlaying;
+        final showSpinner = bufferingNow && _session.loggedFirstPlaying;
         return ValueListenableBuilder<int>(
           valueListenable: _session.mountTick,
           builder: (context, _, _) {
@@ -212,7 +219,7 @@ class YoutubePlayerEngine implements PlayerEngine {
                 // InAppWebView constructor itself asserts without a backend).
                 if (!youTubeEngineOptedOutHere && _session.shouldMountWebView)
                   _buildWebViewHost(),
-                if (_session.tapToPlayHintActive && !showPoster)
+                if (_session.tapToPlayHintActive && !posterVisible)
                   _YoutubeTapToPlayHint(
                     label:
                         AppLocalizations.of(context)?.youtubeTapToPlayHint ??
@@ -220,8 +227,9 @@ class YoutubePlayerEngine implements PlayerEngine {
                   ),
                 YoutubeVideoPoster(
                   primaryUrl: _session.posterUrl,
-                  visible: showPoster,
+                  visible: posterVisible,
                 ),
+                if (showSpinner) const _YoutubeBufferingIndicator(),
               ],
             );
           },
@@ -437,6 +445,38 @@ class _YoutubeTapToPlayHint extends StatelessWidget {
                 style: const TextStyle(color: Colors.white70, fontSize: 16),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Mid-playback buffering affordance (issue #662).
+///
+/// The poster used to be the only buffering overlay, which meant every
+/// `waiting` after playback had started faded a static thumbnail over the
+/// live frame. Once playback has started the stall is signalled with this
+/// instead: a small spinner on a light scrim, never covering the video.
+class _YoutubeBufferingIndicator extends StatelessWidget {
+  const _YoutubeBufferingIndicator();
+
+  @override
+  Widget build(BuildContext context) {
+    // IgnorePointer: a stall must stay tappable (pause / seek) like any
+    // other moment of playback.
+    return const IgnorePointer(
+      ignoring: true,
+      child: ColoredBox(
+        color: Colors.black26,
+        child: Center(
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              color: Colors.white70,
+            ),
           ),
         ),
       ),
