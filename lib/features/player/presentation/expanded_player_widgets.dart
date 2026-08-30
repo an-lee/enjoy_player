@@ -1,15 +1,12 @@
 /// Scaffold bodies for [ExpandedPlayerScreen] (loading, error, main chrome).
 library;
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:enjoy_player/core/theme/widgets/app_background.dart';
 import 'package:enjoy_player/core/theme/widgets/skeleton.dart';
 import 'package:enjoy_player/core/utils/local_thumbnail.dart';
-import 'package:enjoy_player/features/player/application/player_collapse.dart';
 import 'package:enjoy_player/features/player/application/player_engine_provider.dart';
 import 'package:enjoy_player/features/player/application/player_preferences_provider.dart';
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
@@ -20,8 +17,8 @@ import 'package:enjoy_player/l10n/app_localizations.dart';
 
 import 'package:enjoy_player/features/player/application/player_surface_registry.dart';
 import 'package:enjoy_player/features/player/application/youtube_open_preview_provider.dart';
-import 'package:enjoy_player/features/player/presentation/widgets/player_frosted_back_button.dart';
-import 'package:enjoy_player/features/player/presentation/widgets/player_surface_target.dart';
+import 'package:enjoy_player/features/player/presentation/widgets/player_collapse_control.dart';
+import 'package:enjoy_player/features/player/presentation/widgets/player_loading_stage.dart';
 import 'package:enjoy_player/features/player/presentation/widgets/youtube_loading_video_stage.dart';
 
 import 'package:enjoy_player/features/transcript/presentation/transcript_panel.dart';
@@ -62,8 +59,10 @@ class ExpandedPlayerLoadingBody extends ConsumerWidget {
               alignment: Alignment.topCenter,
               child: YoutubeLoadingVideoStage(
                 mediaId: mediaId,
+                // Painted by the surface host inside the already-inset 16:9
+                // stage, so this one carries no SafeArea of its own.
                 overlayBuilder: (_) =>
-                    const _VideoCollapseOnlyOverlay(useSafeArea: false),
+                    const PlayerCollapseControl.loadingChrome(),
               ),
             )
           else if (isLocalVideo)
@@ -80,7 +79,9 @@ class ExpandedPlayerLoadingBody extends ConsumerWidget {
           if (!isYoutube)
             const Align(
               alignment: Alignment.topCenter,
-              child: _VideoCollapseOnlyOverlay(),
+              // Placed directly in the body stack, so it must clear the
+              // status bar itself.
+              child: PlayerCollapseControl.loadingChrome(useSafeArea: true),
             ),
         ],
       ),
@@ -92,9 +93,6 @@ class ExpandedPlayerLoadingBody extends ConsumerWidget {
 class _LocalLoadingVideoStage extends StatelessWidget {
   const _LocalLoadingVideoStage({this.thumbnailUrl});
 
-  static const double aspectWidth = 16;
-  static const double aspectHeight = 9;
-
   /// Local artwork for the media being opened, shown under the skeleton so
   /// the open window reads as "this video is loading" instead of a black
   /// flash.
@@ -103,30 +101,21 @@ class _LocalLoadingVideoStage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final thumb = localThumbnailFile(thumbnailUrl);
-    return SafeArea(
-      top: true,
-      bottom: false,
-      left: false,
-      right: false,
-      child: AspectRatio(
-        aspectRatio: aspectWidth / aspectHeight,
-        child: PlayerSurfaceTarget(
-          // Share the chrome viewport id so loading → player does not park
-          // (unmount) the media_kit Texture. A distinct id raced detach/attach
-          // and left ~1s of picture then a black stage until resize.
-          id: PlayerSurfaceIds.expandedPlayer,
-          overlayBuilder: (_) => const SizedBox.shrink(),
-          child: ColoredBox(
-            color: Colors.black,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (thumb != null)
-                  Image.file(thumb, fit: BoxFit.cover, gaplessPlayback: true),
-                const Center(child: SkeletonAppBootstrap()),
-              ],
-            ),
-          ),
+    return PlayerLoadingStage(
+      // Share the chrome viewport id so loading → player does not park
+      // (unmount) the media_kit Texture. A distinct id raced detach/attach
+      // and left ~1s of picture then a black stage until resize.
+      surfaceId: PlayerSurfaceIds.expandedPlayer,
+      overlayBuilder: (_) => const SizedBox.shrink(),
+      child: ColoredBox(
+        color: Colors.black,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (thumb != null)
+              Image.file(thumb, fit: BoxFit.cover, gaplessPlayback: true),
+            const Center(child: SkeletonAppBootstrap()),
+          ],
         ),
       ),
     );
@@ -185,7 +174,7 @@ class ExpandedPlayerYoutubeUnavailableBody extends StatelessWidget {
           // loading body's collapse-only chrome.
           const Align(
             alignment: Alignment.topCenter,
-            child: _VideoCollapseOnlyOverlay(),
+            child: PlayerCollapseControl.loadingChrome(useSafeArea: true),
           ),
         ],
       ),
@@ -243,30 +232,5 @@ class ExpandedPlayerChromeBody extends ConsumerWidget {
         body: mediaBody,
       ),
     );
-  }
-}
-
-/// Collapse control only (loading / minimal chrome).
-class _VideoCollapseOnlyOverlay extends ConsumerWidget {
-  const _VideoCollapseOnlyOverlay({this.useSafeArea = true});
-
-  final bool useSafeArea;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final content = SizedBox(
-      height: kToolbarHeight,
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Padding(
-          padding: const EdgeInsets.only(left: 8),
-          child: PlayerFrostedBackButton(
-            onPressed: () => unawaited(collapseExpandedPlayer(ref, context)),
-          ),
-        ),
-      ),
-    );
-    if (!useSafeArea) return content;
-    return SafeArea(bottom: false, left: false, right: false, child: content);
   }
 }

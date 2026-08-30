@@ -1,7 +1,6 @@
 /// Video surface + transcript side panel (desktop-friendly split).
 library;
 
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -10,13 +9,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:enjoy_player/core/interaction/haptics.dart';
 import 'package:enjoy_player/core/interaction/mouse_tracker_safe.dart';
 import 'package:enjoy_player/core/platform/player_content_layout.dart';
-import 'package:enjoy_player/features/player/application/player_collapse.dart';
 import 'package:enjoy_player/features/player/application/player_controller.dart';
 import 'package:enjoy_player/features/player/application/player_engine.dart';
 import 'package:enjoy_player/features/player/application/player_state_providers.dart';
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
 import 'package:enjoy_player/features/player/application/player_surface_registry.dart';
-import 'package:enjoy_player/features/player/presentation/widgets/player_frosted_back_button.dart';
+import 'package:enjoy_player/features/player/presentation/widgets/player_collapse_control.dart';
 import 'package:enjoy_player/features/player/presentation/widgets/player_surface_target.dart';
 import 'package:enjoy_player/features/player/presentation/widgets/youtube_login_video_frame_button.dart';
 import 'package:enjoy_player/features/player/presentation/widgets/youtube_open_in_browser_button.dart';
@@ -239,22 +237,6 @@ class _VideoColumn extends StatelessWidget {
   }
 }
 
-/// Collapse control that stays visible while playing (same persistence as
-/// the YouTube account cluster at bottom-right).
-class _VideoBackButton extends ConsumerWidget {
-  const _VideoBackButton();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 8, top: 8),
-      child: PlayerFrostedBackButton(
-        onPressed: () => unawaited(collapseExpandedPlayer(ref, context)),
-      ),
-    );
-  }
-}
-
 /// Title + scrim, shown only while paused or buffering.
 class _VideoPausedTitleOverlay extends ConsumerWidget {
   const _VideoPausedTitleOverlay();
@@ -347,10 +329,7 @@ class _VideoStageWithChrome extends ConsumerWidget {
                 ),
               ),
             const _VideoPausedTitleOverlay(),
-            const Align(
-              alignment: Alignment.topLeft,
-              child: _VideoBackButton(),
-            ),
+            const PlayerCollapseControl(),
             if (isYoutube)
               const Positioned(
                 bottom: 12,

@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:enjoy_player/features/player/application/player_engine_provider.dart';
 import 'package:enjoy_player/features/player/application/player_surface_registry.dart';
 import 'package:enjoy_player/features/player/application/youtube_open_preview_provider.dart';
-import 'package:enjoy_player/features/player/presentation/widgets/player_surface_target.dart';
+import 'package:enjoy_player/features/player/presentation/widgets/player_loading_stage.dart';
 import 'package:enjoy_player/features/player/presentation/widgets/youtube_video_poster.dart';
 
 class YoutubeLoadingVideoStage extends ConsumerStatefulWidget {
@@ -19,9 +19,6 @@ class YoutubeLoadingVideoStage extends ConsumerStatefulWidget {
 
   final String mediaId;
   final PlayerSurfaceOverlayBuilder? overlayBuilder;
-
-  static const double aspectWidth = 16;
-  static const double aspectHeight = 9;
 
   @override
   ConsumerState<YoutubeLoadingVideoStage> createState() =>
@@ -70,31 +67,20 @@ class _YoutubeLoadingVideoStageState
     }
 
     // Claim the loading portal whenever a YouTube engine is active — same
-    // pattern as [_LocalLoadingVideoStage]. WebView visibility is gated by
+    // pattern as the local loading stage. WebView visibility is gated by
     // [YoutubePlayerEngine.shouldMountWebView] inside the surface host.
     final showSurface = isYoutube;
 
-    return SafeArea(
-      top: true,
-      bottom: false,
-      left: false,
-      right: false,
-      child: AspectRatio(
-        aspectRatio:
-            YoutubeLoadingVideoStage.aspectWidth /
-            YoutubeLoadingVideoStage.aspectHeight,
-        child: PlayerSurfaceTarget(
-          id: PlayerSurfaceIds.expandedPlayerLoading,
-          enabled: showSurface,
-          overlayBuilder: widget.overlayBuilder,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              const ColoredBox(color: Colors.black),
-              YoutubeVideoPoster(primaryUrl: thumb, visible: true),
-            ],
-          ),
-        ),
+    return PlayerLoadingStage(
+      surfaceId: PlayerSurfaceIds.expandedPlayerLoading,
+      enabled: showSurface,
+      overlayBuilder: widget.overlayBuilder,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          const ColoredBox(color: Colors.black),
+          YoutubeVideoPoster(primaryUrl: thumb, visible: true),
+        ],
       ),
     );
   }

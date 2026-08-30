@@ -51,6 +51,13 @@ const double kNarrowSpeedSlotExtra = 12;
 const double kNarrowLayoutSlack = 8;
 const double kNarrowLineNavGap = 4;
 
+/// Height of the transport bar's control row (progress strip sits above it).
+///
+/// Sized to the widest always-on control — the [mobile-transport-line-nav]
+/// play ring — so the bar never reflows when a control is dropped on narrow
+/// layouts.
+const double kTransportControlRowHeight = 56;
+
 /// Which controls fit in the narrow single-row transport bar.
 ///
 /// Play/pause, echo, subtitle (cc), and speed are always-on (never subject to
@@ -485,7 +492,7 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
               t.space12,
             ),
             child: SizedBox(
-              height: 56,
+              height: kTransportControlRowHeight,
               width: double.infinity,
               child: AnimatedSwitcher(
                 duration: MediaQuery.disableAnimationsOf(context)

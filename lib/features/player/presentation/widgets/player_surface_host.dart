@@ -27,8 +27,18 @@ class PlayerSurfaceHost extends ConsumerWidget {
   /// When true, ignore any registry attachment and park off-screen.
   final bool forcePark;
 
+  /// Fallback park size when no target has ever reported geometry.
+  ///
+  /// YouTube treats a <360 px player as its mobile breakpoint and flushes ABR
+  /// at it, so a shrink to these dimensions is the play-then-pause stimulus —
+  /// they are only the last-resort park, never the steady-state one.
   static const double _parkWidth = 320;
   static const double _parkHeight = 180;
+
+  /// Extra horizontal clearance (in addition to the full surface width) when
+  /// translating a parked surface off-screen, so an anti-aliased edge or
+  /// drop shadow cannot bleed back into the viewport.
+  static const double _parkClearancePx = 64;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -56,6 +66,7 @@ class PlayerSurfaceHost extends ConsumerWidget {
       overlayParkSize: registry?.size,
       parkWidth: _parkWidth,
       parkHeight: _parkHeight,
+      parkClearancePx: _parkClearancePx,
     );
   }
 }
@@ -68,6 +79,7 @@ class _EngineSurface extends StatefulWidget {
     required this.overlayParkSize,
     required this.parkWidth,
     required this.parkHeight,
+    required this.parkClearancePx,
   });
 
   final PlayerEngine engine;
@@ -78,6 +90,9 @@ class _EngineSurface extends StatefulWidget {
   final Size? overlayParkSize;
   final double parkWidth;
   final double parkHeight;
+
+  /// Extra off-screen clearance — see [PlayerSurfaceHost._parkClearancePx].
+  final double parkClearancePx;
 
   @override
   State<_EngineSurface> createState() => _EngineSurfaceState();
@@ -143,7 +158,7 @@ class _EngineSurfaceState extends State<_EngineSurface> {
         Size(widget.parkWidth, widget.parkHeight);
     final offset = attachment != null
         ? _toLocal(attachment.offset)
-        : Offset(-size.width - 64, 0);
+        : Offset(-size.width - widget.parkClearancePx, 0);
 
     Widget stageFor(double w, double h) {
       if (w <= 0 || h <= 0) return const SizedBox.shrink();

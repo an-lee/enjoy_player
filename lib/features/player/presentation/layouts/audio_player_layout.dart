@@ -6,15 +6,12 @@
 /// and there is no reserved toolbar slot (ADR-0085 supersedes ADR-0077).
 library;
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/window/desktop_window.dart';
-import 'package:enjoy_player/features/player/application/player_collapse.dart';
-import 'package:enjoy_player/features/player/presentation/widgets/player_frosted_back_button.dart';
+import 'package:enjoy_player/features/player/presentation/widgets/player_collapse_control.dart';
 
 class AudioPlayerLayout extends ConsumerWidget {
   const AudioPlayerLayout({required this.transcript, super.key});
@@ -56,15 +53,10 @@ class AudioPlayerLayout extends ConsumerWidget {
               ),
             ),
           ),
-          Align(
-            alignment: Alignment.topLeft,
-            child: Padding(
-              padding: EdgeInsets.only(left: t.space8, top: t.space8),
-              child: PlayerFrostedBackButton(
-                onPressed: () =>
-                    unawaited(collapseExpandedPlayer(ref, context)),
-              ),
-            ),
+          // Safe-area inset comes from the layout-level [SafeArea] above, so
+          // the control only carries its own on-stage edge inset.
+          PlayerCollapseControl(
+            inset: EdgeInsets.only(left: t.space8, top: t.space8),
           ),
         ],
       ),
