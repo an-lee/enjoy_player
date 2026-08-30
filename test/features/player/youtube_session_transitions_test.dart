@@ -64,6 +64,33 @@ void main() {
       session.clearUserPlayInFlight();
       expect(session.userPlayInFlight, isFalse);
     });
+
+    test('budget expires once playback outlives the attempt window', () async {
+      // The fulfillment condition from the field doc, made literal: without
+      // the expiry a budget armed minutes ago could be spent by a pause
+      // after a page-UI resume the app never commanded.
+      final session = YoutubeSession(
+        playAttemptExpiry: const Duration(milliseconds: 200),
+      )..resetForOpen('abc12345678');
+      session.beginUserPlay();
+      session.notePlayingConfirmed();
+      expect(session.userPlayInFlight, isTrue, reason: 'still inside');
+
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      expect(session.userPlayInFlight, isFalse, reason: 'expired');
+      await session.closeStreams();
+    });
+
+    test('noteAutoPlayRetry records and resets the issue timestamp', () {
+      final session = YoutubeSession()..resetForOpen('abc12345678');
+      expect(session.lastAutoPlayRetryAt, isNull);
+
+      session.noteAutoPlayRetry();
+      expect(session.lastAutoPlayRetryAt, isNotNull);
+
+      session.resetForOpen('next1234567');
+      expect(session.lastAutoPlayRetryAt, isNull);
+    });
   });
 
   group('notePlayingConfirmed', () {

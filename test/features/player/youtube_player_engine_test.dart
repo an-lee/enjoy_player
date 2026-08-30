@@ -273,12 +273,16 @@ void main() {
     test('resetForOpen and resetForClear reset userPlayInFlight', () {
       final session = YoutubeSession()..resetForOpen('abc12345678');
       session.beginUserPlay();
+      session.noteAutoPlayRetry();
       session.resetForOpen('other123456');
       expect(session.userPlayInFlight, isFalse);
+      expect(session.lastAutoPlayRetryAt, isNull);
 
       session.beginUserPlay();
+      session.noteAutoPlayRetry();
       session.resetForClear();
       expect(session.userPlayInFlight, isFalse);
+      expect(session.lastAutoPlayRetryAt, isNull);
     });
   });
 

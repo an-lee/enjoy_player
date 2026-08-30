@@ -123,19 +123,26 @@ class YoutubeWebViewBridge {
   /// Atomic toggle based on the live `<video>` element — never trusts Dart
   /// [YoutubeSession.playing], which can lag DOM pauses by hundreds of ms.
   /// State changes are applied through the page player when available.
+  ///
+  /// Reports the direction the DOM actually took — `'play'` / `'pause'`, or
+  /// `null` when no `<video>` was found — so the caller classifies the
+  /// toggle's intent from DOM truth, not from stale session state (which
+  /// lags the very pause the toggle may be reacting to).
   static const String playOrPauseScript =
       '''
     (function(){
       $_findVideoAndPlayer
-      if(!v) return;
+      if(!v) return null;
       var paused=v.paused||v.ended;
       if(mp&&typeof mp.isPaused==='function'){
         try{paused=!!mp.isPaused();}catch(e){}
       }
       if(paused){
         $_startPlaybackBody
+        return 'play';
       } else {
         $_pauseBody
+        return 'pause';
       }
     })();
   ''';
@@ -165,8 +172,11 @@ class YoutubeWebViewBridge {
   }
 
   /// Play when the DOM video is paused/ended; pause when it is playing.
-  static Future<void> playOrPause(InAppWebViewController? web) async {
-    await web?.evaluateJavascript(source: playOrPauseScript);
+  /// Returns the DOM-decided direction (`'play'` / `'pause'`) or `null`
+  /// when no video was found (see [playOrPauseScript]).
+  static Future<String?> playOrPause(InAppWebViewController? web) async {
+    final result = await web?.evaluateJavascript(source: playOrPauseScript);
+    return result is String ? result : null;
   }
 
   static Future<void> pause(InAppWebViewController? web) async {

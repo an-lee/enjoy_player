@@ -228,5 +228,34 @@ void main() {
       expect(healCalls, 0);
       await session.closeStreams();
     });
+
+    test('heal defers to a just-fired D8 retry (no double play)', () async {
+      // When the unmute trips the gesture lock AND the D8 budget outlived
+      // the first `playing`, both the poll-loop retry and this heal target
+      // the same pause. The retry owns it; a second playVideo tens of ms
+      // later breaks the "exactly once" accounting.
+      final session = YoutubeSession()..resetForOpen('abc12345678');
+      var healCalls = 0;
+      final policy = YoutubeAudiblePlaybackPolicy(
+        session: session,
+        reapplyVolume: () async {},
+        healPlay: () async => healCalls++,
+        volumeRestoreDelay: Duration.zero,
+        postRestoreHealDelay: const Duration(milliseconds: 50),
+      );
+
+      session.notePlayingConfirmed();
+      policy.onPlaying();
+      policy.onPlaybackProgress(const Duration(milliseconds: 100));
+      policy.onPlaybackProgress(const Duration(milliseconds: 200));
+      await Future<void>.delayed(Duration.zero);
+      session.notePauseConfirmed();
+      // The poll loop spent its budget on the same pause, just now.
+      session.noteAutoPlayRetry();
+
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      expect(healCalls, 0);
+      await session.closeStreams();
+    });
   });
 }

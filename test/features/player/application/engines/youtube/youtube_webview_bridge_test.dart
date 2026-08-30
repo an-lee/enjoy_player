@@ -86,6 +86,27 @@ void main() {
       expect(YoutubeWebViewBridge.playOrPauseScript, contains('playRejected'));
     });
 
+    test(
+      'playOrPauseScript reports the DOM-decided direction (D9 contract)',
+      () {
+        // The engine classifies toggle intent from this return value — never
+        // from stale session playing state. A dropped or renamed return
+        // silently reverts intent classification to a guess.
+        expect(
+          YoutubeWebViewBridge.playOrPauseScript,
+          contains("return 'play';"),
+        );
+        expect(
+          YoutubeWebViewBridge.playOrPauseScript,
+          contains("return 'pause';"),
+        );
+        expect(
+          YoutubeWebViewBridge.playOrPauseScript,
+          contains('if(!v) return null;'),
+        );
+      },
+    );
+
     test('play scripts route through the page player API when available', () {
       // Mutating the raw element behind the page's back lets YouTube's
       // autoplay policy re-pause the video; the page player object must win.

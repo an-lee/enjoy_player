@@ -259,4 +259,34 @@ void main() {
       expect(d, isA<SurfacePause>());
     });
   });
+
+  group('decideTransportToggleLatch', () {
+    test('DOM play arms the retry budget', () {
+      expect(
+        decideTransportToggleLatch(domDirection: 'play'),
+        isA<ArmRetryBudget>(),
+      );
+    });
+
+    test('DOM pause consumes the retry budget', () {
+      expect(
+        decideTransportToggleLatch(domDirection: 'pause'),
+        isA<ConsumeRetryBudget>(),
+      );
+    });
+
+    test('no video found leaves the latch untouched', () {
+      expect(
+        decideTransportToggleLatch(domDirection: null),
+        isA<LeaveRetryBudget>(),
+      );
+    });
+
+    test('unknown direction leaves the latch untouched', () {
+      expect(
+        decideTransportToggleLatch(domDirection: 'nonsense'),
+        isA<LeaveRetryBudget>(),
+      );
+    });
+  });
 }

@@ -154,11 +154,30 @@ class YoutubeWebViewPollLoop {
                       // second immediate pause surfaces to the user instead
                       // of looping.
                       session.clearUserPlayInFlight();
+                      // Timestamp the issue: the audible policy's
+                      // post-restore heal suppresses itself while a retry
+                      // is this recent (same pause, one play).
+                      session.noteAutoPlayRetry();
                       _logPoll.info(
                         'youtube immediate pause retry vid='
                         '${session.videoId}',
                       );
-                      unawaited(retryPlay(webController()));
+                      unawaited(
+                        retryPlay(webController()).catchError((
+                          Object error,
+                          StackTrace stackTrace,
+                        ) {
+                          // The budget is already spent; surface the failed
+                          // retry instead of an unhandled zone error that
+                          // reads as a crash with no context.
+                          _logPoll.warning(
+                            'youtube immediate pause retry failed '
+                            'vid=${session.videoId}',
+                            error,
+                            stackTrace,
+                          );
+                        }),
+                      );
                     case SurfacePause():
                       if (immediate || session.explicitPlayAttempted) {
                         session.scheduleRecoveryHint();
