@@ -37,44 +37,26 @@ class YoutubeVideoStage extends StatelessWidget {
     engine.noteStageViewportSize(width: maxWidth, height: maxHeight);
 
     final session = engine.session;
-    return StreamBuilder<bool>(
-      stream: engine.buffering,
-      initialData: session.buffering,
-      builder: (context, snapshot) {
-        final bufferingNow = snapshot.data ?? session.buffering;
-        // The poster is a "playback never started" affordance, not a
-        // buffering one (issue #662): keyed to the session's first-playing
-        // latch, so a mid-playback `waiting` no longer fades the static
-        // thumbnail OVER the live frame. A stall after playback has started
-        // gets the small spinner instead.
-        final posterVisible = bufferingNow && !session.loggedFirstPlaying;
-        final showSpinner = bufferingNow && session.loggedFirstPlaying;
-        return ValueListenableBuilder<int>(
-          valueListenable: session.mountTick,
-          builder: (context, _, _) {
-            return Stack(
-              fit: StackFit.expand,
-              children: [
-                const ColoredBox(color: Colors.black),
-                // ADR-0048: on opted-out platforms the host must never mount
-                // (defense in depth — mount requests are gated too, but the
-                // InAppWebView constructor itself asserts without a backend).
-                if (!youTubeEngineOptedOutHere && session.shouldMountWebView)
-                  _webViewHost(),
-                if (session.tapToPlayHintActive && !posterVisible)
-                  _YoutubeTapToPlayHint(
-                    label:
-                        AppLocalizations.of(context)?.youtubeTapToPlayHint ??
-                        'Tap to play',
-                  ),
-                YoutubeVideoPoster(
-                  primaryUrl: session.posterUrl,
-                  visible: posterVisible,
-                ),
-                if (showSpinner) const _YoutubeBufferingIndicator(),
-              ],
-            );
-          },
+    // Stage root: rebuilt only by mount changes ([session.mountTick]). The
+    // buffering stream is read in a leaf below so a `waiting` → `playing`
+    // flip cannot rebuild the WebView host subtree — every flip used to
+    // re-create the whole [Stack], including a fresh [YoutubeWebViewHost]
+    // (and therefore a fresh settings object) on each mid-playback stall
+    // (issue #663).
+    return ValueListenableBuilder<int>(
+      valueListenable: session.mountTick,
+      builder: (context, _, _) {
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            const ColoredBox(color: Colors.black),
+            // ADR-0048: on opted-out platforms the host must never mount
+            // (defense in depth — mount requests are gated too, but the
+            // InAppWebView constructor itself asserts without a backend).
+            if (!youTubeEngineOptedOutHere && session.shouldMountWebView)
+              _webViewHost(),
+            _StageBufferingLeaf(engine: engine),
+          ],
         );
       },
     );
@@ -85,6 +67,51 @@ class YoutubeVideoStage extends StatelessWidget {
       key: engine.session.webViewHostKey,
       controller: engine.webViewLifecycle,
       currentVideoId: () => engine.session.videoId,
+    );
+  }
+}
+
+/// Buffering-driven leaf of the stage (issue #663).
+///
+/// Owns the engine's buffering stream so the overlays that depend on it —
+/// the poster and the mid-playback spinner — rebuild in a leaf that sits
+/// *next to* the WebView host in the stage stack, never above it. The poster
+/// is a "playback never started" affordance, not a buffering one (issue
+/// #662): keyed to the session's first-playing latch, so a mid-playback
+/// `waiting` no longer fades the static thumbnail OVER the live frame; a
+/// stall after playback has started gets the small spinner instead.
+class _StageBufferingLeaf extends StatelessWidget {
+  const _StageBufferingLeaf({required this.engine});
+
+  final YoutubePlayerEngine engine;
+
+  @override
+  Widget build(BuildContext context) {
+    final session = engine.session;
+    return StreamBuilder<bool>(
+      stream: engine.buffering,
+      initialData: session.buffering,
+      builder: (context, snapshot) {
+        final bufferingNow = snapshot.data ?? session.buffering;
+        final posterVisible = bufferingNow && !session.loggedFirstPlaying;
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            if (session.tapToPlayHintActive && !posterVisible)
+              _YoutubeTapToPlayHint(
+                label:
+                    AppLocalizations.of(context)?.youtubeTapToPlayHint ??
+                    'Tap to play',
+              ),
+            YoutubeVideoPoster(
+              primaryUrl: session.posterUrl,
+              visible: posterVisible,
+            ),
+            if (bufferingNow && session.loggedFirstPlaying)
+              const _YoutubeBufferingIndicator(),
+          ],
+        );
+      },
     );
   }
 }

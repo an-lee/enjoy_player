@@ -14,26 +14,34 @@ const String kYoutubeMobileChromeUserAgent =
 class YoutubeWebViewSettings {
   YoutubeWebViewSettings._();
 
-  static InAppWebViewSettings forPlayer() {
-    return InAppWebViewSettings(
-      mediaPlaybackRequiresUserGesture: false,
-      allowsInlineMediaPlayback: true,
-      allowsPictureInPictureMediaPlayback:
-          defaultTargetPlatform == TargetPlatform.iOS ? false : null,
-      javaScriptEnabled: true,
-      transparentBackground: true,
-      useWideViewPort: true,
-      loadWithOverviewMode: true,
-      userAgent: kYoutubeMobileChromeUserAgent,
-      thirdPartyCookiesEnabled: true,
-      // Required on Android/iOS/macOS/Windows for [shouldOverrideUrlLoading] (ADR-0025).
-      useShouldOverrideUrlLoading: true,
-      // Android: allow listening for renderer crashes (reload watch page).
-      useOnRenderProcessGone: defaultTargetPlatform == TargetPlatform.android
-          ? true
-          : null,
-    );
-  }
+  /// Shared player settings.
+  ///
+  /// Cached: the stage re-creates its widget subtree on mount ticks, and a
+  /// fresh [InAppWebViewSettings] per build is both garbage and — because it
+  /// is passed as `initialSettings` — an unnecessary settings push on the
+  /// platform side. Nothing in the app mutates the returned instance, so the
+  /// same object is handed to every [InAppWebView] (issue #663).
+  static final InAppWebViewSettings _player = InAppWebViewSettings(
+    mediaPlaybackRequiresUserGesture: false,
+    allowsInlineMediaPlayback: true,
+    allowsPictureInPictureMediaPlayback:
+        defaultTargetPlatform == TargetPlatform.iOS ? false : null,
+    javaScriptEnabled: true,
+    transparentBackground: true,
+    useWideViewPort: true,
+    loadWithOverviewMode: true,
+    userAgent: kYoutubeMobileChromeUserAgent,
+    thirdPartyCookiesEnabled: true,
+    // Required on Android/iOS/macOS/Windows for [shouldOverrideUrlLoading] (ADR-0025).
+    useShouldOverrideUrlLoading: true,
+    // Android: allow listening for renderer crashes (reload watch page).
+    useOnRenderProcessGone: defaultTargetPlatform == TargetPlatform.android
+        ? true
+        : null,
+  );
+
+  /// Identical settings every call — do not mutate the returned instance.
+  static InAppWebViewSettings forPlayer() => _player;
 
   static InAppWebViewSettings forLogin() {
     return InAppWebViewSettings(
