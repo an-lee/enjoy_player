@@ -5,6 +5,7 @@ import 'dart:async';
 
 import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/features/player/application/player_engine.dart';
+import 'package:enjoy_player/features/player/application/single_flight_gate.dart';
 import 'package:enjoy_player/features/player/domain/echo_window.dart';
 import 'package:enjoy_player/features/player/domain/player_settings.dart';
 import 'package:enjoy_player/features/player/domain/transport_decisions.dart';
@@ -16,12 +17,17 @@ typedef CompletionEchoSnapshot = ({bool active, double startTimeSeconds});
 
 /// Generation-guarded await-completion loop shared by every [PlayerEngine].
 ///
-/// Mirrors the generation-counter + single-flight pattern from
-/// `EchoEnforcer._epoch` / `PlayerController._openGeneration`: the transport
-/// drives itself off `await`ed completion futures instead of polling the
-/// position stream, and every in-flight await captures a generation id so a
-/// stale completion from a previous media (or a duplicate `completed` event
-/// from mpv) is a no-op.
+/// Same concept as [SingleFlightGate] — a monotonic generation captured at
+/// entry and re-checked after every `await`, so a stale completion from a
+/// previous media (or a duplicate `completed` event from mpv) is a no-op —
+/// but it keeps its own fields because two of its mechanics diverge:
+///
+/// - the in-flight await is **cancelable**: [bump] completes a `Completer`
+///   that the pending `engine.completed` await races, rather than letting it
+///   drain (a completion stream may simply never fire again after a seek);
+/// - the "a loop is running" marker is keyed *by generation*
+///   ([_activeLoopGen]), not by op identity, so a loop that is mid-drain
+///   cannot block [arm] for the new stint.
 ///
 /// This is the **single consumer** of [PlayerEngine.completed] for repeat
 /// policy — engine-internal poll loops (e.g. YouTube) only surface the

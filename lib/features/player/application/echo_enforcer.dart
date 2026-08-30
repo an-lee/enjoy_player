@@ -17,6 +17,7 @@ import 'package:enjoy_player/data/subtitle/transcript_line.dart';
 import 'package:enjoy_player/features/player/application/echo_mode_provider.dart';
 import 'package:enjoy_player/features/player/application/player_engine.dart';
 import 'package:enjoy_player/features/player/application/player_engine_constants.dart';
+import 'package:enjoy_player/features/player/application/single_flight_gate.dart';
 import 'package:enjoy_player/features/player/domain/echo_window.dart';
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
 
@@ -48,15 +49,12 @@ class EchoEnforcer {
   /// time so a re-segmented transcript yields fresh boundaries (M4).
   final List<TranscriptLine>? Function() getLines;
 
-  /// Bumped by [reset]; in-flight ops capture the value at start and bail if
-  /// it changed, so a media switch mid-enforcement is a no-op rather than a
-  /// stray seek on the next media.
-  int _epoch = 0;
-
-  /// Non-null while an enforcement op is running. Set synchronously before the
-  /// first await, so the "is something in flight?" check is race-free across
-  /// two synchronous position events.
-  Future<void>? _inFlight;
+  /// Generation + single-flight slot. Bumped by [reset]; in-flight ops capture
+  /// the generation at start and bail if it changed, so a media switch
+  /// mid-enforcement is a no-op rather than a stray seek on the next media.
+  /// While one op holds the slot, concurrent ticks are dropped and concurrent
+  /// clamps wait (bounded — see [clampAndSeek]).
+  final SingleFlightGate _gate = SingleFlightGate();
 
   /// Inputs behind the memoized window in [_windowCache]: the fields the hot
   /// path can compare for free (echo state by value, session duration). The
@@ -73,19 +71,13 @@ class EchoEnforcer {
   /// the in-flight action already corrected playback and the next tick
   /// re-evaluates against the post-correction position.
   Future<void> enforceTick(double positionSeconds) async {
-    if (_inFlight != null) return;
+    if (_gate.inFlight) return;
     final window = _resolveWindow();
     if (window == null) return;
     final decision = decideEchoPlaybackTime(positionSeconds, window);
     if (decision is EchoOk) return;
-    final epoch = _epoch;
-    final future = _applyDecision(decision, epoch);
-    _inFlight = future;
-    try {
-      await future;
-    } finally {
-      if (_inFlight == future) _inFlight = null;
-    }
+    final epoch = _gate.generation;
+    await _gate.run(_applyDecision(decision, epoch));
   }
 
   /// Proactive seek clamp (user tapped a cue / scrubbed). Clamps the requested
@@ -102,21 +94,15 @@ class EchoEnforcer {
     // in-flight enforcement, the requested target belongs to media that is
     // gone, and re-entering the loop with a fresh epoch would seek the old
     // target onto the new engine (unclamped, its echo being inactive).
-    final epoch = _epoch;
-    while (_epoch == epoch) {
-      final pending = _inFlight;
+    final epoch = _gate.generation;
+    while (!_gate.isStale(epoch)) {
+      final pending = _gate.pending;
       if (pending == null) {
         final window = _resolveWindow(override: override);
         final target = window == null
             ? requestedSeconds
             : clampSeekTimeToEchoWindow(requestedSeconds, window);
-        final future = _seek(target, epoch);
-        _inFlight = future;
-        try {
-          await future;
-        } finally {
-          if (_inFlight == future) _inFlight = null;
-        }
+        await _gate.run(_seek(target, epoch));
         return target;
       }
       // An enforcement is running; wait for it (bounded — a wedged engine seek
@@ -131,7 +117,7 @@ class EchoEnforcer {
         );
         // The wedged op's own finally is guarded by identity, so clearing here
         // cannot race it out of a slot it still owns.
-        if (_inFlight == pending) _inFlight = null;
+        _gate.release(pending);
         return requestedSeconds;
       }
     }
@@ -142,8 +128,7 @@ class EchoEnforcer {
   /// media switch / clear so a pending pause-and-rewind can't seek a stale
   /// engine or hold the slot forever (which would block all future enforcement).
   void reset() {
-    _epoch++;
-    _inFlight = null;
+    _gate.cancel();
     // The window is derived from the previous media's session; re-derive for
     // the next one rather than serving a cached duration / transcript.
     _windowCacheKey = null;
@@ -151,7 +136,7 @@ class EchoEnforcer {
   }
 
   Future<void> _applyDecision(EchoPlaybackDecision decision, int epoch) async {
-    if (_epoch != epoch) return;
+    if (_gate.isStale(epoch)) return;
     switch (decision) {
       case EchoOk():
         return;
@@ -161,13 +146,13 @@ class EchoEnforcer {
         await getEngine().pause();
         // A reset may have landed between pause and seek; don't seek a stale
         // engine onto the next media.
-        if (_epoch != epoch) return;
+        if (_gate.isStale(epoch)) return;
         await getEngine().seek(durationFromSeconds(timeSeconds));
     }
   }
 
   Future<void> _seek(double targetSeconds, int epoch) async {
-    if (_epoch != epoch) return;
+    if (_gate.isStale(epoch)) return;
     await getEngine().seek(durationFromSeconds(targetSeconds));
   }
 
