@@ -153,8 +153,7 @@ class EchoRegionMergedCard extends ConsumerWidget {
                     .retranslateLine(i),
               )
             : null,
-        onTap: () =>
-            ref.read(playerInteractionsProvider.notifier).seekToLine(line, i),
+        onTap: () => ref.read(playerInteractionsProvider).seekToLine(line, i),
       );
 
       lineWidgets.add(tile);

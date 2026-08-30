@@ -13,19 +13,11 @@ import '../../transcript/application/transcript_blur_mode_provider.dart';
 import '../domain/echo_window.dart';
 import '../domain/playback_session.dart';
 import 'echo_mode_provider.dart';
+// The debounce / max-age constants live in [position_buckets] next to the
+// emit bucket they must stay coherent with (issue #668).
+import 'position_buckets.dart';
 
 final _persisterLog = logNamed('PlaybackSessionPersister');
-
-/// Debounce window for coalescing rapid position updates into one DB write.
-const int kPlaybackSessionDebounceMs = 450;
-
-/// Upper bound on how long a position update can stay unwritten, regardless of
-/// debounce. The position tracker emits on a 400 ms grid, so at 1× the 450 ms
-/// debounce would otherwise be re-armed forever and never fire during
-/// continuous playback — and at 2× the emit cadence (200 ms) is even faster.
-/// Forcing a flush once pending data is older than this guarantees a crash
-/// never loses more than ~2 s of progress (issue #280, P9).
-const int kMaxPendingPositionAgeMs = 2000;
 
 class PlaybackSessionPersister {
   PlaybackSessionPersister(this._ref);

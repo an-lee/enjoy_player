@@ -187,7 +187,7 @@ void main() {
   }
 
   test('prevLine bails out when there is no session', () async {
-    final n = container.read(playerInteractionsProvider.notifier);
+    final n = container.read(playerInteractionsProvider);
     await n.prevLine();
     expect(fake.seekCalls, isEmpty);
     expect(fake.playCallCount, 0);
@@ -195,7 +195,7 @@ void main() {
 
   test('prevLine bails out when there is no transcript', () async {
     setUpSession();
-    final n = container.read(playerInteractionsProvider.notifier);
+    final n = container.read(playerInteractionsProvider);
     await n.prevLine();
     expect(fake.seekCalls, isEmpty);
     expect(fake.playCallCount, 0);
@@ -203,7 +203,7 @@ void main() {
 
   test('nextLine bails out when there are no transcript lines', () async {
     setUpSession();
-    final n = container.read(playerInteractionsProvider.notifier);
+    final n = container.read(playerInteractionsProvider);
     await n.nextLine();
     expect(fake.seekCalls, isEmpty);
     expect(fake.playCallCount, 0);
@@ -214,7 +214,7 @@ void main() {
     await seedTranscript();
     setUpSession(currentTime: 2.5); // inside line 2
 
-    final n = container.read(playerInteractionsProvider.notifier);
+    final n = container.read(playerInteractionsProvider);
     await n.nextLine();
     expect(fake.seekCalls, [const Duration(seconds: 4)]);
     expect(fake.playCallCount, 1);
@@ -225,7 +225,7 @@ void main() {
     await seedTranscript();
     setUpSession(currentTime: 8.0); // past last line
 
-    final n = container.read(playerInteractionsProvider.notifier);
+    final n = container.read(playerInteractionsProvider);
     await n.nextLine();
     expect(fake.seekCalls, [const Duration(seconds: 6)]);
     expect(fake.playCallCount, 1);
@@ -236,7 +236,7 @@ void main() {
     await seedTranscript();
     setUpSession(currentTime: 4.5); // inside line 3
 
-    final n = container.read(playerInteractionsProvider.notifier);
+    final n = container.read(playerInteractionsProvider);
     await n.prevLine();
     expect(fake.seekCalls, [const Duration(seconds: 2)]);
     expect(fake.playCallCount, 1);
@@ -247,7 +247,7 @@ void main() {
     await seedTranscript();
     setUpSession(currentTime: 0.5);
 
-    final n = container.read(playerInteractionsProvider.notifier);
+    final n = container.read(playerInteractionsProvider);
     await n.prevLine();
     expect(fake.seekCalls, [const Duration(seconds: 0)]);
     expect(fake.playCallCount, 1);
@@ -266,7 +266,7 @@ void main() {
           endTimeSeconds: 4,
         );
 
-    final n = container.read(playerInteractionsProvider.notifier);
+    final n = container.read(playerInteractionsProvider);
     await n.nextLine();
     // next = endLineIndex + 1 = 2 -> startSeconds=4
     expect(fake.seekCalls, [const Duration(seconds: 4)]);
@@ -286,7 +286,7 @@ void main() {
           endTimeSeconds: 6,
         );
 
-    final n = container.read(playerInteractionsProvider.notifier);
+    final n = container.read(playerInteractionsProvider);
     await n.prevLine();
     expect(fake.seekCalls, [const Duration(seconds: 0)]);
     expect(fake.playCallCount, 1);
@@ -297,7 +297,7 @@ void main() {
     await seedTranscript();
     setUpSession(currentTime: 4.5);
 
-    final n = container.read(playerInteractionsProvider.notifier);
+    final n = container.read(playerInteractionsProvider);
     await n.replayLine();
     expect(fake.seekCalls, [const Duration(seconds: 4)]);
     expect(fake.playCallCount, 1);
@@ -318,7 +318,7 @@ void main() {
             endTimeSeconds: 4,
           );
 
-      final n = container.read(playerInteractionsProvider.notifier);
+      final n = container.read(playerInteractionsProvider);
       await n.replayLine();
       expect(fake.seekCalls, [const Duration(seconds: 2)]);
       expect(fake.playCallCount, 1);
@@ -330,7 +330,7 @@ void main() {
     await seedTranscript();
     setUpSession(currentTime: 4.5);
 
-    final n = container.read(playerInteractionsProvider.notifier);
+    final n = container.read(playerInteractionsProvider);
     await n.toggleEcho();
     final echo = container.read(echoModeProvider);
     expect(echo.active, isTrue);
@@ -351,7 +351,7 @@ void main() {
           endTimeSeconds: 4,
         );
 
-    final n = container.read(playerInteractionsProvider.notifier);
+    final n = container.read(playerInteractionsProvider);
     await n.toggleEcho();
     expect(container.read(echoModeProvider).active, isFalse);
   });
@@ -398,7 +398,7 @@ void main() {
     );
     setUpSession(currentTime: 1.0); // before any future line
 
-    final n = container.read(playerInteractionsProvider.notifier);
+    final n = container.read(playerInteractionsProvider);
     await n.toggleEcho();
     expect(container.read(echoModeProvider).active, isFalse);
   });
@@ -408,7 +408,7 @@ void main() {
     await seedTranscript();
     setUpSession();
 
-    final n = container.read(playerInteractionsProvider.notifier);
+    final n = container.read(playerInteractionsProvider);
     await n.toggleBlur();
     expect(container.read(transcriptBlurModeProvider), isTrue);
 
@@ -423,7 +423,7 @@ void main() {
     setUpSession();
     container.read(transcriptBlurModeProvider.notifier).activate();
 
-    final n = container.read(playerInteractionsProvider.notifier);
+    final n = container.read(playerInteractionsProvider);
     await n.toggleBlur();
     expect(container.read(transcriptBlurModeProvider), isFalse);
   });
@@ -432,13 +432,13 @@ void main() {
     await insertAudioRow(mediaId);
     setUpSession();
 
-    final n = container.read(playerInteractionsProvider.notifier);
+    final n = container.read(playerInteractionsProvider);
     await n.toggleBlur();
     expect(container.read(transcriptBlurModeProvider), isFalse);
   });
 
   test('toggleBlur bails out when there is no session', () async {
-    final n = container.read(playerInteractionsProvider.notifier);
+    final n = container.read(playerInteractionsProvider);
     await n.toggleBlur();
     expect(container.read(transcriptBlurModeProvider), isFalse);
   });
@@ -450,7 +450,7 @@ void main() {
       await seedTranscript();
       setUpSession(currentTime: 4.5);
 
-      final n = container.read(playerInteractionsProvider.notifier);
+      final n = container.read(playerInteractionsProvider);
       // echo is off — all four should be no-ops
       await n.expandEchoBackward();
       await n.expandEchoForward();
@@ -490,7 +490,7 @@ void main() {
           endTimeSeconds: 6,
         );
 
-    final n = container.read(playerInteractionsProvider.notifier);
+    final n = container.read(playerInteractionsProvider);
     // No transcript — echo state should be unchanged.
     await n.expandEchoBackward();
     await n.expandEchoForward();
@@ -505,7 +505,7 @@ void main() {
     await insertAudioRow(mediaId);
     setUpSession();
 
-    final n = container.read(playerInteractionsProvider.notifier);
+    final n = container.read(playerInteractionsProvider);
     await n.seekToProgressFraction(0.5);
     expect(fake.seekCalls, [const Duration(seconds: 15)]); // 30 * 0.5
 
@@ -522,13 +522,13 @@ void main() {
       mediaId,
     ).copyWith(durationSeconds: 0);
 
-    final n = container.read(playerInteractionsProvider.notifier);
+    final n = container.read(playerInteractionsProvider);
     await n.seekToProgressFraction(0.5);
     expect(fake.seekCalls, isEmpty);
   });
 
   test('seekToProgressFraction bails out when no session', () async {
-    final n = container.read(playerInteractionsProvider.notifier);
+    final n = container.read(playerInteractionsProvider);
     await n.seekToProgressFraction(0.5);
     expect(fake.seekCalls, isEmpty);
   });
@@ -538,7 +538,7 @@ void main() {
     await seedTranscript();
     setUpSession(currentTime: 2.5);
 
-    final n = container.read(playerInteractionsProvider.notifier);
+    final n = container.read(playerInteractionsProvider);
     await n.seekToLine(lines[2], 2);
     expect(fake.seekCalls, [const Duration(seconds: 4)]);
     expect(fake.playCallCount, 1);
@@ -559,7 +559,7 @@ void main() {
             endTimeSeconds: 2,
           );
 
-      final n = container.read(playerInteractionsProvider.notifier);
+      final n = container.read(playerInteractionsProvider);
       await n.seekToLine(lines[2], 2);
       final echo = container.read(echoModeProvider);
       expect(echo.startLineIndex, 2);
@@ -574,7 +574,7 @@ void main() {
     await seedTranscript();
     setUpSession(currentTime: 0.5);
 
-    final n = container.read(playerInteractionsProvider.notifier);
+    final n = container.read(playerInteractionsProvider);
     await n.nextLine(); // populates cache via primaryTranscriptRowForMedia
     expect(fake.seekCalls, hasLength(1));
 
@@ -592,7 +592,7 @@ void main() {
       // No transcript seeded for alt — should clear cache to empty.
 
       setUpSession(forMedia: mediaId, currentTime: 0.5);
-      final n = container.read(playerInteractionsProvider.notifier);
+      final n = container.read(playerInteractionsProvider);
       await n.nextLine();
       expect(fake.seekCalls, hasLength(1));
 
@@ -611,7 +611,7 @@ void main() {
     () async {
       await insertAudioRow(mediaId);
       await seedTranscript();
-      final n = container.read(playerInteractionsProvider.notifier);
+      final n = container.read(playerInteractionsProvider);
       await n.replayLine();
       expect(fake.seekCalls, isEmpty);
     },
@@ -624,7 +624,7 @@ void main() {
       await seedTranscript();
       setUpSession(currentTime: 0.5);
 
-      final n = container.read(playerInteractionsProvider.notifier);
+      final n = container.read(playerInteractionsProvider);
       await n.nextLine(); // populates the keepAlive cache with the old import
       expect(fake.seekCalls, [const Duration(seconds: 2)]);
 
@@ -643,7 +643,7 @@ void main() {
 
   test('replayLine bails out when there are no lines', () async {
     setUpSession();
-    final n = container.read(playerInteractionsProvider.notifier);
+    final n = container.read(playerInteractionsProvider);
     await n.replayLine();
     expect(fake.seekCalls, isEmpty);
   });
@@ -681,7 +681,7 @@ void main() {
       ],
     );
 
-    final n = container.read(playerInteractionsProvider.notifier);
+    final n = container.read(playerInteractionsProvider);
     await n.seekToWord(nested, 0, 1);
     expect(fake.seekCalls, [const Duration(milliseconds: 1500)]);
     expect(fake.playCallCount, 1);
@@ -711,7 +711,7 @@ void main() {
             endTimeSeconds: 6,
           );
 
-      final n = container.read(playerInteractionsProvider.notifier);
+      final n = container.read(playerInteractionsProvider);
       await n.seekToWord(nested, 0, 1);
       final echo = container.read(echoModeProvider);
       expect(echo.startLineIndex, 0);
@@ -734,7 +734,7 @@ void main() {
     );
 
     await container
-        .read(playerInteractionsProvider.notifier)
+        .read(playerInteractionsProvider)
         .seekToProgressFraction(0.5);
     expect(
       container.read(wordPracticeSessionProvider(mediaId)).isLooping,

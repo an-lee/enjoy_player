@@ -69,12 +69,21 @@ class PlayerPositionTracker {
   StreamSubscription<Duration>? _durationSub;
   int? _lastPositionEmitBucket;
 
-  Future<void> cancel() async {
-    await _positionSub?.cancel();
-    await _durationSub?.cancel();
+  /// Detaches and cancels the live engine subscriptions.
+  ///
+  /// Cancels without awaiting and nulls the fields synchronously, so
+  /// [subscribe] can drop a stale pair before installing a fresh one without
+  /// the async cancel re-nulling the new fields.
+  void _detachSubscriptions() {
+    unawaited(_positionSub?.cancel());
+    unawaited(_durationSub?.cancel());
     _positionSub = null;
     _durationSub = null;
     _lastPositionEmitBucket = null;
+  }
+
+  Future<void> cancel() async {
+    _detachSubscriptions();
     // Release the enforcement slot and neutralize any in-flight op so a
     // pending pause-and-rewind can't seek a stale engine or block the next
     // media's enforcement.
@@ -97,6 +106,10 @@ class PlayerPositionTracker {
     required VideoRow? video,
     required AudioRow? audio,
   }) {
+    // Defensive: since #674 only the open coordinator calls this, and only
+    // after [cancel] — but overwriting a live subscription would leak the
+    // previous engine's stream, so detach instead of trusting the convention.
+    _detachSubscriptions();
     _subscribedGeneration = openGeneration;
     _subscribedMediaId = mediaId;
     _lastPositionEmitBucket = null;

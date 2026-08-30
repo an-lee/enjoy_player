@@ -283,6 +283,8 @@ class _FakePlayerController extends PlayerController {
 }
 
 class _FakePlayerInteractions extends PlayerInteractions {
+  _FakePlayerInteractions(super.ref);
+
   var prevLineCalls = 0;
   var nextLineCalls = 0;
   var replayLineCalls = 0;
@@ -292,9 +294,6 @@ class _FakePlayerInteractions extends PlayerInteractions {
   var expandEchoForwardCalls = 0;
   var shrinkEchoBackwardCalls = 0;
   var shrinkEchoForwardCalls = 0;
-
-  @override
-  int build() => 0;
 
   @override
   Future<void> prevLine() async {
@@ -456,7 +455,10 @@ Future<_Harness> _mountHarness(
   final fakeCraft = _FakeCraftController();
   final fakeVocab = _FakeVocabularyReviewSession(initial: vocabState);
   final fakePlayer = _FakePlayerController(sessionOverride: session);
-  final fakeInteractions = _FakePlayerInteractions();
+  // Assigned by the [playerInteractionsProvider] override, which is the only
+  // place a [Ref] is available for the service (issue #668). The reads below
+  // initialize the provider before the harness hands [fakeInteractions] out.
+  late _FakePlayerInteractions fakeInteractions;
   final fakePrefs = _FakePlayerPreferencesCtrl(rate: initialRate);
   final fakeUi = _RecordingUi();
 
@@ -513,7 +515,9 @@ Future<_Harness> _mountHarness(
       craftControllerProvider.overrideWith(() => fakeCraft),
       vocabularyReviewSessionProvider.overrideWith(() => fakeVocab),
       playerControllerProvider.overrideWith(() => fakePlayer),
-      playerInteractionsProvider.overrideWith(() => fakeInteractions),
+      playerInteractionsProvider.overrideWith(
+        (ref) => fakeInteractions = _FakePlayerInteractions(ref),
+      ),
       playerPreferencesCtrlProvider.overrideWith(() => fakePrefs),
       playerUiProvider.overrideWith(() => fakeUi),
       appRouterProvider.overrideWithValue(router),
@@ -529,7 +533,7 @@ Future<_Harness> _mountHarness(
   container.read(craftControllerProvider.notifier);
   container.read(vocabularyReviewSessionProvider.notifier);
   container.read(playerControllerProvider.notifier);
-  container.read(playerInteractionsProvider.notifier);
+  container.read(playerInteractionsProvider);
   container.read(playerPreferencesCtrlProvider.notifier);
   container.read(playerUiProvider.notifier);
 

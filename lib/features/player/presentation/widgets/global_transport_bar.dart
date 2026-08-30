@@ -51,6 +51,13 @@ const double kNarrowSpeedSlotExtra = 12;
 const double kNarrowLayoutSlack = 8;
 const double kNarrowLineNavGap = 4;
 
+/// Height of the transport bar's control row (progress strip sits above it).
+///
+/// Sized to the widest always-on control — the [mobile-transport-line-nav]
+/// play ring — so the bar never reflows when a control is dropped on narrow
+/// layouts.
+const double kTransportControlRowHeight = 56;
+
 /// Which controls fit in the narrow single-row transport bar.
 ///
 /// Play/pause, echo, subtitle (cc), and speed are always-on (never subject to
@@ -333,29 +340,28 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
       tooltip: ttPrev,
       icon: const EnjoyChromeIcon(EnjoyChromeGlyph.skipBack),
       enabled: !isBuffering && hasTranscriptLines,
-      onTap: () => ref.read(playerInteractionsProvider.notifier).prevLine(),
+      onTap: () => ref.read(playerInteractionsProvider).prevLine(),
     );
 
     final nextButton = _LineNavButton(
       tooltip: ttNext,
       icon: const EnjoyChromeIcon(EnjoyChromeGlyph.skipForward),
       enabled: !isBuffering && hasTranscriptLines,
-      onTap: () => ref.read(playerInteractionsProvider.notifier).nextLine(),
+      onTap: () => ref.read(playerInteractionsProvider).nextLine(),
     );
 
     final replayButton = _LineNavButton(
       tooltip: ttReplay,
       icon: const EnjoyChromeIcon(EnjoyChromeGlyph.replay),
       enabled: !isBuffering && hasTranscriptLines,
-      onTap: () => ref.read(playerInteractionsProvider.notifier).replayLine(),
+      onTap: () => ref.read(playerInteractionsProvider).replayLine(),
     );
 
     final transcriptControls = <Widget>[prevButton, nextButton, replayButton];
 
     final primaryTransport = <Widget>[playRing, ...transcriptControls];
 
-    void echoToggle() =>
-        ref.read(playerInteractionsProvider.notifier).toggleEcho();
+    void echoToggle() => ref.read(playerInteractionsProvider).toggleEcho();
     final echoButton = OnboardingTarget(
       tipId: OnboardingTipId.playerEcho,
       onTargetAction: echo.active || hasTranscriptLines ? echoToggle : null,
@@ -404,7 +410,7 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
       onPressed: blurEnabled || hasTranscriptLines
           ? Haptics.wrapTap(
               context,
-              () => ref.read(playerInteractionsProvider.notifier).toggleBlur(),
+              () => ref.read(playerInteractionsProvider).toggleBlur(),
             )
           : null,
       icon: Icon(
@@ -485,7 +491,7 @@ class _GlobalTransportBarState extends ConsumerState<GlobalTransportBar> {
               t.space12,
             ),
             child: SizedBox(
-              height: 56,
+              height: kTransportControlRowHeight,
               width: double.infinity,
               child: AnimatedSwitcher(
                 duration: MediaQuery.disableAnimationsOf(context)

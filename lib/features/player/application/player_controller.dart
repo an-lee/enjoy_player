@@ -361,7 +361,7 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
     _completionLoop.bump();
   }
 
-  /// Called by [PlayerMetadataNotifier] after lazy title/thumbnail refresh.
+  /// Called by [PlayerMetadataService] after lazy title/thumbnail refresh.
   void applySessionPatch(PlaybackSession patched) {
     if (state?.mediaId != patched.mediaId) return;
     state = patched;

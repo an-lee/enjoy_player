@@ -15,6 +15,14 @@ import 'player_controller.dart';
 
 part 'player_interactions.g.dart';
 
+/// Builds the line-control service.
+///
+/// A state-less service (issue #668): [PlayerInteractions] holds a lines cache
+/// but exposes no provider state, so it is handed out by a plain keepAlive
+/// [Provider] rather than a `build() => 0` notifier wearing dummy state.
+@Riverpod(keepAlive: true)
+PlayerInteractions playerInteractions(Ref ref) => PlayerInteractions(ref);
+
 int indexOfActiveLine(List<TranscriptLine> lines, double t) {
   for (var i = 0; i < lines.length; i++) {
     final line = lines[i];
@@ -60,10 +68,15 @@ int prevLineNavigationIndex({
   return idx > 0 ? idx - 1 : 0;
 }
 
-@Riverpod(keepAlive: true)
-class PlayerInteractions extends _$PlayerInteractions {
-  @override
-  int build() => 0;
+/// Line-level controls service: prev / next / replay / echo toggle (maps web
+/// `usePlayerControls`).
+///
+/// Holds no provider state — only a memoized decode of the active transcript
+/// row, invalidated when that row changes.
+class PlayerInteractions {
+  PlayerInteractions(this.ref);
+
+  final Ref ref;
 
   /// Identity of the transcript row the line cache was decoded from.
   ///

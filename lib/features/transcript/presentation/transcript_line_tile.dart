@@ -126,7 +126,7 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
     Haptics.selection(context);
     unawaited(
       ref
-          .read(playerInteractionsProvider.notifier)
+          .read(playerInteractionsProvider)
           .seekToWord(widget.line, widget.lineIndex, wordIndex),
     );
   }

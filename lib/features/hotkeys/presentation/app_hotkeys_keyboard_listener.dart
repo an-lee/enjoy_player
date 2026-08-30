@@ -247,23 +247,23 @@ class _AppHotkeysKeyboardListenerState
       }
 
       if (_matches(event, ctrl, 'player.prevLine')) {
-        unawaited(ref.read(playerInteractionsProvider.notifier).prevLine());
+        unawaited(ref.read(playerInteractionsProvider).prevLine());
         return true;
       }
       if (_matches(event, ctrl, 'player.nextLine')) {
-        unawaited(ref.read(playerInteractionsProvider.notifier).nextLine());
+        unawaited(ref.read(playerInteractionsProvider).nextLine());
         return true;
       }
       if (_matches(event, ctrl, 'player.replayLine')) {
-        unawaited(ref.read(playerInteractionsProvider.notifier).replayLine());
+        unawaited(ref.read(playerInteractionsProvider).replayLine());
         return true;
       }
       if (_matches(event, ctrl, 'player.toggleEchoMode')) {
-        unawaited(ref.read(playerInteractionsProvider.notifier).toggleEcho());
+        unawaited(ref.read(playerInteractionsProvider).toggleEcho());
         return true;
       }
       if (_matches(event, ctrl, 'player.toggleBlurPractice')) {
-        unawaited(ref.read(playerInteractionsProvider.notifier).toggleBlur());
+        unawaited(ref.read(playerInteractionsProvider).toggleBlur());
         return true;
       }
 
@@ -289,27 +289,19 @@ class _AppHotkeysKeyboardListenerState
       }
 
       if (_matches(event, ctrl, 'player.expandEchoBackward')) {
-        unawaited(
-          ref.read(playerInteractionsProvider.notifier).expandEchoBackward(),
-        );
+        unawaited(ref.read(playerInteractionsProvider).expandEchoBackward());
         return true;
       }
       if (_matches(event, ctrl, 'player.expandEchoForward')) {
-        unawaited(
-          ref.read(playerInteractionsProvider.notifier).expandEchoForward(),
-        );
+        unawaited(ref.read(playerInteractionsProvider).expandEchoForward());
         return true;
       }
       if (_matches(event, ctrl, 'player.shrinkEchoBackward')) {
-        unawaited(
-          ref.read(playerInteractionsProvider.notifier).shrinkEchoBackward(),
-        );
+        unawaited(ref.read(playerInteractionsProvider).shrinkEchoBackward());
         return true;
       }
       if (_matches(event, ctrl, 'player.shrinkEchoForward')) {
-        unawaited(
-          ref.read(playerInteractionsProvider.notifier).shrinkEchoForward(),
-        );
+        unawaited(ref.read(playerInteractionsProvider).shrinkEchoForward());
         return true;
       }
     }

@@ -65,7 +65,7 @@ class _PlayerPage extends ConsumerWidget {
       body: Center(
         child: Builder(
           builder: (buttonCtx) => TextButton(
-            // Same shape as _VideoBackButton: context captured from inside
+            // Same shape as PlayerCollapseControl: context captured from inside
             // the chrome body subtree that unmounts on session clear.
             onPressed: () => collapseExpandedPlayer(ref, buttonCtx),
             child: const Text('collapse'),

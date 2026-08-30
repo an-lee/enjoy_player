@@ -8,12 +8,34 @@ part of 'player_interactions.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
+/// Builds the line-control service.
+///
+/// A state-less service (issue #668): [PlayerInteractions] holds a lines cache
+/// but exposes no provider state, so it is handed out by a plain keepAlive
+/// [Provider] rather than a `build() => 0` notifier wearing dummy state.
 
-@ProviderFor(PlayerInteractions)
+@ProviderFor(playerInteractions)
 final playerInteractionsProvider = PlayerInteractionsProvider._();
 
+/// Builds the line-control service.
+///
+/// A state-less service (issue #668): [PlayerInteractions] holds a lines cache
+/// but exposes no provider state, so it is handed out by a plain keepAlive
+/// [Provider] rather than a `build() => 0` notifier wearing dummy state.
+
 final class PlayerInteractionsProvider
-    extends $NotifierProvider<PlayerInteractions, int> {
+    extends
+        $FunctionalProvider<
+          PlayerInteractions,
+          PlayerInteractions,
+          PlayerInteractions
+        >
+    with $Provider<PlayerInteractions> {
+  /// Builds the line-control service.
+  ///
+  /// A state-less service (issue #668): [PlayerInteractions] holds a lines cache
+  /// but exposes no provider state, so it is handed out by a plain keepAlive
+  /// [Provider] rather than a `build() => 0` notifier wearing dummy state.
   PlayerInteractionsProvider._()
     : super(
         from: null,
@@ -30,34 +52,23 @@ final class PlayerInteractionsProvider
 
   @$internal
   @override
-  PlayerInteractions create() => PlayerInteractions();
+  $ProviderElement<PlayerInteractions> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  PlayerInteractions create(Ref ref) {
+    return playerInteractions(ref);
+  }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(int value) {
+  Override overrideWithValue(PlayerInteractions value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<int>(value),
+      providerOverride: $SyncValueProvider<PlayerInteractions>(value),
     );
   }
 }
 
 String _$playerInteractionsHash() =>
-    r'4d1f012927bdf3d38c07671e4b6926ebc531fa83';
-
-abstract class _$PlayerInteractions extends $Notifier<int> {
-  int build();
-  @$mustCallSuper
-  @override
-  WhenComplete runBuild() {
-    final ref = this.ref as $Ref<int, int>;
-    final element =
-        ref.element
-            as $ClassProviderElement<
-              AnyNotifier<int, int>,
-              int,
-              Object?,
-              Object?
-            >;
-    return element.handleCreate(ref, build);
-  }
-}
+    r'0bea819a31968a45e81767b30aa1c8fec3446d98';

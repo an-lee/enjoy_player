@@ -7,10 +7,18 @@ import 'package:enjoy_player/features/player/application/player_controller.dart'
 
 part 'player_metadata_notifier.g.dart';
 
+/// Applies the lazy YouTube metadata patch to the open session.
+///
+/// A state-less service (issue #668): it holds no state of its own, so it is
+/// exposed by a plain keepAlive [Provider] rather than a `void build()`
+/// notifier wearing dummy state.
 @Riverpod(keepAlive: true)
-class PlayerMetadataNotifier extends _$PlayerMetadataNotifier {
-  @override
-  void build() {}
+PlayerMetadataService playerMetadata(Ref ref) => PlayerMetadataService(ref);
+
+class PlayerMetadataService {
+  PlayerMetadataService(this.ref);
+
+  final Ref ref;
 
   /// Updates session chrome when [openGeneration] and [mediaId] still match.
   void patchIfCurrent({

@@ -42,7 +42,7 @@ final class PlayerPreferencesCtrlProvider
 }
 
 String _$playerPreferencesCtrlHash() =>
-    r'cd0ae1fe005341a834dfcabcb092e552f6242f5a';
+    r'7644afdc2c63aa81c6cdc2f85fc0d10ce9caf12f';
 
 abstract class _$PlayerPreferencesCtrl extends $Notifier<PlayerPreferences> {
   PlayerPreferences build();

@@ -15,6 +15,21 @@ library;
 /// to this bucket.
 const int kPositionBucketSessionEmitMs = 400;
 
+/// Debounce window for coalescing rapid position updates into one DB write.
+///
+/// Coherent with [kPositionBucketSessionEmitMs]: see
+/// [kMaxPendingPositionAgeMs] for why the two must move together.
+const int kPlaybackSessionDebounceMs = 450;
+
+/// Upper bound on how long a position update can stay unwritten, regardless of
+/// debounce. The position tracker emits on the [kPositionBucketSessionEmitMs]
+/// (400 ms) grid, so at 1x the 450 ms [kPlaybackSessionDebounceMs] would
+/// otherwise be re-armed forever and never fire during continuous playback —
+/// and at 2x the emit cadence (200 ms) is even faster. Forcing a flush once
+/// pending data is older than this guarantees a crash never loses more than
+/// ~2 s of progress (issue #280, P9).
+const int kMaxPendingPositionAgeMs = 2000;
+
 const int kPositionBucketDisplayMs = 400;
 
 const int kPositionBucketScrubberMs = 50;

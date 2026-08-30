@@ -227,7 +227,7 @@ class _TransportProgressStripState
                     });
                     unawaited(
                       ref
-                          .read(playerInteractionsProvider.notifier)
+                          .read(playerInteractionsProvider)
                           .seekToProgressFraction(v),
                     );
                   },

@@ -14,6 +14,16 @@ part 'player_preferences_provider.g.dart';
 
 const playerPreferencesStorageKey = 'player_preferences_v1';
 
+/// Field-wise comparison for [PlayerPreferences].
+///
+/// The model deliberately leaves `==` as identity so the notifier keeps
+/// notifying on every setter; hydration only needs value comparison.
+bool _hasSameValues(PlayerPreferences a, PlayerPreferences b) =>
+    a.volume == b.volume &&
+    a.playbackRate == b.playbackRate &&
+    a.repeatMode == b.repeatMode &&
+    a.videoTranscriptSplitWidthPx == b.videoTranscriptSplitWidthPx;
+
 @Riverpod(keepAlive: true)
 class PlayerPreferencesCtrl extends _$PlayerPreferencesCtrl {
   /// Last audible level used when restoring from mute (not persisted).
@@ -26,19 +36,26 @@ class PlayerPreferencesCtrl extends _$PlayerPreferencesCtrl {
   }
 
   Future<void> _hydrate() async {
-    final db = ref.read(appDatabaseProvider);
-    final raw = await db.settingsDao.getValue(playerPreferencesStorageKey);
-    if (raw == null) return;
+    // The read is inside the try on purpose: a Drift throw here would escape
+    // [build]'s microtask as an unhandled async error and kill the provider.
     try {
+      final db = ref.read(appDatabaseProvider);
+      final raw = await db.settingsDao.getValue(playerPreferencesStorageKey);
+      if (raw == null) return;
       final map = jsonDecode(raw) as Map<String, dynamic>;
       final repeatIdx = (map['repeat'] as int?) ?? 0;
-      state = PlayerPreferences(
+      final hydrated = PlayerPreferences(
         volume: ((map['volume'] as num?)?.toDouble() ?? 1).clamp(0, 1),
         playbackRate: ((map['rate'] as num?)?.toDouble() ?? 1).clamp(0.25, 2),
         repeatMode:
             RepeatMode.values[repeatIdx.clamp(0, RepeatMode.values.length - 1)],
         videoTranscriptSplitWidthPx: (map['splitPx'] as num?)?.toDouble(),
       );
+      // Hydration is a microtask behind [build], so the learner may already
+      // have changed volume / rate in this session. Only apply the stored
+      // values when nothing has moved off the defaults (issue #668).
+      if (!_hasSameValues(state, PlayerPreferences.defaults)) return;
+      state = hydrated;
       final v = state.volume;
       _lastNonZeroVolume = v > 0.01 ? v : 1;
       await applyCurrentToEngine();

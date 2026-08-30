@@ -47,7 +47,9 @@ class YoutubeWebViewNavigation {
     final controller = webController();
     if (controller == null || session.videoId.isEmpty) return;
     final videoId = session.videoId;
-    final navGen = bumpNavGeneration();
+    // Bumped so a verify scheduled from this load cannot judge a superseding
+    // navigation current.
+    bumpNavGeneration();
     try {
       await YoutubeWebViewBridge.loadWatchPage(controller, videoId);
     } on MissingPluginException catch (e, st) {
@@ -55,9 +57,7 @@ class YoutubeWebViewNavigation {
         onStaleWebView();
       }
       _logNav.fine('Ignoring loadUrl on stale YouTube WebView', e, st);
-      return;
     }
-    if (currentNavGeneration() != navGen || session.videoId != videoId) return;
   }
 
   Future<void> ensureWatchPageLoadedAfterDelay({
