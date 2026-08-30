@@ -1,6 +1,8 @@
 /// go_router configuration with persistent shell (mini player).
 library;
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,6 +30,9 @@ import 'package:enjoy_player/features/discover/presentation/channel_feed_screen.
 import 'package:enjoy_player/features/discover/presentation/discover_screen.dart';
 import 'package:enjoy_player/features/library/presentation/home_screen.dart';
 import 'package:enjoy_player/features/library/presentation/library_screen.dart';
+import 'package:enjoy_player/features/player/application/leave_player_route_observer.dart';
+import 'package:enjoy_player/features/player/application/leave_player_session.dart';
+import 'package:enjoy_player/features/player/application/player_controller.dart';
 import 'package:enjoy_player/features/player/domain/player_launch_request.dart';
 import 'package:enjoy_player/features/player/presentation/expanded_player_screen.dart';
 import 'package:enjoy_player/features/player/presentation/root_shell.dart';
@@ -87,7 +92,15 @@ GoRouter appRouter(Ref ref) {
   final shellOverlayObserver = PlayerSurfaceOverlayNavigatorObserver(
     coordinator: coordinator,
   );
-  return GoRouter(
+  // Leave-player teardown (spec 044). Player routes only mount on the shell
+  // navigator, so that is the only navigator carrying this observer. The
+  // callback fires while the navigator is applying the transition, and
+  // clear() publishes session state — defer it out of the build phase.
+  final leavePlayerObserver = LeavePlayerRouteObserver(
+    onLeftPlayerRoute: () =>
+        scheduleMicrotask(() => unawaited(clearLivePlaybackSession(ref))),
+  );
+  final router = GoRouter(
     initialLocation: '/',
     refreshListenable: authTick,
     observers: [rootOverlayObserver],
@@ -131,7 +144,7 @@ GoRouter appRouter(Ref ref) {
       ),
       ShellRoute(
         navigatorKey: enjoyShellNavigatorKey,
-        observers: [shellOverlayObserver],
+        observers: [shellOverlayObserver, leavePlayerObserver],
         builder: (context, state, child) => RootShell(child: child),
         routes: [
           GoRoute(
@@ -178,6 +191,10 @@ GoRouter appRouter(Ref ref) {
                 // rapidly destroyed/recreated; reusing the page lets the
                 // YouTube engine navigate the existing WebView instead.
                 key: const ValueKey('player-page'),
+                // Carried on RouteSettings.name so the leave-player route
+                // observer can recognise the page; the key above already pins
+                // identity.
+                name: state.matchedLocation,
                 child: ExpandedPlayerScreen(launch: launch),
                 transitionsBuilder:
                     (context, animation, secondaryAnimation, child) {
@@ -274,4 +291,19 @@ GoRouter appRouter(Ref ref) {
       ),
     ],
   );
+
+  // Mid-launch safety net: YouTube readiness can block for seconds, so an
+  // open can resolve *after* the learner already left `/player/` (#654). No
+  // route transition follows, so [leavePlayerObserver] never sees it — the
+  // session appearing off-route is the event to watch here. clear() bumps the
+  // open generation, which makes every later step of the launch bail.
+  ref.listen<bool>(
+    playerControllerProvider.select((session) => session != null),
+    (previous, sessionActive) {
+      if (!sessionActive) return;
+      if (router.state.uri.path.startsWith('/player/')) return;
+      scheduleMicrotask(() => unawaited(clearLivePlaybackSession(ref)));
+    },
+  );
+  return router;
 }

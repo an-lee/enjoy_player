@@ -33,6 +33,13 @@ class PlayerSurfaceRegistry extends Notifier<PlayerSurfaceAttachment?> {
     state = attachment;
   }
 
+  /// Refreshes [id]'s attachment in place.
+  ///
+  /// Geometry and overlay arguments default to "keep what is stored", so
+  /// passing `overlayBuilder: null` does **not** clear the chrome — a target
+  /// that no longer draws an overlay must call [detach] (or pass
+  /// [clearOverlay]) instead. Same-id targets are re-attached by
+  /// [PlayerSurfaceTarget._sync], which always supplies its current builder.
   void update({
     required String id,
     Offset? offset,

@@ -41,6 +41,12 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _attachSearchFocusListener(ref.read(librarySearchFocusNodeProvider));
+  }
+
+  @override
   void dispose() {
     _detachSearchFocusListener();
     _searchController.dispose();
@@ -69,7 +75,13 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
   @override
   Widget build(BuildContext context) {
     final searchFocusNode = ref.watch(librarySearchFocusNodeProvider);
-    _attachSearchFocusListener(searchFocusNode);
+    // The node provider is keepAlive and hands out one node per app run, so
+    // [didChangeDependencies] covers the normal lifetime. If a swap ever
+    // happens, re-attach here — a listener callback runs outside build, unlike
+    // the attach-in-build side effect this replaces.
+    ref.listen(librarySearchFocusNodeProvider, (_, node) {
+      _attachSearchFocusListener(node);
+    });
 
     ref.listen(librarySearchFocusRequestProvider, (previous, next) {
       searchFocusNode.requestFocus();

@@ -38,7 +38,6 @@ import 'package:enjoy_player/features/library/application/library_search_focus_p
 import 'package:enjoy_player/features/player/application/player_controller.dart';
 import 'package:enjoy_player/features/player/application/player_interactions.dart';
 import 'package:enjoy_player/features/player/application/player_preferences_provider.dart';
-import 'package:enjoy_player/features/player/application/player_ui_provider.dart';
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
 import 'package:enjoy_player/features/player/domain/player_settings.dart'
     as player_settings;
@@ -369,26 +368,6 @@ class _FakePlayerPreferencesCtrl extends PlayerPreferencesCtrl {
   }
 }
 
-class _RecordingUi extends PlayerUi {
-  var expandCalls = 0;
-  var collapseCalls = 0;
-
-  @override
-  PlayerUiState build() => PlayerUiState.initial;
-
-  @override
-  void expand() {
-    expandCalls++;
-    state = state.copyWith(mode: PlayerChromeMode.expanded);
-  }
-
-  @override
-  void collapse() {
-    collapseCalls++;
-    state = state.copyWith(mode: PlayerChromeMode.mini);
-  }
-}
-
 // ── Test harness ─────────────────────────────────────────────────────────────
 
 class _Harness {
@@ -404,7 +383,6 @@ class _Harness {
     required this.playerCtrl,
     required this.playerInteractions,
     required this.playerPrefs,
-    required this.playerUi,
     required this.rootNavigatorKey,
   });
 
@@ -419,7 +397,6 @@ class _Harness {
   final _FakePlayerController playerCtrl;
   final _FakePlayerInteractions playerInteractions;
   final _FakePlayerPreferencesCtrl playerPrefs;
-  final _RecordingUi playerUi;
 
   /// Root navigator key wired into the test [GoRouter] so individual tests can
   /// push pages onto the same stack that [Navigator.pop] walks in production.
@@ -460,7 +437,6 @@ Future<_Harness> _mountHarness(
   // initialize the provider before the harness hands [fakeInteractions] out.
   late _FakePlayerInteractions fakeInteractions;
   final fakePrefs = _FakePlayerPreferencesCtrl(rate: initialRate);
-  final fakeUi = _RecordingUi();
 
   final rootKey = GlobalKey<NavigatorState>(debugLabel: 'test-root');
 
@@ -519,7 +495,6 @@ Future<_Harness> _mountHarness(
         (ref) => fakeInteractions = _FakePlayerInteractions(ref),
       ),
       playerPreferencesCtrlProvider.overrideWith(() => fakePrefs),
-      playerUiProvider.overrideWith(() => fakeUi),
       appRouterProvider.overrideWithValue(router),
     ],
   );
@@ -535,7 +510,6 @@ Future<_Harness> _mountHarness(
   container.read(playerControllerProvider.notifier);
   container.read(playerInteractionsProvider);
   container.read(playerPreferencesCtrlProvider.notifier);
-  container.read(playerUiProvider.notifier);
 
   // Mount with both the rootNavigatorKey (used by global.help / Escape) and
   // the ShellRoute navigatorKey (Escape shell popup branch).
@@ -568,7 +542,6 @@ Future<_Harness> _mountHarness(
     playerCtrl: fakePlayer,
     playerInteractions: fakeInteractions,
     playerPrefs: fakePrefs,
-    playerUi: fakeUi,
     rootNavigatorKey: rootKey,
   );
 }
@@ -1031,9 +1004,6 @@ void main() {
         session: _videoSession(),
         initialLocation: '/player/abc',
       );
-      harness.playerUi.state = harness.playerUi.state.copyWith(
-        mode: PlayerChromeMode.expanded,
-      );
       // Push a MaterialPageRoute onto the *root* navigator so [context.pop()]
       // has something to pop. In production the player screen is pushed from
       // a shell tab and the root stack contains both the shell and the
@@ -1058,10 +1028,11 @@ void main() {
         LogicalKeyboardKey.keyP,
         character: 'p',
       );
-      // The handler fires [collapseExpandedPlayer] which collapses the chrome,
-      // awaits setFullscreen(false), then pops the pushed page.
+      // The handler fires [collapseExpandedPlayer], which awaits
+      // setFullscreen(false), tears the live session down, then pops the
+      // pushed page.
       await tester.pumpAndSettle();
-      expect(harness.playerUi.collapseCalls, 1);
+      expect(harness.playerCtrl.clearCalls, 1);
       // The pushed overlay is gone; the shell route (with the player screen)
       // remains visible.
       expect(find.text('expanded-overlay'), findsNothing);
@@ -1079,7 +1050,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(harness.router.state.uri.path, '/library');
-      expect(harness.playerUi.collapseCalls, 0);
+      expect(harness.playerCtrl.clearCalls, 0);
       expect(harness.playerCtrl.togglePlayCalls, 0);
     });
 
@@ -1106,8 +1077,7 @@ void main() {
       // We verify the *negative* path — no collapse happened, the route did
       // not change, and the handler is wired correctly.
       expect(harness.router.state.uri.path, '/library');
-      expect(harness.playerUi.collapseCalls, 0);
-      expect(harness.playerUi.expandCalls, 0);
+      expect(harness.playerCtrl.clearCalls, 0);
     });
   });
 
