@@ -152,17 +152,14 @@ class MediaKitPlayerEngine implements PlayerEngine {
   mk.Player? __player;
 
   /// Set by [prepareNativeBackend] after the previous platform view has
-  /// detached. Stream / snapshot getters must not construct [mk.Player]
-  /// before this — a YouTube → local open otherwise allocates mpv in the
-  /// same frame the WebView starts destroying (2026-08-30 field report).
+  /// detached. Only [buildVideoStage] consults it: the stream/snapshot getters
+  /// read `__player` without ever constructing, and the command path
+  /// ([_player]) allocates mpv unconditionally — the WebView-detach wait lives
+  /// in the swap (player_engine_binding), not in a getter (2026-08-30 field
+  /// report, issue #658).
   var _nativeBackendAllowed = false;
 
-  mk.Player get _player {
-    if (!_nativeBackendAllowed) {
-      _nativeBackendAllowed = true;
-    }
-    return __player ??= mk.Player();
-  }
+  mk.Player get _player => __player ??= mk.Player();
 
   mk.Player get player => _player;
 

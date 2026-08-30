@@ -91,17 +91,29 @@ class CompletionLoop {
 
         final decision = decideOnMediaEnd(repeatMode: _repeatMode());
         _log.fine('completion fired for $mediaId; decision=$decision');
-        switch (decision) {
-          case StopAtEnd():
-            return;
-          case LoopMedia():
-            await _replayFrom(Duration.zero, gen);
-            if (gen != _playbackGen || _isDisposed()) return;
-          case LoopSegment():
-            final echo = _echoSnapshot();
-            if (!echo.active) return;
-            await _replayFrom(durationFromSeconds(echo.startTimeSeconds), gen);
-            if (gen != _playbackGen || _isDisposed()) return;
+        // A replay that throws (engine seek/play failing at end-of-media) must
+        // not escape [unawaited] — it would surface as an unhandled async
+        // error and the `finally` would drop the loop either way, killing
+        // repeat/segment-loop for the rest of the stint. Log and stop instead.
+        try {
+          switch (decision) {
+            case StopAtEnd():
+              return;
+            case LoopMedia():
+              await _replayFrom(Duration.zero, gen);
+              if (gen != _playbackGen || _isDisposed()) return;
+            case LoopSegment():
+              final echo = _echoSnapshot();
+              if (!echo.active) return;
+              await _replayFrom(
+                durationFromSeconds(echo.startTimeSeconds),
+                gen,
+              );
+              if (gen != _playbackGen || _isDisposed()) return;
+          }
+        } catch (e, st) {
+          _log.warning('replay for $mediaId failed; loop stopped', e, st);
+          return;
         }
       }
     } finally {
