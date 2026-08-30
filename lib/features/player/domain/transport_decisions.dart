@@ -4,6 +4,12 @@
 ///
 /// Pattern: `decideX(inputs) -> sealed class` reducers. Side effects are left
 /// to the single imperative consumer that `switch`es over the sealed result.
+///
+/// The exceptions are D8 (immediate-pause retry) and D9 (transport-toggle
+/// latch): they are the restless half of the play-then-pause saga and read
+/// live protocol state, so they moved into
+/// `youtube_play_retry_policy.dart` next to the budget they decide about
+/// (issue #665). Everything stateless stays here.
 library;
 
 import 'player_settings.dart';
@@ -232,107 +238,5 @@ MediaEndDecision decideOnMediaEnd({required RepeatMode repeatMode}) {
 }
 
 // ---------------------------------------------------------------------------
-// D8 — YouTube immediate-pause retry
+// D8/D9 moved to youtube_play_retry_policy.dart (issue #665).
 // ---------------------------------------------------------------------------
-
-sealed class ImmediatePauseRetryDecision {
-  const ImmediatePauseRetryDecision();
-
-  static const ImmediatePauseRetryDecision retry = RetryPlayOnce();
-  static const ImmediatePauseRetryDecision surface = SurfacePause();
-}
-
-final class RetryPlayOnce extends ImmediatePauseRetryDecision {
-  const RetryPlayOnce();
-}
-
-final class SurfacePause extends ImmediatePauseRetryDecision {
-  const SurfacePause();
-}
-
-/// When a pause is confirmed almost immediately after playback started
-/// ([immediate]) and the dying episode still has retry coverage, grant an
-/// automatic retry: the page player state machine can "correct" a freshly
-/// started video back to paused before it settles, and re-playing after it
-/// settles recovers without user-facing recovery UX.
-///
-/// Coverage has two arms:
-/// - [userPlayInFlight] — armed by a play-intent command, preserved through
-///   the first `playing`, expired once playback outlives the immediate
-///   window, consumed by this retry / failure transitions / pause-intent
-///   commands.
-/// - [lastPlayingFromAutoRetry] with [autoRetriesIssued] < [maxAutoRetries]
-///   — escalation for the field-observed echo-mode wedge (Android): the
-///   page re-paused the retried play too (~600 ms in), spending the
-///   one-shot budget and wedging playback until a manual tap. Each attempt
-///   outlived the previous one, so further settled retries have a real
-///   chance; the cap bounds total auto-plays per user command so a
-///   deliberate pause is never fought indefinitely.
-///
-/// Every other confirmed pause surfaces normally (recovery hint is the
-/// consumer's decision).
-ImmediatePauseRetryDecision decideImmediatePauseRetry({
-  required bool immediate,
-  required bool userPlayInFlight,
-  required bool disposed,
-  required bool playbackCompleted,
-  required bool lastPlayingFromAutoRetry,
-  required int autoRetriesIssued,
-  required int maxAutoRetries,
-}) {
-  final covered =
-      userPlayInFlight ||
-      (lastPlayingFromAutoRetry && autoRetriesIssued < maxAutoRetries);
-  if (immediate && covered && !disposed && !playbackCompleted) {
-    return ImmediatePauseRetryDecision.retry;
-  }
-  return ImmediatePauseRetryDecision.surface;
-}
-
-// ---------------------------------------------------------------------------
-// D9 — transport-toggle retry-latch intent
-// ---------------------------------------------------------------------------
-
-sealed class TransportToggleLatchDecision {
-  const TransportToggleLatchDecision();
-
-  static const TransportToggleLatchDecision arm = ArmRetryBudget();
-  static const TransportToggleLatchDecision consume = ConsumeRetryBudget();
-  static const TransportToggleLatchDecision leave = LeaveRetryBudget();
-}
-
-/// The toggle issued a play — arm the D8 budget.
-final class ArmRetryBudget extends TransportToggleLatchDecision {
-  const ArmRetryBudget();
-}
-
-/// The toggle issued a pause — consume the D8 budget so the deliberate
-/// pause is never auto-resumed.
-final class ConsumeRetryBudget extends TransportToggleLatchDecision {
-  const ConsumeRetryBudget();
-}
-
-/// No `<video>` found — nothing was issued; leave the latch (the attempt
-/// expiry bounds any stale budget).
-final class LeaveRetryBudget extends TransportToggleLatchDecision {
-  const LeaveRetryBudget();
-}
-
-/// Classify a transport toggle's retry-latch effect from the direction the
-/// DOM actually took ([domDirection] — the value returned by the atomic
-/// playOrPause script), never from session `playing` state: pause
-/// confirmation lags DOM pauses by ~750 ms, so session state can read
-/// opposite to the command really issued during exactly the windows where
-/// the latch matters (a page-corrected pause, or the D8 retry's own play).
-TransportToggleLatchDecision decideTransportToggleLatch({
-  required String? domDirection,
-}) {
-  switch (domDirection) {
-    case 'play':
-      return TransportToggleLatchDecision.arm;
-    case 'pause':
-      return TransportToggleLatchDecision.consume;
-    case _:
-      return TransportToggleLatchDecision.leave;
-  }
-}

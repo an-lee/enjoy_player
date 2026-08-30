@@ -105,7 +105,9 @@ void main() {
       expect(session.explicitPlayAttempted, isFalse);
       expect(session.volumeRestorePending, isFalse);
       expect(session.playing, isFalse);
-      expect(session.lastPlayingAt, isNull);
+      // The immediate-pause clock belongs to the retry protocol now; a new
+      // open must have no playing episode for it to measure against.
+      expect(session.isImmediatePause(), isFalse);
     });
   });
 

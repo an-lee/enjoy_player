@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:enjoy_player/features/player/application/engines/youtube/youtube_monotonic_clock.dart';
+import 'package:enjoy_player/features/player/application/engines/youtube/youtube_play_retry_policy.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_session.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_webview_poll_loop.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -606,7 +608,9 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 50));
 
         expect(session.playing, isFalse);
-        expect(session.lastAutoPlayRetryAt, isNotNull);
+        // The protocol advanced before the throw: the budget was spent and
+        // the retry counted against the escalation cap.
+        expect(session.playRetry.autoRetriesIssued, 1);
 
         loop.stop();
       },
@@ -616,10 +620,15 @@ void main() {
       // A page-UI resume the app never commanded refreshes the playing
       // clock without arming a new budget; a pause confirmed long after
       // the budget's episode must not spend it — even when the pause is
-      // "immediate" relative to the resume. Injectable expiry keeps this
-      // deterministic instead of sleeping past the real 2 s window.
+      // "immediate" relative to the resume. The retry protocol's
+      // monotonic clock is injected, so the expiry is deterministic
+      // instead of sleeping past the real 2 s window.
+      final clock = FakeMonotonicClock();
       final fastSession = YoutubeSession(
-        playAttemptExpiry: const Duration(milliseconds: 200),
+        playRetry: YouTubePlayRetryPolicy(
+          clock: clock,
+          playAttemptExpiry: const Duration(milliseconds: 200),
+        ),
       )..resetForOpen('abc12345678');
       addTearDown(fastSession.closeStreams);
       final driver = _FakePollDriver();
@@ -637,6 +646,7 @@ void main() {
 
       loop.start();
       await Future<void>.delayed(const Duration(milliseconds: 400));
+      clock.advance(const Duration(milliseconds: 400));
       expect(fastSession.userPlayInFlight, isFalse);
 
       // A later playing episode (page-UI resume: no beginUserPlay) inside

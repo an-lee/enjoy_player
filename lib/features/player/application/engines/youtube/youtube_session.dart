@@ -5,6 +5,11 @@
 /// only through the transition verbs below, so each invariant — what must be
 /// cleared together, what may only transition once — is enforced in exactly
 /// one place instead of at every writer (issue #627).
+///
+/// The one exception is the immediate-pause retry protocol (D8/D9), which is
+/// too restless to keep inline: its budget, attribution, escalation, and
+/// clocks live in the composed [playRetry] policy (issue #665), and the verbs
+/// below delegate to it so transport intents still enter through this class.
 library;
 
 import 'dart:async';
@@ -12,18 +17,19 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 
+import 'package:enjoy_player/features/player/application/engines/youtube/youtube_play_retry_policy.dart';
+
 /// Owns YouTube open state, transport snapshot, and engine event streams.
 class YoutubeSession {
-  /// [playAttemptExpiry] shortens the D8 budget's lifetime for tests
-  /// (defaults to [immediatePauseWindow]).
-  YoutubeSession({Duration? playAttemptExpiry})
-    : _playAttemptExpiry = playAttemptExpiry ?? immediatePauseWindow;
+  /// [playRetry] is injectable so tests can shorten the D8 budget's lifetime
+  /// or advance its clock (defaults to a fresh [YouTubePlayRetryPolicy]).
+  YoutubeSession({YouTubePlayRetryPolicy? playRetry})
+    : playRetry = playRetry ?? YouTubePlayRetryPolicy();
 
-  /// How long after its resolving playing episode the D8 budget stays
-  /// armed (see [userPlayInFlight]). No timer — retired lazily, so
-  /// fake-async widget tests never see a pending timer from an armed
-  /// budget.
-  final Duration _playAttemptExpiry;
+  /// The immediate-pause retry protocol: budget, attribution, escalation,
+  /// and its monotonic clocks. Storage verbs below delegate here; the poll
+  /// loop and engine read the protocol's decisions from it directly.
+  final YouTubePlayRetryPolicy playRetry;
 
   final StreamController<Duration> positionCtrl =
       StreamController<Duration>.broadcast();
@@ -60,52 +66,6 @@ class YoutubeSession {
   /// User (or app) requested play; cancels autoplay assist and arms recovery UX.
   bool _explicitPlayAttempted = false;
 
-  /// An explicit play-intent command is still the live transport intent.
-  /// Grants the poll loop exactly one automatic retry when a pause is
-  /// confirmed almost immediately after playback started — the page player
-  /// state machine can "correct" a freshly started video back to paused
-  /// before it settles; one retry after it settles recovers without UX.
-  ///
-  /// The latch spans the WHOLE attempt: arming (play command) → the first
-  /// `playing` ([notePlayingConfirmed] deliberately keeps it armed — a play
-  /// is only fulfilled once playback outlives the immediate-pause window,
-  /// which is exactly the window the page's correction lands in) →
-  /// consumption (the retry itself, a rejecting/error transition, or any
-  /// explicit pause-intent command via [noteUserPauseCommand], so a
-  /// deliberate app pause is never auto-resumed). Fulfillment is enforced
-  /// lazily by the [userPlayInFlight] getter: the budget retires
-  /// [_playAttemptExpiry] after the playing episode that resolved the
-  /// arming command — keyed to THAT episode, not to whatever episode is
-  /// current, so a later page-UI resume the app never commanded cannot
-  /// revive a stale budget.
-  ///
-  /// Irreducible tradeoff: a DOM `pause` carries no initiator, so a pause
-  /// made through YouTube's own in-page controls within the window of an
-  /// app-commanded start is indistinguishable from a page correction and
-  /// is retried once — self-limiting, since the budget is then spent.
-  bool _userPlayInFlight = false;
-
-  /// When the playing episode that resolved the current armed attempt
-  /// started, or null while the attempt has not reached `playing` yet.
-  DateTime? _playBudgetEpisodeAt;
-
-  /// Wall-clock of the poll loop's last D8 retry issue.
-  DateTime? _lastAutoPlayRetryAt;
-
-  /// Cap on automatic retries per user play command (D8 escalation — the
-  /// field-observed echo-mode wedge survived the first retry).
-  static const int maxAutoRetries = 2;
-
-  /// Auto retries issued since the last play-intent command.
-  int _autoRetriesIssued = 0;
-
-  /// The current playing episode was produced by an auto retry (set when
-  /// the retry is issued, consumed by the next `playing` transition).
-  bool _pendingAutoRetryAttribution = false;
-
-  /// The most recent playing episode was produced by an auto retry.
-  bool _lastPlayingFromAutoRetry = false;
-
   /// First-play unmute is deferred until [position] advances (or fallback).
   bool _volumeRestorePending = false;
   Duration? _volumeRestoreBaselinePosition;
@@ -123,11 +83,6 @@ class YoutubeSession {
   /// play-then-pause root cause), so later `playing` events in an already
   /// restored document must not touch volume at all.
   int _volumeRestoredDocGen = -1;
-
-  /// Wall-clock when [emitPlaying] last reported playing — for
-  /// immediate-pause diagnostics (pause confirmed within this window).
-  DateTime? _lastPlayingAt;
-  static const Duration immediatePauseWindow = Duration(seconds: 2);
 
   Timer? _tapToPlayHintTimer;
 
@@ -177,25 +132,19 @@ class YoutubeSession {
   bool get buffering => _buffering;
   bool get explicitPlayAttempted => _explicitPlayAttempted;
 
-  /// The D8 budget is live only while its attempt is unresolved in time:
-  /// armed AND (no resolving playing episode yet, or that episode started
-  /// within [_playAttemptExpiry]). This is the fulfillment condition from
-  /// the field doc — a play attempt resolves once its playback outlives the
-  /// immediate window — without a timer.
-  bool get userPlayInFlight {
-    final episodeAt = _playBudgetEpisodeAt;
-    return _userPlayInFlight &&
-        (episodeAt == null ||
-            DateTime.now().difference(episodeAt) < _playAttemptExpiry);
-  }
+  /// The D8 budget is live only while its attempt is unresolved in time —
+  /// see [YouTubePlayRetryPolicy.userPlayInFlight], which owns the
+  /// fulfilment condition.
+  bool get userPlayInFlight => playRetry.userPlayInFlight;
 
-  DateTime? get lastAutoPlayRetryAt => _lastAutoPlayRetryAt;
-  int get autoRetriesIssued => _autoRetriesIssued;
-  bool get lastPlayingFromAutoRetry => _lastPlayingFromAutoRetry;
   bool get volumeRestorePending => _volumeRestorePending;
   Duration get lastPosition => _lastPosition;
   Duration get lastDuration => _lastDuration;
-  DateTime? get lastPlayingAt => _lastPlayingAt;
+
+  /// True when a pause confirmation arrives soon after playback started —
+  /// measured on the retry protocol's monotonic clock.
+  bool isImmediatePause() => playRetry.isImmediatePause();
+
   double get volumeNormalized => _volumeNormalized;
   int get pausedPollStreak => _pausedPollStreak;
   int get documentGen => _documentGen;
@@ -238,17 +187,11 @@ class YoutubeSession {
   /// and clear transition buffering in opposite directions.
   void _resetTransportLatches({required String videoId}) {
     _cancelHint();
-    _playBudgetEpisodeAt = null;
     _tapToPlayHintActive = false;
     _explicitPlayAttempted = false;
-    _userPlayInFlight = false;
-    _lastAutoPlayRetryAt = null;
-    _autoRetriesIssued = 0;
-    _lastPlayingFromAutoRetry = false;
-    _pendingAutoRetryAttribution = false;
+    playRetry.reset();
     clearVolumeRestorePending();
     _volumeRestoredDocGen = -1;
-    _lastPlayingAt = null;
     _videoId = videoId;
     _playbackCompleted = false;
     resetWatchPageExpectations(firstPlaying: false);
@@ -282,46 +225,23 @@ class YoutubeSession {
   // ---------------------------------------------------------------------------
 
   /// An explicit play command is on the wire (engine [play]/[playOrPause]).
-  /// Stale buffering clears so the transport button stays retryable.
+  /// Arms the D8 budget ([YouTubePlayRetryPolicy.beginUserPlay]); stale
+  /// buffering clears so the transport button stays retryable.
   void beginUserPlay() {
-    _userPlayInFlight = true;
-    // Fresh attempt: its fulfillment clock starts at ITS resolving playing
-    // episode, not at a previous attempt's.
-    _playBudgetEpisodeAt = null;
-    _autoRetriesIssued = 0;
-    _lastPlayingFromAutoRetry = false;
-    _pendingAutoRetryAttribution = false;
+    playRetry.beginUserPlay();
     if (_buffering && !_playing) {
       emitBuffering(false);
     }
   }
 
   /// An explicit pause-intent command is on the wire (engine
-  /// [pause]/[stop]/the pause branch of [playOrPause]). Consumes the D8
-  /// retry budget so a deliberate pause is never auto-resumed — without
-  /// this, a user pausing within the immediate-pause window of a fresh
-  /// start would be un-paused by the retry. Also drops auto-retry
-  /// attribution (escalation must stop for a deliberate pause) and
-  /// delegates the budget consumption to [clearUserPlayInFlight] so it
-  /// stays defined in exactly one place (issue #627).
-  void noteUserPauseCommand() {
-    _lastPlayingFromAutoRetry = false;
-    _pendingAutoRetryAttribution = false;
-    clearUserPlayInFlight();
-  }
+  /// [pause]/[stop]/the pause branch of [playOrPause]) — consumes the D8
+  /// budget and drops the escalation chain, so a deliberate pause is never
+  /// auto-resumed.
+  void noteUserPauseCommand() => playRetry.noteUserPauseCommand();
 
-  /// Records that the poll loop just spent the D8 budget on a retry. The
-  /// audible policy's post-restore heal suppresses itself while a retry is
-  /// this recent — both target the same page-corrected pause, and a double
-  /// `playVideo` breaks the "re-issues play exactly once" accounting.
-  /// Also steps the escalation bookkeeping: counts the retry against
-  /// [maxAutoRetries] and arms attribution so the playing episode this
-  /// retry produces is recognized as auto-retry-origin.
-  void noteAutoPlayRetry() {
-    _lastAutoPlayRetryAt = DateTime.now();
-    _autoRetriesIssued++;
-    _pendingAutoRetryAttribution = true;
-  }
+  /// Records that the poll loop just spent the D8 budget on a retry.
+  void noteAutoPlayRetry() => playRetry.noteAutoPlayRetry();
 
   /// `playing` observed (DOM event or poll). The in-flight play latch stays
   /// armed: the attempt resolves only when playback outlives the
@@ -332,25 +252,13 @@ class YoutubeSession {
   void notePlayingConfirmed() {
     _pausedPollStreak = 0;
     _playbackCompleted = false;
-    // Attribution latches per EPISODE (the false→true transition): the poll
-    // loop re-confirms playing on every tick, and a per-call consumption let
-    // those ticks erase the auto-retry attribution ~250 ms into the retried
-    // episode — the escalation arm then never fired for the second wedge
-    // pause (field round 5: one retry logged, none after).
-    final wasPlaying = _playing;
-    if (!wasPlaying) {
-      _lastPlayingFromAutoRetry = _pendingAutoRetryAttribution;
-      _pendingAutoRetryAttribution = false;
-    }
     emitPlaying(true);
   }
 
   /// A programmatic play promise rejected (autoplay policy) or the element
   /// errored: the unresolved user play settles as not-playing.
   void noteUserPlayUnresolved() {
-    _userPlayInFlight = false;
-    _pendingAutoRetryAttribution = false;
-    _lastPlayingFromAutoRetry = false;
+    playRetry.noteUserPlayUnresolved();
     emitPlaying(false);
     emitBuffering(false);
   }
@@ -358,9 +266,7 @@ class YoutubeSession {
   /// End of media observed (DOM `ended` or poll `s` = 2).
   void noteEnded() {
     _pausedPollStreak = 0;
-    _userPlayInFlight = false;
-    _pendingAutoRetryAttribution = false;
-    _lastPlayingFromAutoRetry = false;
+    playRetry.noteEnded();
     markCompleted();
     emitPlaying(false);
     emitBuffering(false);
@@ -375,7 +281,7 @@ class YoutubeSession {
 
   /// Consumes the one-shot immediate-pause retry budget (D8) before the poll
   /// loop re-issues play; a second immediate pause surfaces to the user.
-  void clearUserPlayInFlight() => _userPlayInFlight = false;
+  void clearUserPlayInFlight() => playRetry.consumeBudget();
 
   /// Marks an intentional play command (transport / autoplay / recovery).
   void markExplicitPlayAttempt() => _explicitPlayAttempted = true;
@@ -566,27 +472,17 @@ class YoutubeSession {
     if (v == _playing) return;
     _playing = v;
     playingCtrl.add(v);
+    // The retry protocol keys its immediate-pause clock, the armed attempt's
+    // fulfilment clock, and the auto-retry attribution to the episode
+    // transition itself (see [YouTubePlayRetryPolicy.notePlayingTransition]).
+    playRetry.notePlayingTransition(v);
     if (v) {
-      _lastPlayingAt = DateTime.now();
-      if (_userPlayInFlight && _playBudgetEpisodeAt == null) {
-        // Start the armed attempt's fulfillment clock at the episode that
-        // resolved it. Later episodes (page-UI resumes, the D8 retry's own
-        // play after the budget is spent) must not refresh it.
-        _playBudgetEpisodeAt = _lastPlayingAt;
-      }
       _cancelHint();
       if (_tapToPlayHintActive) {
         _tapToPlayHintActive = false;
         bumpMountTick();
       }
     }
-  }
-
-  /// True when a pause confirmation arrives soon after playback started.
-  bool isImmediatePause(DateTime now) {
-    final started = _lastPlayingAt;
-    if (started == null) return false;
-    return now.difference(started) <= immediatePauseWindow;
   }
 
   void emitBuffering(bool v) {

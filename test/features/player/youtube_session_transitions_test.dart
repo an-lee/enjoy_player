@@ -1,3 +1,5 @@
+import 'package:enjoy_player/features/player/application/engines/youtube/youtube_monotonic_clock.dart';
+import 'package:enjoy_player/features/player/application/engines/youtube/youtube_play_retry_policy.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -65,53 +67,69 @@ void main() {
       expect(session.userPlayInFlight, isFalse);
     });
 
-    test('budget expires once playback outlives the attempt window', () async {
+    test('budget expires once playback outlives the attempt window', () {
       // The fulfillment condition from the field doc, made literal: without
       // the expiry a budget armed minutes ago could be spent by a pause
-      // after a page-UI resume the app never commanded.
+      // after a page-UI resume the app never commanded. The retry
+      // protocol's monotonic clock is injected, so expiry is deterministic
+      // instead of sleeping past the real 2 s window.
+      final clock = FakeMonotonicClock();
       final session = YoutubeSession(
-        playAttemptExpiry: const Duration(milliseconds: 200),
+        playRetry: YouTubePlayRetryPolicy(
+          clock: clock,
+          playAttemptExpiry: const Duration(milliseconds: 200),
+        ),
       )..resetForOpen('abc12345678');
+      addTearDown(session.closeStreams);
       session.beginUserPlay();
       session.notePlayingConfirmed();
       expect(session.userPlayInFlight, isTrue, reason: 'still inside');
 
-      await Future<void>.delayed(const Duration(milliseconds: 400));
+      clock.advance(const Duration(milliseconds: 400));
       expect(session.userPlayInFlight, isFalse, reason: 'expired');
-      await session.closeStreams();
     });
 
-    test('noteAutoPlayRetry records and resets the issue timestamp', () {
+    test('noteAutoPlayRetry stamps a recent retry, reset retires it', () {
       final session = YoutubeSession()..resetForOpen('abc12345678');
-      expect(session.lastAutoPlayRetryAt, isNull);
+      // Nothing issued for this attempt yet.
+      expect(
+        session.playRetry.recentAutoRetryWithin(const Duration(minutes: 1)),
+        isFalse,
+      );
 
       session.noteAutoPlayRetry();
-      expect(session.lastAutoPlayRetryAt, isNotNull);
+      expect(
+        session.playRetry.recentAutoRetryWithin(const Duration(minutes: 1)),
+        isTrue,
+      );
 
       session.resetForOpen('next1234567');
-      expect(session.lastAutoPlayRetryAt, isNull);
+      expect(
+        session.playRetry.recentAutoRetryWithin(const Duration(minutes: 1)),
+        isFalse,
+      );
     });
 
     test('auto-retry attribution marks only its own playing episode', () {
       final session = YoutubeSession()..resetForOpen('abc12345678');
       session.beginUserPlay();
       session.notePlayingConfirmed();
-      expect(session.lastPlayingFromAutoRetry, isFalse);
+      expect(session.playRetry.lastPlayingFromAutoRetry, isFalse);
 
       session.noteAutoPlayRetry(); // retry #1 issued → count + attribution
-      expect(session.autoRetriesIssued, 1);
+      expect(session.playRetry.autoRetriesIssued, 1);
       session.notePauseConfirmed(); // episode ends before the retry plays
       session.notePlayingConfirmed(); // the retry's episode
-      expect(session.lastPlayingFromAutoRetry, isTrue);
+      expect(session.playRetry.lastPlayingFromAutoRetry, isTrue);
 
       // A deliberate pause drops the attribution — no further escalation.
       session.noteUserPauseCommand();
-      expect(session.lastPlayingFromAutoRetry, isFalse);
+      expect(session.playRetry.lastPlayingFromAutoRetry, isFalse);
 
       // A fresh play command resets the chain entirely.
       session.beginUserPlay();
-      expect(session.autoRetriesIssued, 0);
-      expect(session.lastPlayingFromAutoRetry, isFalse);
+      expect(session.playRetry.autoRetriesIssued, 0);
+      expect(session.playRetry.lastPlayingFromAutoRetry, isFalse);
     });
 
     test(
@@ -132,7 +150,7 @@ void main() {
         session.notePlayingConfirmed(); // poll tick re-confirms (no-op path)
         session.notePlayingConfirmed(); // …and again
         expect(
-          session.lastPlayingFromAutoRetry,
+          session.playRetry.lastPlayingFromAutoRetry,
           isTrue,
           reason: 're-confirmation ticks must not erase the latch',
         );

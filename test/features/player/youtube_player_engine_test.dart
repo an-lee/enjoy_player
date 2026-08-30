@@ -398,13 +398,19 @@ void main() {
       session.noteAutoPlayRetry();
       session.resetForOpen('other123456');
       expect(session.userPlayInFlight, isFalse);
-      expect(session.lastAutoPlayRetryAt, isNull);
+      expect(
+        session.playRetry.recentAutoRetryWithin(const Duration(minutes: 1)),
+        isFalse,
+      );
 
       session.beginUserPlay();
       session.noteAutoPlayRetry();
       session.resetForClear();
       expect(session.userPlayInFlight, isFalse);
-      expect(session.lastAutoPlayRetryAt, isNull);
+      expect(
+        session.playRetry.recentAutoRetryWithin(const Duration(minutes: 1)),
+        isFalse,
+      );
     });
   });
 
@@ -498,17 +504,18 @@ void main() {
       );
     });
 
-    test('isImmediatePause is true within the window', () {
-      final session = YoutubeSession()..resetForOpen('vid');
-      session.emitPlaying(true);
-      expect(session.isImmediatePause(DateTime.now()), isTrue);
-      expect(
-        session.isImmediatePause(
-          DateTime.now().add(const Duration(seconds: 5)),
-        ),
-        isFalse,
-      );
-    });
+    test(
+      'isImmediatePause tracks the playing episode on the protocol clock',
+      () {
+        final session = YoutubeSession()..resetForOpen('vid');
+        // Nothing has played, so no pause can be immediate. The window's own
+        // boundary/expiry coverage lives in the retry policy's tests, which
+        // own the monotonic clock it is measured on.
+        expect(session.isImmediatePause(), isFalse);
+        session.emitPlaying(true);
+        expect(session.isImmediatePause(), isTrue);
+      },
+    );
 
     test('emitBuffering false then true then false bumps mountTick once', () {
       final session = YoutubeSession()..resetForOpen('vid');
