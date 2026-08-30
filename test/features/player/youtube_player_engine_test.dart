@@ -7,6 +7,7 @@ import 'package:enjoy_player/features/player/application/engines/youtube/youtube
 import 'package:enjoy_player/features/player/domain/playable_source.dart';
 import 'package:flutter/foundation.dart'
     show TargetPlatform, debugDefaultTargetPlatformOverride;
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -403,6 +404,83 @@ void main() {
       session.resetForClear();
       expect(session.userPlayInFlight, isFalse);
       expect(session.lastAutoPlayRetryAt, isNull);
+    });
+  });
+
+  group('YoutubePlayerEngine video stage poster gating (issue #662)', () {
+    // buildVideoStage mounts the WebView host only when the session asked for
+    // a mount, so these drive the transport latches directly and never mount
+    // a surface (no InAppWebView backend in a unit test).
+    Future<void> pumpStage(
+      WidgetTester tester,
+      YoutubePlayerEngine engine,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => engine.buildVideoStage(
+                context: context,
+                maxWidth: 320,
+                maxHeight: 180,
+              ),
+            ),
+          ),
+        ),
+      );
+      // Past the poster's 220 ms fade-out, so a hidden poster has actually
+      // left the tree rather than sitting there at opacity 0.
+      await tester.pump(const Duration(milliseconds: 250));
+    }
+
+    testWidgets('buffers before first playing onto the poster', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      final session = YoutubeSession();
+      final engine = YoutubePlayerEngine(session: session);
+      try {
+        session.resetForOpen('abc12345678');
+        engine.setPosterUrl('https://example.com/thumb.jpg');
+        await pumpStage(tester, engine);
+
+        expect(find.byType(Image), findsOneWidget);
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+      await engine.dispose();
+    });
+
+    testWidgets('a mid-playback stall shows a spinner, never the poster', (
+      tester,
+    ) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      final session = YoutubeSession();
+      final engine = YoutubePlayerEngine(session: session);
+      try {
+        session.resetForOpen('abc12345678');
+        engine.setPosterUrl('https://example.com/thumb.jpg');
+        await pumpStage(tester, engine);
+        expect(find.byType(Image), findsOneWidget);
+
+        // The wiring YoutubeWebViewEvents uses on a DOM `playing`: confirm,
+        // mark first playing, then clear buffering.
+        session.notePlayingConfirmed();
+        session.markFirstPlayingLogged();
+        session.emitBuffering(false);
+        await pumpStage(tester, engine);
+        expect(find.byType(Image), findsNothing);
+
+        // A `waiting` mid-playback used to fade the static thumbnail back
+        // OVER the live video.
+        session.emitBuffering(true);
+        await pumpStage(tester, engine);
+
+        expect(find.byType(Image), findsNothing);
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+      await engine.dispose();
     });
   });
 

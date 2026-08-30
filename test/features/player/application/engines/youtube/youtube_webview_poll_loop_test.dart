@@ -678,5 +678,201 @@ void main() {
         loop.stop();
       },
     );
+
+    group('cadence (issue #662)', () {
+      // `onFirstPlaying` is wired the way the controller wires it. That is
+      // not cosmetic: without the first-playing latch the session's
+      // recovery-hint timer would be armed on every pause confirmation and
+      // would still be pending when the testWidgets zone is verified.
+      YoutubeWebViewPollLoop buildLoop(_FakePollDriver driver) {
+        return YoutubeWebViewPollLoop(
+          session: session,
+          webController: () => null,
+          onFirstPlaying: session.markFirstPlayingLogged,
+          pollFn: driver.poll,
+        );
+      }
+
+      /// Advances fake time [window] in 50 ms steps and returns how many poll
+      /// reads the loop issued. 50 ms < pollTick, so the step size can never
+      /// skip a tick, and every cadence used here is a multiple of the step.
+      Future<int> readsOver(
+        WidgetTester tester,
+        _FakePollDriver driver,
+        Duration window,
+      ) async {
+        final start = driver.calls;
+        var elapsed = Duration.zero;
+        while (elapsed < window) {
+          await tester.pump(const Duration(milliseconds: 50));
+          await tester.idle();
+          elapsed += const Duration(milliseconds: 50);
+        }
+        return driver.calls - start;
+      }
+
+      testWidgets('playing is sampled every pollTick', (tester) async {
+        final driver = _FakePollDriver();
+        final loop = buildLoop(driver);
+        session.emitPlaying(true);
+
+        loop.start();
+        for (var i = 1; i <= 4; i++) {
+          await tester.pump(loop.pollTick);
+          await tester.idle();
+          driver.emit(
+            position: Duration(milliseconds: 250 * i),
+            jsPaused: false,
+          );
+        }
+
+        expect(driver.calls, 4, reason: 'one read per 250 ms while playing');
+        expect(session.loggedFirstPlaying, isTrue);
+
+        // The fake-async zone is verified for pending timers before the
+        // tearDowns run, so the chain must be stopped inside the body.
+        loop.stop();
+      });
+
+      testWidgets('a document that never played is NOT backed off', (
+        tester,
+      ) async {
+        // Dart never believed this document was playing, so no pause is ever
+        // confirmed (every paused read is a PollIdleTick). The loop must stay
+        // fast: this is the document still waiting for its first metadata,
+        // and the backoff may only follow a confirmed pause.
+        final driver = _FakePollDriver();
+        final loop = buildLoop(driver);
+
+        loop.start();
+        final reads = await readsOver(
+          tester,
+          driver,
+          const Duration(seconds: 2),
+        );
+        driver.emit(position: Duration.zero, jsPaused: true);
+
+        expect(reads, 8, reason: '250 ms cadence before any confirmed pause');
+        expect(session.playing, isFalse);
+        expect(session.loggedFirstPlaying, isFalse);
+
+        loop.stop();
+      });
+
+      testWidgets(
+        'a confirmed quiet pause backs off to ~1/s; a play intent restores '
+        'the fast cadence immediately',
+        (tester) async {
+          final driver = _FakePollDriver();
+          final loop = buildLoop(driver);
+          const position = Duration(seconds: 30);
+          session.emitPlaying(true);
+
+          loop.start();
+          // Playing: four full-cadence samples.
+          for (var i = 1; i <= 4; i++) {
+            await tester.pump(loop.pollTick);
+            await tester.idle();
+            driver.emit(
+              position: Duration(milliseconds: 250 * i),
+              jsPaused: false,
+            );
+          }
+          // Then a pause confirming at a still position.
+          for (var i = 0; i < YoutubeSession.pauseConfirmPollTicks; i++) {
+            await tester.pump(loop.pollTick);
+            await tester.idle();
+            driver.emit(position: position, jsPaused: true);
+          }
+          expect(session.playing, isFalse);
+
+          // The tick armed BEFORE the confirming read is still fast; consume
+          // it so the measurement below starts on a backoff-armed boundary.
+          await tester.pump(loop.pollTick);
+          await tester.idle();
+
+          expect(
+            await readsOver(tester, driver, const Duration(seconds: 2)),
+            2,
+            reason: 'a confirmed quiet pause is sampled about once a second',
+          );
+          expect(
+            await readsOver(tester, driver, const Duration(seconds: 2)),
+            2,
+            reason: 'the backoff holds while nothing changes',
+          );
+
+          // A play intent must not wait out the backed-off period.
+          loop.start();
+          expect(
+            await readsOver(tester, driver, loop.pollTick),
+            1,
+            reason: 'start() re-arms at pollTick',
+          );
+          expect(
+            await readsOver(tester, driver, const Duration(seconds: 1)),
+            4,
+            reason: 'the fast cadence is back',
+          );
+
+          loop.stop();
+        },
+      );
+
+      testWidgets(
+        'a seek while paused un-quiets the loop, then it re-settles',
+        (tester) async {
+          final driver = _FakePollDriver();
+          final loop = buildLoop(driver);
+          session.emitPlaying(true);
+
+          loop.start();
+          for (var i = 1; i <= 2; i++) {
+            await tester.pump(loop.pollTick);
+            await tester.idle();
+            driver.emit(
+              position: Duration(milliseconds: 250 * i),
+              jsPaused: false,
+            );
+          }
+          for (var i = 0; i < YoutubeSession.pauseConfirmPollTicks; i++) {
+            await tester.pump(loop.pollTick);
+            await tester.idle();
+            driver.emit(position: const Duration(seconds: 30), jsPaused: true);
+          }
+          await tester.pump(loop.pollTick);
+          await tester.idle();
+          expect(
+            await readsOver(tester, driver, const Duration(seconds: 1)),
+            1,
+            reason: 'precondition: backed off',
+          );
+
+          // The user seeks while paused. The tick armed before this delivery is
+          // still backed off; the one after it runs at the fast cadence.
+          driver.emit(position: const Duration(seconds: 45), jsPaused: true);
+          expect(
+            await readsOver(tester, driver, loop.pausedPollBackoff),
+            1,
+            reason: 'the arming predates the moved position',
+          );
+          expect(
+            await readsOver(tester, driver, loop.pollTick),
+            1,
+            reason: 'a moving position is live state — pollTick cadence',
+          );
+
+          // The position settles again, and the loop backs off with it.
+          driver.emit(position: const Duration(seconds: 45), jsPaused: true);
+          expect(
+            await readsOver(tester, driver, const Duration(seconds: 1)),
+            1,
+            reason: 'the backoff resumes once the position is quiet',
+          );
+
+          loop.stop();
+        },
+      );
+    });
   });
 }
