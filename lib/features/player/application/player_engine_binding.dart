@@ -59,7 +59,7 @@ class EngineSwap {
   /// Notifies [PlayerSurfaceHost] that the engine identity changed.
   ///
   /// [ensureEngineForPlayableSource] bumps **twice**: the first bump drops the
-  /// old engine's `buildVideoStage` before teardown, the second follows
+  /// old engine's video stage before teardown, the second follows
   /// [PlayerEngine.prepareNativeBackend] so the MediaKit `Video` may mount
   /// into the already-keyed loading stage.
   void bumpRev() => ref.read(playerEngineRevProvider.notifier).bump();
@@ -106,7 +106,7 @@ class EngineSwap {
 ///
 /// Per ADR-0057, the permanent [PlayerSurfaceHost] keys its stage by engine
 /// identity. We must **swap + bump first** so the host drops the old
-/// `buildVideoStage`, then wait for that surface to detach, *then* allow
+/// video stage, then wait for that surface to detach, *then* allow
 /// MediaKit to allocate mpv — never construct [Player] while InAppWebView
 /// is still tearing down (2026-08-30 field report: local audio after YouTube
 /// stuck on the loading skeleton; back + reopen recovered because the
