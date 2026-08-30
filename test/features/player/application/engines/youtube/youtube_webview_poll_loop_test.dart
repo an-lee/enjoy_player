@@ -47,6 +47,44 @@ class _FakePollDriver {
   }
 }
 
+/// Poll double whose reads never resolve on their own: the test settles them
+/// one at a time and chooses the ORDER. That order is exactly what the real
+/// loop cannot control — a read that outlives a tick resolves after a later
+/// one (issue #655).
+class _GatedPollDriver {
+  final List<_ResultFn> reads = [];
+  final List<Completer<void>> _gates = [];
+
+  Future<void> poll({
+    required bool disposed,
+    required InAppWebViewController? web,
+    required _ResultFn onResult,
+  }) async {
+    reads.add(onResult);
+    final gate = Completer<void>();
+    _gates.add(gate);
+    await gate.future;
+  }
+
+  /// Applies DOM [state] through the read issued at index [call] (issue
+  /// order) and lets that poll future settle.
+  void settle(
+    int call, {
+    Duration position = Duration.zero,
+    Duration? newDuration,
+    bool jsPaused = false,
+    bool jsEnded = false,
+  }) {
+    reads[call](
+      position: position,
+      newDuration: newDuration,
+      jsPaused: jsPaused,
+      jsEnded: jsEnded,
+    );
+    _gates[call].complete();
+  }
+}
+
 void main() {
   group('YoutubeWebViewPollLoop', () {
     late YoutubeSession session;
@@ -150,6 +188,101 @@ void main() {
         loop.stop();
       },
     );
+
+    test('skips the tick while a poll is still in flight', () async {
+      // Timer.periodic does not wait for the previous callback: a read that
+      // outlives one pollTick (heavy page, the 300 ms inject interval, GC)
+      // used to let the next tick start a second read, and the two resolved
+      // in completion order rather than issue order. One read at a time is
+      // the whole invariant (issue #655).
+      final driver = _GatedPollDriver();
+      var firstPlayingCalls = 0;
+      final loop = YoutubeWebViewPollLoop(
+        session: session,
+        webController: () => null,
+        onFirstPlaying: () => firstPlayingCalls++,
+        pollFn: driver.poll,
+      );
+
+      loop.start();
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      // One full extra period elapses while read #0 is still awaited.
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+
+      expect(
+        driver.reads,
+        hasLength(1),
+        reason: 'the overlapping tick must not issue a second read',
+      );
+      expect(firstPlayingCalls, 0);
+
+      // Skipping the tick costs nothing: settling the one read still drives
+      // the transport.
+      driver.settle(0, position: const Duration(milliseconds: 250));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(session.playing, isTrue);
+      expect(firstPlayingCalls, 1);
+
+      loop.stop();
+    });
+
+    test('a late read cannot resurrect playing after end-of-media', () async {
+      // Issue #655's worst case: the read issued first resolved LAST with a
+      // stale s=1 and landed after the fresher read had reported ended —
+      // notePlayingConfirmed() then cleared _playbackCompleted and re-emitted
+      // playing=true on a video that was already over.
+      final driver = _GatedPollDriver();
+      var completedFired = false;
+      var playingTrueAfterCompleted = 0;
+      final completedSub = session.completed.listen((_) {
+        completedFired = true;
+      });
+      final playingSub = session.playingStream.listen((v) {
+        // The `playing=false` of the ended transition itself is delivered
+        // after `completed` (both controllers deliver asynchronously); only a
+        // later `true` is a resurrection.
+        if (completedFired && v) playingTrueAfterCompleted++;
+      });
+      session.emitPlaying(true);
+
+      final loop = YoutubeWebViewPollLoop(
+        session: session,
+        webController: () => null,
+        onFirstPlaying: () {},
+        pollFn: driver.poll,
+      );
+
+      loop.start();
+      // Two full periods: read #0 is still awaited and the overlapping tick
+      // has been skipped.
+      await Future<void>.delayed(const Duration(milliseconds: 600));
+      expect(
+        driver.reads,
+        hasLength(1),
+        reason:
+            'no second read may be issued — a second read is what let a '
+            'stale snapshot apply after the end-of-media one',
+      );
+
+      // The DOM truth arrives through the only in-flight read: ended.
+      driver.settle(
+        0,
+        position: const Duration(seconds: 60),
+        jsPaused: true,
+        jsEnded: true,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(session.playbackCompleted, isTrue);
+      expect(session.playing, isFalse);
+      // Nothing may follow the completion — above all no stale `playing`.
+      expect(playingTrueAfterCompleted, 0);
+      expect(loop.isRunning, isFalse);
+
+      await completedSub.cancel();
+      await playingSub.cancel();
+      loop.stop();
+    });
 
     test('does not start the poll timer when session is disposed', () async {
       var firstPlayingCalls = 0;
