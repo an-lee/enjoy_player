@@ -120,5 +120,20 @@ void main() {
         ),
       );
     });
+
+    test('flags the exception as originating from a BYOK provider', () {
+      expect(
+        () => throwByokHttpError(
+          purpose: 'Translation',
+          statusCode: 402,
+          body: jsonEncode({'error': 'insufficient_quota'}),
+        ),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.statusCode, 'statusCode', 402)
+              .having((e) => e.byokProvider, 'byokProvider', isTrue),
+        ),
+      );
+    });
   });
 }

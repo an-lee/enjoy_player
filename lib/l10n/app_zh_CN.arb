@@ -1288,6 +1288,20 @@
   "creditsPermanentAvailable": "可用永久积分 {count}",
   "subscriptionCreditsLimitMessageWithPackages": "AI 积分已用完。可升级 Pro 或购买积分包以继续使用。",
   "subscriptionViewPlansAndPackages": "查看方案与积分包",
+  "creditsExhaustedDetailed": "本次操作需要 {required} 积分，但今日仅剩 {remaining} 积分。",
+  "@creditsExhaustedDetailed": {
+    "placeholders": {
+      "required": {"type": "int"},
+      "remaining": {"type": "int"}
+    }
+  },
+  "creditsExhaustedResets": "积分将于 {time} 重置。",
+  "@creditsExhaustedResets": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "byokProviderBillingMessage": "你的 AI 服务商拒绝了本次请求。请检查该服务商的账单或套餐。",
   "pronouncePlay": "播放发音",
   "pronounceStop": "停止发音",
   "pronounceLoading": "正在加载发音…",

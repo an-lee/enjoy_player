@@ -7,6 +7,7 @@ import 'package:crypto/crypto.dart';
 import 'package:meta/meta.dart';
 
 import 'package:enjoy_player/core/application/app_language_catalog.dart';
+import 'package:enjoy_player/core/errors/app_failure.dart';
 import 'package:enjoy_player/core/ids/enjoy_ids.dart';
 import 'package:enjoy_player/core/utils/text_normalization.dart';
 import 'package:enjoy_player/data/subtitle/subtitle_markup_parser.dart';
@@ -39,6 +40,7 @@ class AutoTranslateUiState {
   const AutoTranslateUiState({
     this.status = AutoTranslateStatus.idle,
     this.blockReason,
+    this.creditsFailure,
     this.aiTranscriptId,
     this.primaryTranscriptId,
     this.sourceLanguage,
@@ -49,6 +51,11 @@ class AutoTranslateUiState {
 
   final AutoTranslateStatus status;
   final AutoTranslateBlockReason? blockReason;
+
+  /// The rejection that produced [AutoTranslateBlockReason.credits], kept so
+  /// the picker can render the numbered message (required/remaining/reset).
+  /// Null for other block reasons and when the 402 carried no envelope.
+  final CreditsFailure? creditsFailure;
   final String? aiTranscriptId;
   final String? primaryTranscriptId;
 
@@ -73,6 +80,8 @@ class AutoTranslateUiState {
     AutoTranslateStatus? status,
     AutoTranslateBlockReason? blockReason,
     bool clearBlockReason = false,
+    CreditsFailure? creditsFailure,
+    bool clearCreditsFailure = false,
     String? aiTranscriptId,
     bool clearAiTranscriptId = false,
     String? primaryTranscriptId,
@@ -87,6 +96,9 @@ class AutoTranslateUiState {
     return AutoTranslateUiState(
       status: status ?? this.status,
       blockReason: clearBlockReason ? null : (blockReason ?? this.blockReason),
+      creditsFailure: clearCreditsFailure
+          ? null
+          : (creditsFailure ?? this.creditsFailure),
       aiTranscriptId: clearAiTranscriptId
           ? null
           : (aiTranscriptId ?? this.aiTranscriptId),
@@ -110,6 +122,7 @@ class AutoTranslateUiState {
       other is AutoTranslateUiState &&
           other.status == status &&
           other.blockReason == blockReason &&
+          other.creditsFailure == creditsFailure &&
           other.aiTranscriptId == aiTranscriptId &&
           other.primaryTranscriptId == primaryTranscriptId &&
           other.sourceLanguage == sourceLanguage &&
@@ -121,6 +134,7 @@ class AutoTranslateUiState {
   int get hashCode => Object.hash(
     status,
     blockReason,
+    creditsFailure,
     aiTranscriptId,
     primaryTranscriptId,
     sourceLanguage,

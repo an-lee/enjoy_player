@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:enjoy_player/core/errors/app_failure.dart';
 import 'package:enjoy_player/features/craft/domain/craft_failure.dart';
 import 'package:enjoy_player/features/craft/presentation/widgets/craft_failure_card.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
@@ -163,6 +164,40 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Retry'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Retry'));
+    await tester.pump();
+    expect(retried, 1);
+  });
+
+  testWidgets('CraftFailureCard shows the credits CTA alongside Retry for '
+      'CraftCreditsFailure', (tester) async {
+    var retried = 0;
+    final l10n = AppLocalizationsEn();
+    await tester.pumpWidget(
+      wrap(
+        CraftFailureCard(
+          failure: const CraftCreditsFailure(
+            CreditsFailure(
+              'HTTP 402',
+              requiredCredits: 1500,
+              usedCredits: 0,
+              limitCredits: 1000,
+            ),
+          ),
+          l10n: l10n,
+          onRetry: () => retried++,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Numbered message, no raw status.
+    expect(find.textContaining('1500'), findsOneWidget);
+    expect(find.text('HTTP 402'), findsNothing);
+    // Retry still present, plus the unified recovery CTA.
+    expect(find.text('Retry'), findsOneWidget);
+    expect(find.text(l10n.subscriptionViewPlansAndPackages), findsOneWidget);
+
     await tester.tap(find.widgetWithText(FilledButton, 'Retry'));
     await tester.pump();
     expect(retried, 1);

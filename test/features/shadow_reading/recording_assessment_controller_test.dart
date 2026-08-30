@@ -5,6 +5,7 @@ import 'package:azure_speech/azure_speech.dart';
 import 'package:drift/native.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
 import 'package:enjoy_player/data/db/app_database_provider.dart';
+import 'package:enjoy_player/core/errors/app_failure.dart';
 import 'package:enjoy_player/features/ai/application/ai_capability_providers.dart';
 import 'package:enjoy_player/features/ai/domain/capabilities/assessment_capability.dart';
 import 'package:enjoy_player/features/ai/domain/models/assessment_request.dart';
@@ -61,6 +62,18 @@ final class _FakeAssessmentCapability implements AssessmentCapability {
     final detail = AzurePronunciationAssessmentResult.fromJson(map);
     return AssessmentResult(detail: detail, rawJson: map);
   }
+}
+
+/// Always rejected as credits-exhausted (the /azure/tokens 402 path).
+final class _CreditsExhaustedCapability implements AssessmentCapability {
+  @override
+  Future<AssessmentResult> assess(AssessmentRequest request) async =>
+      throw const CreditsFailure(
+        'HTTP 402',
+        requiredCredits: 1500,
+        usedCredits: 0,
+        limitCredits: 1000,
+      );
 }
 
 void main() {
@@ -185,4 +198,66 @@ void main() {
     // YouTube-style und must not hard-fail; default learning locale is en-US.
     expect(fake.lastLanguage, 'en-US');
   });
+
+  test(
+    'credits rejection maps to the credits kind carrying the envelope',
+    () async {
+      final db = AppDatabase(executor: NativeDatabase.memory());
+      addTearDown(db.close);
+
+      final wav = File(
+        '${Directory.systemTemp.path}/rec_assess_credits_${DateTime.now().microsecondsSinceEpoch}.wav',
+      );
+      await wav.writeAsBytes(List<int>.filled(120, 7));
+
+      final id = const Uuid().v4();
+      final now = DateTime.now();
+      await db.recordingDao.insertRow(
+        RecordingRow(
+          id: id,
+          targetType: 'Audio',
+          targetId: 'm2',
+          referenceStart: 0,
+          referenceDuration: 5000,
+          referenceText: 'Hi there',
+          language: 'en',
+          duration: 1000,
+          md5: null,
+          audioUrl: null,
+          pronunciationScore: null,
+          assessmentJson: null,
+          localPath: wav.path,
+          syncStatus: 'local',
+          serverUpdatedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          assessmentCapabilityProvider.overrideWithValue(
+            _CreditsExhaustedCapability(),
+          ),
+          syncEnqueueProvider.overrideWithValue(
+            (type, entityId, action) async {},
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final row = (await db.recordingDao.getById(id))!;
+      final outcome = await container
+          .read(recordingAssessmentControllerProvider(id).notifier)
+          .run(row);
+
+      expect(outcome, isA<RecordingAssessmentFailure>());
+      final failure = outcome as RecordingAssessmentFailure;
+      expect(failure.kind, RecordingAssessmentFailureKind.credits);
+      expect(failure.debugMessage, isNull, reason: 'no raw status leak');
+      expect(failure.creditsFailure?.requiredCredits, 1500);
+      expect(failure.creditsFailure?.remainingCredits, 1000);
+    },
+  );
 }

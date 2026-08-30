@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:enjoy_player/core/errors/app_failure.dart';
 import 'package:enjoy_player/data/api/api_exception.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
 import 'package:enjoy_player/data/files/file_storage.dart';
@@ -567,6 +568,32 @@ void main() {
       expect(stateOf(c).failure, isA<CraftTranslateFailure>());
       expect(stateOf(c).failure!.action, CraftFailureAction.retry);
       expect(stateOf(c).translatedText, isNull);
+    });
+
+    test('maps a credits rejection to CraftCreditsFailure and keeps source '
+        'text for retry (spec 045)', () async {
+      translator = _FakeTranslator(
+        error: const CreditsFailure(
+          'HTTP 402',
+          requiredCredits: 900,
+          usedCredits: 800,
+          limitCredits: 1000,
+        ),
+      );
+      final c = container();
+      addTearDown(c.dispose);
+      final n = notifierOf(c);
+      n.setSourceLanguage('en');
+      n.setTargetLanguage('fr');
+      n.setSourceText('long enough text');
+      await n.translate();
+
+      final failure = stateOf(c).failure;
+      expect(failure, isA<CraftCreditsFailure>());
+      expect(failure!.action, CraftFailureAction.retry);
+      // Source draft preserved so the learner can retry without re-entry.
+      expect(stateOf(c).sourceText, 'long enough text');
+      expect(stateOf(c).isTranslating, isFalse);
     });
 
     test('clears a prior failure when a later translation succeeds', () async {

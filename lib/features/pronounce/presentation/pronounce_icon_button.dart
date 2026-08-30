@@ -3,12 +3,14 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:enjoy_player/core/errors/app_failure.dart';
 import 'package:enjoy_player/core/interaction/enjoy_tappable.dart';
 import 'package:enjoy_player/core/interaction/haptics.dart';
 import 'package:enjoy_player/core/notices/app_notice.dart';
 import 'package:enjoy_player/features/pronounce/application/pronounce_playback_controller.dart';
+import 'package:enjoy_player/features/subscription/presentation/credits_failure_actions.dart';
 import 'package:enjoy_player/features/pronounce/domain/pronounce_locale.dart';
 import 'package:enjoy_player/features/pronounce/domain/pronounce_target.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
@@ -96,9 +98,18 @@ class PronounceIconButton extends ConsumerWidget {
       } on AuthFailure {
         if (!context.mounted) return;
         AppNotice.info(context, l10n.pronounceSignInRequired);
-      } on CreditsFailure {
+      } on CreditsFailure catch (failure) {
         if (!context.mounted) return;
-        AppNotice.warning(context, l10n.pronounceCreditsExhausted);
+        // Numbered message when the worker envelope was parsed (spec 045)
+        // plus the one-tap recovery CTA; warning tone retained.
+        AppNotice.warning(
+          context,
+          creditsFailureMessage(failure, l10n),
+          action: SnackBarAction(
+            label: creditsCtaLabel(l10n),
+            onPressed: () => context.push('/subscription'),
+          ),
+        );
       } on AppFailure {
         if (!context.mounted) return;
         AppNotice.error(context, l10n.pronounceFailed);

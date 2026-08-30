@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:enjoy_player/core/errors/app_failure.dart';
 import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/features/ai/application/ai_services.dart';
 import 'package:enjoy_player/features/player/application/echo_mode_provider.dart';
@@ -533,6 +534,12 @@ class VocabularyReviewSession extends Notifier<ReviewSessionState> {
         dictionaryFetchInFlight: false,
         clearDictionaryError: true,
       );
+    } on CreditsFailure catch (failure, st) {
+      _log.warning('Dictionary fetch rejected: credits', failure, st);
+      state = state.copyWith(
+        dictionaryFetchInFlight: false,
+        dictionaryError: 'credits',
+      );
     } catch (e, st) {
       _log.warning('Dictionary fetch failed', e, st);
       state = state.copyWith(
@@ -589,6 +596,12 @@ class VocabularyReviewSession extends Notifier<ReviewSessionState> {
         contextsByItemId: contexts,
         contextualFetchInFlight: false,
         clearContextualError: true,
+      );
+    } on CreditsFailure catch (failure, st) {
+      _log.warning('Contextual translation rejected: credits', failure, st);
+      state = state.copyWith(
+        contextualFetchInFlight: false,
+        contextualError: 'credits',
       );
     } catch (e, st) {
       _log.warning('Contextual translation fetch failed', e, st);

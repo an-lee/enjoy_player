@@ -62,6 +62,14 @@ failures (including long-form preflight/settlement), provider timeout/retryable
 failures, unsupported media, network failures, and no-speech results to
 localized notices; raw exceptions are not displayed.
 
+**Credits exhaustion (spec 045)**: a credits rejection keeps the
+`asrErrorCreditsExhausted` lead-in and carries the parsed worker envelope on
+the job (`AsrGenerationJob.creditsFailure`), so the launcher snackbar shows the
+numbered message (required vs. remaining, reset time) with the
+**View plans & packages** action → `/subscription` when the envelope is
+present. The media item and its state are untouched — Generate can be re-run
+after purchasing.
+
 Video extraction runs through FFmpegKit on mobile/macOS and an isolate-backed
 `Process.run` on Windows. Temporary WAV files are deleted after bytes have been
 read. Short-clip budget remains ~60 seconds for a five-minute desktop file.

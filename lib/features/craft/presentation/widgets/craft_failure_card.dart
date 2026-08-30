@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:enjoy_player/features/craft/domain/craft_failure.dart';
+import 'package:enjoy_player/features/subscription/presentation/credits_failure_actions.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
 class CraftFailureCard extends StatelessWidget {
@@ -59,6 +60,9 @@ class CraftFailureCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Credits rejections get the one-tap recovery path alongside Retry
+    // (spec 045): the same label and destination as every other surface.
+    final showCreditsCta = failure is CraftCreditsFailure;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -81,6 +85,13 @@ class CraftFailureCard extends StatelessWidget {
               onPressed: () => _handleAction(context),
               child: Text(_actionLabel()),
             ),
+            if (showCreditsCta) ...[
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => unawaited(context.push('/subscription')),
+                child: Text(creditsCtaLabel(l10n)),
+              ),
+            ],
           ],
         ),
       ),

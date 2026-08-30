@@ -1,6 +1,8 @@
 /// Typed failures for the Craft flow.
 library;
 
+import 'package:enjoy_player/core/errors/app_failure.dart';
+import 'package:enjoy_player/features/subscription/presentation/credits_failure_actions.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
 /// What the learner can do next when a Craft failure occurs.
@@ -82,6 +84,21 @@ final class CraftAsrFailure extends CraftFailure {
 
   @override
   String message(AppLocalizations l10n) => l10n.craftFailureAsr;
+}
+
+/// Credits-exhausted rejection from any Craft pipeline stage (translate,
+/// rewrite, ASR capture, TTS synthesize). Carries the worker envelope so the
+/// message spells out the numbers (spec 045) instead of the stage-generic
+/// copy; the raw exception text still never reaches the user (FR-022).
+final class CraftCreditsFailure extends CraftFailure {
+  const CraftCreditsFailure(this.creditsFailure)
+    : super(CraftFailureAction.retry);
+
+  final CreditsFailure creditsFailure;
+
+  @override
+  String message(AppLocalizations l10n) =>
+      creditsFailureMessage(creditsFailure, l10n);
 }
 
 final class CraftEmptyTranscriptFailure extends CraftFailure {

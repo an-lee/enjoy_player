@@ -8,6 +8,7 @@ import 'package:enjoy_player/core/presentation/loading_icon.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:enjoy_player/core/application/app_preferences_provider.dart';
 import 'package:enjoy_player/core/notices/app_notice.dart';
@@ -21,6 +22,7 @@ import 'package:enjoy_player/features/auth/application/auth_controller.dart';
 import 'package:enjoy_player/features/auth/domain/auth_state.dart';
 import 'package:enjoy_player/features/auth/presentation/widgets/auth_required_callout.dart';
 import 'package:enjoy_player/features/asr/presentation/asr_generation_launcher.dart';
+import 'package:enjoy_player/features/subscription/presentation/credits_failure_actions.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 import '../application/auto_translate_controller.dart';
 import '../domain/auto_translate.dart';
@@ -248,7 +250,11 @@ class _SubtitleTrackPickerSheetState
       AutoTranslateBlockReason.noPrimary =>
         l10n.subtitlesAutoTranslateBlockedNoPrimary,
       AutoTranslateBlockReason.credits =>
-        l10n.subtitlesAutoTranslateBlockedCredits,
+        // Numbered message when the 402 envelope was parsed (spec 045);
+        // static copy otherwise.
+        state.creditsFailure != null
+            ? creditsFailureMessage(state.creditsFailure!, l10n)
+            : l10n.subtitlesAutoTranslateBlockedCredits,
       AutoTranslateBlockReason.auth =>
         l10n.subtitlesAutoTranslateBlockedSignedOut,
       AutoTranslateBlockReason.stalePrimary =>
@@ -424,6 +430,24 @@ class _SubtitleTrackPickerSheetState
                       blockedMessage,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.error,
+                      ),
+                    ),
+                  ),
+                if (autoTranslateState.blockReason ==
+                    AutoTranslateBlockReason.credits)
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      sheetHorizontalPadding(t),
+                      0,
+                      sheetHorizontalPadding(t),
+                      t.space8,
+                    ),
+                    // One-tap recovery for the credits block (spec 045).
+                    child: Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: TextButton(
+                        onPressed: () => context.push('/subscription'),
+                        child: Text(creditsCtaLabel(l10n)),
                       ),
                     ),
                   ),

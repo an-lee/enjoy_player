@@ -6891,6 +6891,24 @@ abstract class AppLocalizations {
   /// **'View plans & packages'**
   String get subscriptionViewPlansAndPackages;
 
+  /// No description provided for @creditsExhaustedDetailed.
+  ///
+  /// In en, this message translates to:
+  /// **'This action needs {required} credits, but only {remaining} are left today.'**
+  String creditsExhaustedDetailed(int required, int remaining);
+
+  /// No description provided for @creditsExhaustedResets.
+  ///
+  /// In en, this message translates to:
+  /// **'Credits reset at {time}.'**
+  String creditsExhaustedResets(String time);
+
+  /// No description provided for @byokProviderBillingMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your AI provider declined this request. Please check your provider\'s billing or plan.'**
+  String get byokProviderBillingMessage;
+
   /// No description provided for @pronouncePlay.
   ///
   /// In en, this message translates to:

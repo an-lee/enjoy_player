@@ -4,6 +4,8 @@
 /// to `AsyncValue<AsrGenerationJob?>` via Riverpod.
 library;
 
+import 'package:enjoy_player/core/errors/app_failure.dart';
+
 enum AsrGenerationPhase {
   /// No job has been started for this `mediaId` (or the last result was cleared).
   idle,
@@ -42,6 +44,7 @@ class AsrGenerationJob {
     this.detectedLanguage,
     this.progress,
     this.errorMessage,
+    this.creditsFailure,
     this.startedAt,
     this.completedAt,
     this.trackId,
@@ -68,6 +71,11 @@ class AsrGenerationJob {
   /// (SC-007 / FR-017.)
   final String? errorMessage;
 
+  /// The credits rejection when [errorMessage] is a credits key, carried so
+  /// the launcher can show the numbered message and the subscription CTA
+  /// (spec 045). Null for every other failure.
+  final CreditsFailure? creditsFailure;
+
   final DateTime? startedAt;
   final DateTime? completedAt;
 
@@ -83,6 +91,7 @@ class AsrGenerationJob {
     String? detectedLanguage,
     double? progress,
     String? errorMessage,
+    CreditsFailure? creditsFailure,
     DateTime? startedAt,
     DateTime? completedAt,
     String? trackId,
@@ -95,6 +104,7 @@ class AsrGenerationJob {
       detectedLanguage: detectedLanguage ?? this.detectedLanguage,
       progress: progress ?? this.progress,
       errorMessage: errorMessage ?? this.errorMessage,
+      creditsFailure: creditsFailure ?? this.creditsFailure,
       startedAt: startedAt ?? this.startedAt,
       completedAt: completedAt ?? this.completedAt,
       trackId: trackId ?? this.trackId,

@@ -18,6 +18,7 @@ import 'package:enjoy_player/features/auth/presentation/widgets/auth_required_ca
 import 'package:enjoy_player/features/lookup/application/lookup_section_providers.dart';
 import 'package:enjoy_player/features/lookup/domain/lookup_request.dart';
 import 'package:enjoy_player/features/lookup/presentation/widgets/lookup_error_row.dart';
+import 'package:enjoy_player/features/subscription/presentation/credits_failure_actions.dart';
 import 'package:enjoy_player/features/lookup/presentation/widgets/lookup_expansion_card.dart';
 import 'package:enjoy_player/features/lookup/presentation/widgets/lookup_refresh_icon_button.dart';
 import 'package:enjoy_player/features/lookup/presentation/widgets/lookup_section_auth_gate.dart';
@@ -94,7 +95,7 @@ class DictionaryLookupSection extends ConsumerWidget {
                       ),
                       TextButton(
                         onPressed: () => context.push('/subscription'),
-                        child: Text(l10n.subscriptionViewPlans),
+                        child: Text(creditsCtaLabel(l10n)),
                       ),
                     ],
                   );

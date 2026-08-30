@@ -40,7 +40,7 @@ class CreditsPackagesRepository with RestRepository {
 
   @override
   AppFailure mapApiException(ApiException e) {
-    if (e.statusCode == 402) return CreditsFailure(e.message);
+    if (e.statusCode == 402) return CreditsFailure.fromApiException(e);
     return NetworkFailure(e.message, statusCode: e.statusCode);
   }
 }

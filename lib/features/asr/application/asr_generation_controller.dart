@@ -294,7 +294,13 @@ class AsrGenerationController extends _$AsrGenerationController {
         _log.info('Long-form job failed: ${e.category}');
         // Retryable failures clear attempt so next Generate uses a new key.
         await attemptStore.clear(mediaId);
-        _setError(asrLongFormFailureMessageKey(e));
+        final key = asrLongFormFailureMessageKey(e);
+        _setError(
+          key,
+          creditsFailure: key == 'asrErrorCreditsExhausted'
+              ? const CreditsFailure('')
+              : null,
+        );
         return;
       } on Object catch (e, st) {
         _log.warning('ASR call failed', e, st);
@@ -303,7 +309,10 @@ class AsrGenerationController extends _$AsrGenerationController {
           _setCancelled();
           return;
         }
-        _setError(_mapProviderError(e));
+        _setError(
+          _mapProviderError(e),
+          creditsFailure: e is CreditsFailure ? e : null,
+        );
         return;
       }
 
@@ -409,13 +418,14 @@ class AsrGenerationController extends _$AsrGenerationController {
     _updateJob((j) => j.copyWith(phase: phase));
   }
 
-  void _setError(String messageKey) {
+  void _setError(String messageKey, {CreditsFailure? creditsFailure}) {
     state = AsyncValue.data(
       AsrGenerationJob(
         mediaId: mediaId,
         language: '',
         phase: AsrGenerationPhase.error,
         errorMessage: messageKey,
+        creditsFailure: creditsFailure,
         completedAt: DateTime.now(),
       ),
     );

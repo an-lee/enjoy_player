@@ -78,10 +78,15 @@ Future<AsrResult> transcribe(AsrRequest request) => guardAiCall(
 | `ApiException` | `AppFailure` |
 |----------------|--------------|
 | `statusCode == 401` (`isUnauthorized`) | `AuthFailure(code: AuthFailureCode.sessionRevoked)` |
-| `statusCode == 402` | `CreditsFailure` |
+| `statusCode == 402`, `byokProvider == false` | `CreditsFailure` — carries the worker 402 envelope (required / used / limit / resetAt) parsed best-effort from the response body |
+| `statusCode == 402`, `byokProvider == true` | `ProviderBillingFailure` — the user's own provider rejected on billing; never shows the Enjoy subscription CTA |
 | Any other | `NetworkFailure(statusCode: e.statusCode)` |
 
 Centralising the catch means any future cross-cutting change (new `ApiException` subclasses, telemetry, context-specific failure codes) happens in one place for every AI capability instead of in N near-identical `try`/`catch` blocks. The `*ServiceProvider` access pattern at every call site is unchanged — only the service body shape differs.
+
+#### Credits-exhausted presentation (spec 045)
+
+Every Enjoy AI surface renders `CreditsFailure` through the shared seam in [`credits_failure_actions.dart`](../../lib/features/subscription/presentation/credits_failure_actions.dart): `creditsFailureMessage` (numbered "needs X credits, Y left today" + reset time when the envelope was parsed; generic copy otherwise), `creditsCtaLabel`, and `showCreditsFailureNotice`. Inline idioms (lookup rows, Craft cards, controller states) reuse the same builder and CTA, all pointing at `/subscription`. The worker envelope contract is documented in `specs/045-ai-credits-error-ux/contracts/worker-402-envelope.md`. The AI playground is a documented exception — it keeps raw error output for diagnostics.
 
 Missing BYOK credentials are surfaced **before** the capability runs, by the `ByokNotConfigured*Capability` wrappers and [`ByokNotConfiguredFailure`](../../lib/features/ai/domain/byok_not_configured_failure.dart) — see [BYOK provider § Persistence and security](#persistence-and-security) above. The translation table above only applies to errors thrown by the resolved capability itself.
 
