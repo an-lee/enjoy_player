@@ -28,14 +28,10 @@ class VideoPlayerLayout extends StatefulWidget {
     super.key,
     this.initialTranscriptSplitWidthPx,
     this.onTranscriptSplitWidthCommitted,
-    this.surfaceOverlay,
   });
 
   final PlayerEngine engine;
   final Widget transcript;
-
-  /// Chrome painted by the permanent surface host above the video stage.
-  final Widget? surfaceOverlay;
 
   /// Restored persisted split width; `null` uses default fraction.
   final double? initialTranscriptSplitWidthPx;
@@ -139,10 +135,7 @@ class _VideoPlayerLayoutState extends State<VideoPlayerLayout> {
                       bottom: false,
                       left: false,
                       right: false,
-                      child: _VideoColumn(
-                        engine: widget.engine,
-                        surfaceOverlay: widget.surfaceOverlay,
-                      ),
+                      child: _VideoColumn(engine: widget.engine),
                     ),
                   ),
                   ValueListenableBuilder<bool>(
@@ -202,10 +195,7 @@ class _VideoPlayerLayoutState extends State<VideoPlayerLayout> {
               child: AspectRatio(
                 aspectRatio:
                     _kMobileVideoAspectWidth / _kMobileVideoAspectHeight,
-                child: _VideoColumn(
-                  engine: widget.engine,
-                  surfaceOverlay: widget.surfaceOverlay,
-                ),
+                child: _VideoColumn(engine: widget.engine),
               ),
             ),
             Expanded(
@@ -220,19 +210,15 @@ class _VideoPlayerLayoutState extends State<VideoPlayerLayout> {
 
 /// Wraps the video stage with persistent back + paused title overlay.
 class _VideoColumn extends StatelessWidget {
-  const _VideoColumn({required this.engine, required this.surfaceOverlay});
+  const _VideoColumn({required this.engine});
 
   final PlayerEngine engine;
-  final Widget? surfaceOverlay;
 
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
       color: Colors.black,
-      child: _VideoStageWithChrome(
-        engine: engine,
-        surfaceOverlay: surfaceOverlay,
-      ),
+      child: _VideoStageWithChrome(engine: engine),
     );
   }
 }
@@ -294,13 +280,9 @@ class _VideoPausedTitleOverlay extends ConsumerWidget {
 }
 
 class _VideoStageWithChrome extends ConsumerWidget {
-  const _VideoStageWithChrome({
-    required this.engine,
-    required this.surfaceOverlay,
-  });
+  const _VideoStageWithChrome({required this.engine});
 
   final PlayerEngine engine;
-  final Widget? surfaceOverlay;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -343,7 +325,6 @@ class _VideoStageWithChrome extends ConsumerWidget {
                   ],
                 ),
               ),
-            ?surfaceOverlay,
           ],
         ),
       ),

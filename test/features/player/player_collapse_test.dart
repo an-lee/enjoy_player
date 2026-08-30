@@ -1,7 +1,6 @@
 import 'package:enjoy_player/core/window/window_fullscreen_provider.dart';
 import 'package:enjoy_player/features/player/application/player_collapse.dart';
 import 'package:enjoy_player/features/player/application/player_controller.dart';
-import 'package:enjoy_player/features/player/application/player_ui_provider.dart';
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
 import 'package:enjoy_player/features/vocabulary/application/vocabulary_review_session.dart';
 import 'package:flutter/material.dart';
@@ -124,15 +123,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(router.state.uri.path, '/player/test-media');
 
-      container.read(playerUiProvider.notifier).expand();
-      expect(container.read(playerUiProvider).mode, PlayerChromeMode.expanded);
       expect(container.read(playerControllerProvider), isNotNull);
 
       await tester.tap(find.text('collapse'));
       await tester.pumpAndSettle();
 
       expect(fullscreen.setFullscreenCalled, isTrue);
-      expect(container.read(playerUiProvider).mode, PlayerChromeMode.mini);
       expect(container.read(playerControllerProvider), isNull);
       expect(router.state.uri.path, '/');
     },

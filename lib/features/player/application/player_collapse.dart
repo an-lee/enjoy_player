@@ -8,7 +8,6 @@ import 'package:go_router/go_router.dart';
 import 'package:enjoy_player/core/window/window_fullscreen_provider.dart';
 import 'package:enjoy_player/features/player/application/leave_player_session.dart';
 import 'package:enjoy_player/features/player/application/player_controller.dart';
-import 'package:enjoy_player/features/player/application/player_ui_provider.dart';
 
 Future<void> collapseExpandedPlayer(WidgetRef ref, BuildContext context) async {
   // Pop BEFORE the teardown awaits. clear() nulls the session mid-flight,
@@ -26,7 +25,6 @@ Future<void> collapseExpandedPlayer(WidgetRef ref, BuildContext context) async {
     router.pop();
   }
   await ref.read(windowFullscreenProvider.notifier).setFullscreen(false);
-  ref.read(playerUiProvider.notifier).collapse();
   if (ref.read(playerControllerProvider) == null) {
     ref.read(playerControllerProvider.notifier).abandonPendingOpen();
   } else {

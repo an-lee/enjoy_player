@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:enjoy_player/core/theme/dynamic_color/dynamic_color_provider.dart';
 import 'package:enjoy_player/features/player/application/open_media_provider.dart';
 import 'package:enjoy_player/features/player/application/player_controller.dart';
-import 'package:enjoy_player/features/player/application/player_ui_provider.dart';
 import 'package:enjoy_player/features/player/domain/media_relocate_exception.dart';
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
 import 'package:enjoy_player/features/player/domain/player_launch_request.dart';
@@ -29,14 +28,6 @@ class ExpandedPlayerScreen extends ConsumerStatefulWidget {
 }
 
 class _ExpandedPlayerScreenState extends ConsumerState<ExpandedPlayerScreen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(playerUiProvider.notifier).expand();
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final open = ref.watch(openMediaLaunchProvider(widget.launch));
