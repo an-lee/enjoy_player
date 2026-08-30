@@ -12,6 +12,7 @@ import 'package:enjoy_player/features/player/application/completion_loop.dart';
 import 'package:enjoy_player/features/player/application/echo_mode_provider.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_player_engine.dart';
 import 'package:enjoy_player/features/player/application/player_engine.dart';
+import 'package:enjoy_player/features/player/application/player_engine_binding.dart';
 import 'package:enjoy_player/features/player/application/player_engine_rev.dart';
 import 'package:enjoy_player/features/player/application/player_engine_test_double_provider.dart';
 import 'package:enjoy_player/features/player/application/player_open_coordinator.dart';
@@ -342,10 +343,16 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
       // pump (2026-08-29 field report).
       return;
     }
-    // Genuinely no engine yet — install the YouTube one. Bump before warming
-    // (ADR-0057) so PlayerSurfaceHost keys a stage for the new engine.
-    _ownedEngine = YoutubePlayerEngine();
-    ref.read(playerEngineRevProvider.notifier).bump();
+    // Genuinely no engine yet — install the YouTube one. [EngineSwap.install]
+    // bumps the rev (ADR-0057) so PlayerSurfaceHost keys a stage for the new
+    // engine. There is no prior engine to tear down, and this path never
+    // calls [EngineSwap.discardWithoutAwaiting]: a speculative warm must not
+    // be able to dispose an engine even if the guards above rot.
+    EngineSwap(
+      ref: ref,
+      getOwnedEngine: () => _ownedEngine,
+      setOwnedEngine: (next) => _ownedEngine = next,
+    ).install(YoutubePlayerEngine());
     _ownedEngine!.warmVideoSurface();
   }
 
