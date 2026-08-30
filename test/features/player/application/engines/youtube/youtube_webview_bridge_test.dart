@@ -123,6 +123,22 @@ void main() {
     });
   });
 
+  group('playWhenReadyScript', () {
+    test('gates the play on data readiness with a bounded wait', () {
+      // Buffer exhaustion was the dominant immediate-pause cause (field
+      // rounds 3–5: pause ctx pstate=3, decoder input ~10× slower than
+      // realtime); an unconditional re-play just re-exhausts the buffer.
+      final script = YoutubeWebViewBridge.playWhenReadyScript;
+      expect(script, contains('v.readyState>=3'));
+      expect(script, contains('ahead()>=1'));
+      expect(script, contains('tries++>20'));
+      // Superseded by any newer transport command (stale-guard protocol).
+      expect(script, contains('__enjoyYtPlayAttempt'));
+      // Routes through the page player when available.
+      expect(script, contains('mp.playVideo()'));
+    });
+  });
+
   group('focusWindowScript', () {
     test('pins document focus and dispatches a synthetic focus event', () {
       // The page player pauses programmatic playback while the document

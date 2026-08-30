@@ -187,7 +187,26 @@ const String kYoutubeMobileWatchInjectScript = r'''
     try{foc=document.hasFocus()?'1':'0';}catch(e){}
     var muted='?';
     try{muted=video.muted?'1':'0';}catch(e){}
-    return 'vis='+vis+' foc='+foc+' muted='+muted+' pstate='+ps;
+    // Starvation evidence (field round 5): a page pause with pstate=3
+    // (buffering), readyState < 3 and ~0 s buffered ahead is buffer
+    // exhaustion, not a policy pause — the retries must wait for data.
+    var rs='?';
+    try{rs=video.readyState;}catch(e){}
+    var buf='?';
+    try{
+      buf='0';
+      for(var i=0;i<video.buffered.length;i++){
+        if(video.buffered.start(i)<=video.currentTime&&
+           video.currentTime<video.buffered.end(i)){
+          buf=(video.buffered.end(i)-video.currentTime).toFixed(1);
+          break;
+        }
+      }
+    }catch(e){}
+    var vol='?';
+    try{vol=(video.volume==null?'?':video.volume);}catch(e){}
+    return 'vis='+vis+' foc='+foc+' muted='+muted+' vol='+vol+
+           ' pstate='+ps+' rs='+rs+' buf='+buf;
   }
 
   // --- Sync current video state to Dart ---

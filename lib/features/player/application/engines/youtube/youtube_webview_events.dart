@@ -93,6 +93,7 @@ class YoutubeWebViewEvents {
         break;
       case YoutubeVideoEventName.waiting:
         session.emitBuffering(true);
+        _logEvents.fine('youtube video waiting vid=${session.videoId}');
         break;
       case YoutubeVideoEventName.canplay:
         if (session.buffering) {

@@ -45,15 +45,16 @@ class YoutubeWebViewPollLoop {
     YoutubePollFn? pollFn,
     YoutubeRetryPlayFn? retryPlay,
   }) : pollFn = pollFn ?? YoutubeStatePoller.poll,
-       // The default retry re-asserts the page's pinned focus first: the
-       // wedge this retry exists for is the page pausing playback it saw no
-       // focused window for (field-confirmed ctx foc=0), so a bare re-play
-       // would just be paused again.
+       // The default retry re-asserts the page's pinned focus first (focus
+       // loss was one field-confirmed pause trigger) and then plays only
+       // once the element actually has data — the wedge's dominant cause is
+       // buffer exhaustion (pause ctx pstate=3, decoder starved ~10× below
+       // realtime), and an immediate re-play just re-exhausts the buffer.
        retryPlay =
            retryPlay ??
            ((web) async {
              await YoutubeWebViewBridge.refocusWindow(web);
-             await YoutubeWebViewBridge.play(web);
+             await YoutubeWebViewBridge.playWhenReady(web);
            });
 
   final YoutubeSession session;

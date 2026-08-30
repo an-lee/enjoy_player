@@ -390,7 +390,15 @@ void main() {
         // Episode 1 (user command) dies → retry #1.
         confirmPause();
         expect(retryCalls, 1);
-        // Retry #1's play resolves to playing (attribution consumed).
+        // Retry #1's play resolves to playing (attribution latches)…
+        session.notePlayingConfirmed();
+        // …and the poll loop keeps re-confirming playing every tick while
+        // the episode lives — those ticks must not erase the attribution
+        // (round-5 field bug: they did, and retry #2 never fired).
+        driver.emit(
+          position: const Duration(milliseconds: 400),
+          jsPaused: false,
+        );
         session.notePlayingConfirmed();
         // Episode 2 (auto-retry) dies → escalation retry #2.
         confirmPause();

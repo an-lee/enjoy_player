@@ -333,8 +333,16 @@ class YoutubeSession {
   void notePlayingConfirmed() {
     _pausedPollStreak = 0;
     _playbackCompleted = false;
-    _lastPlayingFromAutoRetry = _pendingAutoRetryAttribution;
-    _pendingAutoRetryAttribution = false;
+    // Attribution latches per EPISODE (the false→true transition): the poll
+    // loop re-confirms playing on every tick, and a per-call consumption let
+    // those ticks erase the auto-retry attribution ~250 ms into the retried
+    // episode — the escalation arm then never fired for the second wedge
+    // pause (field round 5: one retry logged, none after).
+    final wasPlaying = _playing;
+    if (!wasPlaying) {
+      _lastPlayingFromAutoRetry = _pendingAutoRetryAttribution;
+      _pendingAutoRetryAttribution = false;
+    }
     emitPlaying(true);
   }
 
