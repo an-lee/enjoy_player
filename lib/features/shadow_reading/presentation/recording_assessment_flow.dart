@@ -6,15 +6,18 @@ import 'dart:convert';
 import 'package:azure_speech/azure_speech.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:enjoy_player/core/application/app_language_catalog.dart';
 import 'package:enjoy_player/core/application/app_preferences_provider.dart';
 import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/core/notices/app_notice.dart';
 import 'package:enjoy_player/core/riverpod/async_value_x.dart';
+import 'package:enjoy_player/core/errors/app_failure.dart';
 import 'package:enjoy_player/core/utils/text_normalization.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
 import 'package:enjoy_player/features/shadow_reading/application/recording_assessment_controller.dart';
+import 'package:enjoy_player/features/subscription/presentation/credits_failure_actions.dart';
 import 'package:enjoy_player/features/shadow_reading/presentation/assessment_result_dialog.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
@@ -24,6 +27,7 @@ String recordingAssessmentFailureMessage(
   AppLocalizations l10n,
   RecordingAssessmentFailureKind kind, {
   String? debugMessage,
+  CreditsFailure? creditsFailure,
 }) {
   return switch (kind) {
     RecordingAssessmentFailureKind.noRecording => l10n.assessmentNoRecording,
@@ -32,6 +36,12 @@ String recordingAssessmentFailureMessage(
     RecordingAssessmentFailureKind.fileTooSmall => l10n.assessmentNoRecording,
     RecordingAssessmentFailureKind.unsupportedLanguage =>
       l10n.assessmentUnavailableLanguage,
+    // Numbered message when the 402 envelope was parsed (spec 045); the
+    // generic credits copy otherwise — never the raw status string.
+    RecordingAssessmentFailureKind.credits =>
+      creditsFailure != null
+          ? creditsFailureMessage(creditsFailure, l10n)
+          : l10n.subscriptionCreditsLimitMessageWithPackages,
     RecordingAssessmentFailureKind.serviceError => l10n.assessmentRunFailed(() {
       final raw = debugMessage == null
           ? null
@@ -107,14 +117,26 @@ Future<void> triggerRecordingAssessment({
         localeTag: pronounceLocale,
         recordingPath: row.localPath,
       );
-    case RecordingAssessmentFailure(:final kind, :final debugMessage):
+    case RecordingAssessmentFailure(
+      :final kind,
+      :final debugMessage,
+      :final creditsFailure,
+    ):
       AppNotice.error(
         context,
         recordingAssessmentFailureMessage(
           l10n,
           kind,
           debugMessage: debugMessage,
+          creditsFailure: creditsFailure,
         ),
+        // One-tap recovery rides only on the credits kind (spec 045).
+        action: kind == RecordingAssessmentFailureKind.credits
+            ? SnackBarAction(
+                label: creditsCtaLabel(l10n),
+                onPressed: () => context.push('/subscription'),
+              )
+            : null,
       );
   }
 }

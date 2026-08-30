@@ -21,6 +21,7 @@ import 'package:enjoy_player/features/subscription/presentation/widgets/auto_ren
 import 'package:enjoy_player/features/subscription/presentation/widgets/mobile_purchase_unavailable.dart';
 import 'package:enjoy_player/features/subscription/presentation/widgets/tier_catalog.dart';
 import 'package:enjoy_player/core/platform/subscription_purchase_capability.dart';
+import 'package:enjoy_player/features/subscription/presentation/credits_failure_actions.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
 class SubscriptionStatusCard extends ConsumerWidget {
@@ -74,12 +75,13 @@ class SubscriptionStatusCard extends ConsumerWidget {
       );
     } on AppFailure catch (e) {
       if (!context.mounted) return;
-      AppNotice.error(
-        context,
-        e.message.isNotEmpty
-            ? e.message
-            : l10n.subscriptionAutoRenewCancelFailed,
-      );
+      // Credits rejections route through the shared friendly builder (045).
+      final msg = e is CreditsFailure
+          ? creditsFailureMessage(e, l10n)
+          : e.message.isNotEmpty
+          ? e.message
+          : l10n.subscriptionAutoRenewCancelFailed;
+      AppNotice.error(context, msg);
     } catch (_) {
       if (!context.mounted) return;
       AppNotice.error(context, l10n.subscriptionAutoRenewCancelFailed);

@@ -394,11 +394,12 @@ class AutoTranslateCtrl extends _$AutoTranslateCtrl {
             blockReason: AutoTranslateBlockReason.auth,
           );
           return;
-        } on CreditsFailure {
+        } on CreditsFailure catch (failure) {
           if (!ref.mounted) return;
           state = state.copyWith(
             status: AutoTranslateStatus.blocked,
             blockReason: AutoTranslateBlockReason.credits,
+            creditsFailure: failure,
           );
           return;
         } catch (e, st) {

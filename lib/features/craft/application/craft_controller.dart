@@ -6,6 +6,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:enjoy_player/core/errors/app_failure.dart';
 import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/core/riverpod/async_value_x.dart';
 import 'package:enjoy_player/data/api/api_exception.dart';
@@ -139,6 +140,14 @@ class CraftController extends Notifier<CraftJobState> {
         customPrompt: state.customPrompt,
       );
       state = state.copyWith(translatedText: result, isTranslating: false);
+    } on CreditsFailure catch (failure, st) {
+      logNamed(
+        'craft.translate',
+      ).warning('Translate rejected: credits', failure, st);
+      state = state.copyWith(
+        isTranslating: false,
+        failure: CraftCreditsFailure(failure),
+      );
     } catch (e, st) {
       logNamed('craft.translate').warning('Translate failed: $e', e, st);
       state = state.copyWith(
@@ -488,6 +497,13 @@ class CraftController extends Notifier<CraftJobState> {
         audioBytes: audio,
         language: state.sourceLanguage,
       );
+    } on CreditsFailure catch (failure, st) {
+      logNamed('craft.asr').warning('ASR rejected: credits', failure, st);
+      state = state.copyWith(
+        isTranscribing: false,
+        failure: CraftCreditsFailure(failure),
+      );
+      return;
     } catch (e, st) {
       logNamed('craft.asr').warning('ASR failed: $e', e, st);
       state = state.copyWith(
@@ -539,6 +555,15 @@ class CraftController extends Notifier<CraftJobState> {
         stage: CraftStage.rewrite,
         selectedVoice: _voiceMatchingLanguage(target, state.selectedVoice),
         synthLanguage: target,
+      );
+    } on CreditsFailure catch (failure, st) {
+      logNamed(
+        'craft.rewrite',
+      ).warning('Rewrite rejected: credits', failure, st);
+      state = state.copyWith(
+        isTranslating: false,
+        isTranscribing: false,
+        failure: CraftCreditsFailure(failure),
       );
     } catch (e, st) {
       logNamed('craft.rewrite').warning('Rewrite failed: $e', e, st);
@@ -635,6 +660,9 @@ class CraftController extends Notifier<CraftJobState> {
   }
 
   CraftFailure _mapTtsFailure(Object error) {
+    if (error is CreditsFailure) {
+      return CraftCreditsFailure(error);
+    }
     if (error is ByokNotConfiguredFailure) {
       return const CraftTtsFailure(action: CraftFailureAction.openAiSettings);
     }

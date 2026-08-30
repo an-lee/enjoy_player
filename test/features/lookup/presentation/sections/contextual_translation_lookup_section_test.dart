@@ -209,6 +209,117 @@ void main() {
     },
   );
 
+  testWidgets(
+    'shows the friendly credits message with View plans CTA on CreditsFailure',
+    (tester) async {
+      final cap = _FakeContextualCapability(
+        const CreditsFailure(
+          'HTTP 402',
+          requiredCredits: 750,
+          usedCredits: 800,
+          limitCredits: 1000,
+        ),
+      );
+
+      await tester.pumpWidget(
+        _harness(
+          overrides: baseOverrides(capability: cap),
+          child: const ContextualTranslationLookupSection(request: request),
+        ),
+      );
+      await _expand(tester);
+      await tester.pumpAndSettle();
+
+      // Numbered message, not the raw status string.
+      expect(find.textContaining('750'), findsOneWidget);
+      expect(find.text('HTTP 402'), findsNothing);
+      // Unified CTA label (spec 045).
+      expect(
+        find.text(
+          lookupAppLocalizations(
+            const Locale('en'),
+          ).subscriptionViewPlansAndPackages,
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'retrying after a credits rejection succeeds once credits are available '
+    '(FR-007 recovery loop)',
+    (tester) async {
+      final cap = _FakeContextualCapability(
+        const CreditsFailure(
+          'HTTP 402',
+          requiredCredits: 300,
+          usedCredits: 800,
+          limitCredits: 1000,
+        ),
+      );
+
+      await tester.pumpWidget(
+        _harness(
+          overrides: baseOverrides(capability: cap),
+          child: const ContextualTranslationLookupSection(request: request),
+        ),
+      );
+      await _expand(tester);
+      await tester.pumpAndSettle();
+
+      // Credits error shows with its CTA; the retry control is present.
+      expect(find.textContaining('300'), findsOneWidget);
+      final retry = find.text('Retry');
+      expect(retry, findsOneWidget);
+
+      // The "purchase" lands: the next attempt succeeds with the same
+      // unchanged request — no re-entry needed.
+      cap.nextResult = Future.value(
+        const ContextualTranslationResult(translatedText: 'recovered-ok'),
+      );
+      await tester.tap(retry);
+      await tester.pumpAndSettle();
+
+      expect(cap.calls, greaterThanOrEqualTo(2));
+      expect(find.textContaining('recovered-ok'), findsWidgets);
+      expect(find.byType(LookupErrorRow), findsNothing);
+    },
+  );
+
+  testWidgets('BYOK provider billing rejection shows provider copy without the '
+      'subscription CTA (FR-008)', (tester) async {
+    final cap = _FakeContextualCapability(
+      const ProviderBillingFailure('Translation failed (402)'),
+    );
+
+    await tester.pumpWidget(
+      _harness(
+        overrides: baseOverrides(capability: cap),
+        child: const ContextualTranslationLookupSection(request: request),
+      ),
+    );
+    await _expand(tester);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        lookupAppLocalizations(const Locale('en')).byokProviderBillingMessage,
+      ),
+      findsOneWidget,
+    );
+    // No Enjoy upsell CTA anywhere on this failure.
+    expect(
+      find.text(
+        lookupAppLocalizations(
+          const Locale('en'),
+        ).subscriptionViewPlansAndPackages,
+      ),
+      findsNothing,
+    );
+    // Retry row still offered.
+    expect(find.byType(LookupErrorRow), findsOneWidget);
+  });
+
   testWidgets('refresh invokes the capability again', (tester) async {
     final cap = _FakeContextualCapability(
       const ContextualTranslationResult(translatedText: 'initial'),

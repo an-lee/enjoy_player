@@ -55,5 +55,6 @@ Never throwByokHttpError({
     message: '$purpose failed ($statusCode)',
     statusCode: statusCode,
     body: decodeByokErrorBody(body),
+    byokProvider: true,
   );
 }

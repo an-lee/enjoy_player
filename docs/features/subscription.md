@@ -7,7 +7,7 @@ Signed-in users open **Subscription** from any of:
 - Sidebar account row — Free users see an inline **Upgrade** pill that routes to `/subscription`.
 - Profile → Account → **Subscription**.
 - Direct route `/subscription`.
-- AI credits-limit errors — **View plans & packages** → `/subscription`.
+- AI credits-limit errors — **View plans & packages** → `/subscription`. Every Enjoy-hosted AI surface (lookup dictionary / translation / contextual translation, pronounce, transcript auto-translate, ASR generation, shadow-reading assessment, Craft translate / rewrite / capture / synthesize, vocabulary review dictionary + contextual tabs) shows the shared friendly credits message — with the worker's credit numbers (required vs. remaining) and reset time when provided — and this same one-tap CTA (spec 045). BYOK provider billing rejections never show this CTA.
 
 ### All platforms
 

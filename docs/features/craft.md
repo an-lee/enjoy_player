@@ -210,6 +210,7 @@ All failures go through the `CraftFailure` sealed hierarchy (`lib/features/craft
 | `CraftVendorUnsupportedLanguageFailure` | Vendor doesn't support the language | Retry (change language) |
 | `CraftAsrFailure` | ASR service error (Express mode only) | Retry |
 | `CraftEmptyTranscriptFailure` | ASR transcript shorter than `craftMinTextLength` (Express mode only) | Retry |
+| `CraftCreditsFailure` | Enjoy credits exhausted (worker 402) on any stage — carries the envelope so the message shows required vs. remaining credits | Retry + **View plans & packages** → `/subscription` (spec 045) |
 
 **All-or-nothing write**: Translation, synthesis, and save run in a single try block. If any stage fails, no repository write happens — no orphan transcript rows or audio files.
 

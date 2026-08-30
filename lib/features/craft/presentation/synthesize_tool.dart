@@ -7,6 +7,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:enjoy_player/core/presentation/loading_icon.dart';
 import 'package:enjoy_player/core/routing/player_navigation.dart';
@@ -15,6 +16,8 @@ import 'package:enjoy_player/core/theme/widgets/enjoy_button.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_card.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_modal.dart';
 import 'package:enjoy_player/features/craft/application/craft_controller.dart';
+import 'package:enjoy_player/features/craft/domain/craft_failure.dart';
+import 'package:enjoy_player/features/subscription/presentation/credits_failure_actions.dart';
 import 'package:enjoy_player/features/craft/domain/craft_request.dart';
 import 'package:enjoy_player/features/craft/presentation/craft_solid_transcript_stt_hint.dart';
 import 'package:enjoy_player/features/craft/presentation/voice_picker.dart';
@@ -161,11 +164,27 @@ class _SynthesizeToolState extends ConsumerState<SynthesizeTool> {
           if (state.failure != null)
             Padding(
               padding: EdgeInsets.only(top: tokens.space12),
-              child: Text(
-                state.failure!.message(l10n),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.error,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    state.failure!.message(l10n),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.error,
+                    ),
+                  ),
+                  // One-tap recovery for credits rejections (spec 045).
+                  if (state.failure is CraftCreditsFailure)
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(0, 0),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      onPressed: () => unawaited(context.push('/subscription')),
+                      child: Text(creditsCtaLabel(l10n)),
+                    ),
+                ],
               ),
             ),
         ],

@@ -7,7 +7,13 @@ AppFailure mapApiExceptionToAppFailure(ApiException e) {
     return AuthFailure(e.message, code: AuthFailureCode.sessionRevoked);
   }
   if (e.statusCode == 402) {
-    return CreditsFailure(e.message);
+    // A 402 from the user's own provider (BYOK) is about the provider's
+    // billing, not Enjoy credits — it must never trigger the Enjoy
+    // subscription upsell (spec 045 FR-008).
+    if (e.byokProvider) {
+      return ProviderBillingFailure(e.message);
+    }
+    return CreditsFailure.fromApiException(e);
   }
   return NetworkFailure(e.message, statusCode: e.statusCode);
 }

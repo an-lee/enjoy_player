@@ -37,6 +37,7 @@ import 'package:enjoy_player/features/subscription/presentation/widgets/mobile_p
 import 'package:enjoy_player/features/subscription/presentation/widgets/payment_processor_option.dart';
 import 'package:enjoy_player/features/subscription/presentation/widgets/subscription_duration_selector.dart';
 import 'package:enjoy_player/features/subscription/presentation/widgets/tier_catalog.dart';
+import 'package:enjoy_player/features/subscription/presentation/credits_failure_actions.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
 /// Payment path chosen inside the unified modal.
@@ -144,10 +145,13 @@ class _UnifiedPurchaseSheetBodyState
       );
     } on AppFailure catch (e) {
       if (!mounted) return;
-      AppNotice.error(
-        context,
-        e.message.isNotEmpty ? e.message : l10n.subscriptionPurchaseFailed,
-      );
+      // Credits rejections route through the shared friendly builder (045).
+      final msg = e is CreditsFailure
+          ? creditsFailureMessage(e, l10n)
+          : e.message.isNotEmpty
+          ? e.message
+          : l10n.subscriptionPurchaseFailed;
+      AppNotice.error(context, msg);
     } catch (e) {
       if (!mounted) return;
       final msg = switch (e.toString()) {

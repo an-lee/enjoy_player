@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 
 import 'package:enjoy_player/core/errors/app_failure.dart';
@@ -18,6 +19,7 @@ import 'package:enjoy_player/features/ai/application/ai_services.dart';
 import 'package:enjoy_player/features/ai/domain/ai_kind.dart';
 import 'package:enjoy_player/features/ai/domain/models/contextual_translation_result.dart';
 import 'package:enjoy_player/features/lookup/application/lookup_section_params.dart';
+import 'package:enjoy_player/features/subscription/presentation/credits_failure_actions.dart';
 import 'package:enjoy_player/features/lookup/domain/lookup_request.dart';
 import 'package:enjoy_player/features/lookup/presentation/widgets/lookup_error_row.dart';
 import 'package:enjoy_player/features/lookup/presentation/widgets/lookup_expansion_card.dart';
@@ -288,6 +290,23 @@ class _ContextualFetchBodyState extends ConsumerState<_ContextualFetchBody> {
             return const AuthRequiredCallout(
               surface: AuthRequiredSurface.lookupContextual,
               compact: true,
+            );
+          }
+          if (e is CreditsFailure) {
+            // Same pattern as the sibling lookup sections (spec 045): friendly
+            // message + one-tap recovery to plans & packages.
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                LookupErrorRow(
+                  message: creditsFailureMessage(e, widget.l10n),
+                  onRetry: _retryAfterError,
+                ),
+                TextButton(
+                  onPressed: () => context.push('/subscription'),
+                  child: Text(creditsCtaLabel(widget.l10n)),
+                ),
+              ],
             );
           }
           final msg = lookupErrorUserMessage(e, widget.l10n);

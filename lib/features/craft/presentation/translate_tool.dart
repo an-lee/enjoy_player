@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:enjoy_player/core/application/app_language_catalog.dart';
 import 'package:enjoy_player/core/application/app_preferences_provider.dart';
@@ -15,6 +16,8 @@ import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_button.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_card.dart';
 import 'package:enjoy_player/features/craft/application/craft_controller.dart';
+import 'package:enjoy_player/features/craft/domain/craft_failure.dart';
+import 'package:enjoy_player/features/subscription/presentation/credits_failure_actions.dart';
 import 'package:enjoy_player/features/craft/domain/craft_request.dart';
 import 'package:enjoy_player/features/craft/domain/translation_style.dart';
 import 'package:enjoy_player/features/craft/presentation/style_picker.dart';
@@ -193,11 +196,27 @@ class _TranslateToolState extends ConsumerState<TranslateTool> {
           if (state.failure != null)
             Padding(
               padding: EdgeInsets.only(top: tokens.space12),
-              child: Text(
-                state.failure!.message(l10n),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.error,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    state.failure!.message(l10n),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.error,
+                    ),
+                  ),
+                  // One-tap recovery for credits rejections (spec 045).
+                  if (state.failure is CraftCreditsFailure)
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(0, 0),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      onPressed: () => unawaited(context.push('/subscription')),
+                      child: Text(creditsCtaLabel(l10n)),
+                    ),
+                ],
               ),
             ),
         ],

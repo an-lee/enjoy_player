@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:enjoy_player/core/theme/colors.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
@@ -10,6 +11,7 @@ import 'package:enjoy_player/features/auth/domain/auth_state.dart';
 import 'package:enjoy_player/features/auth/presentation/widgets/auth_required_callout.dart';
 import 'package:enjoy_player/features/vocabulary/domain/vocabulary_explanation_codec.dart';
 import 'package:enjoy_player/features/vocabulary/presentation/vocabulary_ipa_formatter.dart';
+import 'package:enjoy_player/features/subscription/presentation/credits_failure_actions.dart';
 import 'package:enjoy_player/features/vocabulary/presentation/widgets/flashcard_soft_error.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
@@ -90,15 +92,30 @@ class _FlashcardDictionaryTabState
       return _DictionaryLoading(label: l10n.vocabularyFetching);
     }
 
+    // Credits rejection gets its own truthful copy instead of the
+    // network-flavored fallback (spec 045), plus the one-tap recovery CTA.
+    final isCredits = widget.error == 'credits';
+    final errorMessage = isCredits
+        ? l10n.subscriptionCreditsLimitMessageWithPackages
+        : l10n.vocabularyAiFetchFailed;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        FlashcardSoftError(message: l10n.vocabularyAiFetchFailed),
+        FlashcardSoftError(message: errorMessage),
         SizedBox(height: t.space12),
         EnjoyButton.secondary(
           onPressed: widget.onFetch,
           child: Text(l10n.vocabularyFetchDictionary),
         ),
+        if (isCredits)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton(
+              onPressed: () => context.push('/subscription'),
+              child: Text(creditsCtaLabel(l10n)),
+            ),
+          ),
       ],
     );
   }

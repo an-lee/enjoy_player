@@ -1856,6 +1856,20 @@
   },
   "subscriptionCreditsLimitMessageWithPackages": "AI credits limit reached. Upgrade to Pro or buy a credits package to continue.",
   "subscriptionViewPlansAndPackages": "View plans & packages",
+  "creditsExhaustedDetailed": "This action needs {required} credits, but only {remaining} are left today.",
+  "@creditsExhaustedDetailed": {
+    "placeholders": {
+      "required": {"type": "int"},
+      "remaining": {"type": "int"}
+    }
+  },
+  "creditsExhaustedResets": "Credits reset at {time}.",
+  "@creditsExhaustedResets": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "byokProviderBillingMessage": "Your AI provider declined this request. Please check your provider's billing or plan.",
   "pronouncePlay": "Play pronunciation",
   "pronounceStop": "Stop pronunciation",
   "pronounceLoading": "Loading pronunciation…",

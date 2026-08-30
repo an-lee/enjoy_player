@@ -10,6 +10,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'package:enjoy_player/core/application/app_language_catalog.dart';
 import 'package:enjoy_player/core/application/app_preferences_provider.dart';
+import 'package:enjoy_player/core/errors/app_failure.dart';
 import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/core/riverpod/async_value_x.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
@@ -56,14 +57,27 @@ enum RecordingAssessmentFailureKind {
   emptyReference,
   fileTooSmall,
   unsupportedLanguage,
+
+  /// Credits exhausted / billing rejection (worker 402). Carries the
+  /// [RecordingAssessmentFailure.creditsFailure] envelope so the flow can
+  /// show the numbered message + subscription CTA (spec 045) instead of
+  /// leaking the raw status string through `serviceError`.
+  credits,
   serviceError,
 }
 
 final class RecordingAssessmentFailure extends RecordingAssessmentOutcome {
-  RecordingAssessmentFailure(this.kind, {this.debugMessage});
+  RecordingAssessmentFailure(
+    this.kind, {
+    this.debugMessage,
+    this.creditsFailure,
+  });
 
   final RecordingAssessmentFailureKind kind;
   final String? debugMessage;
+
+  /// Set only for [RecordingAssessmentFailureKind.credits].
+  final CreditsFailure? creditsFailure;
 }
 
 @Riverpod(keepAlive: true)
@@ -174,6 +188,12 @@ class RecordingAssessmentController extends _$RecordingAssessmentController {
       );
 
       return RecordingAssessmentSuccess(result.detail);
+    } on CreditsFailure catch (failure, st) {
+      _log.warning('Assessment rejected: credits', failure, st);
+      return RecordingAssessmentFailure(
+        RecordingAssessmentFailureKind.credits,
+        creditsFailure: failure,
+      );
     } on Object catch (e, st) {
       _log.warning('Assessment failed', e, st);
       return RecordingAssessmentFailure(

@@ -232,8 +232,39 @@ void main() {
 
     expect(find.byType(LookupErrorRow), findsOneWidget);
     expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
-    // The "View plans" CTA should be present for credits failures.
-    expect(find.text('View plans'), findsOneWidget);
+    // The unified "View plans & packages" CTA (spec 045) for credits failures.
+    expect(
+      find.text(
+        lookupAppLocalizations(
+          const Locale('en'),
+        ).subscriptionViewPlansAndPackages,
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('shows the numbered credits message when the 402 carries the '
+      'worker envelope (no raw status leak)', (tester) async {
+    await tester.pumpWidget(
+      _harness(
+        overrides: baseOverrides(
+          capability: _FakeDictionaryCapability(
+            const CreditsFailure(
+              'HTTP 402',
+              requiredCredits: 750,
+              usedCredits: 800,
+              limitCredits: 1000,
+            ),
+          ),
+        ),
+        child: const DictionaryLookupSection(request: request),
+      ),
+    );
+    await _expand(tester);
+
+    expect(find.textContaining('750'), findsOneWidget);
+    expect(find.textContaining('200'), findsOneWidget);
+    expect(find.text('HTTP 402'), findsNothing);
   });
 
   testWidgets('shows plain error row for generic failure', (tester) async {

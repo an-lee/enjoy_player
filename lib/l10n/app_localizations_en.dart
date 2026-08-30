@@ -3739,6 +3739,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get subscriptionViewPlansAndPackages => 'View plans & packages';
 
   @override
+  String creditsExhaustedDetailed(int required, int remaining) {
+    return 'This action needs $required credits, but only $remaining are left today.';
+  }
+
+  @override
+  String creditsExhaustedResets(String time) {
+    return 'Credits reset at $time.';
+  }
+
+  @override
+  String get byokProviderBillingMessage =>
+      'Your AI provider declined this request. Please check your provider\'s billing or plan.';
+
+  @override
   String get pronouncePlay => 'Play pronunciation';
 
   @override

@@ -1,4 +1,5 @@
 import 'package:enjoy_player/core/errors/app_failure.dart';
+import 'package:enjoy_player/data/api/api_exception.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -103,6 +104,122 @@ void main() {
     test('carries message verbatim', () {
       const c = CreditsFailure('out of credits');
       expect(c.message, 'out of credits');
+    });
+
+    test('const constructor leaves envelope fields null', () {
+      const c = CreditsFailure('HTTP 402');
+      expect(c.requiredCredits, isNull);
+      expect(c.usedCredits, isNull);
+      expect(c.limitCredits, isNull);
+      expect(c.resetAt, isNull);
+      expect(c.remainingCredits, isNull);
+    });
+
+    group('fromApiException envelope parsing', () {
+      ApiException withBody(Object? body) =>
+          ApiException(message: 'HTTP 402', statusCode: 402, body: body);
+
+      test('full worker envelope populates all fields', () {
+        final failure = CreditsFailure.fromApiException(
+          withBody(<String, dynamic>{
+            'error': 'credits_exhausted',
+            'message': 'Daily credits exhausted',
+            'code': 'CREDITS_EXHAUSTED',
+            'required': 750,
+            'limit': <String, dynamic>{
+              'label': 'daily_credits',
+              'used': 800,
+              'limit': 1000,
+              'resetAt': '2026-08-31T00:00:00.000Z',
+              'window': 'daily',
+            },
+          }),
+        );
+
+        expect(failure.requiredCredits, 750);
+        expect(failure.usedCredits, 800);
+        expect(failure.limitCredits, 1000);
+        expect(failure.resetAt, DateTime.utc(2026, 8, 31));
+        expect(failure.remainingCredits, 200);
+      });
+
+      test('resetAt parses as UTC from an offset-bearing ISO string', () {
+        final failure = CreditsFailure.fromApiException(
+          withBody(<String, dynamic>{
+            'required': 10,
+            'limit': <String, dynamic>{'resetAt': '2026-08-31T08:00:00+08:00'},
+          }),
+        );
+        expect(failure.resetAt, DateTime.utc(2026, 8, 31, 0, 0));
+      });
+
+      test('each envelope field may be independently absent', () {
+        final failure = CreditsFailure.fromApiException(
+          withBody(<String, dynamic>{'required': 50}),
+        );
+        expect(failure.requiredCredits, 50);
+        expect(failure.usedCredits, isNull);
+        expect(failure.limitCredits, isNull);
+        expect(failure.resetAt, isNull);
+        expect(failure.remainingCredits, isNull);
+      });
+
+      test('null body yields all-null envelope (generic fallback)', () {
+        final failure = CreditsFailure.fromApiException(withBody(null));
+        expect(failure.requiredCredits, isNull);
+        expect(failure.limitCredits, isNull);
+        expect(failure.remainingCredits, isNull);
+      });
+
+      test('raw-string body (JSON decode fallback) yields nulls', () {
+        final failure = CreditsFailure.fromApiException(
+          withBody('credits exhausted'),
+        );
+        expect(failure.requiredCredits, isNull);
+        expect(failure.resetAt, isNull);
+      });
+
+      test('negative and non-numeric values are treated as absent', () {
+        final failure = CreditsFailure.fromApiException(
+          withBody(<String, dynamic>{
+            'required': -5,
+            'limit': <String, dynamic>{'used': 'many', 'limit': 12.5},
+          }),
+        );
+        expect(failure.requiredCredits, isNull);
+        expect(failure.usedCredits, isNull);
+        expect(failure.limitCredits, isNull);
+      });
+
+      test('garbage resetAt string is ignored without throwing', () {
+        final failure = CreditsFailure.fromApiException(
+          withBody(<String, dynamic>{
+            'limit': <String, dynamic>{'resetAt': 'not-a-date'},
+          }),
+        );
+        expect(failure.resetAt, isNull);
+      });
+
+      test('non-map body typed as Map<dynamic, dynamic> yields nulls', () {
+        // decodeJsonToCamel always yields Map<String, dynamic> for JSON
+        // objects, but guard against other Map types reaching the parser.
+        final failure = CreditsFailure.fromApiException(
+          const ApiException(
+            message: 'HTTP 402',
+            statusCode: 402,
+            body: <int, String>{1: 'x'},
+          ),
+        );
+        expect(failure.requiredCredits, isNull);
+      });
+    });
+  });
+
+  group('ProviderBillingFailure', () {
+    test('carries message verbatim and is an AppFailure', () {
+      const p = ProviderBillingFailure('provider declined');
+      expect(p.message, 'provider declined');
+      expect(p, isA<AppFailure>());
     });
   });
 

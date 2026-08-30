@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:enjoy_player/core/notices/app_notice.dart';
 import 'package:enjoy_player/core/riverpod/async_value_x.dart';
@@ -14,6 +15,7 @@ import 'package:enjoy_player/features/asr/application/asr_generation_job.dart';
 import 'package:enjoy_player/features/asr/application/asr_long_media_dialog.dart';
 import 'package:enjoy_player/features/asr/data/asr_audio_extractor.dart';
 import 'package:enjoy_player/features/player/domain/playable_source.dart';
+import 'package:enjoy_player/features/subscription/presentation/credits_failure_actions.dart';
 import 'package:enjoy_player/features/transcript/presentation/import_subtitle_language_dialog.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
@@ -76,9 +78,22 @@ Future<void> launchAsrGeneration(
       asrMessageForKey(AppLocalizations.of(context)!, 'asrStatusSuccess'),
     );
   } else if (job?.phase == AsrGenerationPhase.error) {
+    final l10n = AppLocalizations.of(context)!;
+    final failure = job!.creditsFailure;
     AppNotice.error(
       context,
-      asrMessageForKey(AppLocalizations.of(context)!, job!.errorMessage),
+      // Numbered credits message when the 402 envelope was parsed (spec 045);
+      // the standard ARB-key message otherwise.
+      failure != null && failure.requiredCredits != null
+          ? creditsFailureMessage(failure, l10n)
+          : asrMessageForKey(l10n, job.errorMessage),
+      // One-tap recovery rides only on credits failures (spec 045).
+      action: failure == null
+          ? null
+          : SnackBarAction(
+              label: creditsCtaLabel(l10n),
+              onPressed: () => context.push('/subscription'),
+            ),
     );
   }
 }

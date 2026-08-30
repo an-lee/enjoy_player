@@ -15,6 +15,7 @@ import 'package:enjoy_player/features/credits/application/credits_packages_provi
 import 'package:enjoy_player/features/credits/application/credits_summary_provider.dart';
 import 'package:enjoy_player/features/credits/domain/credits_package.dart';
 import 'package:enjoy_player/features/subscription/presentation/widgets/mobile_purchase_unavailable.dart';
+import 'package:enjoy_player/features/subscription/presentation/credits_failure_actions.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
 class CreditsPackagesSection extends ConsumerWidget {
@@ -62,10 +63,14 @@ class CreditsPackagesSection extends ConsumerWidget {
       AppNotice.info(context, l10n.subscriptionRedirectingToPayment);
     } on AppFailure catch (e) {
       if (!context.mounted) return;
-      AppNotice.error(
-        context,
-        e.message.isNotEmpty ? e.message : l10n.creditsPackagePurchaseFailed,
-      );
+      // Credits rejections route through the shared friendly builder (045);
+      // other failures keep their server text when present.
+      final msg = e is CreditsFailure
+          ? creditsFailureMessage(e, l10n)
+          : e.message.isNotEmpty
+          ? e.message
+          : l10n.creditsPackagePurchaseFailed;
+      AppNotice.error(context, msg);
     } catch (e) {
       if (!context.mounted) return;
       final msg = switch (e.toString()) {

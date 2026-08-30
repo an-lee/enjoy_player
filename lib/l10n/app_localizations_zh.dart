@@ -3576,6 +3576,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get subscriptionViewPlansAndPackages => '查看方案与积分包';
 
   @override
+  String creditsExhaustedDetailed(int required, int remaining) {
+    return '本次操作需要 $required 积分，但今日仅剩 $remaining 积分。';
+  }
+
+  @override
+  String creditsExhaustedResets(String time) {
+    return '积分将于 $time 重置。';
+  }
+
+  @override
+  String get byokProviderBillingMessage => '你的 AI 服务商拒绝了本次请求。请检查该服务商的账单或套餐。';
+
+  @override
   String get pronouncePlay => '播放发音';
 
   @override
@@ -6779,6 +6792,19 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get subscriptionViewPlansAndPackages => '查看方案与积分包';
+
+  @override
+  String creditsExhaustedDetailed(int required, int remaining) {
+    return '本次操作需要 $required 积分，但今日仅剩 $remaining 积分。';
+  }
+
+  @override
+  String creditsExhaustedResets(String time) {
+    return '积分将于 $time 重置。';
+  }
+
+  @override
+  String get byokProviderBillingMessage => '你的 AI 服务商拒绝了本次请求。请检查该服务商的账单或套餐。';
 
   @override
   String get pronouncePlay => '播放发音';

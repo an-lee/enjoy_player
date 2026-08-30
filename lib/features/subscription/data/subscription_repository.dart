@@ -68,7 +68,7 @@ class SubscriptionRepository with RestRepository {
   @override
   AppFailure mapApiException(ApiException e) {
     if (e.statusCode == 402) {
-      return CreditsFailure(e.message);
+      return CreditsFailure.fromApiException(e);
     }
     if (e.statusCode == 409) {
       return SubscriptionConflictFailure(e.message);
