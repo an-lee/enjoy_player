@@ -1,6 +1,7 @@
 import 'package:enjoy_player/core/player/player_surface_overlay_coordinator.dart';
 import 'package:enjoy_player/features/player/application/player_engine_test_double_provider.dart';
 import 'package:enjoy_player/features/player/application/player_surface_registry.dart';
+import 'package:enjoy_player/features/player/presentation/widgets/player_stage_resolver.dart';
 import 'package:enjoy_player/features/player/presentation/widgets/player_surface_host.dart';
 import 'package:enjoy_player/features/player/presentation/widgets/player_surface_target.dart';
 import 'package:flutter/material.dart';
@@ -9,21 +10,22 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/fake_player_engine.dart';
 
+/// Stage mapping the host under test mounts: a keyed box whose geometry and
+/// element identity the assertions read. Widget building left the engine
+/// (issue #664), so the seam is injected into the host instead of overridden
+/// on the engine.
+PlayerStageBuilder _keyedStageBuilder() =>
+    (engine, {required double maxWidth, required double maxHeight}) {
+      final keyed = engine as _KeyedSurfaceEngine;
+      keyed.lastMaxWidth = maxWidth;
+      keyed.lastMaxHeight = maxHeight;
+      return ColoredBox(key: keyed.surfaceKey, color: Colors.black);
+    };
+
 class _KeyedSurfaceEngine extends FakePlayerEngine {
   final surfaceKey = GlobalKey();
   double? lastMaxWidth;
   double? lastMaxHeight;
-
-  @override
-  Widget buildVideoStage({
-    required BuildContext context,
-    required double maxWidth,
-    required double maxHeight,
-  }) {
-    lastMaxWidth = maxWidth;
-    lastMaxHeight = maxHeight;
-    return ColoredBox(key: surfaceKey, color: Colors.black);
-  }
 }
 
 class _ParklessSurfaceEngine extends _KeyedSurfaceEngine {
@@ -64,7 +66,7 @@ void main() {
                       ),
                     ),
                   ),
-                  const PlayerSurfaceHost(),
+                  PlayerSurfaceHost(stageBuilder: _keyedStageBuilder()),
                 ],
               ),
             ),
@@ -100,12 +102,12 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [playerEngineTestDoubleProvider.overrideWithValue(engine)],
-          child: const MaterialApp(
+          child: MaterialApp(
             home: Scaffold(
               body: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Align(
+                  const Align(
                     alignment: Alignment.centerRight,
                     child: SizedBox(
                       width: 320,
@@ -116,7 +118,10 @@ void main() {
                       ),
                     ),
                   ),
-                  PlayerSurfaceHost(forcePark: true),
+                  PlayerSurfaceHost(
+                    forcePark: true,
+                    stageBuilder: _keyedStageBuilder(),
+                  ),
                 ],
               ),
             ),
@@ -151,12 +156,12 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [playerEngineTestDoubleProvider.overrideWithValue(engine)],
-          child: const MaterialApp(
+          child: MaterialApp(
             home: Scaffold(
               body: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Align(
+                  const Align(
                     alignment: Alignment.centerRight,
                     child: SizedBox(
                       width: 400,
@@ -167,7 +172,10 @@ void main() {
                       ),
                     ),
                   ),
-                  PlayerSurfaceHost(forcePark: true),
+                  PlayerSurfaceHost(
+                    forcePark: true,
+                    stageBuilder: _keyedStageBuilder(),
+                  ),
                 ],
               ),
             ),
@@ -224,7 +232,10 @@ void main() {
                     final park = ref.watch(
                       playerSurfaceShouldParkForOverlayProvider,
                     );
-                    return PlayerSurfaceHost(forcePark: park);
+                    return PlayerSurfaceHost(
+                      forcePark: park,
+                      stageBuilder: _keyedStageBuilder(),
+                    );
                   },
                 ),
               ],
@@ -304,7 +315,10 @@ void main() {
                       final park = ref.watch(
                         playerSurfaceShouldParkForOverlayProvider,
                       );
-                      return PlayerSurfaceHost(forcePark: park);
+                      return PlayerSurfaceHost(
+                        forcePark: park,
+                        stageBuilder: _keyedStageBuilder(),
+                      );
                     },
                   ),
                 ],
@@ -387,7 +401,7 @@ void main() {
                       );
                     },
                   ),
-                  const PlayerSurfaceHost(),
+                  PlayerSurfaceHost(stageBuilder: _keyedStageBuilder()),
                 ],
               ),
             ),
@@ -421,11 +435,13 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [playerEngineTestDoubleProvider.overrideWithValue(engine)],
-          child: const MaterialApp(
+          child: MaterialApp(
             home: Scaffold(
               body: Stack(
                 fit: StackFit.expand,
-                children: [PlayerSurfaceHost()],
+                children: [
+                  PlayerSurfaceHost(stageBuilder: _keyedStageBuilder()),
+                ],
               ),
             ),
           ),
@@ -437,12 +453,12 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [playerEngineTestDoubleProvider.overrideWithValue(engine)],
-          child: const MaterialApp(
+          child: MaterialApp(
             home: Scaffold(
               body: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Align(
+                  const Align(
                     alignment: Alignment.topLeft,
                     child: SizedBox(
                       width: 320,
@@ -453,7 +469,7 @@ void main() {
                       ),
                     ),
                   ),
-                  PlayerSurfaceHost(),
+                  PlayerSurfaceHost(stageBuilder: _keyedStageBuilder()),
                 ],
               ),
             ),
@@ -504,7 +520,7 @@ void main() {
                       );
                     },
                   ),
-                  const PlayerSurfaceHost(),
+                  PlayerSurfaceHost(stageBuilder: _keyedStageBuilder()),
                 ],
               ),
             ),

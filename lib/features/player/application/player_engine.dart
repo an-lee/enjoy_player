@@ -1,11 +1,9 @@
 /// Abstraction over playback backends: [MediaKitPlayerEngine] (default) and [YouTubePlayerEngine].
 library;
 
-import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart' as mk;
 import 'package:media_kit_video/media_kit_video.dart';
 
@@ -14,6 +12,11 @@ import 'package:enjoy_player/features/player/application/player_engine_constants
 import 'package:enjoy_player/features/player/domain/playable_source.dart';
 
 /// Contract implemented by [MediaKitPlayerEngine] / [YouTubePlayerEngine]; fakes in tests.
+///
+/// Transport + streams + capabilities only. Widget building is *not* part of
+/// the contract: the presentation layer mounts a per-engine stage for the
+/// active engine (see `buildPlayerVideoStage`, issue #664) and reads the
+/// non-widget inputs each concrete engine publishes.
 abstract class PlayerEngine {
   Stream<Duration> get position;
 
@@ -89,16 +92,10 @@ abstract class PlayerEngine {
   /// Display aspect ratio for letterboxing (width / height).
   Stream<double> get videoAspectRatioStream;
 
-  /// When false, [PlayerSurfaceHost] omits [buildVideoStage] while parked
+  /// When false, [PlayerSurfaceHost] unmounts the engine's stage while parked
   /// off-screen. MediaKit's Android `Texture` / Surface stays black if it is
   /// first laid out off-screen; YouTube's WebView must stay mounted.
   bool get keepSurfaceWhenParked;
-
-  Widget buildVideoStage({
-    required BuildContext context,
-    required double maxWidth,
-    required double maxHeight,
-  });
 
   Future<void> open(PlayableSource source);
 
@@ -152,12 +149,18 @@ class MediaKitPlayerEngine implements PlayerEngine {
   mk.Player? __player;
 
   /// Set by [prepareNativeBackend] after the previous platform view has
-  /// detached. Only [buildVideoStage] consults it: the stream/snapshot getters
-  /// read `__player` without ever constructing, and the command path
-  /// ([_player]) allocates mpv unconditionally — the WebView-detach wait lives
-  /// in the swap (player_engine_binding), not in a getter (2026-08-30 field
-  /// report, issue #658).
+  /// detached. Only the video stage consults it (via [nativeBackendAllowed]):
+  /// the stream/snapshot getters read `__player` without ever constructing,
+  /// and the command path ([_player]) allocates mpv unconditionally — the
+  /// WebView-detach wait lives in the swap (player_engine_binding), not in a
+  /// getter (2026-08-30 field report, issue #658).
   var _nativeBackendAllowed = false;
+
+  /// Whether [prepareNativeBackend] has approved native allocation. Read by
+  /// the MediaKit video stage (`presentation/widgets/media_kit_video_stage.dart`)
+  /// so it mounts a plain black placeholder — never a [VideoController] —
+  /// until the previous engine's WebView has detached.
+  bool get nativeBackendAllowed => _nativeBackendAllowed;
 
   mk.Player get _player => __player ??= mk.Player();
 
@@ -291,34 +294,6 @@ class MediaKitPlayerEngine implements PlayerEngine {
   }
 
   @override
-  Widget buildVideoStage({
-    required BuildContext context,
-    required double maxWidth,
-    required double maxHeight,
-  }) {
-    if (maxWidth <= 0 || maxHeight <= 0) {
-      return const SizedBox.shrink();
-    }
-    if (!_nativeBackendAllowed) {
-      // Host has already keyed to this engine (YouTube stage dropped) but
-      // mpv must not be allocated until the WebView has detached.
-      return const ColoredBox(color: Colors.black);
-    }
-
-    // Fill the host slot and let [Video] letterbox. An outer [ClipRect] plus a
-    // child taller than the slot makes Android's Surface/Texture stay black
-    // until a later layout (transcript splitter / rotation).
-    return ColoredBox(
-      color: Colors.black,
-      child: _MediaKitVideoStage(
-        controller: videoController,
-        maxWidth: maxWidth,
-        maxHeight: maxHeight,
-      ),
-    );
-  }
-
-  @override
   Future<void> open(PlayableSource source) async {
     final uri = switch (source) {
       LocalFilePlayableSource(:final uri) => uri,
@@ -375,7 +350,8 @@ class MediaKitPlayerEngine implements PlayerEngine {
     // Do not construct [VideoController] here. media_kit binds the native
     // texture one frame after [VideoController] is created; if that happens
     // with no [Video] widget mounted, Windows/Android stay black until a later
-    // layout. [_MediaKitVideoStage] creates the controller on first build.
+    // layout. The MediaKit video stage creates the controller on first
+    // build.
   }
 
   @override
@@ -387,120 +363,5 @@ class MediaKitPlayerEngine implements PlayerEngine {
     }
     await __player?.dispose();
     __player = null;
-  }
-}
-
-/// Mounts media_kit [Video] and relayouts it once the native texture exists.
-///
-/// A kick on the first Flutter frame is too early — [Texture] is still a
-/// 1×1 placeholder, so the layout is a no-op. Dragging the transcript splitter
-/// works because it changes the viewport *after* frames are flowing. Listen
-/// for texture id/rect (and first-frame) and then pulse [Video] width/height.
-class _MediaKitVideoStage extends StatefulWidget {
-  const _MediaKitVideoStage({
-    required this.controller,
-    required this.maxWidth,
-    required this.maxHeight,
-  });
-
-  final VideoController controller;
-  final double maxWidth;
-  final double maxHeight;
-
-  @override
-  State<_MediaKitVideoStage> createState() => _MediaKitVideoStageState();
-}
-
-class _MediaKitVideoStageState extends State<_MediaKitVideoStage> {
-  var _nudge = false;
-  var _kicked = false;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.controller.id.addListener(_onTexture);
-    widget.controller.rect.addListener(_onTexture);
-    _onTexture();
-    unawaited(_kickAfterFirstFrame());
-  }
-
-  @override
-  void didUpdateWidget(covariant _MediaKitVideoStage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // Loading 16:9 → side-by-side chrome is a large viewport change. The first
-    // kick already ran; without another pulse the Texture stays black until
-    // the user resizes the window / splitter.
-    final dw = (oldWidget.maxWidth - widget.maxWidth).abs();
-    final dh = (oldWidget.maxHeight - widget.maxHeight).abs();
-    if (dw > kVideoTextureKickMinViewportDelta ||
-        dh > kVideoTextureKickMinViewportDelta) {
-      _kicked = false;
-      _scheduleKick();
-    }
-  }
-
-  @override
-  void dispose() {
-    widget.controller.id.removeListener(_onTexture);
-    widget.controller.rect.removeListener(_onTexture);
-    super.dispose();
-  }
-
-  Future<void> _kickAfterFirstFrame() async {
-    try {
-      await widget.controller.waitUntilFirstFrameRendered;
-    } on Object {
-      return;
-    }
-    if (!mounted) return;
-    _scheduleKick();
-  }
-
-  void _onTexture() {
-    final id = widget.controller.id.value;
-    final rect = widget.controller.rect.value;
-    if (id == null || rect == null || rect.width <= 1 || rect.height <= 1) {
-      return;
-    }
-    _scheduleKick();
-  }
-
-  void _scheduleKick() {
-    if (_kicked) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) => _kick());
-  }
-
-  void _kick() {
-    if (!mounted || _kicked) return;
-    _kicked = true;
-    setState(() => _nudge = true);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      setState(() => _nudge = false);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final inset = _nudge ? kVideoTextureKickInset : 0.0;
-    final w = widget.maxWidth > inset
-        ? widget.maxWidth - inset
-        : widget.maxWidth;
-    final h = widget.maxHeight > inset
-        ? widget.maxHeight - inset
-        : widget.maxHeight;
-    return ExcludeSemantics(
-      child: Video(
-        controller: widget.controller,
-        controls: null,
-        width: w,
-        height: h,
-        fit: BoxFit.contain,
-        fill: Colors.black,
-        subtitleViewConfiguration: const SubtitleViewConfiguration(
-          visible: false,
-        ),
-      ),
-    );
   }
 }

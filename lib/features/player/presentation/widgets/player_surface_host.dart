@@ -9,8 +9,9 @@ import 'package:enjoy_player/features/player/application/player_engine.dart';
 import 'package:enjoy_player/features/player/application/player_engine_rev.dart';
 import 'package:enjoy_player/features/player/application/player_engine_test_double_provider.dart';
 import 'package:enjoy_player/features/player/application/player_surface_registry.dart';
+import 'package:enjoy_player/features/player/presentation/widgets/player_stage_resolver.dart';
 
-/// Owns the single `buildVideoStage` for the current engine.
+/// Owns the single video stage for the current engine.
 ///
 /// Follows [playerSurfaceRegistryProvider] when a target is attached; otherwise
 /// parks YouTube off-screen so WebView2 is not torn down. Never reparents the
@@ -22,10 +23,19 @@ import 'package:enjoy_player/features/player/application/player_surface_registry
 /// surface (ADR-0066) — otherwise this host stays above the shell [Stack]
 /// and covers that UI.
 class PlayerSurfaceHost extends ConsumerWidget {
-  const PlayerSurfaceHost({super.key, this.forcePark = false});
+  const PlayerSurfaceHost({
+    super.key,
+    this.forcePark = false,
+    this.stageBuilder = buildPlayerVideoStage,
+  });
 
   /// When true, ignore any registry attachment and park off-screen.
   final bool forcePark;
+
+  /// Engine → stage mapping. Defaults to the production resolver; tests inject
+  /// a stub so the geometry / keying contract below stays observable without a
+  /// native surface.
+  final PlayerStageBuilder stageBuilder;
 
   /// Fallback park size when no target has ever reported geometry.
   ///
@@ -62,6 +72,7 @@ class PlayerSurfaceHost extends ConsumerWidget {
     return _EngineSurface(
       key: ObjectKey(engine),
       engine: engine,
+      stageBuilder: stageBuilder,
       attachment: attachment,
       overlayParkSize: registry?.size,
       parkWidth: _parkWidth,
@@ -75,6 +86,7 @@ class _EngineSurface extends StatefulWidget {
   const _EngineSurface({
     super.key,
     required this.engine,
+    required this.stageBuilder,
     required this.attachment,
     required this.overlayParkSize,
     required this.parkWidth,
@@ -83,6 +95,7 @@ class _EngineSurface extends StatefulWidget {
   });
 
   final PlayerEngine engine;
+  final PlayerStageBuilder stageBuilder;
   final PlayerSurfaceAttachment? attachment;
 
   /// Live target size from the registry, even while [PlayerSurfaceHost.forcePark]
@@ -162,11 +175,7 @@ class _EngineSurfaceState extends State<_EngineSurface> {
 
     Widget stageFor(double w, double h) {
       if (w <= 0 || h <= 0) return const SizedBox.shrink();
-      return engine.buildVideoStage(
-        context: context,
-        maxWidth: w,
-        maxHeight: h,
-      );
+      return widget.stageBuilder(engine, maxWidth: w, maxHeight: h);
     }
 
     // The stage always occupies this exact element slot for the engine's

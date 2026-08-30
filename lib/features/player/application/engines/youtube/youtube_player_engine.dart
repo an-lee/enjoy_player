@@ -2,9 +2,8 @@
 library;
 
 import 'dart:async';
+import 'dart:typed_data';
 
-import 'package:flutter/material.dart' hide RepeatMode;
-import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart' as mk;
 
 import 'package:enjoy_player/core/logging/log.dart';
@@ -13,11 +12,8 @@ import 'package:enjoy_player/features/player/application/player_engine.dart';
 import 'package:enjoy_player/features/player/domain/playable_source.dart';
 import 'package:enjoy_player/features/player/domain/transport_decisions.dart';
 import 'package:enjoy_player/features/player/domain/youtube_playback_unavailable_exception.dart';
-import 'package:enjoy_player/features/player/presentation/widgets/youtube_video_poster.dart';
-import 'package:enjoy_player/l10n/app_localizations.dart';
 import 'youtube_session.dart';
 import 'youtube_webview_controller.dart';
-import 'youtube_webview_host.dart';
 import 'youtube_webview_bridge.dart';
 
 final _logYoutube = logNamed('YouTubePlayerEngine');
@@ -37,10 +33,41 @@ class YoutubePlayerEngine implements PlayerEngine {
 
   final YoutubeSession _session;
 
-  /// Last logged video-stage size (park/unpark marker — see buildVideoStage).
+  /// Last logged video-stage size (park/unpark marker — see
+  /// [noteStageViewportSize]).
   double? _lastStageSizeWidth;
   double? _lastStageSizeHeight;
   late final YoutubeWebViewController _webView;
+
+  /// Session state the video stage renders from (poster + mount latches,
+  /// buffering snapshot, WebView host key). The stage lives in the
+  /// presentation layer (issue #664); this is its non-widget input.
+  YoutubeSession get session => _session;
+
+  /// WebView lifecycle owner the video stage mounts (one per engine,
+  /// ADR-0015).
+  YoutubeWebViewController get webViewLifecycle => _webView;
+
+  /// Notifies the engine that its video stage laid out at [width]×[height].
+  ///
+  /// Diagnostic marker + focus re-assert when the stage size actually
+  /// changes. ADR-0066 parks overlays off-corner; YouTube keeps its last
+  /// on-screen size (a 320×180 shrink was the play-then-pause stimulus —
+  /// m.youtube.com treats 320 px as a compact-player breakpoint and flushes
+  /// ABR). A remaining size change is therefore a real layout jump
+  /// (rotation / split). Parking can still clear view focus (the plugin
+  /// exposes no requestFocus); re-assert the pinned page focus. Idempotent,
+  /// no-op without a live controller.
+  void noteStageViewportSize({required double width, required double height}) {
+    if (width == _lastStageSizeWidth && height == _lastStageSizeHeight) return;
+    _lastStageSizeWidth = width;
+    _lastStageSizeHeight = height;
+    _logYoutube.fine(
+      'youtube stage size ${width.round()}x${height.round()} '
+      'vid=${_session.videoId}',
+    );
+    unawaited(YoutubeWebViewBridge.refocusWindow(_webView.webController));
+  }
 
   @override
   String get currentVideoId => _session.videoId;
@@ -137,14 +164,6 @@ class YoutubePlayerEngine implements PlayerEngine {
   Future<void> teardownAfterClear({required bool keepSurfaceMounted}) =>
       _webView.idleAfterClear(keepMounted: keepSurfaceMounted);
 
-  Widget _buildWebViewHost() {
-    return YoutubeWebViewHost(
-      key: _session.webViewHostKey,
-      controller: _webView,
-      currentVideoId: () => _session.videoId,
-    );
-  }
-
   @override
   Future<void> open(PlayableSource source) async {
     if (youTubeEngineOptedOutHere) {
@@ -165,77 +184,6 @@ class YoutubePlayerEngine implements PlayerEngine {
     if (!_session.awaitingColdInitialNavigation) {
       await _webView.loadCurrentVideoIfAttached();
     }
-  }
-
-  @override
-  Widget buildVideoStage({
-    required BuildContext context,
-    required double maxWidth,
-    required double maxHeight,
-  }) {
-    if (maxWidth <= 0 || maxHeight <= 0) {
-      return const SizedBox.shrink();
-    }
-
-    // Diagnostic marker + focus re-assert when the stage size actually
-    // changes. ADR-0066 parks overlays off-corner; YouTube now keeps its
-    // last on-screen size (a 320×180 shrink was the play-then-pause
-    // stimulus — m.youtube.com treats 320 px as a compact-player
-    // breakpoint and flushes ABR). A remaining size change is therefore
-    // a real layout jump (rotation / split). Parking can still clear
-    // view focus (the plugin exposes no requestFocus); re-assert the
-    // pinned page focus. Idempotent, no-op without a live controller.
-    if (maxWidth != _lastStageSizeWidth || maxHeight != _lastStageSizeHeight) {
-      _lastStageSizeWidth = maxWidth;
-      _lastStageSizeHeight = maxHeight;
-      _logYoutube.fine(
-        'youtube stage size ${maxWidth.round()}x${maxHeight.round()} '
-        'vid=${_session.videoId}',
-      );
-      unawaited(YoutubeWebViewBridge.refocusWindow(_webView.webController));
-    }
-
-    return StreamBuilder<bool>(
-      stream: buffering,
-      initialData: _session.buffering,
-      builder: (context, snapshot) {
-        final bufferingNow = snapshot.data ?? _session.buffering;
-        // The poster is a "playback never started" affordance, not a
-        // buffering one (issue #662): keyed to the session's first-playing
-        // latch, so a mid-playback `waiting` no longer fades the static
-        // thumbnail OVER the live frame. A stall after playback has started
-        // gets the small spinner instead.
-        final posterVisible = bufferingNow && !_session.loggedFirstPlaying;
-        final showSpinner = bufferingNow && _session.loggedFirstPlaying;
-        return ValueListenableBuilder<int>(
-          valueListenable: _session.mountTick,
-          builder: (context, _, _) {
-            return Stack(
-              fit: StackFit.expand,
-              children: [
-                const ColoredBox(color: Colors.black),
-                // ADR-0048: on opted-out platforms the host must never mount
-                // (defense in depth — mount requests are gated too, but the
-                // InAppWebView constructor itself asserts without a backend).
-                if (!youTubeEngineOptedOutHere && _session.shouldMountWebView)
-                  _buildWebViewHost(),
-                if (_session.tapToPlayHintActive && !posterVisible)
-                  _YoutubeTapToPlayHint(
-                    label:
-                        AppLocalizations.of(context)?.youtubeTapToPlayHint ??
-                        'Tap to play',
-                  ),
-                YoutubeVideoPoster(
-                  primaryUrl: _session.posterUrl,
-                  visible: posterVisible,
-                ),
-                if (showSpinner) const _YoutubeBufferingIndicator(),
-              ],
-            );
-          },
-        );
-      },
-    );
   }
 
   @override
@@ -413,73 +361,5 @@ class YoutubePlayerEngine implements PlayerEngine {
 
   void _logInitPhase(String phase) {
     _session.logInitPhase(phase, (m) => _logYoutube.fine(m));
-  }
-}
-
-class _YoutubeTapToPlayHint extends StatelessWidget {
-  const _YoutubeTapToPlayHint({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    // IgnorePointer: empty regions must still reach the WebView so a real
-    // user gesture can satisfy platform autoplay policy.
-    return IgnorePointer(
-      ignoring: true,
-      child: ColoredBox(
-        color: Colors.black45,
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.play_circle_outline,
-                size: 64,
-                color: Colors.white70,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white70, fontSize: 16),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Mid-playback buffering affordance (issue #662).
-///
-/// The poster used to be the only buffering overlay, which meant every
-/// `waiting` after playback had started faded a static thumbnail over the
-/// live frame. Once playback has started the stall is signalled with this
-/// instead: a small spinner on a light scrim, never covering the video.
-class _YoutubeBufferingIndicator extends StatelessWidget {
-  const _YoutubeBufferingIndicator();
-
-  @override
-  Widget build(BuildContext context) {
-    // IgnorePointer: a stall must stay tappable (pause / seek) like any
-    // other moment of playback.
-    return const IgnorePointer(
-      ignoring: true,
-      child: ColoredBox(
-        color: Colors.black26,
-        child: Center(
-          child: SizedBox(
-            width: 44,
-            height: 44,
-            child: CircularProgressIndicator(
-              strokeWidth: 3,
-              color: Colors.white70,
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }

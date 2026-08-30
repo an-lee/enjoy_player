@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart' as mk;
 
 import 'package:enjoy_player/features/player/domain/playable_source.dart';
@@ -149,13 +148,6 @@ class FakePlayerEngine implements PlayerEngine {
 
   @override
   Stream<double> get videoAspectRatioStream => Stream<double>.value(16 / 9);
-
-  @override
-  Widget buildVideoStage({
-    required BuildContext context,
-    required double maxWidth,
-    required double maxHeight,
-  }) => const SizedBox.shrink();
 
   void _recordUriFromSource(PlayableSource source) {
     switch (source) {

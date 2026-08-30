@@ -5,6 +5,7 @@ import 'package:enjoy_player/features/player/application/engines/youtube/youtube
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_session.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_webview_events.dart';
 import 'package:enjoy_player/features/player/domain/playable_source.dart';
+import 'package:enjoy_player/features/player/presentation/widgets/youtube_video_stage.dart';
 import 'package:flutter/foundation.dart'
     show TargetPlatform, debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart';
@@ -408,9 +409,9 @@ void main() {
   });
 
   group('YoutubePlayerEngine video stage poster gating (issue #662)', () {
-    // buildVideoStage mounts the WebView host only when the session asked for
-    // a mount, so these drive the transport latches directly and never mount
-    // a surface (no InAppWebView backend in a unit test).
+    // The stage mounts the WebView host only when the session asked for a
+    // mount, so these drive the transport latches directly and never mount a
+    // surface (no InAppWebView backend in a unit test).
     Future<void> pumpStage(
       WidgetTester tester,
       YoutubePlayerEngine engine,
@@ -418,12 +419,10 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: Builder(
-              builder: (context) => engine.buildVideoStage(
-                context: context,
-                maxWidth: 320,
-                maxHeight: 180,
-              ),
+            body: YoutubeVideoStage(
+              engine: engine,
+              maxWidth: 320,
+              maxHeight: 180,
             ),
           ),
         ),
