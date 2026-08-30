@@ -13,7 +13,7 @@ import 'package:enjoy_player/data/db/app_database_provider.dart';
 import 'package:enjoy_player/features/auth/application/auth_controller.dart';
 import 'package:enjoy_player/features/auth/domain/auth_state.dart';
 import 'package:enjoy_player/features/library/application/library_repository_provider.dart';
-import 'package:enjoy_player/features/player/application/player_controller.dart';
+import 'package:enjoy_player/features/player/application/player_engine.dart';
 import 'package:enjoy_player/features/player/application/player_metadata_notifier.dart';
 import 'package:enjoy_player/features/sync/application/sync_providers.dart';
 import 'package:enjoy_player/features/transcript/application/transcript_fetch_controller.dart';
@@ -89,16 +89,28 @@ Future<void> _runRecordingPull(
 }
 
 /// Lazy oEmbed retry after YouTube WebView reports playback-ready.
+///
+/// [engine] is the live playback engine and the freshness callbacks read the
+/// controller's state — both captured by the caller from the [PlayerOpenHost],
+/// never via `ref.read(playerControllerProvider...)`: this runs on the
+/// controller's own [Ref], and Riverpod asserts "A provider cannot depend on
+/// itself" when a provider reads itself (issue #676).
 void scheduleYoutubeMetadataRefresh(
   Ref ref, {
   required String mediaId,
   required int openGeneration,
+  required PlayerEngine engine,
+  required int Function() currentOpenGeneration,
+  required String? Function() currentSessionMediaId,
 }) {
   unawaited(
     _runYoutubeMetadataRefresh(
       ref,
       mediaId: mediaId,
       openGeneration: openGeneration,
+      engine: engine,
+      currentOpenGeneration: currentOpenGeneration,
+      currentSessionMediaId: currentSessionMediaId,
     ),
   );
 }
@@ -107,52 +119,60 @@ Future<void> _runYoutubeMetadataRefresh(
   Ref ref, {
   required String mediaId,
   required int openGeneration,
+  required PlayerEngine engine,
+  required int Function() currentOpenGeneration,
+  required String? Function() currentSessionMediaId,
 }) async {
-  final row = await ref.read(appDatabaseProvider).videoDao.getById(mediaId);
-  if (row == null || row.provider.toLowerCase() != 'youtube') return;
-  if (!_youtubeMetadataNeedsRefresh(row)) return;
+  // Same catch-and-log contract as the sibling helpers: this future is
+  // fire-and-forget, so an escaping throw becomes an unhandled async error.
+  try {
+    final row = await ref.read(appDatabaseProvider).videoDao.getById(mediaId);
+    if (row == null || row.provider.toLowerCase() != 'youtube') return;
+    if (!_youtubeMetadataNeedsRefresh(row)) return;
 
-  final controller = ref.read(playerControllerProvider.notifier);
-  final engine = controller.engine;
+    final ready = Completer<void>();
+    StreamSubscription<bool>? bufferingSub;
+    StreamSubscription<Duration>? durationSub;
+    Timer? timeout;
 
-  final ready = Completer<void>();
-  StreamSubscription<bool>? bufferingSub;
-  StreamSubscription<Duration>? durationSub;
-  Timer? timeout;
+    void finish() {
+      if (!ready.isCompleted) ready.complete();
+    }
 
-  void finish() {
-    if (!ready.isCompleted) ready.complete();
+    timeout = Timer(const Duration(seconds: 5), finish);
+    bufferingSub = engine.buffering.listen((buffering) {
+      if (!buffering) finish();
+    });
+    durationSub = engine.duration.listen((duration) {
+      if (duration > Duration.zero) finish();
+    });
+
+    await ready.future;
+    await bufferingSub.cancel();
+    await durationSub.cancel();
+    timeout.cancel();
+
+    if (currentOpenGeneration() != openGeneration) return;
+    if (currentSessionMediaId() != mediaId) return;
+
+    final patch = await ref
+        .read(mediaLibraryRepositoryProvider)
+        .refreshYoutubeMetadataIfNeeded(mediaId);
+    if (patch == null) return;
+
+    ref
+        .read(playerMetadataProvider.notifier)
+        .patchIfCurrent(
+          mediaId: mediaId,
+          openGeneration: openGeneration,
+          title: patch.title,
+          thumbnailUrl: patch.thumbnailUrl,
+        );
+  } on Object catch (e, st) {
+    logNamed(
+      'PlayerOpenSideEffects',
+    ).warning('youtube metadata refresh failed for $mediaId', e, st);
   }
-
-  timeout = Timer(const Duration(seconds: 5), finish);
-  bufferingSub = engine.buffering.listen((buffering) {
-    if (!buffering) finish();
-  });
-  durationSub = engine.duration.listen((duration) {
-    if (duration > Duration.zero) finish();
-  });
-
-  await ready.future;
-  await bufferingSub.cancel();
-  await durationSub.cancel();
-  timeout.cancel();
-
-  if (controller.openGeneration != openGeneration) return;
-  if (ref.read(playerControllerProvider)?.mediaId != mediaId) return;
-
-  final patch = await ref
-      .read(mediaLibraryRepositoryProvider)
-      .refreshYoutubeMetadataIfNeeded(mediaId);
-  if (patch == null) return;
-
-  ref
-      .read(playerMetadataProvider.notifier)
-      .patchIfCurrent(
-        mediaId: mediaId,
-        openGeneration: openGeneration,
-        title: patch.title,
-        thumbnailUrl: patch.thumbnailUrl,
-      );
 }
 
 bool _youtubeMetadataNeedsRefresh(VideoRow row) {
