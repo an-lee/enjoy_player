@@ -77,8 +77,14 @@ class CraftPreferencesCtrl extends _$CraftPreferencesCtrl {
   Future<void> _persist() {
     final auth = ref.read(authCtrlProvider).valueOrNull;
     if (auth is! AuthSignedIn) return Future<void>.value();
+
+    final userId = auth.profile.id;
     final task = _persistQueue.then((_) async {
       if (!ref.mounted) return;
+
+      final cur = ref.read(authCtrlProvider).valueOrNull;
+      if (cur is! AuthSignedIn || cur.profile.id != userId) return;
+
       await ref
           .read(appDatabaseProvider)
           .settingsDao
@@ -87,6 +93,7 @@ class CraftPreferencesCtrl extends _$CraftPreferencesCtrl {
             jsonEncode(state.toJson()),
           );
     });
+
     // Keep the chain alive even if a write fails.
     _persistQueue = task.then((_) {}, onError: (_) {});
     return task;
