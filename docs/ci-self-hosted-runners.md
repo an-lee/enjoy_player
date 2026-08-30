@@ -9,6 +9,7 @@ Shared workflow pieces:
 | Path | Purpose |
 |------|---------|
 | [`.github/actions/setup-flutter`](../.github/actions/setup-flutter) | Install/pin Flutter from [`.github/flutter-version`](../.github/flutter-version). Installs into a persistent, version-keyed directory on the runner's local disk and **skips the download entirely** when that version is already present — no `subosito/flutter-action` cache, no GitHub cache API. Reinstalls if the cached tree is missing `bin/flutter` or a working `.git` (required by `flutter --version`). |
+| [`.github/actions/setup-android`](../.github/actions/setup-android) | Wrap `android-actions/setup-android` with retries: the upstream action fails the job when the flaky network cannot fetch dl.google.com package manifests; the wrapper tolerates that, retries the `sdkmanager` install with backoff, and skips the network entirely once the requested packages persist on the runner. |
 | [`.github/actions/setup-macos-runner-env`](../.github/actions/setup-macos-runner-env) | Homebrew PATH, UTF-8 locale, curl HTTP/1.1, `GIT_CONFIG_COUNT=0` (SwiftPM-safe) |
 | [`.github/scripts/apple_spm_hygiene.sh`](../.github/scripts/apple_spm_hygiene.sh) | Host lock + SPM cache clear + retry helpers for Apple CI/release |
 | [`.github/scripts/ensure_linux_tooling.sh`](../.github/scripts/ensure_linux_tooling.sh) | Install apt packages only when missing. On the shared gh-sr agentic pool these are now normally baked into the container image (see below), so this is usually a fast no-op. |

@@ -48,7 +48,7 @@ jobs:
 
       - uses: ./.github/actions/setup-flutter
 
-      - uses: android-actions/setup-android@v3
+      - uses: ./.github/actions/setup-android
         with:
           packages: >-
             platforms;android-36

@@ -183,13 +183,13 @@ void main() {
     ) async {
       tester.view.physicalSize = const Size(392.7 * 3, 850.9 * 3);
       tester.view.devicePixelRatio = 3;
-      tester.view.padding = FakeViewPadding(
+      tester.view.padding = const FakeViewPadding(
         left: 0,
         top: 72,
         right: 0,
         bottom: 102,
       );
-      tester.view.viewPadding = FakeViewPadding(
+      tester.view.viewPadding = const FakeViewPadding(
         left: 0,
         top: 72,
         right: 0,

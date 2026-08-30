@@ -11,8 +11,10 @@ on:
       - "android/**"
       - "tool/patch_agp9_pub_plugins.sh"
       - "tool/prefetch_media_kit_android_libs.sh"
+      - "tool/prefetch_sqlite3_libs.sh"
       - ".github/flutter-version"
       - ".github/actions/setup-flutter/**"
+      - ".github/actions/setup-android/**"
       - ".github/scripts/ensure_linux_tooling.sh"
       - ".github/workflows/android_apk_smoke.yml"
   push:
@@ -30,6 +32,10 @@ permissions:
 jobs:
   apk:
     runs-on: [self-hosted, Linux]
+    # Successful runs land in 11–23 min; 45 min absorbs the setup-android
+    # retry backoff without letting a hung dl.google.com fetch hold the
+    # runner forever (self-hosted jobs have no default timeout).
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v6
 
@@ -40,7 +46,7 @@ jobs:
 
       - uses: ./.github/actions/setup-flutter
 
-      - uses: android-actions/setup-android@v3
+      - uses: ./.github/actions/setup-android
         with:
           packages: >-
             platforms;android-36
@@ -59,6 +65,12 @@ jobs:
 
       - name: Prefetch media_kit Android native libs
         run: bash tool/prefetch_media_kit_android_libs.sh
+
+      # The sqlite3 build hook downloads libsqlite3.so from GitHub Releases
+      # with no retries; a blip there kills the whole gradle build
+      # ("Target dart_build failed"). Prefetch like release_android.sh does.
+      - name: Prefetch sqlite3 Android native libs
+        run: bash tool/prefetch_sqlite3_libs.sh
 
       - name: Flutter build apk (debug)
         run: flutter build apk --debug --flavor store

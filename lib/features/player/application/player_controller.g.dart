@@ -11,7 +11,7 @@ part of 'player_controller.dart';
 /// Deterministic end-of-media completion loop (ADR-0044).
 ///
 /// Mirrors the generation-counter + single-flight pattern from
-/// [EchoEnforcer._epoch] / [_openGeneration]: the transport drives itself off
+/// [SingleFlightGate]: the transport drives itself off
 /// `await`ed completion futures instead of polling the position stream, and
 /// every in-flight await captures a generation id so a stale completion from a
 /// previous media (or a duplicate `completed` event from mpv) is a no-op.
@@ -22,7 +22,7 @@ final playerControllerProvider = PlayerControllerProvider._();
 /// Deterministic end-of-media completion loop (ADR-0044).
 ///
 /// Mirrors the generation-counter + single-flight pattern from
-/// [EchoEnforcer._epoch] / [_openGeneration]: the transport drives itself off
+/// [SingleFlightGate]: the transport drives itself off
 /// `await`ed completion futures instead of polling the position stream, and
 /// every in-flight await captures a generation id so a stale completion from a
 /// previous media (or a duplicate `completed` event from mpv) is a no-op.
@@ -31,7 +31,7 @@ final class PlayerControllerProvider
   /// Deterministic end-of-media completion loop (ADR-0044).
   ///
   /// Mirrors the generation-counter + single-flight pattern from
-  /// [EchoEnforcer._epoch] / [_openGeneration]: the transport drives itself off
+  /// [SingleFlightGate]: the transport drives itself off
   /// `await`ed completion futures instead of polling the position stream, and
   /// every in-flight await captures a generation id so a stale completion from a
   /// previous media (or a duplicate `completed` event from mpv) is a no-op.
@@ -62,12 +62,12 @@ final class PlayerControllerProvider
   }
 }
 
-String _$playerControllerHash() => r'8117ab2f35045b90b8cee1852f80664a709e81b1';
+String _$playerControllerHash() => r'863ed2ee58aea808668fc781c1c7220fa9185249';
 
 /// Deterministic end-of-media completion loop (ADR-0044).
 ///
 /// Mirrors the generation-counter + single-flight pattern from
-/// [EchoEnforcer._epoch] / [_openGeneration]: the transport drives itself off
+/// [SingleFlightGate]: the transport drives itself off
 /// `await`ed completion futures instead of polling the position stream, and
 /// every in-flight await captures a generation id so a stale completion from a
 /// previous media (or a duplicate `completed` event from mpv) is a no-op.
