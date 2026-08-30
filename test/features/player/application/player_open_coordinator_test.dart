@@ -396,10 +396,12 @@ void main() {
         );
         expect(container.read(transcriptBlurModeProvider), isFalse);
 
-        // Advance past the debounce: without the open-time flush the stale
-        // timer fires here and writes B's echo window + blur flag into A's
-        // row (structural proxy — deterministic DB row assertions instead of
-        // wall-clock racing, docs/perf-measurement.md).
+        // Advance past the debounce. Falsifiability (docs/perf-measurement.md
+        // Pattern 3): reverting the `runPlayerOpen` flush at the head of the
+        // open (lib/features/player/application/player_open_coordinator.dart)
+        // turns this test red — B's restored providers then write line `7`
+        // (echoStartMs 30_000 + blurActive=false) into media-a's row instead
+        // of lines 2–4 above. Verified against pre-fix code.
         await Future<void>.delayed(
           const Duration(milliseconds: kPlaybackSessionDebounceMs + 200),
         );
