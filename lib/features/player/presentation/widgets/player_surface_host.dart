@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:enjoy_player/core/player/player_surface_overlay_coordinator.dart';
 import 'package:enjoy_player/features/player/application/player_controller.dart';
 import 'package:enjoy_player/features/player/application/player_engine.dart';
 import 'package:enjoy_player/features/player/application/player_engine_rev.dart';
@@ -17,11 +18,14 @@ import 'package:enjoy_player/features/player/presentation/widgets/player_stage_r
 /// parks YouTube off-screen so WebView2 is not torn down. Never reparents the
 /// underlying [InAppWebView] / media_kit [Video] between routes.
 ///
-/// Set [forcePark] when a shell route that owns its own platform view (e.g.
-/// `/youtube/login`) is on top of a still-mounted player page, or when a
-/// transient overlay (dialog / sheet / snackbar) must clear the native
-/// surface (ADR-0066) — otherwise this host stays above the shell [Stack]
-/// and covers that UI.
+/// Parks itself for transient overlays (dialog / sheet / snackbar — ADR-0066)
+/// by watching the overlay coordinator here, in the only widget that cares.
+/// Watching it from the shell used to rebuild RootShell — nav, sidebar and both
+/// scaffolds — on every token change (issue #663).
+///
+/// Set [forcePark] only when a shell route that owns its own platform view
+/// (e.g. `/youtube/login`) is on top of a still-mounted player page; otherwise
+/// this host stays above the shell [Stack] and covers that UI.
 class PlayerSurfaceHost extends ConsumerWidget {
   const PlayerSurfaceHost({
     super.key,
@@ -53,13 +57,17 @@ class PlayerSurfaceHost extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(playerEngineRevProvider);
+    // ADR-0066: native surfaces (WebView2, media_kit) can paint above Flutter
+    // overlays, so any held token parks the surface off-screen. Read here —
+    // not in the shell — so a notice/dialog round-trip costs one host rebuild.
+    final parkForOverlay = ref.watch(playerSurfaceShouldParkForOverlayProvider);
     // Always watch the registry so a parked YouTube surface can keep the
-    // live target size. [forcePark] only suppresses on-screen placement —
-    // shrinking the WebView to [_parkWidth]×[_parkHeight] is the
+    // live target size. [forcePark]/[parkForOverlay] only suppress on-screen
+    // placement — shrinking the WebView to [_parkWidth]×[_parkHeight] is the
     // play-then-pause stimulus after every CC-sheet round-trip (YouTube
     // treats 320 px as a mobile breakpoint and flushes ABR).
     final registry = ref.watch(playerSurfaceRegistryProvider);
-    final attachment = forcePark ? null : registry;
+    final attachment = (forcePark || parkForOverlay) ? null : registry;
 
     // Prefer the real owned engine; fall back to the test double when set.
     final engine =

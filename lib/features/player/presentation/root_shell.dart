@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:enjoy_player/core/notices/root_shell_bottom_inset.dart';
-import 'package:enjoy_player/core/player/player_surface_overlay_coordinator.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/widgets/app_background.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_bottom_nav.dart';
@@ -245,19 +244,16 @@ class _RootShellState extends ConsumerState<RootShell> {
               // Park while `/youtube/login` is open: that route pushes above the
               // player page (target stays attached) but this host paints above
               // the whole shell, so an unparked stage covers the login WebView.
-              // Also park for dialogs/sheets/snackbars (ADR-0066) so native
-              // platform views cannot cover Flutter overlays (esp. WebView2).
+              // Overlays (dialogs/sheets/snackbars, ADR-0066) are handled inside
+              // [PlayerSurfaceHost] — watching the coordinator here used to
+              // rebuild the whole shell (nav, sidebar, both scaffolds) on every
+              // dialog/sheet/notice token change (issue #663).
               final parkForYoutubeLogin = path.startsWith('/youtube/login');
-              final parkForOverlay = ref.watch(
-                playerSurfaceShouldParkForOverlayProvider,
-              );
               return Stack(
                 fit: StackFit.expand,
                 children: [
                   shell,
-                  PlayerSurfaceHost(
-                    forcePark: parkForYoutubeLogin || parkForOverlay,
-                  ),
+                  PlayerSurfaceHost(forcePark: parkForYoutubeLogin),
                 ],
               );
             },
