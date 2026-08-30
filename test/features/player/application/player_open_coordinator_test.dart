@@ -157,6 +157,38 @@ void main() {
     });
 
     test(
+      'a wedged first engine.open retries and still publishes the session',
+      () async {
+        // Field report 2026-08-30: the hang is engine.open after a YouTube
+        // session (WebView teardown racing mk.Player), not post-open
+        // commands. Back + reopen recovered because the second open ran
+        // after the native side settled. Retry that automatically.
+        var attempts = 0;
+        fake.openDelay = () async {
+          attempts++;
+          if (attempts == 1) {
+            await Completer<void>().future;
+          }
+        };
+
+        final host = _Host(_refOf(container), fake);
+        await runPlayerOpen(
+          host,
+          _refOf(container),
+          'hang-1',
+          openTimeout: const Duration(milliseconds: 50),
+        );
+
+        expect(attempts, 2);
+        expect(
+          host.session,
+          isNotNull,
+          reason: 'session must publish after the open retry',
+        );
+      },
+    );
+
+    test(
       'a wedged post-open command degrades instead of hanging the open',
       () async {
         // Field report 2026-08-30: local audio opened right after a YouTube

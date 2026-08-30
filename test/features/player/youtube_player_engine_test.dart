@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_audible_playback_policy.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_player_engine.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_session.dart';
@@ -50,6 +52,25 @@ void main() {
       expect(session.shouldMountWebView, isTrue);
       expect(session.mountTick.value, tickAfterFirst);
       expect(session.webViewMounted, isFalse);
+    });
+
+    test('awaitSurfaceDetached completes when the WebView unmounts', () async {
+      final session = YoutubeSession();
+      session.noteWebViewMounted();
+      final pending = session.awaitSurfaceDetached();
+      var completed = false;
+      unawaited(pending.then((_) => completed = true));
+      await pumpEventQueue();
+      expect(completed, isFalse);
+
+      session.noteWebViewUnmounted();
+      await pending;
+      expect(completed, isTrue);
+    });
+
+    test('awaitSurfaceDetached is a no-op when already unmounted', () async {
+      final session = YoutubeSession();
+      await session.awaitSurfaceDetached();
     });
 
     test('resetForClear unmounts unless asked to keep the host', () {

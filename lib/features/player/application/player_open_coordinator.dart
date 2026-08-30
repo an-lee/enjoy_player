@@ -29,19 +29,6 @@ import 'package:enjoy_player/features/transcript/application/transcript_blur_mod
 
 final _openLog = logNamed('PlayerOpenCoordinator');
 
-/// Ceiling for post-open engine commands (preference application, subtitle
-/// disabling, position-restore seek).
-///
-/// `engine.open` is bounded by [kEngineOpenTimeout], but the mpv-command
-/// steps after it were not: on the wedge class where the native event pump
-/// stops delivering events (2026-08-30 field report — local audio after a
-/// YouTube session stuck on the loading skeleton; cf. the Linux
-/// engine-swap wedge, PR #647), any of them can await forever, and the
-/// playback session — which is what dismisses the loading skeleton —
-/// publishes only after all of them. Degrade instead: skip the step, log,
-/// continue the open (preferences re-apply on the next user interaction).
-const Duration kEngineCommandTimeout = Duration(seconds: 5);
-
 /// Runs [step] bounded by [limit]; a timeout is logged and swallowed so a
 /// wedged engine command cannot hold the open (and the loading screen)
 /// hostage.
@@ -119,21 +106,21 @@ Future<void> runPlayerOpen(
     dexieTargetType: dexie,
   );
 
-  // Bounded: the swap awaits the OLD engine's dispose, and MediaKit's
-  // dispose is an mpv round-trip that can hang on the wedged-pump class —
-  // the new engine is already installed at that point, so a timed-out
-  // dispose (leaked old engine) is better than an eternal loading screen.
-  await runBoundedEngineStep(
-    'engine swap',
-    limit: engineCommandTimeout,
-    () => ensureEngineForPlayableSource(
-      ref,
-      playable: playable,
-      openGeneration: gen,
-      currentOpenGeneration: () => host.openGeneration,
-      getOwnedEngine: () => host.ownedEngine,
-      setOwnedEngine: (e) => host.ownedEngine = e,
-    ),
+  // Drop position listeners before the swap so YouTube closeStreams is
+  // not blocked by the tracker still subscribed to the old engine.
+  await host.positionTracker.cancel();
+
+  // The swap waits for surface detach, then fire-and-forgets old dispose.
+  // Do not wrap it in [engineCommandTimeout] — that would cut off
+  // [prepareNativeBackend] and leave MediaKit allocating mpv while the
+  // YouTube WebView is still destroying.
+  final swapped = await ensureEngineForPlayableSource(
+    ref,
+    playable: playable,
+    openGeneration: gen,
+    currentOpenGeneration: () => host.openGeneration,
+    getOwnedEngine: () => host.ownedEngine,
+    setOwnedEngine: (e) => host.ownedEngine = e,
   );
   if (host.isOpenStale(gen)) return;
 
@@ -155,22 +142,36 @@ Future<void> runPlayerOpen(
   engine.setPosterUrl(openPosterUrl);
   engine.warmVideoSurface();
 
-  await host.positionTracker.cancel();
-
+  // After a YouTube → MediaKit swap the first `open` races WebView
+  // teardown and can hang (2026-08-30: skeleton until back + reopen).
+  // Use the short command ceiling for that first attempt, then retry
+  // once — reopen works because the native side has settled / a fresh
+  // player is installed. A timeout must not fail the open on try 1.
+  final firstTimeout = swapped ? engineCommandTimeout : openTimeout;
   try {
-    await engine.open(playable).timeout(openTimeout);
+    await engine.open(playable).timeout(firstTimeout);
   } on TimeoutException {
-    // The native event pump can stop delivering events (wedged mpv). Without
-    // this bound the await — and therefore openMedia and the loading screen —
-    // hangs forever. Bump the generation so everything still in flight for
-    // this open (side effects, tracker) observes a stale generation, and the
-    // engine left half-open cannot leak state into the next open's checks.
-    _openLog.severe(
-      'engine.open timed out after $openTimeout for media $mediaId '
-      '(${engine.runtimeType}); invalidating open generation',
+    _openLog.warning(
+      'engine.open timed out after $firstTimeout for media $mediaId '
+      '(${engine.runtimeType}); retrying once',
     );
-    ref.read(playerControllerProvider.notifier).abandonPendingOpen();
-    rethrow;
+    await replaceWedgedLocalEngine(
+      ref,
+      getOwnedEngine: () => host.ownedEngine,
+      setOwnedEngine: (e) => host.ownedEngine = e,
+    );
+    if (host.isOpenStale(gen)) return;
+    final retryEngine = host.activeEngine;
+    try {
+      await retryEngine.open(playable).timeout(openTimeout);
+    } on TimeoutException {
+      _openLog.severe(
+        'engine.open retry timed out after $openTimeout for media $mediaId '
+        '(${retryEngine.runtimeType}); invalidating open generation',
+      );
+      ref.read(playerControllerProvider.notifier).abandonPendingOpen();
+      rethrow;
+    }
   }
   if (host.isOpenStale(gen)) {
     try {

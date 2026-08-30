@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import 'package:enjoy_player/core/logging/log.dart';
+import 'package:enjoy_player/features/player/application/player_engine_constants.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_audible_playback_policy.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_page_inject.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_playback_stall_watchdog.dart';
@@ -146,7 +147,16 @@ class YoutubeWebViewController {
     final navGen = ++_navGeneration;
     final controller = _webController;
     if (controller == null) return;
-    await YoutubeWebViewBridge.loadIdlePage(controller);
+    try {
+      await YoutubeWebViewBridge.loadIdlePage(
+        controller,
+      ).timeout(kEngineCommandTimeout);
+    } on TimeoutException {
+      _logWebView.warning(
+        'loadIdlePage timed out after $kEngineCommandTimeout; '
+        'continuing teardown',
+      );
+    }
     if (_navGeneration != navGen &&
         session.videoId.isNotEmpty &&
         identical(_webController, controller)) {

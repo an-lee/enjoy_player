@@ -84,6 +84,18 @@ class FakePlayerEngine implements PlayerEngine {
   @override
   Future<void> awaitSurfaceReady() async {}
 
+  /// When set, [awaitSurfaceDetached] waits on this completer.
+  Completer<void>? surfaceDetachGate;
+
+  @override
+  Future<void> awaitSurfaceDetached() async {
+    final gate = surfaceDetachGate;
+    if (gate != null) await gate.future;
+  }
+
+  @override
+  void prepareNativeBackend() {}
+
   String? posterUrlValue;
 
   @override
@@ -216,8 +228,13 @@ class FakePlayerEngine implements PlayerEngine {
   @override
   void warmVideoSurface() {}
 
+  /// When set, [dispose] waits on this completer before closing streams.
+  Completer<void>? disposeGate;
+
   @override
   Future<void> dispose() async {
+    final gate = disposeGate;
+    if (gate != null) await gate.future;
     await _position.close();
     await _duration.close();
     await _playing.close();

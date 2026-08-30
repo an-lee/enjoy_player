@@ -118,6 +118,12 @@ class YoutubePlayerEngine implements PlayerEngine {
   Future<void> awaitSurfaceReady() => _awaitWebViewMounted().then((_) {});
 
   @override
+  Future<void> awaitSurfaceDetached() => _session.awaitSurfaceDetached();
+
+  @override
+  void prepareNativeBackend() {}
+
+  @override
   Future<void> teardownAfterClear({required bool keepSurfaceMounted}) =>
       _webView.idleAfterClear(keepMounted: keepSurfaceMounted);
 
