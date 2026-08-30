@@ -150,6 +150,42 @@ void main() {
     );
   }
 
+  /// Simulates a re-import: replaces the primary transcript with [importLines].
+  Future<void> reimportTranscript(List<TranscriptLine> importLines) async {
+    await db.transcriptDao.upsert(
+      TranscriptRow(
+        id: '$transcriptId-reimport',
+        targetType: 'Audio',
+        targetId: mediaId,
+        language: 'en',
+        source: 'official',
+        timelineJson: jsonEncode(
+          importLines
+              .map(
+                (l) => {
+                  'text': l.text,
+                  'start': l.startMs,
+                  'duration': l.durationMs,
+                },
+              )
+              .toList(),
+        ),
+        referenceId: null,
+        label: '',
+        trackIndex: null,
+        syncStatus: null,
+        serverUpdatedAt: null,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    );
+    await db.echoSessionDao.updatePrimaryTranscriptForTarget(
+      'Audio',
+      mediaId,
+      '$transcriptId-reimport',
+    );
+  }
+
   test('prevLine bails out when there is no session', () async {
     final n = container.read(playerInteractionsProvider.notifier);
     await n.prevLine();
@@ -578,6 +614,30 @@ void main() {
       final n = container.read(playerInteractionsProvider.notifier);
       await n.replayLine();
       expect(fake.seekCalls, isEmpty);
+    },
+  );
+
+  test(
+    'line cache drops stale lines when the transcript is re-imported',
+    () async {
+      await insertAudioRow(mediaId);
+      await seedTranscript();
+      setUpSession(currentTime: 0.5);
+
+      final n = container.read(playerInteractionsProvider.notifier);
+      await n.nextLine(); // populates the keepAlive cache with the old import
+      expect(fake.seekCalls, [const Duration(seconds: 2)]);
+
+      // Re-import re-segments to a shorter, differently timed transcript.
+      await reimportTranscript(const [
+        TranscriptLine(text: 'new 1', startMs: 0, durationMs: 2000),
+        TranscriptLine(text: 'new 2', startMs: 9000, durationMs: 2000),
+      ]);
+      await pumpEventQueue();
+
+      await n.nextLine();
+      // Stale lines would seek to 2s again; the fresh import lands on 9s.
+      expect(fake.seekCalls.last, const Duration(seconds: 9));
     },
   );
 

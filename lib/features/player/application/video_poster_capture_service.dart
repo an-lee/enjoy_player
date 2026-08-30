@@ -12,6 +12,7 @@ import 'package:enjoy_player/core/utils/remote_thumbnail_url.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
 import 'package:enjoy_player/data/db/app_database_provider.dart';
 import 'package:enjoy_player/data/files/video_poster_extract.dart';
+import 'package:enjoy_player/features/player/application/echo_mode_provider.dart';
 import 'package:enjoy_player/features/player/application/player_engine.dart';
 
 final _log = logNamed('VideoPosterCapture');
@@ -63,6 +64,13 @@ class VideoPosterCaptureService {
   }) async {
     var soughtForPoster = false;
     try {
+      // Opening at position 0 while echo is active makes the capture seek (and
+      // the seek-back-to-zero below) fight the live enforcer: the seek is
+      // corrected back into the echo window, so the wrong frame is captured and
+      // playback is paused / churned right after open (issue #659). Skip — a
+      // later open without echo still captures the poster.
+      if (restoredPositionMs == 0 && _ref.read(echoModeProvider).active) return;
+
       await Future<void>.delayed(const Duration(milliseconds: 450));
       if (gen != currentOpenGeneration()) return;
       if (currentSessionMediaId() != mediaId) return;

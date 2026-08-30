@@ -105,9 +105,21 @@ class EchoMode extends _$EchoMode {
     );
   }
 
+  /// Whether the persisted line indices still fit [lines].
+  ///
+  /// [restoreFromSession] persists indices without validation, so a transcript
+  /// re-import that re-segmented the cues shorter leaves them past the end.
+  /// Mirror [EchoEnforcer]'s line-index bounds check and no-op instead of
+  /// throwing RangeError (issue #659).
+  bool _indicesFitLines(List<TranscriptLine> lines) {
+    final start = state.startLineIndex;
+    final end = state.endLineIndex;
+    return start >= 0 && end >= start && end < lines.length;
+  }
+
   /// Add one line before the echo segment (web expand backward).
   void expandEchoBackward(List<TranscriptLine> lines) {
-    if (!state.active || lines.isEmpty) return;
+    if (!state.active || !_indicesFitLines(lines)) return;
     final start = state.startLineIndex;
     if (start <= 0) return;
     final nextStart = start - 1;
@@ -119,7 +131,7 @@ class EchoMode extends _$EchoMode {
 
   /// Remove one line from the start of the echo segment (web shrink backward).
   void shrinkEchoBackward(List<TranscriptLine> lines) {
-    if (!state.active || lines.isEmpty) return;
+    if (!state.active || !_indicesFitLines(lines)) return;
     final start = state.startLineIndex;
     final end = state.endLineIndex;
     if (start >= end) return;
@@ -132,7 +144,7 @@ class EchoMode extends _$EchoMode {
 
   /// Add one line after the echo segment (web expand forward).
   void expandEchoForward(List<TranscriptLine> lines) {
-    if (!state.active || lines.isEmpty) return;
+    if (!state.active || !_indicesFitLines(lines)) return;
     final end = state.endLineIndex;
     if (end >= lines.length - 1) return;
     final nextEnd = end + 1;
@@ -144,7 +156,7 @@ class EchoMode extends _$EchoMode {
 
   /// Remove one line from the end of the echo segment (web shrink forward).
   void shrinkEchoForward(List<TranscriptLine> lines) {
-    if (!state.active || lines.isEmpty) return;
+    if (!state.active || !_indicesFitLines(lines)) return;
     final start = state.startLineIndex;
     final end = state.endLineIndex;
     if (end <= start) return;

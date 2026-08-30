@@ -65,28 +65,39 @@ class PlayerInteractions extends _$PlayerInteractions {
   @override
   int build() => 0;
 
-  String? _cachedLinesMediaId;
+  /// Identity of the transcript row the line cache was decoded from.
+  ///
+  /// Keyed on the row (not just the mediaId): a re-import re-segments cues, so
+  /// a keepAlive cache keyed on mediaId alone would feed echo stale line
+  /// indices (issue #659). `linesForRow` memoizes the decode on the same key,
+  /// so an unchanged transcript still hits the cached lines.
+  ({String id, String timelineJson})? _cachedRow;
   List<TranscriptLine> _cachedLines = const [];
+
+  void _resetLinesCache() {
+    _cachedRow = null;
+    _cachedLines = const [];
+  }
 
   Future<List<TranscriptLine>> _lines() async {
     final session = ref.read(playerControllerProvider);
     final mediaId = session?.mediaId;
     if (mediaId == null) {
-      _cachedLines = const [];
-      _cachedLinesMediaId = null;
+      _resetLinesCache();
       return _cachedLines;
     }
-    if (mediaId == _cachedLinesMediaId) return _cachedLines;
 
     final repo = ref.read(transcriptRepositoryProvider);
     final row = await repo.primaryTranscriptRowForMedia(mediaId);
     if (row == null) {
-      _cachedLines = const [];
-      _cachedLinesMediaId = null;
+      _resetLinesCache();
       return _cachedLines;
     }
+    final key = (id: row.id, timelineJson: row.timelineJson);
+    if (_cachedRow == key) return _cachedLines;
+
     _cachedLines = repo.linesForRow(row);
-    _cachedLinesMediaId = mediaId;
+    _cachedRow = key;
     return _cachedLines;
   }
 
