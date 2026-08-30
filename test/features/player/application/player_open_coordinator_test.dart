@@ -22,6 +22,42 @@ import 'package:path_provider_platform_interface/path_provider_platform_interfac
 import '../../../support/fake_player_engine.dart';
 import '../../../support/test_path_provider.dart';
 
+/// Echo-session DAO that records entries and can hold the read in flight —
+/// the barrier-controlled double from docs/perf-measurement.md (Pattern 3):
+/// count method entries instead of racing concurrent calls.
+class _CountingEchoSessionDao extends EchoSessionDao {
+  _CountingEchoSessionDao(super.db);
+
+  int getLatestCalls = 0;
+
+  /// When set, the read only resolves once the test releases it.
+  Completer<void>? entryGate;
+
+  @override
+  Future<EchoSessionRow?> getLatestForTarget(
+    String targetType,
+    String targetId,
+  ) {
+    getLatestCalls++;
+    final read = super.getLatestForTarget(targetType, targetId);
+    final gate = entryGate;
+    if (gate == null) return read;
+    return gate.future.then((_) => read);
+  }
+}
+
+/// [AppDatabase] exposing the counting echo-session DAO.
+class _CountingEchoDb extends AppDatabase {
+  _CountingEchoDb({required super.executor});
+
+  late final _CountingEchoSessionDao countingDao = _CountingEchoSessionDao(
+    this,
+  );
+
+  @override
+  EchoSessionDao get echoSessionDao => countingDao;
+}
+
 /// Minimal [PlayerOpenHost] driving [runPlayerOpen] without the controller.
 class _Host implements PlayerOpenHost {
   _Host(this.ref, this.engine);
@@ -449,6 +485,163 @@ void main() {
         throwsStateError,
       );
     });
+  });
+
+  group('runPlayerOpen echo-session read overlap (issue #661)', () {
+    late _CountingEchoDb db;
+    late AppDatabase bystanderDb;
+    late FakePlayerEngine fake;
+    late ProviderContainer container;
+    late PathProviderPlatform originalPathProvider;
+
+    setUp(() async {
+      originalPathProvider = PathProviderPlatform.instance;
+      PathProviderPlatform.instance = TestPathProvider(
+        Directory.systemTemp.createTempSync('enjoy_player_open_overlap').path,
+      );
+      db = _CountingEchoDb(executor: NativeDatabase.memory());
+      // The open also schedules a fire-and-forget transcript resolve that
+      // reads the echo session through the same DAO. Point it at its own DB
+      // so the counter below can only ever be the coordinator's read.
+      bystanderDb = AppDatabase(executor: NativeDatabase.memory());
+      fake = FakePlayerEngine();
+      container = ProviderContainer(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          playerEngineTestDoubleProvider.overrideWithValue(fake),
+          transcriptRepositoryProvider.overrideWithValue(
+            TranscriptRepository(bystanderDb),
+          ),
+        ],
+      );
+
+      final now = DateTime.now();
+      final file = File(
+        p.join(
+          Directory.systemTemp.path,
+          'enjoy_open_overlap_${DateTime.now().microsecondsSinceEpoch}.mp3',
+        ),
+      );
+      await file.writeAsBytes([1]);
+      addTearDown(() async {
+        if (await file.exists()) await file.delete();
+      });
+      await db.audioDao.insertRow(
+        AudioRow(
+          id: 'hang-1',
+          aid: 'x',
+          provider: 'user',
+          title: 't',
+          description: null,
+          thumbnailUrl: null,
+          durationSeconds: 600,
+          language: 'en',
+          translationKey: null,
+          sourceText: null,
+          voice: null,
+          source: null,
+          localUri: Uri.file(file.path).toString(),
+          md5: null,
+          size: 1,
+          mediaUrl: null,
+          syncStatus: null,
+          serverUpdatedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+    });
+
+    tearDown(() async {
+      PathProviderPlatform.instance = originalPathProvider;
+      await pumpEventQueue();
+      container.dispose();
+      await db.close();
+      await bystanderDb.close();
+      await fake.dispose();
+    });
+
+    test(
+      'the echo-session read starts while engine.open is still in flight',
+      () async {
+        // Holding engine.open means the only way the read can already be
+        // pending is if the coordinator issued it first — the structural
+        // proxy for "the DB read no longer sits on the open's critical path"
+        // (docs/perf-measurement.md Pattern 3).
+        final openGate = Completer<void>();
+        fake.openDelay = () => openGate.future;
+        db.countingDao.entryGate = Completer<void>();
+        addTearDown(() {
+          if (!db.countingDao.entryGate!.isCompleted) {
+            db.countingDao.entryGate!.complete();
+          }
+          if (!openGate.isCompleted) openGate.complete();
+        });
+
+        final host = _Host(_refOf(container), fake);
+        final open = runPlayerOpen(host, _refOf(container), 'hang-1');
+
+        // Walk the coordinator up to `engine.open`'s entry (the resolver and
+        // the engine swap are immediate work on the in-memory DB).
+        for (var i = 0; i < 100 && fake.openUris.isEmpty; i++) {
+          await Future<void>.delayed(Duration.zero);
+        }
+        expect(fake.openUris, isNotEmpty, reason: 'engine.open was entered');
+        expect(
+          db.countingDao.getLatestCalls,
+          1,
+          reason:
+              'the echo-session read must start before engine.open resolves',
+        );
+
+        // Releasing both proves the open still consumes the overlapped read
+        // instead of dropping it.
+        db.countingDao.entryGate!.complete();
+        openGate.complete();
+        await expectLater(open, completes);
+        expect(host.session, isNotNull);
+      },
+    );
+
+    test(
+      'the overlapped read still drives the position + echo restore',
+      () async {
+        final now = DateTime.now();
+        await db.echoSessionDao.upsert(
+          EchoSessionRow(
+            id: 'es-overlap-1',
+            targetType: 'Audio',
+            targetId: 'hang-1',
+            language: 'en',
+            currentTimeMs: 9000,
+            playbackRate: 1,
+            volume: 1,
+            recordingsCount: 0,
+            recordingsDurationMs: 0,
+            currentSegmentIndex: 5,
+            echoActive: true,
+            echoStartLine: 1,
+            echoEndLine: 3,
+            echoStartMs: 1000,
+            echoEndMs: 2000,
+            blurActive: false,
+            createdAt: now,
+            updatedAt: now,
+            startedAt: now,
+            lastActiveAt: now,
+          ),
+        );
+
+        final host = _Host(_refOf(container), fake);
+        await runPlayerOpen(host, _refOf(container), 'hang-1');
+
+        expect(db.countingDao.getLatestCalls, 1);
+        expect(fake.seekCalls, [const Duration(milliseconds: 9000)]);
+        expect(host.session, isNotNull);
+        expect(host.session!.currentTimeSeconds, 9);
+        expect(host.session!.currentSegmentIndex, 5);
+      },
+    );
   });
 }
 
