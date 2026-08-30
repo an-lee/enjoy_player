@@ -171,18 +171,25 @@ class PlayerPositionTracker {
         final sec = d.inMilliseconds ~/ 1000;
         setSession(getSession()?.copyWith(durationSeconds: newSec));
         final db = ref.read(appDatabaseProvider);
-        if (kind == MediaKind.video &&
-            video != null &&
-            video.durationSeconds == 0) {
-          await db.videoDao.insertRow(
-            video.copyWith(durationSeconds: sec, updatedAt: DateTime.now()),
-          );
-        } else if (kind == MediaKind.audio &&
-            audio != null &&
-            audio.durationSeconds == 0) {
-          await db.audioDao.insertRow(
-            audio.copyWith(durationSeconds: sec, updatedAt: DateTime.now()),
-          );
+        // One-off duration backfill. Guarded like the position tick above: a
+        // Drift throw must not surface as an uncaught async exception from a
+        // stream listener and take playback down with it.
+        try {
+          if (kind == MediaKind.video &&
+              video != null &&
+              video.durationSeconds == 0) {
+            await db.videoDao.insertRow(
+              video.copyWith(durationSeconds: sec, updatedAt: DateTime.now()),
+            );
+          } else if (kind == MediaKind.audio &&
+              audio != null &&
+              audio.durationSeconds == 0) {
+            await db.audioDao.insertRow(
+              audio.copyWith(durationSeconds: sec, updatedAt: DateTime.now()),
+            );
+          }
+        } catch (e, st) {
+          _positionLog.warning('duration backfill write failed', e, st);
         }
       },
       onError: (Object e, StackTrace st) {
