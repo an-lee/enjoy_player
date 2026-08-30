@@ -12,11 +12,13 @@ import 'package:enjoy_player/features/player/application/completion_loop.dart';
 import 'package:enjoy_player/features/player/application/echo_mode_provider.dart';
 import 'package:enjoy_player/features/player/application/engines/youtube/youtube_player_engine.dart';
 import 'package:enjoy_player/features/player/application/player_engine.dart';
+import 'package:enjoy_player/features/player/application/player_engine_binding.dart';
 import 'package:enjoy_player/features/player/application/player_engine_rev.dart';
 import 'package:enjoy_player/features/player/application/player_engine_test_double_provider.dart';
 import 'package:enjoy_player/features/player/application/player_open_coordinator.dart';
 import 'package:enjoy_player/features/player/application/player_position_tracker.dart';
 import 'package:enjoy_player/features/player/application/player_preferences_provider.dart';
+import 'package:enjoy_player/features/player/application/single_flight_gate.dart';
 import 'package:enjoy_player/features/player/domain/echo_window.dart';
 import 'package:enjoy_player/features/player/domain/open_media_options.dart';
 import 'package:enjoy_player/features/player/domain/playback_session.dart';
@@ -31,7 +33,7 @@ part 'player_controller.g.dart';
 /// Deterministic end-of-media completion loop (ADR-0044).
 ///
 /// Mirrors the generation-counter + single-flight pattern from
-/// [EchoEnforcer._epoch] / [_openGeneration]: the transport drives itself off
+/// [SingleFlightGate]: the transport drives itself off
 /// `await`ed completion futures instead of polling the position stream, and
 /// every in-flight await captures a generation id so a stale completion from a
 /// previous media (or a duplicate `completed` event from mpv) is a no-op.
@@ -45,16 +47,24 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
     getEngine: () => activeEngine,
     getSession: () => state,
     setSession: (next) => state = next,
-    currentOpenGeneration: () => _openGeneration,
+    currentOpenGeneration: () => _openGate.generation,
   );
 
-  /// Incremented on each [openMedia] call; stale async work bails out.
-  int _openGeneration = 0;
+  /// The open generation: bumped by [openMedia], [clear] and
+  /// [abandonPendingOpen]; every async step of an open captures it at entry
+  /// ([openGeneration] / [isOpenStale]) and bails when it has moved on. The
+  /// single-flight slot is unused here — see [_openInFlight].
+  final SingleFlightGate _openGate = SingleFlightGate();
 
-  /// True between [openMedia] bumping [_openGeneration] and the session being
-  /// published (or the open failing): `state` is still `null`, so this is the
-  /// only signal that an engine swap is already coordinated and in flight.
-  /// [warmYoutubeSurface] consults it — issue #657.
+  /// True between [openMedia] bumping the open generation and the session
+  /// being published (or the open failing): `state` is still `null`, so this
+  /// is the only signal that an engine swap is already coordinated and in
+  /// flight. [warmYoutubeSurface] consults it — issue #657.
+  ///
+  /// Deliberately *not* the gate's in-flight slot: it is a latch keyed by
+  /// generation (cleared in `finally` only when the open is still current, and
+  /// cleared unconditionally by [clear] with no future completing), which is
+  /// not the identity-guarded "one op owns the slot" contract the gate models.
   bool _openInFlight = false;
 
   /// Deterministic end-of-media loop (ADR-0044). Owns the playback
@@ -82,10 +92,10 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
   Future<void> get teardown => _teardown;
 
   @override
-  int get openGeneration => _openGeneration;
+  int get openGeneration => _openGate.generation;
 
   @override
-  bool isOpenStale(int gen) => gen != _openGeneration;
+  bool isOpenStale(int gen) => _openGate.isStale(gen);
 
   @override
   PlayerEngine? get ownedEngine => _ownedEngine;
@@ -184,7 +194,7 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
       return;
     }
 
-    final gen = ++_openGeneration;
+    final gen = _openGate.bump();
     // Marked before the first await so a speculative [warmYoutubeSurface] that
     // lands inside this window sees the open that is already coordinating the
     // engine (issue #657).
@@ -198,7 +208,7 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
         mediaId,
         options: options,
         onFailureResetSession: () {
-          if (gen == _openGeneration) {
+          if (!_openGate.isStale(gen)) {
             state = null;
           }
         },
@@ -206,7 +216,7 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
     } finally {
       // Only a still-current open clears the flag — an open superseded by a
       // newer one must not report "idle" while that newer one is still running.
-      if (gen == _openGeneration) {
+      if (!_openGate.isStale(gen)) {
         _openInFlight = false;
       }
     }
@@ -214,7 +224,7 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
     // Start the deterministic completion loop for the new playback stint
     // (ADR-0044). Only when the open actually landed (state's mediaId matches
     // and the generation is still current).
-    if (!_disposed && gen == _openGeneration && state?.mediaId == mediaId) {
+    if (!_disposed && !_openGate.isStale(gen) && state?.mediaId == mediaId) {
       _completionLoop.arm();
       // Promote to Home "Recent media" even if playback is still starting.
       unawaited(
@@ -288,7 +298,7 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
       persister.cancel();
     }
 
-    _openGeneration++;
+    _openGate.bump();
     // Clear invalidates any open still in flight, so drop the flag too — that
     // open's `finally` skips the reset (its generation is stale) and the latch
     // would otherwise disable speculative warming for the rest of the session
@@ -333,15 +343,21 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
       // pump (2026-08-29 field report).
       return;
     }
-    // Genuinely no engine yet — install the YouTube one. Bump before warming
-    // (ADR-0057) so PlayerSurfaceHost keys a stage for the new engine.
-    _ownedEngine = YoutubePlayerEngine();
-    ref.read(playerEngineRevProvider.notifier).bump();
+    // Genuinely no engine yet — install the YouTube one. [EngineSwap.install]
+    // bumps the rev (ADR-0057) so PlayerSurfaceHost keys a stage for the new
+    // engine. There is no prior engine to tear down, and this path never
+    // calls [EngineSwap.discardWithoutAwaiting]: a speculative warm must not
+    // be able to dispose an engine even if the guards above rot.
+    EngineSwap(
+      ref: ref,
+      getOwnedEngine: () => _ownedEngine,
+      setOwnedEngine: (next) => _ownedEngine = next,
+    ).install(YoutubePlayerEngine());
     _ownedEngine!.warmVideoSurface();
   }
 
   void abandonPendingOpen() {
-    _openGeneration++;
+    _openGate.bump();
     _completionLoop.bump();
   }
 

@@ -16,6 +16,83 @@ import 'package:enjoy_player/features/player/application/player_engine_test_doub
 
 final _bindLog = logNamed('PlayerEngineBinding');
 
+/// The mechanics every engine swap shares: install [PlayerEngine] as the owned
+/// engine and bump [playerEngineRevProvider] so the permanent
+/// [PlayerSurfaceHost] re-keys its stage (ADR-0057), plus the teardown of the
+/// engine that was replaced.
+///
+/// Only mechanics live here. *Policy* stays at the call sites — whether a swap
+/// is allowed at all, which generation guards apply around each await, and
+/// what must happen before MediaKit may allocate mpv:
+///
+/// - [ensureEngineForPlayableSource] runs the full open-path choreography:
+///   install + bump, let the host drop the old stage, wait for the prior
+///   surface to detach, settle, discard the old engine without awaiting it,
+///   prepare the native backend, bump again.
+/// - `PlayerController.warmYoutubeSurface` installs only when there is no
+///   engine at all and never calls [discardWithoutAwaiting] — that is what
+///   makes its "must never dispose a live / parked MediaKit engine" rule true
+///   by construction rather than by an assertion in the call site.
+/// - [replaceWedgedLocalEngine] installs a replacement for a wedged local
+///   engine and discards the wedged one unawaited.
+class EngineSwap {
+  EngineSwap({
+    required this.ref,
+    required this.getOwnedEngine,
+    required this.setOwnedEngine,
+  });
+
+  final Ref ref;
+  final PlayerEngine? Function() getOwnedEngine;
+  final void Function(PlayerEngine? next) setOwnedEngine;
+
+  /// Installs [next] as the owned engine and notifies the surface host.
+  /// Returns the engine that was replaced, or `null` when there was none —
+  /// the caller owns its teardown, under its own contract.
+  PlayerEngine? install(PlayerEngine next) {
+    final previous = getOwnedEngine();
+    setOwnedEngine(next);
+    bumpRev();
+    return previous;
+  }
+
+  /// Notifies [PlayerSurfaceHost] that the engine identity changed.
+  ///
+  /// [ensureEngineForPlayableSource] bumps **twice**: the first bump drops the
+  /// old engine's `buildVideoStage` before teardown, the second follows
+  /// [PlayerEngine.prepareNativeBackend] so the MediaKit `Video` may mount
+  /// into the already-keyed loading stage.
+  void bumpRev() => ref.read(playerEngineRevProvider.notifier).bump();
+
+  /// Waits for [previous]'s platform view to drop (bounded by
+  /// [kEngineSurfaceDetachTimeout]) and lets the surface settle
+  /// ([kEngineSurfaceSettleDelay]) so MediaKit never allocates [Player] while
+  /// InAppWebView is still destroying.
+  Future<void> awaitPriorSurfaceSettled(PlayerEngine previous) async {
+    try {
+      await previous.awaitSurfaceDetached().timeout(
+        kEngineSurfaceDetachTimeout,
+      );
+    } on TimeoutException {
+      _bindLog.warning(
+        'prior engine surface detach timed out after '
+        '$kEngineSurfaceDetachTimeout; continuing swap',
+      );
+    }
+    await Future<void>.delayed(kEngineSurfaceSettleDelay);
+  }
+
+  /// Starts [previous]'s teardown without awaiting it.
+  ///
+  /// YouTube `closeStreams` can hang for seconds while listeners drain
+  /// (2026-08-30 Android: 5 s skeleton on a 4 s local file — the log was this
+  /// exact timeout). The replacement is already installed; a leaked old
+  /// teardown beats a spinner.
+  void discardWithoutAwaiting(PlayerEngine previous) {
+    unawaited(previous.dispose());
+  }
+}
+
 /// Ensures [_ownedEngine] matches [playable] (YouTube vs MediaKit), bumping
 /// [playerEngineRevProvider] when the implementation changes.
 ///
@@ -66,9 +143,13 @@ Future<bool> ensureEngineForPlayableSource(
   if (owned != null && haveYt == wantYt) return false;
   if (currentOpenGeneration() != openGeneration) return false;
 
+  final swap = EngineSwap(
+    ref: ref,
+    getOwnedEngine: getOwnedEngine,
+    setOwnedEngine: setOwnedEngine,
+  );
   final next = wantYt ? YoutubePlayerEngine() : MediaKitPlayerEngine();
-  setOwnedEngine(next);
-  ref.read(playerEngineRevProvider.notifier).bump();
+  swap.install(next);
   // Let PlayerSurfaceHost drop the old ObjectKey stage before teardown.
   // MediaKit must not allocate [Player] yet — [prepareNativeBackend] runs
   // only after the prior surface has detached.
@@ -78,24 +159,12 @@ Future<bool> ensureEngineForPlayableSource(
     return false;
   }
   if (owned != null) {
-    try {
-      await owned.awaitSurfaceDetached().timeout(kEngineSurfaceDetachTimeout);
-    } on TimeoutException {
-      _bindLog.warning(
-        'prior engine surface detach timed out after '
-        '$kEngineSurfaceDetachTimeout; continuing swap',
-      );
-    }
-    await Future<void>.delayed(kEngineSurfaceSettleDelay);
+    await swap.awaitPriorSurfaceSettled(owned);
     if (currentOpenGeneration() != openGeneration) {
       await next.dispose();
       return false;
     }
-    // Do not await dispose on the open path. YouTube closeStreams can hang
-    // for seconds while listeners drain (2026-08-30 Android: 5 s skeleton
-    // on a 4 s local file — the log was this exact timeout). The new
-    // engine is already installed; a leaked old teardown beats a spinner.
-    unawaited(owned.dispose());
+    swap.discardWithoutAwaiting(owned);
   }
   if (currentOpenGeneration() != openGeneration) {
     await next.dispose();
@@ -104,7 +173,7 @@ Future<bool> ensureEngineForPlayableSource(
   next.prepareNativeBackend();
   // Second bump: MediaKit Video may now mount (loading stage already has a
   // target). First bump only dropped the YouTube WebView.
-  ref.read(playerEngineRevProvider.notifier).bump();
+  swap.bumpRev();
   return true;
 }
 
@@ -121,9 +190,13 @@ Future<void> replaceWedgedLocalEngine(
   if (ref.read(playerEngineTestDoubleProvider) != null) return;
   final old = getOwnedEngine();
   if (old == null || old.supportsYouTubePlayback) return;
+  final swap = EngineSwap(
+    ref: ref,
+    getOwnedEngine: getOwnedEngine,
+    setOwnedEngine: setOwnedEngine,
+  );
   final next = MediaKitPlayerEngine();
   next.prepareNativeBackend();
-  setOwnedEngine(next);
-  ref.read(playerEngineRevProvider.notifier).bump();
-  unawaited(old.dispose());
+  swap.install(next);
+  swap.discardWithoutAwaiting(old);
 }
