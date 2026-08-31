@@ -257,6 +257,47 @@ final class VocabularyItem {
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is VocabularyItem &&
+          id == other.id &&
+          word == other.word &&
+          language == other.language &&
+          targetLanguage == other.targetLanguage &&
+          status == other.status &&
+          easeFactor == other.easeFactor &&
+          interval == other.interval &&
+          nextReviewAt == other.nextReviewAt &&
+          reviewsCount == other.reviewsCount &&
+          lastReviewedAt == other.lastReviewedAt &&
+          contextsCount == other.contextsCount &&
+          explanation == other.explanation &&
+          syncStatus == other.syncStatus &&
+          serverUpdatedAt == other.serverUpdatedAt &&
+          createdAt == other.createdAt &&
+          updatedAt == other.updatedAt;
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    word,
+    language,
+    targetLanguage,
+    status,
+    easeFactor,
+    interval,
+    nextReviewAt,
+    reviewsCount,
+    lastReviewedAt,
+    contextsCount,
+    explanation,
+    syncStatus,
+    serverUpdatedAt,
+    createdAt,
+    updatedAt,
+  );
 }
 
 /// Appearance of a word in media / ebook.
@@ -324,6 +365,39 @@ final class VocabularyContext {
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is VocabularyContext &&
+          id == other.id &&
+          vocabularyItemId == other.vocabularyItemId &&
+          text == other.text &&
+          sourceType == other.sourceType &&
+          sourceId == other.sourceId &&
+          locator == other.locator &&
+          ebookLocator == other.ebookLocator &&
+          explanation == other.explanation &&
+          syncStatus == other.syncStatus &&
+          serverUpdatedAt == other.serverUpdatedAt &&
+          createdAt == other.createdAt &&
+          updatedAt == other.updatedAt;
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    vocabularyItemId,
+    text,
+    sourceType,
+    sourceId,
+    locator,
+    ebookLocator,
+    explanation,
+    syncStatus,
+    serverUpdatedAt,
+    createdAt,
+    updatedAt,
+  );
 }
 
 /// Local review audit row (never synced).
