@@ -84,14 +84,20 @@ class _AiPlaygroundScreenState extends ConsumerState<AiPlaygroundScreen> {
   void _maybePromptByokSettings(Object e) {
     if (e is! ByokNotConfiguredFailure || !mounted) return;
     final l10n = AppLocalizations.of(context)!;
-    // Shared notice instead of a raw SnackBar: keeps the message full width and
-    // the CTA styling consistent with every other AI error surface.
+    // Capture the router while this context is alive: actionable notices
+    // persist through the root messenger and can outlive this route, where a
+    // bare `context.push` would look up a deactivated element.
+    final router = GoRouter.of(context);
+    // Shared notice instead of a raw SnackBar: keeps the message full width
+    // and the CTA styling consistent with every other AI error surface. Like
+    // those surfaces, a warning intentionally replaces any visible/queued
+    // notice instead of stacking (FR-006).
     AppNotice.warning(
       context,
       formatByokNotConfiguredMessage(e, l10n),
-      action: SnackBarAction(
+      action: (
         label: l10n.settingsAiProvidersTileTitle,
-        onPressed: () => context.push(aiProvidersSettingsPath),
+        onPressed: () => router.push(aiProvidersSettingsPath),
       ),
     );
   }

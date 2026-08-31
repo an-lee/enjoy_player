@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:enjoy_player/core/layout/enjoy_page_kind.dart';
+import 'package:enjoy_player/core/notices/app_notice.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_button.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_card.dart';
@@ -216,10 +217,9 @@ class _ReviewTab extends ConsumerWidget {
         .start(options);
     if (!context.mounted) return;
     if (!started) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.vocabularyEmptyQueue),
-        ),
+      AppNotice.info(
+        context,
+        AppLocalizations.of(context)!.vocabularyEmptyQueue,
       );
       return;
     }

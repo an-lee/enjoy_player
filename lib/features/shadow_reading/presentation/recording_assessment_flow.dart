@@ -122,6 +122,9 @@ Future<void> triggerRecordingAssessment({
       :final debugMessage,
       :final creditsFailure,
     ):
+      // Router captured while the context is alive: the persisted notice
+      // can outlive this route (see AppNotice).
+      final router = GoRouter.of(context);
       AppNotice.error(
         context,
         recordingAssessmentFailureMessage(
@@ -132,9 +135,9 @@ Future<void> triggerRecordingAssessment({
         ),
         // One-tap recovery rides only on the credits kind (spec 045).
         action: kind == RecordingAssessmentFailureKind.credits
-            ? SnackBarAction(
+            ? (
                 label: creditsCtaLabel(l10n),
-                onPressed: () => context.push('/subscription'),
+                onPressed: () => router.push('/subscription'),
               )
             : null,
       );

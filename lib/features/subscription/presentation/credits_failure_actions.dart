@@ -48,12 +48,15 @@ String creditsCtaLabel(AppLocalizations l10n) =>
 /// one-tap CTA to the subscription screen (plans + credits packages).
 void showCreditsFailureNotice(BuildContext context, CreditsFailure failure) {
   final l10n = AppLocalizations.of(context)!;
+  // Router captured while the context is alive: the persisted notice
+  // can outlive the originating route (see AppNotice).
+  final router = GoRouter.of(context);
   AppNotice.error(
     context,
     creditsFailureMessage(failure, l10n),
-    action: SnackBarAction(
+    action: (
       label: creditsCtaLabel(l10n),
-      onPressed: () => context.push('/subscription'),
+      onPressed: () => router.push('/subscription'),
     ),
   );
 }

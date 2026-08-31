@@ -65,8 +65,9 @@ void main() {
       final scheme = Theme.of(ctx).colorScheme;
       expect(snackBar.backgroundColor, scheme.errorContainer);
       expect(find.byIcon(Icons.error_rounded), findsOneWidget);
-      // Dismiss affordance is rendered by the notice body, not SnackBar's slot.
-      expect(snackBar.showCloseIcon, isFalse);
+      // Dismiss affordance is rendered by the notice body, not SnackBar's slot
+      // (the field is left at its null default; the theme resolves it off).
+      expect(snackBar.showCloseIcon, isNull);
       expect(find.byIcon(Icons.close), findsOneWidget);
     });
 
@@ -84,7 +85,7 @@ void main() {
       final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
       final scheme = Theme.of(ctx).colorScheme;
       expect(snackBar.backgroundColor, scheme.surfaceContainerHigh);
-      expect(snackBar.showCloseIcon, isFalse);
+      expect(snackBar.showCloseIcon, isNull);
       expect(find.byIcon(Icons.close), findsNothing);
     });
 
@@ -102,7 +103,7 @@ void main() {
       final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
       final scheme = Theme.of(ctx).colorScheme;
       expect(snackBar.backgroundColor, scheme.tertiaryContainer);
-      expect(snackBar.showCloseIcon, isFalse);
+      expect(snackBar.showCloseIcon, isNull);
       expect(find.byIcon(Icons.close), findsOneWidget);
     });
 
@@ -268,10 +269,7 @@ void main() {
       AppNotice.error(
         ctx,
         message,
-        action: SnackBarAction(
-          label: 'View plans & packages',
-          onPressed: () => tapped++,
-        ),
+        action: (label: 'View plans & packages', onPressed: () => tapped++),
       );
       await tester.pump();
       await tester.pumpAndSettle();
@@ -315,6 +313,66 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('careful'), findsNothing);
+    });
+
+    // Regression: the dismiss button rides inline with the message (SDK
+    // geometry), so a dismiss-only notice stays at SnackBar's own
+    // single-line height instead of growing a trailing row.
+    testWidgets('dismiss-only notice keeps the single-line height', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(393 * 3, 851 * 3);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+
+      final messengerKey = GlobalKey<ScaffoldMessengerState>();
+      await tester.pumpWidget(host(messengerKey: messengerKey));
+      final ctx = tester.element(find.byType(Scaffold));
+
+      AppNotice.error(ctx, 'one line');
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      // The close button's 48dp tap target sets the row height — anything
+      // taller means the dismiss button grew its own trailing row again.
+      // Measure the bar itself (inside the floating margin wrapper).
+      final bar = tester.renderObject<RenderBox>(
+        find
+            .descendant(
+              of: find.byType(SnackBar),
+              matching: find.byType(Material),
+            )
+            .first,
+      );
+      expect(bar.size.height, lessThan(60));
+      expect(tester.takeException(), isNull);
+    });
+
+    // Regression: the CTA is a body-owned button, so a long localized label
+    // must ellipsize instead of soft-wrapping into a multi-line button.
+    testWidgets('long action label ellipsizes instead of wrapping', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(320 * 3, 700 * 3);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+
+      final messengerKey = GlobalKey<ScaffoldMessengerState>();
+      await tester.pumpWidget(host(messengerKey: messengerKey));
+      final ctx = tester.element(find.byType(Scaffold));
+
+      const label =
+          'View plans & packages and manage your subscription settings';
+      AppNotice.error(
+        ctx,
+        'limit reached',
+        action: (label: label, onPressed: () {}),
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(tester.getSize(find.text(label)).height, lessThan(24));
+      expect(tester.takeException(), isNull);
     });
   });
 }

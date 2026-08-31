@@ -80,6 +80,9 @@ Future<void> launchAsrGeneration(
   } else if (job?.phase == AsrGenerationPhase.error) {
     final l10n = AppLocalizations.of(context)!;
     final failure = job!.creditsFailure;
+    // Router captured while the context is alive: the persisted notice
+    // can outlive this route (see AppNotice).
+    final router = GoRouter.of(context);
     AppNotice.error(
       context,
       // Numbered credits message when the 402 envelope was parsed (spec 045);
@@ -90,9 +93,9 @@ Future<void> launchAsrGeneration(
       // One-tap recovery rides only on credits failures (spec 045).
       action: failure == null
           ? null
-          : SnackBarAction(
+          : (
               label: creditsCtaLabel(l10n),
-              onPressed: () => context.push('/subscription'),
+              onPressed: () => router.push('/subscription'),
             ),
     );
   }
