@@ -64,7 +64,10 @@ void main() {
       final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
       final scheme = Theme.of(ctx).colorScheme;
       expect(snackBar.backgroundColor, scheme.errorContainer);
-      expect(snackBar.showCloseIcon, isTrue);
+      expect(find.byIcon(Icons.error_rounded), findsOneWidget);
+      // Dismiss affordance is rendered by the notice body, not SnackBar's slot.
+      expect(snackBar.showCloseIcon, isFalse);
+      expect(find.byIcon(Icons.close), findsOneWidget);
     });
 
     testWidgets('info uses surfaceContainerHigh without close icon', (
@@ -82,6 +85,7 @@ void main() {
       final scheme = Theme.of(ctx).colorScheme;
       expect(snackBar.backgroundColor, scheme.surfaceContainerHigh);
       expect(snackBar.showCloseIcon, isFalse);
+      expect(find.byIcon(Icons.close), findsNothing);
     });
 
     testWidgets('warning uses tertiaryContainer with close icon', (
@@ -98,7 +102,8 @@ void main() {
       final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
       final scheme = Theme.of(ctx).colorScheme;
       expect(snackBar.backgroundColor, scheme.tertiaryContainer);
-      expect(snackBar.showCloseIcon, isTrue);
+      expect(snackBar.showCloseIcon, isFalse);
+      expect(find.byIcon(Icons.close), findsOneWidget);
     });
 
     testWidgets(
@@ -237,6 +242,79 @@ void main() {
       final box = tester.renderObject<RenderBox>(find.byType(SnackBar));
       expect(box.size.height, lessThan(200));
       expect(tester.takeException(), isNull);
+    });
+
+    // Regression: when SnackBar's built-in action is wider than
+    // `actionOverflowThreshold` (25% of the bar) it moves to its own row and
+    // *still* reserves 40% of the width next to the message, so the
+    // credits-exhausted copy rendered as a narrow ~30% column on phones.
+    // AppNotice owns the action / dismiss layout, so the text keeps the bar's
+    // full inner width.
+    testWidgets('action notice keeps the message at full inner width', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(393 * 3, 851 * 3);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+
+      final messengerKey = GlobalKey<ScaffoldMessengerState>();
+      await tester.pumpWidget(host(messengerKey: messengerKey));
+      final ctx = tester.element(find.byType(Scaffold));
+
+      const message =
+          'AI credits limit reached. Upgrade to Pro or buy a credits '
+          'package to continue.';
+      var tapped = 0;
+      AppNotice.error(
+        ctx,
+        message,
+        action: SnackBarAction(
+          label: 'View plans & packages',
+          onPressed: () => tapped++,
+        ),
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      final barWidth = tester
+          .getSize(
+            find
+                .descendant(
+                  of: find.byType(SnackBar),
+                  matching: find.byType(Material),
+                )
+                .first,
+          )
+          .width;
+      final textWidth = tester.getSize(find.text(message)).width;
+      // Icon (22) + gap (12) + gutters are all that is left of the bar, so the
+      // text owns ~82% of it; the broken layout sat at ~30%.
+      expect(textWidth, greaterThan(barWidth * 0.75));
+      // An actionable notice still waits for the user instead of timing out.
+      expect(tester.widget<SnackBar>(find.byType(SnackBar)).persist, isTrue);
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.text('View plans & packages'));
+      expect(tapped, 1);
+      await tester.pumpAndSettle();
+      expect(find.text(message), findsNothing);
+    });
+
+    testWidgets('body close button dismisses a notice without an action', (
+      tester,
+    ) async {
+      final messengerKey = GlobalKey<ScaffoldMessengerState>();
+      await tester.pumpWidget(host(messengerKey: messengerKey));
+      final ctx = tester.element(find.byType(Scaffold));
+
+      AppNotice.warning(ctx, 'careful');
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.close));
+      await tester.pumpAndSettle();
+
+      expect(find.text('careful'), findsNothing);
     });
   });
 }

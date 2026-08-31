@@ -90,7 +90,7 @@ abstract final class AppNotice {
       late final Color foregroundColor;
       late final IconData icon;
       late final Duration duration;
-      late final bool showCloseIcon;
+      late final bool wantsDismiss;
 
       switch (kind) {
         case _AppNoticeKind.success:
@@ -98,25 +98,25 @@ abstract final class AppNotice {
           foregroundColor = cs.onPrimaryContainer;
           icon = Icons.check_circle_rounded;
           duration = const Duration(seconds: 3);
-          showCloseIcon = false;
+          wantsDismiss = false;
         case _AppNoticeKind.error:
           backgroundColor = cs.errorContainer;
           foregroundColor = cs.onErrorContainer;
           icon = Icons.error_rounded;
           duration = const Duration(seconds: 5);
-          showCloseIcon = true;
+          wantsDismiss = true;
         case _AppNoticeKind.info:
           backgroundColor = cs.surfaceContainerHigh;
           foregroundColor = cs.onSurface;
           icon = Icons.info_rounded;
           duration = const Duration(seconds: 3);
-          showCloseIcon = false;
+          wantsDismiss = false;
         case _AppNoticeKind.warning:
           backgroundColor = cs.tertiaryContainer;
           foregroundColor = cs.onTertiaryContainer;
           icon = Icons.warning_rounded;
           duration = const Duration(seconds: 4);
-          showCloseIcon = true;
+          wantsDismiss = true;
       }
 
       if (kind == _AppNoticeKind.error || kind == _AppNoticeKind.warning) {
@@ -161,18 +161,31 @@ abstract final class AppNotice {
             borderRadius: BorderRadius.circular(radius),
           ),
           backgroundColor: backgroundColor,
-          showCloseIcon: showCloseIcon,
-          closeIconColor: foregroundColor,
+          // Both the action and the dismiss button are laid out by
+          // [_AppNoticeBody] instead of SnackBar's own slots: once the built-in
+          // action is wider than `actionOverflowThreshold` (25% of the bar by
+          // default) Flutter moves it onto its own row and still reserves 40%
+          // of the width beside the message, which squeezed the
+          // credits-exhausted copy into a ~60% column on phones.
+          showCloseIcon: false,
           duration: duration,
-          action: action,
+          // SnackBar infers `persist` from `action != null`; the action now
+          // lives in the body, so actionable notices opt in explicitly and keep
+          // waiting for the user instead of timing out.
+          persist: action != null,
           margin: EdgeInsets.fromLTRB(sideMargin, 0, sideMargin, bottomPad),
-          content: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icon, color: foregroundColor, size: 22),
-              SizedBox(width: tokens?.space12 ?? 12),
-              Expanded(child: Text(message, style: textStyle)),
-            ],
+          content: _AppNoticeBody(
+            icon: icon,
+            message: message,
+            textStyle: textStyle,
+            foregroundColor: foregroundColor,
+            gap: tokens?.space12 ?? 12,
+            action: action,
+            onDismiss: wantsDismiss
+                ? () => m.hideCurrentSnackBar(
+                    reason: SnackBarClosedReason.dismiss,
+                  )
+                : null,
           ),
         ),
       );
@@ -197,5 +210,91 @@ abstract final class AppNotice {
       // No ProviderScope (e.g. isolated widget tests) — snackbar still shows.
       return null;
     }
+  }
+}
+
+/// Notice body: semantic icon, full-width message, and an optional trailing
+/// row with the action and the dismiss button.
+///
+/// Laid out here rather than through [SnackBar.action] /
+/// [SnackBar.showCloseIcon] so the message always owns the bar's full inner
+/// width — see the note in [AppNotice._show].
+class _AppNoticeBody extends StatelessWidget {
+  const _AppNoticeBody({
+    required this.icon,
+    required this.message,
+    required this.textStyle,
+    required this.foregroundColor,
+    required this.gap,
+    this.action,
+    this.onDismiss,
+  });
+
+  final IconData icon;
+  final String message;
+  final TextStyle? textStyle;
+  final Color foregroundColor;
+  final double gap;
+  final SnackBarAction? action;
+  final VoidCallback? onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = Theme.of(context).extension<EnjoyThemeTokens>();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: foregroundColor, size: 22),
+            SizedBox(width: gap),
+            Expanded(child: Text(message, style: textStyle)),
+          ],
+        ),
+        if (action != null || onDismiss != null)
+          Padding(
+            padding: EdgeInsets.only(top: tokens?.space4 ?? 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (action != null)
+                  // Flexible so a long localized label shrinks with the bar
+                  // instead of overflowing it; the dismiss button stays whole.
+                  Flexible(
+                    // Layout only: [SnackBarAction] resolves its own label
+                    // color and keeps its one-shot + auto-dismiss behaviour.
+                    // The horizontal padding replaces the margin SnackBar used
+                    // to add around its own action slot.
+                    child: TextButtonTheme(
+                      data: TextButtonThemeData(
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: tokens?.space8 ?? 8,
+                          ),
+                        ),
+                      ),
+                      child: action!,
+                    ),
+                  ),
+                if (onDismiss != null)
+                  IconButton(
+                    tooltip: MaterialLocalizations.of(context).closeButtonLabel,
+                    onPressed: onDismiss,
+                    icon: const Icon(Icons.close),
+                    iconSize: 22,
+                    color: foregroundColor,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 40,
+                      height: 40,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+      ],
+    );
   }
 }

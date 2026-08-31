@@ -77,8 +77,10 @@ void main() {
       expect(find.textContaining('200'), findsOneWidget);
       expect(find.text('HTTP 402'), findsNothing);
 
-      final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
-      snackBar.action!.onPressed();
+      // The CTA rides in the notice body (AppNotice lays it out itself), so
+      // drive it through the rendered button rather than SnackBar.action.
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.subscriptionViewPlansAndPackages));
       await tester.pumpAndSettle();
 
       expect(find.text('subscription-page'), findsOneWidget);
@@ -100,8 +102,10 @@ void main() {
     );
     expect(find.text('HTTP 402'), findsNothing);
 
-    final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
-    expect(snackBar.action!.label, l10n.subscriptionViewPlansAndPackages);
+    expect(
+      find.widgetWithText(TextButton, l10n.subscriptionViewPlansAndPackages),
+      findsOneWidget,
+    );
   });
 
   testWidgets('repeated credits failures replace rather than stack (FR-006)', (

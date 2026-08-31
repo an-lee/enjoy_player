@@ -168,9 +168,10 @@ void main() {
       expect(find.textContaining('1500'), findsOneWidget);
       expect(find.text('HTTP 402'), findsNothing);
       // The one-tap recovery CTA rides on the warning snackbar (spec 045).
-      expect(find.text(l10n.subscriptionViewPlansAndPackages), findsOneWidget);
-      final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
-      expect(snackBar.action, isNotNull);
+      expect(
+        find.widgetWithText(TextButton, l10n.subscriptionViewPlansAndPackages),
+        findsOneWidget,
+      );
     },
   );
 }
