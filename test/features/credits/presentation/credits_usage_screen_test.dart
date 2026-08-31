@@ -157,6 +157,10 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byType(CreditsUsageScreen), findsOneWidget);
+    // Required / usedBefore / usedAfter columns all render their values.
+    expect(find.text('10'), findsOneWidget);
+    expect(find.text('100'), findsOneWidget);
+    expect(find.text('110'), findsOneWidget);
   });
 
   testWidgets('error state shows retry button', (tester) async {

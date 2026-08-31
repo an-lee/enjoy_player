@@ -1807,6 +1807,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get creditsUsageTableRequired => '需要';
 
   @override
+  String get creditsUsageTableUsedBefore => '用前';
+
+  @override
   String get creditsUsageTableUsedAfter => '用后';
 
   @override
@@ -5128,6 +5131,9 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get creditsUsageTableRequired => '需要';
+
+  @override
+  String get creditsUsageTableUsedBefore => '用前';
 
   @override
   String get creditsUsageTableUsedAfter => '用后';
