@@ -13,6 +13,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:enjoy_player/core/notices/app_notice.dart';
 import 'package:enjoy_player/core/routing/player_navigation.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_button.dart';
@@ -113,12 +114,9 @@ class _AudioStageState extends ConsumerState<AudioStage> {
     // the failure card will be shown by the build method instead.
     if (result == null) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(AppLocalizations.of(context)!.craftSavedToLibrary),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
+    AppNotice.success(
+      context,
+      AppLocalizations.of(context)!.craftSavedToLibrary,
     );
     maybeShowCraftSolidTranscriptSttHint(
       context,

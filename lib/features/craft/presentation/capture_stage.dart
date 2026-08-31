@@ -15,6 +15,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
 import 'package:enjoy_player/core/logging/log.dart';
+import 'package:enjoy_player/core/notices/app_notice.dart';
 import 'package:enjoy_player/features/craft/application/craft_controller.dart';
 import 'package:enjoy_player/features/craft/domain/craft_job_state.dart';
 import 'package:enjoy_player/features/craft/presentation/widgets/craft_failure_card.dart';
@@ -119,9 +120,7 @@ class _CaptureStageState extends ConsumerState<CaptureStage> {
     if (!granted) {
       _recordingPending = false;
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l10n.craftRecordingMicDenied)));
+        AppNotice.warning(context, l10n.craftRecordingMicDenied);
       }
       return;
     }

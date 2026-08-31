@@ -11,6 +11,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:enjoy_player/core/errors/app_failure.dart';
 import 'package:enjoy_player/core/logging/log.dart';
+import 'package:enjoy_player/core/notices/app_notice.dart';
 import 'package:enjoy_player/features/ai/application/ai_byok_error_mapping.dart';
 import 'package:enjoy_player/features/ai/application/ai_modality_config_controller.dart';
 import 'package:enjoy_player/features/ai/application/ai_services.dart';
@@ -83,13 +84,20 @@ class _AiPlaygroundScreenState extends ConsumerState<AiPlaygroundScreen> {
   void _maybePromptByokSettings(Object e) {
     if (e is! ByokNotConfiguredFailure || !mounted) return;
     final l10n = AppLocalizations.of(context)!;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(formatByokNotConfiguredMessage(e, l10n)),
-        action: SnackBarAction(
-          label: l10n.settingsAiProvidersTileTitle,
-          onPressed: () => context.push(aiProvidersSettingsPath),
-        ),
+    // Capture the router while this context is alive: actionable notices
+    // persist through the root messenger and can outlive this route, where a
+    // bare `context.push` would look up a deactivated element.
+    final router = GoRouter.of(context);
+    // Shared notice instead of a raw SnackBar: keeps the message full width
+    // and the CTA styling consistent with every other AI error surface. Like
+    // those surfaces, a warning intentionally replaces any visible/queued
+    // notice instead of stacking (FR-006).
+    AppNotice.warning(
+      context,
+      formatByokNotConfiguredMessage(e, l10n),
+      action: (
+        label: l10n.settingsAiProvidersTileTitle,
+        onPressed: () => router.push(aiProvidersSettingsPath),
       ),
     );
   }

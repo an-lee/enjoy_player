@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:enjoy_player/core/interaction/enjoy_tappable.dart';
+import 'package:enjoy_player/core/notices/app_notice.dart';
 import 'package:enjoy_player/core/routing/player_navigation.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/typography.dart';
@@ -105,9 +106,7 @@ class _VocabularyReviewSessionScreenState
 
     final ctx = ref.read(vocabularyReviewSessionProvider).currentPrimaryContext;
     if (ctx == null || !vocabularyContextSupportsMediaActions(ctx)) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.vocabularyMediaOpenFailed)));
+      AppNotice.error(context, l10n.vocabularyMediaOpenFailed);
       return;
     }
 

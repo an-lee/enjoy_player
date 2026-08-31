@@ -64,7 +64,11 @@ void main() {
       final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
       final scheme = Theme.of(ctx).colorScheme;
       expect(snackBar.backgroundColor, scheme.errorContainer);
-      expect(snackBar.showCloseIcon, isTrue);
+      expect(find.byIcon(Icons.error_rounded), findsOneWidget);
+      // Dismiss affordance is rendered by the notice body, not SnackBar's slot
+      // (the field is left at its null default; the theme resolves it off).
+      expect(snackBar.showCloseIcon, isNull);
+      expect(find.byIcon(Icons.close), findsOneWidget);
     });
 
     testWidgets('info uses surfaceContainerHigh without close icon', (
@@ -81,7 +85,8 @@ void main() {
       final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
       final scheme = Theme.of(ctx).colorScheme;
       expect(snackBar.backgroundColor, scheme.surfaceContainerHigh);
-      expect(snackBar.showCloseIcon, isFalse);
+      expect(snackBar.showCloseIcon, isNull);
+      expect(find.byIcon(Icons.close), findsNothing);
     });
 
     testWidgets('warning uses tertiaryContainer with close icon', (
@@ -98,7 +103,8 @@ void main() {
       final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
       final scheme = Theme.of(ctx).colorScheme;
       expect(snackBar.backgroundColor, scheme.tertiaryContainer);
-      expect(snackBar.showCloseIcon, isTrue);
+      expect(snackBar.showCloseIcon, isNull);
+      expect(find.byIcon(Icons.close), findsOneWidget);
     });
 
     testWidgets(
@@ -236,6 +242,136 @@ void main() {
       expect(snackBar.margin, const EdgeInsets.fromLTRB(16, 0, 16, 50));
       final box = tester.renderObject<RenderBox>(find.byType(SnackBar));
       expect(box.size.height, lessThan(200));
+      expect(tester.takeException(), isNull);
+    });
+
+    // Regression: when SnackBar's built-in action is wider than
+    // `actionOverflowThreshold` (25% of the bar) it moves to its own row and
+    // *still* reserves 40% of the width next to the message, so the
+    // credits-exhausted copy rendered as a narrow ~30% column on phones.
+    // AppNotice owns the action / dismiss layout, so the text keeps the bar's
+    // full inner width.
+    testWidgets('action notice keeps the message at full inner width', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(393 * 3, 851 * 3);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+
+      final messengerKey = GlobalKey<ScaffoldMessengerState>();
+      await tester.pumpWidget(host(messengerKey: messengerKey));
+      final ctx = tester.element(find.byType(Scaffold));
+
+      const message =
+          'AI credits limit reached. Upgrade to Pro or buy a credits '
+          'package to continue.';
+      var tapped = 0;
+      AppNotice.error(
+        ctx,
+        message,
+        action: (label: 'View plans & packages', onPressed: () => tapped++),
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      final barWidth = tester
+          .getSize(
+            find
+                .descendant(
+                  of: find.byType(SnackBar),
+                  matching: find.byType(Material),
+                )
+                .first,
+          )
+          .width;
+      final textWidth = tester.getSize(find.text(message)).width;
+      // Icon (22) + gap (12) + gutters are all that is left of the bar, so the
+      // text owns ~82% of it; the broken layout sat at ~30%.
+      expect(textWidth, greaterThan(barWidth * 0.75));
+      // An actionable notice still waits for the user instead of timing out.
+      expect(tester.widget<SnackBar>(find.byType(SnackBar)).persist, isTrue);
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.text('View plans & packages'));
+      expect(tapped, 1);
+      await tester.pumpAndSettle();
+      expect(find.text(message), findsNothing);
+    });
+
+    testWidgets('body close button dismisses a notice without an action', (
+      tester,
+    ) async {
+      final messengerKey = GlobalKey<ScaffoldMessengerState>();
+      await tester.pumpWidget(host(messengerKey: messengerKey));
+      final ctx = tester.element(find.byType(Scaffold));
+
+      AppNotice.warning(ctx, 'careful');
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.close));
+      await tester.pumpAndSettle();
+
+      expect(find.text('careful'), findsNothing);
+    });
+
+    // Regression: the dismiss button rides inline with the message (SDK
+    // geometry), so a dismiss-only notice stays at SnackBar's own
+    // single-line height instead of growing a trailing row.
+    testWidgets('dismiss-only notice keeps the single-line height', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(393 * 3, 851 * 3);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+
+      final messengerKey = GlobalKey<ScaffoldMessengerState>();
+      await tester.pumpWidget(host(messengerKey: messengerKey));
+      final ctx = tester.element(find.byType(Scaffold));
+
+      AppNotice.error(ctx, 'one line');
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      // The close button's 48dp tap target sets the row height — anything
+      // taller means the dismiss button grew its own trailing row again.
+      // Measure the bar itself (inside the floating margin wrapper).
+      final bar = tester.renderObject<RenderBox>(
+        find
+            .descendant(
+              of: find.byType(SnackBar),
+              matching: find.byType(Material),
+            )
+            .first,
+      );
+      expect(bar.size.height, lessThan(60));
+      expect(tester.takeException(), isNull);
+    });
+
+    // Regression: the CTA is a body-owned button, so a long localized label
+    // must ellipsize instead of soft-wrapping into a multi-line button.
+    testWidgets('long action label ellipsizes instead of wrapping', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(320 * 3, 700 * 3);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+
+      final messengerKey = GlobalKey<ScaffoldMessengerState>();
+      await tester.pumpWidget(host(messengerKey: messengerKey));
+      final ctx = tester.element(find.byType(Scaffold));
+
+      const label =
+          'View plans & packages and manage your subscription settings';
+      AppNotice.error(
+        ctx,
+        'limit reached',
+        action: (label: label, onPressed: () {}),
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(tester.getSize(find.text(label)).height, lessThan(24));
       expect(tester.takeException(), isNull);
     });
   });

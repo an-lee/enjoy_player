@@ -8,6 +8,7 @@ import 'package:enjoy_player/features/pronounce/application/pronounce_playback_c
 import 'package:enjoy_player/features/pronounce/domain/pronounce_target.dart';
 import 'package:enjoy_player/features/pronounce/presentation/pronounce_icon_button.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
+import 'package:go_router/go_router.dart';
 
 class _FixedPlaybackController extends PronouncePlaybackController {
   _FixedPlaybackController(this.initial);
@@ -135,15 +136,32 @@ void main() {
   });
 
   testWidgets(
-    'credits failure shows the shared credits message, not raw text',
+    'credits failure shows the shared message and the CTA navigates',
     (tester) async {
-      await tester.pumpWidget(
-        _wrap(
-          const PronounceIconButton(
-            text: 'hello',
-            localeTag: 'en-US',
-            surfaceId: PronounceSurfaceId.lookup,
+      // Real router: the CTA is captured at show-time and must navigate even
+      // though the persisted notice outlives this route (spec 045 FR-003).
+      final router = GoRouter(
+        initialLocation: '/',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (context, state) => const Scaffold(
+              body: PronounceIconButton(
+                text: 'hello',
+                localeTag: 'en-US',
+                surfaceId: PronounceSurfaceId.lookup,
+              ),
+            ),
           ),
+          GoRoute(
+            path: '/subscription',
+            builder: (context, state) =>
+                const Scaffold(body: Text('subscription-page')),
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        ProviderScope(
           overrides: [
             pronouncePlaybackControllerProvider.overrideWith(
               () => _ThrowingPlaybackController(
@@ -156,6 +174,11 @@ void main() {
               ),
             ),
           ],
+          child: MaterialApp.router(
+            routerConfig: router,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+          ),
         ),
       );
       await tester.pumpAndSettle();
@@ -165,12 +188,17 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
+      // Numbered message, never the raw internal string.
       expect(find.textContaining('1500'), findsOneWidget);
       expect(find.text('HTTP 402'), findsNothing);
-      // The one-tap recovery CTA rides on the warning snackbar (spec 045).
-      expect(find.text(l10n.subscriptionViewPlansAndPackages), findsOneWidget);
-      final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
-      expect(snackBar.action, isNotNull);
+
+      // The one-tap recovery CTA rides on the warning snackbar (spec 045);
+      // drive it through the rendered button and assert it navigates.
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.subscriptionViewPlansAndPackages));
+      await tester.pumpAndSettle();
+
+      expect(find.text('subscription-page'), findsOneWidget);
     },
   );
 }
