@@ -3525,6 +3525,12 @@ abstract class AppLocalizations {
   /// **'Required'**
   String get creditsUsageTableRequired;
 
+  /// No description provided for @creditsUsageTableUsedBefore.
+  ///
+  /// In en, this message translates to:
+  /// **'Used before'**
+  String get creditsUsageTableUsedBefore;
+
   /// No description provided for @creditsUsageTableUsedAfter.
   ///
   /// In en, this message translates to:

@@ -1054,6 +1054,7 @@
   "creditsUsageTableService": "Service",
   "creditsUsageTableTier": "Tier",
   "creditsUsageTableRequired": "Required",
+  "creditsUsageTableUsedBefore": "Used before",
   "creditsUsageTableUsedAfter": "Used after",
   "creditsUsageTableStatus": "Status",
   "creditsUsageAllowed": "Allowed",

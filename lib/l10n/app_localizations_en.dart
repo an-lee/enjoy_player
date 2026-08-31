@@ -1889,6 +1889,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get creditsUsageTableRequired => 'Required';
 
   @override
+  String get creditsUsageTableUsedBefore => 'Used before';
+
+  @override
   String get creditsUsageTableUsedAfter => 'Used after';
 
   @override

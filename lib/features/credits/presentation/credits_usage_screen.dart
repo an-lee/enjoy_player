@@ -556,6 +556,10 @@ class _UsageTable extends StatelessWidget {
         DataColumn(label: Text(l10n.creditsUsageTableService)),
         DataColumn(label: Text(l10n.creditsUsageTableTier)),
         DataColumn(numeric: true, label: Text(l10n.creditsUsageTableRequired)),
+        DataColumn(
+          numeric: true,
+          label: Text(l10n.creditsUsageTableUsedBefore),
+        ),
         DataColumn(numeric: true, label: Text(l10n.creditsUsageTableUsedAfter)),
         DataColumn(label: Text(l10n.creditsUsageTableStatus)),
       ],
@@ -579,6 +583,7 @@ class _UsageTable extends StatelessWidget {
               DataCell(Text(serviceTypeLabel(l10n, log.serviceType))),
               DataCell(Text(log.tier)),
               DataCell(Text('${log.creditsRequired}')),
+              DataCell(Text('${log.usedBefore}')),
               DataCell(Text('${log.usedAfter}')),
               DataCell(
                 Text(
@@ -682,6 +687,21 @@ class _UsageLogCard extends StatelessWidget {
                     ),
                     SizedBox(height: t.space4),
                     Text('${log.creditsRequired}', style: numberStyle),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.creditsUsageTableUsedBefore,
+                      style: tt.labelSmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    SizedBox(height: t.space4),
+                    Text('${log.usedBefore}', style: numberStyle),
                   ],
                 ),
               ),

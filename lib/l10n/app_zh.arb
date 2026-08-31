@@ -791,6 +791,7 @@
   "creditsUsageTableService": "服务",
   "creditsUsageTableTier": "档位",
   "creditsUsageTableRequired": "需要",
+  "creditsUsageTableUsedBefore": "用前",
   "creditsUsageTableUsedAfter": "用后",
   "creditsUsageTableStatus": "状态",
   "creditsUsageAllowed": "允许",
