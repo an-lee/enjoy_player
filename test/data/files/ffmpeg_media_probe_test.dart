@@ -219,9 +219,12 @@ Stream #0:5(en): Subtitle: subrip
       expect(shellEscape('/tmp/has space.wav'), '"/tmp/has space.wav"');
     });
 
-    test('wraps paths containing a double quote in double quotes and escapes it', () {
-      expect(shellEscape(r'/tmp/odd"name.wav'), r'"/tmp/odd\"name.wav"');
-    });
+    test(
+      'wraps paths containing a double quote in double quotes and escapes it',
+      () {
+        expect(shellEscape(r'/tmp/odd"name.wav'), r'"/tmp/odd\"name.wav"');
+      },
+    );
 
     test('wraps paths containing both space and quote', () {
       expect(shellEscape(r'/tmp/a "b".wav'), r'"/tmp/a \"b\".wav"');
