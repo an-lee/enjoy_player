@@ -5,6 +5,9 @@ import 'dart:async';
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../core/analytics/analytics_events.dart';
+import '../../../core/analytics/analytics_failure_reason.dart';
+import '../../../core/analytics/analytics_provider.dart';
 import '../../../core/application/app_preferences_provider.dart';
 import '../../../core/riverpod/async_value_x.dart';
 import '../../../data/db/app_database_provider.dart';
@@ -86,7 +89,11 @@ class TranscriptFetchCtrl extends _$TranscriptFetchCtrl {
       );
     }
 
-    _inFlight = _runResolve(signedIn: signedIn, forceCloud: true);
+    _inFlight = _runResolve(
+      signedIn: signedIn,
+      forceCloud: true,
+      analyticsSource: AnalyticsEvents.sourceYoutube,
+    );
     try {
       await _inFlight;
     } finally {
@@ -97,7 +104,21 @@ class TranscriptFetchCtrl extends _$TranscriptFetchCtrl {
   Future<void> _runResolve({
     required bool signedIn,
     required bool forceCloud,
+
+    /// When set, the transcript-acquisition journey is captured under this
+    /// catalog `source` (spec 046). Only deliberate user actions set it —
+    /// automatic on-open resolution is not counted.
+    String? analyticsSource,
   }) async {
+    final analytics = ref.read(analyticsProvider);
+    if (analyticsSource != null) {
+      analytics.capture(
+        AnalyticsEvents.transcriptGenerationRequested,
+        properties: AnalyticsEvents.transcriptRequested(
+          source: analyticsSource,
+        ),
+      );
+    }
     final repo = ref.read(transcriptRepositoryProvider);
     // Read the learner's native + learning languages here, in the single
     // shared helper used by BOTH `resolveOnOpen` (media open) and
@@ -123,7 +144,26 @@ class TranscriptFetchCtrl extends _$TranscriptFetchCtrl {
         status: result.uiStatus,
         errorMessage: result.errorMessage,
       );
+      if (analyticsSource != null &&
+          result.uiStatus != TranscriptFetchStatus.error) {
+        analytics.capture(
+          AnalyticsEvents.transcriptGenerationCompleted,
+          properties: AnalyticsEvents.transcriptCompleted(
+            source: analyticsSource,
+            durationSeconds: 0,
+          ),
+        );
+      }
     } on Object catch (e) {
+      if (analyticsSource != null) {
+        analytics.capture(
+          AnalyticsEvents.transcriptGenerationFailed,
+          properties: AnalyticsEvents.transcriptFailed(
+            source: analyticsSource,
+            reason: analyticsFailureReasonFromObject(e),
+          ),
+        );
+      }
       if (!ref.mounted) return;
       state = TranscriptFetchUiState(
         status: TranscriptFetchStatus.error,

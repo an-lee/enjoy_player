@@ -59,6 +59,7 @@ class CreditsPackagePurchaseCtrl extends _$CreditsPackagePurchaseCtrl {
       ref
           .read(tierReconcileCtrlProvider.notifier)
           .markPackagePurchasePending(
+            packageId: packageId,
             expectedCredits: expectedCredits,
             baselinePermanent: baseline,
           );

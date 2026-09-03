@@ -56,6 +56,11 @@ abstract final class SettingsKeys {
   /// When `true`, allowlisted diagnostic loggers write FINE records to the log file.
   static const String diagnosticsVerboseEnabled = 'diagnostics.verbose_enabled';
 
+  /// When `false`, all product analytics capture stops immediately (spec
+  /// 046). Device-global — covers anonymous pre-sign-in events and survives
+  /// sign-out. Missing value ≡ `true` (capture on, visible opt-out).
+  static const String analyticsCaptureEnabled = 'analytics.capture_enabled';
+
   /// When `true`, the transcript panel highlights the current word if the cue
   /// already has stored word timings. Missing value ≡ off.
   static const String transcriptKaraokeHighlight =
@@ -115,6 +120,7 @@ abstract final class SettingsKeys {
     updateSnoozeUntil,
     updateSnoozeVersion,
     diagnosticsVerboseEnabled,
+    analyticsCaptureEnabled,
     transcriptKaraokeHighlight,
     transcriptIpaOverlay,
     playerPreferencesV1,

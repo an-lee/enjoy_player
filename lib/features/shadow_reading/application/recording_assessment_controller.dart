@@ -8,11 +8,14 @@ import 'package:azure_speech/azure_speech.dart';
 import 'package:meta/meta.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'package:enjoy_player/core/analytics/analytics_events.dart';
+import 'package:enjoy_player/core/analytics/analytics_provider.dart';
 import 'package:enjoy_player/core/application/app_language_catalog.dart';
 import 'package:enjoy_player/core/application/app_preferences_provider.dart';
 import 'package:enjoy_player/core/errors/app_failure.dart';
 import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/core/riverpod/async_value_x.dart';
+import 'package:enjoy_player/data/db/media_registry.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
 import 'package:enjoy_player/data/db/app_database_provider.dart';
 import 'package:enjoy_player/features/ai/application/ai_services.dart';
@@ -186,6 +189,27 @@ class RecordingAssessmentController extends _$RecordingAssessmentController {
         row.id,
         SyncAction.update,
       );
+
+      // A graded take on a crafted item completes the craft practice journey
+      // (spec 046). Craft-ness is best-effort: a registry miss simply means
+      // "not crafted" and no event is sent.
+      try {
+        final media = await MediaRegistry(
+          ref.read(appDatabaseProvider),
+        ).getById(row.targetId);
+        if (media?.provider == 'craft') {
+          ref
+              .read(analyticsProvider)
+              .capture(
+                AnalyticsEvents.craftPracticeCompleted,
+                properties: AnalyticsEvents.craftCompleted(
+                  durationSeconds: (row.duration / 1000).round(),
+                ),
+              );
+        }
+      } on Object catch (e, st) {
+        _log.fine('craft practice attribution skipped', e, st);
+      }
 
       return RecordingAssessmentSuccess(result.detail);
     } on CreditsFailure catch (failure, st) {

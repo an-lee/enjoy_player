@@ -8,6 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:enjoy_player/core/application/app_language_catalog.dart';
 import 'package:enjoy_player/core/application/app_preferences_provider.dart';
+import 'package:enjoy_player/core/analytics/analytics_events.dart';
+import 'package:enjoy_player/core/analytics/analytics_provider.dart';
 import 'package:enjoy_player/core/errors/app_failure.dart';
 import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/core/riverpod/async_value_x.dart';
@@ -391,6 +393,19 @@ class CraftController extends Notifier<CraftJobState> {
       );
 
       state = state.copyWith(isSaving: false, resultMediaId: mediaId);
+      // A new crafted item landed in the library (spec 046 catalog). The
+      // app's source flags map onto the catalog `mode` vocabulary; edits and
+      // dedupe hits are not creations and are not counted.
+      ref
+          .read(analyticsProvider)
+          .capture(
+            AnalyticsEvents.craftProjectCreated,
+            properties: AnalyticsEvents.craftCreated(
+              mode: sourceFlag == 'craft-express'
+                  ? AnalyticsEvents.modeCapture
+                  : AnalyticsEvents.modeFromText,
+            ),
+          );
       return CraftSaveResult(
         mediaId: mediaId,
         wroteSolidTranscript: wroteSolid,

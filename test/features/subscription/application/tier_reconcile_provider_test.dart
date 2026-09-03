@@ -226,6 +226,7 @@ void main() {
     final notifier = container.read(tierReconcileCtrlProvider.notifier);
 
     notifier.markPackagePurchasePending(
+      packageId: 'pkg-test',
       expectedCredits: 200,
       baselinePermanent: 100,
     );
@@ -253,6 +254,7 @@ void main() {
       final notifier = container.read(tierReconcileCtrlProvider.notifier);
 
       notifier.markPackagePurchasePending(
+        packageId: 'pkg-test',
         expectedCredits: 200,
         baselinePermanent: null,
       );

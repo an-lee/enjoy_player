@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 
+import 'package:enjoy_player/core/analytics/analytics_bootstrap.dart';
 import 'package:enjoy_player/core/application/app_preferences_provider.dart';
 import 'package:enjoy_player/core/layout/constrained_app_viewport.dart';
 import 'package:enjoy_player/core/logging/log.dart';
@@ -236,6 +237,11 @@ class _EnjoyAppState extends ConsumerState<EnjoyApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Product analytics bootstrap (spec 046, research D8): fire-and-forget —
+    // the first frame never waits on vendor setup. The provider is keepAlive
+    // and builds once, so this is idempotent across rebuilds/restarts of the
+    // widget subtree.
+    unawaited(ref.read(analyticsInitProvider.future));
   }
 
   @override

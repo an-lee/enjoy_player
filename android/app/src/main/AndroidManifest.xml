@@ -51,6 +51,13 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- PostHog: manual init only (specs/046). The Dart side configures
+             Posthog() from --dart-define values so a tokenless/debug build is
+             fully inert. Enabling AUTO_INIT here would hard-init the native SDK
+             without a token before Dart runs. -->
+        <meta-data
+            android:name="com.posthog.posthog.AUTO_INIT"
+            android:value="false" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

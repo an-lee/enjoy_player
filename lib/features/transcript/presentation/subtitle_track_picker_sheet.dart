@@ -10,6 +10,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:enjoy_player/core/analytics/analytics_events.dart';
+import 'package:enjoy_player/core/analytics/analytics_failure_reason.dart';
+import 'package:enjoy_player/core/analytics/analytics_provider.dart';
 import 'package:enjoy_player/core/application/app_preferences_provider.dart';
 import 'package:enjoy_player/core/notices/app_notice.dart';
 import 'package:enjoy_player/core/riverpod/async_value_x.dart';
@@ -145,13 +148,39 @@ class _SubtitleTrackPickerSheetState
     final trimmed = lang.trim();
     if (trimmed.isEmpty) return;
 
-    await ref
-        .read(transcriptRepositoryProvider)
-        .importSubtitle(
-          mediaId: widget.mediaId,
-          file: XFile(f.path!),
-          language: trimmed,
-        );
+    final analytics = ref.read(analyticsProvider);
+    final requestedAt = DateTime.now();
+    analytics.capture(
+      AnalyticsEvents.transcriptGenerationRequested,
+      properties: AnalyticsEvents.transcriptRequested(
+        source: AnalyticsEvents.sourceLocalFile,
+      ),
+    );
+    try {
+      await ref
+          .read(transcriptRepositoryProvider)
+          .importSubtitle(
+            mediaId: widget.mediaId,
+            file: XFile(f.path!),
+            language: trimmed,
+          );
+    } on Object catch (e) {
+      analytics.capture(
+        AnalyticsEvents.transcriptGenerationFailed,
+        properties: AnalyticsEvents.transcriptFailed(
+          source: AnalyticsEvents.sourceLocalFile,
+          reason: analyticsFailureReasonFromObject(e),
+        ),
+      );
+      rethrow;
+    }
+    analytics.capture(
+      AnalyticsEvents.transcriptGenerationCompleted,
+      properties: AnalyticsEvents.transcriptCompleted(
+        source: AnalyticsEvents.sourceLocalFile,
+        durationSeconds: DateTime.now().difference(requestedAt).inSeconds,
+      ),
+    );
     if (mounted) {
       AppNotice.success(
         context,

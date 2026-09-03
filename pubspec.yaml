@@ -61,6 +61,10 @@ dependencies:
   app_links: ^7.2.1
   uuid: ^4.5.1
   palette_generator: ^0.3.3+7
+  # Product analytics (specs/046-posthog-analytics-integration). Manual init:
+  # AUTO_INIT=false in each platform manifest; token arrives via --dart-define
+  # (lib/core/analytics/analytics_config.dart). No token ⇒ fully inert.
+  posthog_flutter: ^5.39.0
   flutter_inappwebview: ^6.1.5
   flutter_markdown_plus: ^1.0.12
   flutter_svg: ^2.2.3

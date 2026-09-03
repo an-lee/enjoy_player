@@ -37,6 +37,9 @@ import 'package:enjoy_player/features/asr/application/asr_failure_messages.dart'
 import 'package:enjoy_player/features/asr/application/asr_generation_job.dart';
 import 'package:enjoy_player/features/asr/data/asr_audio_extractor.dart';
 import 'package:enjoy_player/features/asr/data/asr_long_form_attempt_store.dart';
+import 'package:enjoy_player/core/analytics/analytics_events.dart';
+import 'package:enjoy_player/core/analytics/analytics_failure_reason.dart';
+import 'package:enjoy_player/core/analytics/analytics_provider.dart';
 import 'package:enjoy_player/features/asr/domain/asr_audio_extraction_failure.dart';
 import 'package:enjoy_player/features/asr/domain/asr_long_form_constants.dart';
 import 'package:enjoy_player/features/asr/domain/asr_long_form_job_exception.dart';
@@ -83,6 +86,16 @@ class AsrGenerationController extends _$AsrGenerationController {
     }
     final cancel = Completer<void>();
     _cancelToken = cancel;
+
+    ref
+        .read(analyticsProvider)
+        .capture(
+          AnalyticsEvents.transcriptGenerationRequested,
+          properties: AnalyticsEvents.transcriptRequested(
+            source: AnalyticsEvents.sourceAsr,
+            mediaKind: kind.name,
+          ),
+        );
 
     final fallbackLanguage = await _resolveLanguage(null, mediaId);
     if (fallbackLanguage == null) {
@@ -283,7 +296,7 @@ class AsrGenerationController extends _$AsrGenerationController {
       try {
         result = await asrService.transcribe(req);
       } on ByokNotConfiguredFailure catch (_) {
-        _setError('asrErrorByokMissing');
+        _setError('asrErrorByokMissing', reason: AnalyticsFailureReason.auth);
         return;
       } on AsrLongFormJobException catch (e) {
         if (e.category == 'cancelled' || cancel.isCompleted) {
@@ -300,6 +313,7 @@ class AsrGenerationController extends _$AsrGenerationController {
           creditsFailure: key == 'asrErrorCreditsExhausted'
               ? const CreditsFailure('')
               : null,
+          reason: asrLongFormFailureReason(e.category),
         );
         return;
       } on Object catch (e, st) {
@@ -312,6 +326,9 @@ class AsrGenerationController extends _$AsrGenerationController {
         _setError(
           _mapProviderError(e),
           creditsFailure: e is CreditsFailure ? e : null,
+          reason: e is CreditsFailure
+              ? AnalyticsFailureReason.credits
+              : analyticsFailureReasonFromObject(e),
         );
         return;
       }
@@ -380,6 +397,15 @@ class AsrGenerationController extends _$AsrGenerationController {
           trackId: trackId,
         ),
       );
+      ref
+          .read(analyticsProvider)
+          .capture(
+            AnalyticsEvents.transcriptGenerationCompleted,
+            properties: AnalyticsEvents.transcriptCompleted(
+              source: AnalyticsEvents.sourceAsr,
+              durationSeconds: DateTime.now().difference(startedAt).inSeconds,
+            ),
+          );
     } finally {
       // Free audio bytes eagerly.
       audio = null;
@@ -413,12 +439,28 @@ class AsrGenerationController extends _$AsrGenerationController {
     }
   }
 
+  /// Maps the worker's long-form failure categories onto the coarse
+  /// analytics vocabulary (never raw categories in payloads).
+  static AnalyticsFailureReason asrLongFormFailureReason(String category) =>
+      switch (category) {
+        'billing_exhausted' ||
+        'credits_exhausted' => AnalyticsFailureReason.credits,
+        'unsupported_media' => AnalyticsFailureReason.local,
+        'provider_timeout' => AnalyticsFailureReason.network,
+        'provider_failure' => AnalyticsFailureReason.server,
+        _ => AnalyticsFailureReason.unknown,
+      };
+
   void _setPhase(AsrGenerationPhase phase) {
     if (_cancelToken?.isCompleted ?? false) return;
     _updateJob((j) => j.copyWith(phase: phase));
   }
 
-  void _setError(String messageKey, {CreditsFailure? creditsFailure}) {
+  void _setError(
+    String messageKey, {
+    CreditsFailure? creditsFailure,
+    AnalyticsFailureReason reason = AnalyticsFailureReason.unknown,
+  }) {
     state = AsyncValue.data(
       AsrGenerationJob(
         mediaId: mediaId,
@@ -429,6 +471,15 @@ class AsrGenerationController extends _$AsrGenerationController {
         completedAt: DateTime.now(),
       ),
     );
+    ref
+        .read(analyticsProvider)
+        .capture(
+          AnalyticsEvents.transcriptGenerationFailed,
+          properties: AnalyticsEvents.transcriptFailed(
+            source: AnalyticsEvents.sourceAsr,
+            reason: reason,
+          ),
+        );
   }
 
   void _setCancelled() {
@@ -440,6 +491,15 @@ class AsrGenerationController extends _$AsrGenerationController {
         completedAt: DateTime.now(),
       ),
     );
+    ref
+        .read(analyticsProvider)
+        .capture(
+          AnalyticsEvents.transcriptGenerationFailed,
+          properties: AnalyticsEvents.transcriptFailed(
+            source: AnalyticsEvents.sourceAsr,
+            reason: AnalyticsFailureReason.cancelled,
+          ),
+        );
   }
 
   void _updateJob(AsrGenerationJob Function(AsrGenerationJob) update) {

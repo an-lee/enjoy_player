@@ -3983,5 +3983,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsResetProductTipsDone => 'Product tips reset';
 
   @override
+  String get settingsAnalyticsCaptureTitle => 'Usage analytics';
+
+  @override
+  String get settingsAnalyticsCaptureSubtitle =>
+      'Share anonymous usage data to help improve Enjoy. Never includes your media, transcripts, or notes.';
+
+  @override
   String get transcriptEmptyFetchYoutube => 'Fetch transcript';
 }

@@ -1985,5 +1985,7 @@
   "settingsResetProductTipsConfirmBody": "Tips for Craft, Import, transcripts, and practice will show again. Your library and account stay unchanged.",
   "settingsResetProductTipsConfirmAction": "Reset tips",
   "settingsResetProductTipsDone": "Product tips reset",
+  "settingsAnalyticsCaptureTitle": "Usage analytics",
+  "settingsAnalyticsCaptureSubtitle": "Share anonymous usage data to help improve Enjoy. Never includes your media, transcripts, or notes.",
   "transcriptEmptyFetchYoutube": "Fetch transcript"
 }

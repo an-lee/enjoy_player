@@ -16,7 +16,7 @@ Section content lives in one file per section under `lib/features/settings/prese
 
 ## Search
 
-`SettingsSearchField` writes to `settingsSearchQueryProvider` (a `@riverpod` string notifier). `filterSettingsEntries(query, entries)` (pure function, `lib/features/settings/domain/settings_search_entry.dart`) matches case-insensitively against each row's title and keywords in the static `SettingsSearchEntry` registry (one entry per section/row — Cloud sync, Appearance & Language ×3, AI providers, Recording, Keyboard shortcuts ×2, Developer ×3, About ×2 — the "Contact the developer" row matches keywords like "email"/"wechat"/"mixin"). Account is no longer in the registry: account management lives on the Profile tab, so the Settings search index is scoped to non-account surfaces.
+`SettingsSearchField` writes to `settingsSearchQueryProvider` (a `@riverpod` string notifier). `filterSettingsEntries(query, entries)` (pure function, `lib/features/settings/domain/settings_search_entry.dart`) matches case-insensitively against each row's title and keywords in the static `SettingsSearchEntry` registry (one entry per section/row — Cloud sync, Appearance & Language ×3, AI providers, Recording, Keyboard shortcuts ×2, Developer ×3, About ×3 — the "Contact the developer" row matches keywords like "email"/"wechat"/"mixin", and the "Usage analytics" row matches "analytics"/"privacy"/"telemetry"). Account is no longer in the registry: account management lives on the Profile tab, so the Settings search index is scoped to non-account surfaces.
 
 - A match inside a currently-collapsed section (Developer/About) auto-expands that section so the match is visible.
 - A query matching nothing shows a "no results" empty state with a clear affordance that restores the prior collapse state.
@@ -39,7 +39,7 @@ Every settings row is a `SettingsRow` (icon, title, subtitle, value badge, optio
 - **Recording** (`sections/recording_section.dart`) — microphone picker dialog (auto + every input device returned by `AudioRecorder.listInputDevices()`; see [`echo-mode.md`](echo-mode.md) for the virtual-device skip list). An empty device list still renders an explanatory subtitle rather than a blank row.
 - **Keyboard shortcuts** (`sections/keyboard_shortcuts_section.dart`) — link to `/settings/hotkeys` (full editor); desktop-only.
 - **Developer** (`sections/developer_section.dart`) — API base URL editors for the **Worker** and the **AI gateway**, plus a link to the AI playground (see [`ai.md`](ai.md)); visible only in debug builds; default-collapsed.
-- **About / update** (`sections/about_section.dart`, wrapping `about_section_card.dart`) — gradient About card, a link into the update prompt flow (see [`update.md`](update.md)), and a "Contact the developer" row that opens `developer_contact_sheet.dart`, a bottom sheet listing Email/WeChat/Mixin; tapping any row copies the value to the clipboard and shows an `AppNotice.success` confirmation. Default-collapsed.
+- **About / update** (`sections/about_section.dart`, wrapping `about_section_card.dart`) — gradient About card, a link into the update prompt flow (see [`update.md`](update.md)), a "Contact the developer" row that opens `developer_contact_sheet.dart`, a bottom sheet listing Email/WeChat/Mixin (tapping any row copies the value to the clipboard and shows an `AppNotice.success` confirmation), and the **Usage analytics** opt-out switch (`analytics_capture_toggle_row.dart`, see [`analytics.md`](analytics.md)). Default-collapsed.
 
 ## Sub-screens
 

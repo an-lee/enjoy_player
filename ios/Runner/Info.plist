@@ -2,6 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- PostHog: manual init only (specs/046) — the Dart side configures
+	     Posthog() from --dart-define values so a tokenless/debug build is
+	     fully inert. -->
+	<key>com.posthog.posthog.AUTO_INIT</key>
+	<false/>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

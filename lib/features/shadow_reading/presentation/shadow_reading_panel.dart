@@ -19,6 +19,8 @@ import 'package:enjoy_player/data/db/app_database_provider.dart';
 import 'package:enjoy_player/data/db/media_registry.dart';
 import 'package:enjoy_player/features/hotkeys/presentation/hotkey_tooltip_label.dart';
 import 'package:enjoy_player/features/shadow_reading/application/recording_input_device_controller.dart';
+import 'package:enjoy_player/core/analytics/analytics_events.dart';
+import 'package:enjoy_player/core/analytics/analytics_provider.dart';
 import 'package:enjoy_player/features/shadow_reading/application/shadow_reading_hotkey_bus.dart';
 import 'package:enjoy_player/features/shadow_reading/application/shadow_take_store.dart';
 import 'package:enjoy_player/features/shadow_reading/presentation/recording_assessment_flow.dart';
@@ -77,6 +79,7 @@ class ShadowReadingPanel extends ConsumerStatefulWidget {
     required this.referenceText,
     required this.echoActive,
     this.currentTimeSec,
+    this.analyticsSurface = AnalyticsEvents.surfaceShadowReading,
     super.key,
   });
 
@@ -88,6 +91,10 @@ class ShadowReadingPanel extends ConsumerStatefulWidget {
   final String referenceText;
   final bool echoActive;
   final double? currentTimeSec;
+
+  /// Analytics `surface` tag (spec 046 catalog) — the panel is embedded both
+  /// in the player transcript (default) and vocabulary flashcard practice.
+  final String analyticsSurface;
 
   @override
   ConsumerState<ShadowReadingPanel> createState() => _ShadowReadingPanelState();
@@ -268,6 +275,18 @@ class _ShadowReadingPanelState extends ConsumerState<ShadowReadingPanel>
         AppNotice.warning(context, l10n.shadowRecordingSilentWarning);
       }
       setState(() => _selectedRecordingId = outcome.row.id);
+      // Take persisted — a completed practice session (spec 046 catalog).
+      // `Recordings.duration` is milliseconds.
+      ref
+          .read(analyticsProvider)
+          .capture(
+            AnalyticsEvents.practiceSessionCompleted,
+            properties: AnalyticsEvents.practiceCompleted(
+              surface: widget.analyticsSurface,
+              durationSeconds: (outcome.row.duration / 1000).round(),
+              itemsCompleted: 1,
+            ),
+          );
       return;
     }
 
@@ -316,6 +335,15 @@ class _ShadowReadingPanelState extends ConsumerState<ShadowReadingPanel>
     _elapsed = Duration.zero;
     _startElapsedTicker();
     setState(() {});
+    ref
+        .read(analyticsProvider)
+        .capture(
+          AnalyticsEvents.practiceSessionStarted,
+          properties: AnalyticsEvents.practiceStarted(
+            surface: widget.analyticsSurface,
+            itemCount: 1,
+          ),
+        );
   }
 
   TakeRegion get _takeRegion => TakeRegion(

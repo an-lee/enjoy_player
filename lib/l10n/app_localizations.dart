@@ -7302,6 +7302,18 @@ abstract class AppLocalizations {
   /// **'Product tips reset'**
   String get settingsResetProductTipsDone;
 
+  /// No description provided for @settingsAnalyticsCaptureTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage analytics'**
+  String get settingsAnalyticsCaptureTitle;
+
+  /// No description provided for @settingsAnalyticsCaptureSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share anonymous usage data to help improve Enjoy. Never includes your media, transcripts, or notes.'**
+  String get settingsAnalyticsCaptureSubtitle;
+
   /// No description provided for @transcriptEmptyFetchYoutube.
   ///
   /// In en, this message translates to:
