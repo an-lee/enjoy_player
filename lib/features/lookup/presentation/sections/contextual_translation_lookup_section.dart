@@ -71,7 +71,7 @@ class ContextualTranslationLookupSection extends ConsumerWidget {
 /// still running; when the response arrives, state is never applied and the UI
 /// stays on the loading shimmer. This widget keeps a single [Future] tied to
 /// [ConsumerState] instead. Completed values are stored in
-/// [AiContextualTranslationCache].
+/// [AiResultCache<ContextualTranslationResult>].
 class _ContextualFetchBody extends ConsumerStatefulWidget {
   const _ContextualFetchBody({
     required this.params,

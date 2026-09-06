@@ -6,35 +6,24 @@ import 'package:enjoy_player/features/ai/application/ai_result_cache.dart';
 import 'package:enjoy_player/features/ai/domain/ai_kind.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-class _StringCache extends AiResultCache<String> {
-  _StringCache({
-    required super.dao,
-    required super.l1,
-    required super.policies,
-  });
-
-  @override
-  String fromJson(Map<String, dynamic> json) => json['v'] as String;
-
-  @override
-  Map<String, dynamic> toJson(String value) => {'v': value};
+AiResultCache<String> _stringCache(AppDatabase db) {
+  return AiResultCache<String>(
+    dao: db.aiCacheDao,
+    l1: L1Store<String, String>(capacity: 8, ttl: const Duration(seconds: 1)),
+    policies: defaultAiKindPolicies,
+    fromJson: (json) => json['v'] as String,
+    toJson: (value) => {'v': value},
+  );
 }
 
 void main() {
   group('AiResultCache', () {
     late AppDatabase db;
-    late _StringCache cache;
+    late AiResultCache<String> cache;
 
     setUp(() {
       db = AppDatabase(executor: NativeDatabase.memory());
-      cache = _StringCache(
-        dao: db.aiCacheDao,
-        l1: L1Store<String, String>(
-          capacity: 8,
-          ttl: const Duration(seconds: 1),
-        ),
-        policies: defaultAiKindPolicies,
-      );
+      cache = _stringCache(db);
     });
 
     tearDown(() async {
@@ -250,7 +239,7 @@ void main() {
       // Translation's default cap is 4096; that's higher than 50, so prune
       // should be a no-op here. To exercise the eviction path, lower the
       // cap by constructing a custom policies map.
-      final tightCache = _StringCache(
+      final tightCache = AiResultCache<String>(
         dao: db.aiCacheDao,
         l1: L1Store<String, String>(
           capacity: 4,
@@ -263,21 +252,12 @@ void main() {
             l2AgeCutoff: Duration(days: 30),
           ),
         },
+        fromJson: (json) => json['v'] as String,
+        toJson: (value) => {'v': value},
       );
       await tightCache.prune();
       final after = await db.aiCacheDao.countForKind('translation');
       expect(after, 5);
-    });
-
-    test('stats returns snapshot of L1 and L2', () async {
-      await cache.remember(kind: AiKind.translation, key: 'a', value: 'a');
-      await cache.remember(kind: AiKind.dictionary, key: 'b', value: 'b');
-      final stats = await cache.stats();
-      expect(stats.l1Size, 2);
-      expect(stats.l1Capacity, 8);
-      expect(stats.l2RowCounts[AiKind.translation], 1);
-      expect(stats.l2RowCounts[AiKind.dictionary], 1);
-      expect(stats.l2RowCounts[AiKind.contextualTranslation], 0);
     });
 
     test('L2 I/O failure degrades gracefully on lookup', () async {

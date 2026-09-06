@@ -20,9 +20,3 @@ String? mapTranscriptLanguageToAzure(String? languageCode) {
   }
   return resolved;
 }
-
-/// Legacy helper — prefer [mapTranscriptLanguageToAzure] and handle `null`.
-@Deprecated('Use mapTranscriptLanguageToAzure and handle null')
-String mapTranscriptLanguageToAzureOrEnUs(String? languageCode) {
-  return mapTranscriptLanguageToAzure(languageCode) ?? 'en-US';
-}

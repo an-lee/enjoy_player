@@ -26,16 +26,6 @@ AssessmentRequest _assessReq() => AssessmentRequest(
 );
 
 void main() {
-  group('UnimplementedAsrCapability', () {
-    test('transcribe() throws UnimplementedError', () async {
-      const c = UnimplementedAsrCapability();
-      await expectLater(
-        () => c.transcribe(_asrReq()),
-        throwsA(isA<UnimplementedError>()),
-      );
-    });
-  });
-
   group('ByokNotConfiguredAsrCapability', () {
     test('transcribe() throws ByokNotConfiguredFailure for ASR', () async {
       const c = ByokNotConfiguredAsrCapability();
@@ -45,24 +35,6 @@ void main() {
       } on ByokNotConfiguredFailure catch (e) {
         expect(e.modality, ModalityKind.asr);
       }
-    });
-  });
-
-  group('UnimplementedLlmCapability', () {
-    test('generateChatCompletion() throws UnimplementedError', () async {
-      const c = UnimplementedLlmCapability();
-      await expectLater(
-        () => c.generateChatCompletion(messages: const []),
-        throwsA(isA<UnimplementedError>()),
-      );
-    });
-
-    test('generateText() throws UnimplementedError', () async {
-      const c = UnimplementedLlmCapability();
-      await expectLater(
-        () => c.generateText(userPrompt: 'hi'),
-        throwsA(isA<UnimplementedError>()),
-      );
     });
   });
 
@@ -91,59 +63,6 @@ void main() {
     });
   });
 
-  group('UnimplementedTranslationCapability', () {
-    test('translate() throws UnimplementedError', () async {
-      const c = UnimplementedTranslationCapability();
-      await expectLater(
-        () => c.translate(
-          text: 'hola',
-          sourceLanguage: 'es',
-          targetLanguage: 'en',
-        ),
-        throwsA(isA<UnimplementedError>()),
-      );
-    });
-  });
-
-  group('UnimplementedContextualTranslationCapability', () {
-    test('translate() throws UnimplementedError', () async {
-      const c = UnimplementedContextualTranslationCapability();
-      await expectLater(
-        () => c.translate(
-          text: 'bank',
-          sourceLanguage: 'en',
-          targetLanguage: 'zh',
-          context: 'deposit money',
-        ),
-        throwsA(isA<UnimplementedError>()),
-      );
-    });
-  });
-
-  group('UnimplementedDictionaryCapability', () {
-    test('lookupDictionary() throws UnimplementedError', () async {
-      const c = UnimplementedDictionaryCapability();
-      await expectLater(
-        () => c.lookupDictionary(
-          word: 'bank',
-          sourceLanguage: 'en',
-          targetLanguage: 'zh',
-        ),
-        throwsA(isA<UnimplementedError>()),
-      );
-    });
-  });
-
-  group('UnimplementedTtsCapability', () {
-    test('synthesize() throws UnimplementedError', () async {
-      const c = UnimplementedTtsCapability();
-      await expectLater(
-        () => c.synthesize(const TtsRequest(text: 'hi', language: 'en')),
-        throwsA(isA<UnimplementedError>()),
-      );
-    });
-  });
-
   group('ByokNotConfiguredTtsCapability', () {
     test('synthesize() throws ByokNotConfiguredFailure for TTS', () async {
       const c = ByokNotConfiguredTtsCapability();
@@ -153,16 +72,6 @@ void main() {
       } on ByokNotConfiguredFailure catch (e) {
         expect(e.modality, ModalityKind.tts);
       }
-    });
-  });
-
-  group('UnimplementedAssessmentCapability', () {
-    test('assess() throws UnimplementedError', () async {
-      const c = UnimplementedAssessmentCapability();
-      await expectLater(
-        () => c.assess(_assessReq()),
-        throwsA(isA<UnimplementedError>()),
-      );
     });
   });
 
