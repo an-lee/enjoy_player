@@ -20,9 +20,6 @@ enum EnjoyPageKind {
 
   /// Narrow auth column (sign-in).
   auth,
-
-  /// Player chrome — no page max-width (player owns its layout).
-  playerChrome,
 }
 
 /// Horizontal gutter for [paneWidth] using compact vs default tokens.
@@ -34,7 +31,7 @@ double pageGutterOf(BuildContext context, double paneWidth) {
 /// Max content width for [kind], or `null` when the pane should be full-bleed.
 double? maxWidthForPageKind(EnjoyThemeTokens tokens, EnjoyPageKind kind) {
   return switch (kind) {
-    EnjoyPageKind.browse || EnjoyPageKind.playerChrome => null,
+    EnjoyPageKind.browse => null,
     EnjoyPageKind.hub => tokens.hubMaxWidth,
     EnjoyPageKind.form => tokens.formMaxWidth,
     EnjoyPageKind.auth => tokens.modalMaxWidth,

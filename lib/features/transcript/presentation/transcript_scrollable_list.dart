@@ -398,7 +398,7 @@ class _TranscriptScrollableListState
         widget.mediaId,
       ).select((h) => h.cueIndex),
     );
-    final density = TranscriptDensity.of(context);
+    final density = transcriptDensityOf(context);
     final secondaryAsync = ref.watch(
       secondaryTranscriptLinesForMediaProvider(widget.mediaId),
     );

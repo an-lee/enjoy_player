@@ -10,7 +10,7 @@ import 'package:enjoy_player/core/application/app_language_catalog.dart';
 import 'package:enjoy_player/core/errors/app_failure.dart';
 import 'package:enjoy_player/core/ids/enjoy_ids.dart';
 import 'package:enjoy_player/core/logging/log.dart';
-import 'package:enjoy_player/core/utils/collections.dart';
+import 'package:flutter/foundation.dart';
 import 'package:enjoy_player/core/utils/youtube_video_identity.dart';
 import 'package:logging/logging.dart';
 import 'package:enjoy_player/data/db/app_database.dart';

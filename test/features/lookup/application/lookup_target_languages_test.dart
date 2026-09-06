@@ -29,20 +29,6 @@ void main() {
     );
   });
 
-  group('coerceLookupSource', () {
-    test('returns canonical when possible', () {
-      expect(coerceLookupSource('en-GB'), 'en-US');
-      expect(coerceLookupSource('zh'), 'zh-CN');
-    });
-
-    test('falls back to kDefaultLearningLanguageTag on invalid input', () {
-      expect(coerceLookupSource(null), kDefaultLearningLanguageTag);
-      expect(coerceLookupSource('und'), kDefaultLearningLanguageTag);
-      expect(coerceLookupSource(''), kDefaultLearningLanguageTag);
-      expect(coerceLookupSource('klingon'), kDefaultLearningLanguageTag);
-    });
-  });
-
   group('canonicalFocusLanguageTag', () {
     test('returns exact match from kSupportedFocusLanguageTags', () {
       expect(canonicalFocusLanguageTag('en-US'), 'en-US');

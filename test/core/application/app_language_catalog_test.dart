@@ -187,13 +187,6 @@ void main() {
     });
   });
 
-  group('coerceLookupSource', () {
-    test('uses default learning when transcript unsupported', () {
-      expect(coerceLookupSource('und'), kDefaultLearningLanguageTag);
-      expect(coerceLookupSource('ja'), kDefaultLearningLanguageTag);
-    });
-  });
-
   group('allowedNativeTags', () {
     test('excludes learning language from native choices', () {
       expect(allowedNativeTags('en-US'), contains('zh-CN'));

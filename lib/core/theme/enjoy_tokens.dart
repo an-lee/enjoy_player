@@ -57,7 +57,7 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
           : AppColors.intelligenceInkDark,
       echoInk: light ? AppColors.echoInkLight : AppColors.echoInkDark,
       ccBadge: scheme.primary,
-      // Vertical padding is applied per-line via [TranscriptDensity.lineVerticalPadding].
+      // Vertical padding is applied per-line via [transcriptDensityOf].
       transcriptLinePadding: const EdgeInsets.symmetric(horizontal: 16),
       contentMaxWidth: 720,
       formMaxWidth: 680,

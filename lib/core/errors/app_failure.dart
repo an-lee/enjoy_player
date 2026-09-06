@@ -20,14 +20,6 @@ final class UnsupportedImportFileFailure extends AppFailure {
   const UnsupportedImportFileFailure() : super('');
 }
 
-final class DatabaseFailure extends AppFailure {
-  const DatabaseFailure(super.message);
-}
-
-final class PlaybackFailure extends AppFailure {
-  const PlaybackFailure(super.message);
-}
-
 final class NetworkFailure extends AppFailure {
   const NetworkFailure(super.message, {this.statusCode});
 
@@ -48,11 +40,6 @@ enum AuthFailureCode {
 
   /// The server asked the caller to slow down (HTTP 429).
   rateLimited,
-
-  /// The request never reached the server, or the server did not respond
-  /// in time. The local session is presumed still valid and must be kept
-  /// so the next call can retry.
-  networkUnreachable,
 
   /// The server returned a 5xx that the client cannot classify further.
   /// The local session is presumed still valid; retry later.

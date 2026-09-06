@@ -37,7 +37,7 @@ class EchoRegionControlsBar extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
     final scheme = Theme.of(context).colorScheme;
     final tok = EnjoyThemeTokens.of(context);
-    final density = TranscriptDensity.of(context);
+    final density = transcriptDensityOf(context);
 
     final expandLabel = position == EchoRegionBarPosition.top
         ? l10n.expandEchoBackward

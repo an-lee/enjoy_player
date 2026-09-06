@@ -6,7 +6,7 @@ import 'dart:async';
 import 'package:enjoy_player/core/application/app_language_catalog.dart';
 import 'package:enjoy_player/core/cache/lru_store.dart';
 import 'package:enjoy_player/core/logging/log.dart';
-import 'package:enjoy_player/core/utils/collections.dart';
+import 'package:flutter/foundation.dart';
 import 'package:enjoy_player/core/utils/stream_distinct.dart';
 import 'package:enjoy_player/data/api/services/ai/youtube_feed_api.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
