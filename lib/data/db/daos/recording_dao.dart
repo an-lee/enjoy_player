@@ -81,17 +81,3 @@ class RecordingDao extends DatabaseAccessor<AppDatabase>
   Future<void> deleteId(String id) =>
       (delete(recordings)..where((t) => t.id.equals(id))).go();
 }
-
-bool recordingOverlapsEchoRegion(
-  RecordingRow r,
-  int echoStartMs,
-  int echoEndMs,
-) {
-  final recordingStart = r.referenceStart;
-  final recordingEnd = r.referenceStart + r.referenceDuration;
-  final overlapStart = recordingStart > echoStartMs
-      ? recordingStart
-      : echoStartMs;
-  final overlapEnd = recordingEnd < echoEndMs ? recordingEnd : echoEndMs;
-  return overlapStart < overlapEnd;
-}

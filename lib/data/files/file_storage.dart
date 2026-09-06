@@ -209,16 +209,6 @@ class FileStorage {
     }
   }
 
-  Future<FileImportResult> importPickedFile(XFile file) =>
-      importOrLinkPickedFile(file);
-
-  /// Like [importPickedFile], but only succeeds when the file's chunked SHA-256
-  /// hex matches [expectedHashHex] (same value stored in Drift `md5` column).
-  Future<FileImportResult> importPickedFileExpectingHash(
-    XFile file, {
-    required String expectedHashHex,
-  }) => importOrLinkPickedFile(file, expectedHashHex: expectedHashHex);
-
   /// Best-effort delete when [fileUri] points at app-managed `media/`.
   /// No-op for external links, null, or missing files.
   Future<void> deleteAppManagedMedia(String? fileUri) async {
