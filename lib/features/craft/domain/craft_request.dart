@@ -3,8 +3,6 @@ library;
 
 import 'package:enjoy_player/core/utils/text_normalization.dart';
 
-import 'craft_mode.dart';
-
 /// Normalizes text for hashing and synthesis: NFC-normalize, collapse
 /// whitespace runs to single spaces, trim leading/trailing.
 String normalizeCraftText(String input) {
@@ -14,15 +12,6 @@ String normalizeCraftText(String input) {
   // Collapse whitespace runs and trim.
   final collapsed = collapseWhitespace(input);
   return collapsed;
-}
-
-/// Computes the dedupe hash input from mode + language + normalized text.
-String craftDedupeKey({
-  required CraftMode mode,
-  required String learningLanguage,
-  required String normalizedText,
-}) {
-  return '${mode.name}|$learningLanguage|$normalizedText';
 }
 
 /// The minimum text length (post-normalize) for the Craft action to be enabled.

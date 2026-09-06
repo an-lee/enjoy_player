@@ -72,7 +72,6 @@ class AsrGenerationController extends _$AsrGenerationController {
   Future<void> generateTranscript({
     String? language,
     bool autoDetect = false,
-    bool confirmLongMedia = true,
     String? mediaSourceUri,
     MediaKind kind = MediaKind.video,
   }) async {
@@ -185,40 +184,24 @@ class AsrGenerationController extends _$AsrGenerationController {
 
       if (!skipExtract) {
         // 1. Extract audio (skip for audio-only files).
-        if (kind == MediaKind.video) {
-          if (mediaSourceUri == null || mediaSourceUri.isEmpty) {
-            _setError('asrErrorUnsupportedSource');
-            return;
-          }
-          _setPhase(AsrGenerationPhase.extracting);
-          final extractor = ref.read(asrAudioExtractorProvider);
-          try {
-            audio = await extractor.extractAudio(
-              mediaSourceUri: mediaSourceUri,
-              kind: kind,
-              onProgress: (p) {
-                if (cancel.isCompleted) return;
-                _updateJob((j) => j.copyWith(progress: p));
-              },
-            );
-          } on AsrAudioExtractionException catch (e) {
-            _log.info('Audio extraction failed: ${e.reason.name}');
-            _setError(asrExtractionMessageKey(e.reason));
-            return;
-          }
-        } else if (mediaSourceUri != null && mediaSourceUri.isNotEmpty) {
-          try {
-            final extractor = ref.read(asrAudioExtractorProvider);
-            audio = await extractor.extractAudio(
-              mediaSourceUri: mediaSourceUri,
-              kind: kind,
-            );
-          } on AsrAudioExtractionException catch (e) {
-            _setError(asrExtractionMessageKey(e.reason));
-            return;
-          }
-        } else {
+        if (mediaSourceUri == null || mediaSourceUri.isEmpty) {
           _setError('asrErrorUnsupportedSource');
+          return;
+        }
+        _setPhase(AsrGenerationPhase.extracting);
+        final extractor = ref.read(asrAudioExtractorProvider);
+        try {
+          audio = await extractor.extractAudio(
+            mediaSourceUri: mediaSourceUri,
+            kind: kind,
+            onProgress: (p) {
+              if (cancel.isCompleted) return;
+              _updateJob((j) => j.copyWith(progress: p));
+            },
+          );
+        } on AsrAudioExtractionException catch (e) {
+          _log.info('Audio extraction failed: ${e.reason.name}');
+          _setError(asrExtractionMessageKey(e.reason));
           return;
         }
 

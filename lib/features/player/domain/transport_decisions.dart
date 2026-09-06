@@ -18,28 +18,10 @@ import 'player_settings.dart';
 // D1 — seek routing (echo-aware vs direct)
 // ---------------------------------------------------------------------------
 
-sealed class SeekRoutingDecision {
-  const SeekRoutingDecision();
-
-  static const SeekRoutingDecision throughEcho = SeekThroughEcho();
-  static const SeekRoutingDecision direct = SeekDirect();
-}
-
-final class SeekThroughEcho extends SeekRoutingDecision {
-  const SeekThroughEcho();
-}
-
-final class SeekDirect extends SeekRoutingDecision {
-  const SeekDirect();
-}
-
 /// When echo is active, seeks should pass through the single-flight
 /// [EchoEnforcer] so a user seek cannot interleave with a reactive per-tick
-/// enforcement (no double-seek).
-SeekRoutingDecision decideSeekRouting({required bool echoActive}) {
-  if (echoActive) return SeekRoutingDecision.throughEcho;
-  return SeekRoutingDecision.direct;
-}
+/// enforcement (no double-seek). Returns `true` for the echo-routed path.
+bool decideSeekRouting({required bool echoActive}) => echoActive;
 
 // ---------------------------------------------------------------------------
 // D3 — replay target (echo start vs active-line start)
@@ -82,63 +64,27 @@ ReplayTargetDecision decideReplayTarget({
 // D4 — progress seek (fraction → target time)
 // ---------------------------------------------------------------------------
 
-sealed class ProgressSeekDecision {
-  const ProgressSeekDecision();
-
-  static ProgressSeekDecision valid(double timeSeconds) =>
-      ProgressSeekValid(timeSeconds);
-
-  static const ProgressSeekDecision invalid = ProgressSeekInvalid();
-}
-
-final class ProgressSeekValid extends ProgressSeekDecision {
-  const ProgressSeekValid(this.timeSeconds);
-  final double timeSeconds;
-}
-
-final class ProgressSeekInvalid extends ProgressSeekDecision {
-  const ProgressSeekInvalid();
-}
-
 /// Convert a [0, 1] progress fraction and the current duration into a seek
-/// target, or signal that the seek is impossible (no / zero duration).
-ProgressSeekDecision decideProgressSeekTime({
+/// target in seconds, or `null` when the seek is impossible (no / zero
+/// duration).
+double? decideProgressSeekTime({
   required double fraction,
   required double durationSeconds,
 }) {
-  if (durationSeconds <= 0) return ProgressSeekDecision.invalid;
+  if (durationSeconds <= 0) return null;
   final clamped = fraction.clamp(0.0, 1.0);
-  final target = (durationSeconds * clamped).clamp(0.0, durationSeconds);
-  return ProgressSeekDecision.valid(target);
+  return (durationSeconds * clamped).clamp(0.0, durationSeconds);
 }
 
 // ---------------------------------------------------------------------------
 // D5 — YouTube play restart
 // ---------------------------------------------------------------------------
 
-sealed class YouTubePlayRestartDecision {
-  const YouTubePlayRestartDecision();
-
-  static const YouTubePlayRestartDecision restart = RestartFromBeginning();
-  static const YouTubePlayRestartDecision resume = ResumePlayback();
-}
-
-final class RestartFromBeginning extends YouTubePlayRestartDecision {
-  const RestartFromBeginning();
-}
-
-final class ResumePlayback extends YouTubePlayRestartDecision {
-  const ResumePlayback();
-}
-
 /// When the video previously completed playback, a new [play] must reload the
-/// watch page; otherwise a simple JS `play()` call is sufficient.
-YouTubePlayRestartDecision decideYouTubePlayRestart({
-  required bool playbackCompleted,
-}) {
-  if (playbackCompleted) return YouTubePlayRestartDecision.restart;
-  return YouTubePlayRestartDecision.resume;
-}
+/// watch page (returns `true`); otherwise a simple JS `play()` call is
+/// sufficient (returns `false`).
+bool decideYouTubePlayRestart({required bool playbackCompleted}) =>
+    playbackCompleted;
 
 // ---------------------------------------------------------------------------
 // D6 — YouTube poll-loop transport-state transition

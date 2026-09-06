@@ -12,6 +12,7 @@ import 'package:go_router/go_router.dart';
 import 'package:enjoy_player/core/presentation/loading_icon.dart';
 import 'package:enjoy_player/core/routing/player_navigation.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
+import 'package:enjoy_player/features/craft/presentation/craft_lang_tile.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_button.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_card.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_modal.dart';
@@ -299,44 +300,33 @@ class _SynthLangTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = EnjoyThemeTokens.of(context);
     final cs = Theme.of(context).colorScheme;
-    return Material(
-      color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
-      borderRadius: BorderRadius.circular(t.radiusMd),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(t.radiusMd),
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: t.space12,
-            vertical: t.space12,
+    return CraftLangTile(
+      onTap: onTap,
+      verticalPadding: EnjoyThemeTokens.of(context).space12,
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+            ),
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  label,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
-                ),
-              ),
-              Text(
-                value,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              SizedBox(width: t.space4),
-              Icon(
-                Icons.chevron_right_rounded,
-                size: 20,
-                color: cs.onSurfaceVariant,
-              ),
-            ],
+          Text(
+            value,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
-        ),
+          SizedBox(width: EnjoyThemeTokens.of(context).space4),
+          Icon(
+            Icons.chevron_right_rounded,
+            size: 20,
+            color: cs.onSurfaceVariant,
+          ),
+        ],
       ),
     );
   }

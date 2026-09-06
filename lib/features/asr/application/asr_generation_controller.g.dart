@@ -66,7 +66,7 @@ final class AsrGenerationControllerProvider
 }
 
 String _$asrGenerationControllerHash() =>
-    r'20a1dec8557cfeafd730df5bf27be6ad349c0ec6';
+    r'810c2f4fabbe5b6bb88a0dd7967712fdd533bf98';
 
 final class AsrGenerationControllerFamily extends $Family
     with

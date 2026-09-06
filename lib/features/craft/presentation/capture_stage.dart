@@ -15,6 +15,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
 import 'package:enjoy_player/core/logging/log.dart';
+import 'package:enjoy_player/core/utils/time_format.dart';
 import 'package:enjoy_player/core/notices/app_notice.dart';
 import 'package:enjoy_player/features/craft/application/craft_controller.dart';
 import 'package:enjoy_player/features/craft/domain/craft_job_state.dart';
@@ -530,12 +531,6 @@ class _RecordingViewState extends State<_RecordingView>
     super.dispose();
   }
 
-  String get _timeString {
-    final m = widget.elapsed.inMinutes;
-    final s = widget.elapsed.inSeconds.remainder(60);
-    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = widget.theme;
@@ -547,7 +542,7 @@ class _RecordingViewState extends State<_RecordingView>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            _timeString,
+            formatDurationHms(widget.elapsed),
             style: theme.textTheme.displaySmall?.copyWith(
               fontFeatures: const [FontFeature.tabularFigures()],
               fontWeight: FontWeight.w600,

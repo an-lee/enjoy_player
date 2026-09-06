@@ -494,23 +494,9 @@ class CraftController extends Notifier<CraftJobState> {
     final rememberedStyle = ref
         .read(craftPreferencesCtrlProvider)
         .styleFor(mode);
-    state = state.copyWith(
+    state = _clearWorkingState().copyWith(
       screenMode: mode,
-      stage: CraftStage.capture,
       style: rememberedStyle,
-      isCapturing: false,
-      isTranscribing: false,
-      clearCapturedAudio: true,
-      clearRawTranscript: true,
-      clearRewrittenFromTranscript: true,
-      clearTranslatedText: true,
-      clearPreview: true,
-      clearResultMediaId: true,
-      clearDedupedExistingId: true,
-      clearFailure: true,
-      clearEditingMediaId: true,
-      sourceText: '',
-      synthText: '',
     );
     unawaited(
       ref.read(craftPreferencesCtrlProvider.notifier).setScreenMode(mode),
@@ -684,11 +670,6 @@ class CraftController extends Notifier<CraftJobState> {
     await synthesize();
   }
 
-  /// Save current item to library and return the save outcome for navigation.
-  Future<CraftSaveResult?> saveAndPractice() async {
-    return saveToLibrary();
-  }
-
   /// Save current item, then reset for the next capture.
   /// If the save fails, the failure is already in [state.failure] —
   /// we return early so the user's work is NOT destroyed.
@@ -704,7 +685,13 @@ class CraftController extends Notifier<CraftJobState> {
 
   /// Clear Express working data, preserve session preferences.
   void resetForNextCapture() {
-    state = state.copyWith(
+    state = _clearWorkingState();
+  }
+
+  /// Working-state reset shared by screen-mode switches and next-capture
+  /// resets.
+  CraftJobState _clearWorkingState() {
+    return state.copyWith(
       stage: CraftStage.capture,
       isCapturing: false,
       isTranscribing: false,

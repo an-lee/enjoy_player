@@ -8,13 +8,11 @@ void main() {
   // ---------------------------------------------------------------------------
   group('decideSeekRouting', () {
     test('routes through echo when active', () {
-      final d = decideSeekRouting(echoActive: true);
-      expect(d, isA<SeekThroughEcho>());
+      expect(decideSeekRouting(echoActive: true), isTrue);
     });
 
     test('routes directly when echo inactive', () {
-      final d = decideSeekRouting(echoActive: false);
-      expect(d, isA<SeekDirect>());
+      expect(decideSeekRouting(echoActive: false), isFalse);
     });
   });
 
@@ -48,34 +46,30 @@ void main() {
   // ---------------------------------------------------------------------------
   group('decideProgressSeekTime', () {
     test('invalid when duration is zero', () {
-      final d = decideProgressSeekTime(fraction: 0.5, durationSeconds: 0);
-      expect(d, isA<ProgressSeekInvalid>());
+      expect(decideProgressSeekTime(fraction: 0.5, durationSeconds: 0), isNull);
     });
 
     test('invalid when duration is negative', () {
-      final d = decideProgressSeekTime(fraction: 0.5, durationSeconds: -1);
-      expect(d, isA<ProgressSeekInvalid>());
+      expect(
+        decideProgressSeekTime(fraction: 0.5, durationSeconds: -1),
+        isNull,
+      );
     });
 
     test('seeks to middle', () {
-      final d = decideProgressSeekTime(fraction: 0.5, durationSeconds: 100);
-      expect(d, isA<ProgressSeekValid>());
-      expect((d as ProgressSeekValid).timeSeconds, 50);
+      expect(decideProgressSeekTime(fraction: 0.5, durationSeconds: 100), 50);
     });
 
     test('clamps fraction below zero', () {
-      final d = decideProgressSeekTime(fraction: -0.5, durationSeconds: 100);
-      expect((d as ProgressSeekValid).timeSeconds, 0);
+      expect(decideProgressSeekTime(fraction: -0.5, durationSeconds: 100), 0);
     });
 
     test('clamps fraction above one', () {
-      final d = decideProgressSeekTime(fraction: 1.5, durationSeconds: 100);
-      expect((d as ProgressSeekValid).timeSeconds, 100);
+      expect(decideProgressSeekTime(fraction: 1.5, durationSeconds: 100), 100);
     });
 
     test('target is clamped to duration', () {
-      final d = decideProgressSeekTime(fraction: 1.0, durationSeconds: 100);
-      expect((d as ProgressSeekValid).timeSeconds, 100);
+      expect(decideProgressSeekTime(fraction: 1.0, durationSeconds: 100), 100);
     });
   });
 
@@ -84,13 +78,11 @@ void main() {
   // ---------------------------------------------------------------------------
   group('decideYouTubePlayRestart', () {
     test('restarts when playback completed', () {
-      final d = decideYouTubePlayRestart(playbackCompleted: true);
-      expect(d, isA<RestartFromBeginning>());
+      expect(decideYouTubePlayRestart(playbackCompleted: true), isTrue);
     });
 
     test('resumes when playback not completed', () {
-      final d = decideYouTubePlayRestart(playbackCompleted: false);
-      expect(d, isA<ResumePlayback>());
+      expect(decideYouTubePlayRestart(playbackCompleted: false), isFalse);
     });
   });
 

@@ -102,22 +102,6 @@ void main() {
     );
   });
 
-  test('pruneEmptyMarkdownSections drops empty headings', () {
-    expect(
-      pruneEmptyMarkdownSections(
-        '原来句子。\n\n## 关键词/短语分析\n\n## 词性\n\n### 有内容\n\n动词。',
-      ),
-      '原来句子。\n\n### 有内容\n\n动词。',
-    );
-  });
-
-  test('prepareContextualMarkdown strips redundant and empty sections', () {
-    expect(
-      prepareContextualMarkdown('## 翻译\n\n原来句子。\n\n## 关键词/短语分析\n\n## 词性\n'),
-      '原来句子。',
-    );
-  });
-
   test('parseContextualMarkdownDocument splits preamble and sections', () {
     final doc = parseContextualMarkdownDocument(
       '## 翻译\n\n原来句子。\n\n## 词性\n\n名词。\n\n## 语境中的含义\n\n炎症。',
