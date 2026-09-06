@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forced_alignment/forced_alignment.dart';
+import 'helpers/word_phone_timings.dart';
 
 import 'helpers/fake_spoken_synthesizer.dart';
 
@@ -39,20 +40,6 @@ void main() {
       flat.phones.map((p) => p.phone),
       isNot(equals(['h', 'e', 'l', 'l', 'o'])),
     );
-  });
-
-  test('low granularity omits phones', () async {
-    const text = 'hello world';
-    final ref = synth.synthesize(text: text, language: 'en-US');
-    final outcome = await align(
-      sourcePcm16k: ref.pcm,
-      transcript: text,
-      language: 'en-US',
-      granularity: AlignmentGranularity.low,
-      synthesizer: synth,
-    );
-    final result = (outcome as AlignmentSuccess).result;
-    expect(flattenToWordPhoneTimings(result).phones, isEmpty);
   });
 
   test('duration under 1s is tooShort', () async {

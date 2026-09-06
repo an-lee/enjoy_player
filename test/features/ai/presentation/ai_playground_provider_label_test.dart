@@ -21,15 +21,6 @@ void main() {
     expect(label, 'Enjoy AI');
   });
 
-  test('local provider → "Local (unavailable)"', () async {
-    final l10n = await _loadL10n();
-    final label = formatPlaygroundProviderLabel(
-      l10n,
-      const AIServiceConfig(provider: AIProvider.local),
-    );
-    expect(label, 'Local (unavailable)');
-  });
-
   test('BYOK + known preset id → "BYOK · preset label"', () async {
     final l10n = await _loadL10n();
     final config = const AIServiceConfig(

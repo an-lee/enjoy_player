@@ -1225,10 +1225,6 @@
       }
     }
   },
-  "aiPlaygroundProviderLocal": "Local (unavailable)",
-  "@aiPlaygroundProviderLocal": {
-    "description": "Label when AIProvider.local is selected"
-  },
   "aiPlaygroundPickAudio": "Pick audio file",
   "aiPlaygroundTranscribe": "Transcribe",
   "aiPlaygroundChatSystem": "System (optional)",

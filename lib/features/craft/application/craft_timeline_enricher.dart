@@ -20,7 +20,6 @@ typedef AlignSegmentsFn =
       required Float32List sourcePcm16k,
       required String language,
       required List<AlignmentSegment> segments,
-      required AlignmentGranularity granularity,
     });
 
 /// Maps a Craft synth language onto an alignment catalog tag.
@@ -95,7 +94,6 @@ final class CraftTimelineEnricher {
         sourcePcm16k: pcm,
         language: alignmentLanguage,
         segments: segments,
-        granularity: AlignmentGranularity.medium,
       );
     } on Object catch (e, st) {
       logNamed('craft.enrichment').warning('alignSegments threw: $e', e, st);
@@ -143,13 +141,11 @@ Future<AlignmentOutcome> _productionAlignSegments({
   required Float32List sourcePcm16k,
   required String language,
   required List<AlignmentSegment> segments,
-  required AlignmentGranularity granularity,
 }) {
   return alignSegments(
     sourcePcm16k: sourcePcm16k,
     language: language,
     segments: segments,
-    granularity: granularity,
   );
 }
 

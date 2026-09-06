@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 
 /// Shared shape for every lookup request: the query text plus the source →
 /// target language pair. Equality lives here so the three concrete params
-/// classes below stay in sync as map keys for [LookupSheetResultCache].
+/// classes below stay in sync as lookup-sheet cache map keys.
 @immutable
 base class LookupTextParams {
   const LookupTextParams({

@@ -957,7 +957,6 @@ void main() {
                 required sourcePcm16k,
                 required language,
                 required segments,
-                required granularity,
               }) async {
                 expect(language, 'en-US');
                 return AlignmentSuccess(
@@ -1041,7 +1040,6 @@ void main() {
                 required sourcePcm16k,
                 required language,
                 required segments,
-                required granularity,
               }) async {
                 fail('dedupe must not call alignSegments');
               },

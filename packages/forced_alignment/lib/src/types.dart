@@ -2,7 +2,6 @@
 enum TimelineEntryType { segment, sentence, word, token, phone }
 
 /// Quality / cost knob. Default product quality is [medium] (words + phones).
-enum AlignmentGranularity { low, medium, high }
 
 /// Recursive engine timeline entry. Times are seconds on the **source** audio.
 final class TimelineEntry {

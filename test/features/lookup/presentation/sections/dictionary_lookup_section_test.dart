@@ -107,17 +107,19 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late AppDatabase db;
-  late AiDictionaryCache dictCache;
+  late AiResultCache<DictionaryResult> dictCache;
 
   setUp(() {
     db = AppDatabase(executor: NativeDatabase.memory());
-    dictCache = AiDictionaryCache(
+    dictCache = AiResultCache<DictionaryResult>(
       dao: db.aiCacheDao,
       l1: L1Store<String, DictionaryResult>(
         capacity: 16,
         ttl: const Duration(minutes: 30),
       ),
       policies: defaultAiKindPolicies,
+      fromJson: DictionaryResult.fromJson,
+      toJson: (value) => value.toJson(),
     );
   });
 

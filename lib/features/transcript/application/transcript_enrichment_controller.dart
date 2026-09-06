@@ -303,7 +303,6 @@ final class TranscriptEnricher {
         sourcePcm16k: pcm,
         language: language,
         segments: segments,
-        granularity: AlignmentGranularity.medium,
         cancel: cancel,
       );
     } on Object catch (e, st) {

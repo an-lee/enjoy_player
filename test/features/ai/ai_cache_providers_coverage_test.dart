@@ -20,6 +20,9 @@ import 'package:enjoy_player/features/ai/application/ai_capability_providers.dar
 import 'package:enjoy_player/features/ai/application/ai_kind_policies.dart';
 import 'package:enjoy_player/features/ai/application/ai_modality_configs.dart';
 import 'package:enjoy_player/features/ai/application/ai_result_cache.dart';
+import 'package:enjoy_player/features/ai/domain/models/contextual_translation_result.dart';
+import 'package:enjoy_player/features/ai/domain/models/dictionary_result.dart';
+import 'package:enjoy_player/features/ai/domain/models/translation_result.dart';
 import 'package:enjoy_player/features/ai/domain/ai_kind.dart';
 import 'package:enjoy_player/features/ai/data/byok/byok_asr_azure_capability.dart';
 import 'package:enjoy_player/features/ai/data/byok/byok_asr_openai_capability.dart';
@@ -91,11 +94,6 @@ class _FakeSecretStore implements ByokSecretStoreBase {
       _keys.containsKey(modality);
 }
 
-class _SignedOutAuthCtrl extends AuthCtrl {
-  @override
-  Future<AuthState> build() async => const AuthSignedOut();
-}
-
 class _SignedInAuthCtrl extends AuthCtrl {
   _SignedInAuthCtrl(this._profileId);
 
@@ -163,17 +161,6 @@ void main() {
   // =========================================================================
 
   group('resolveAsrCapability', () {
-    test('local provider returns UnimplementedAsrCapability', () {
-      final container = _capabilityContainer(
-        _configsWith(asr: const AIServiceConfig(provider: AIProvider.local)),
-      );
-      addTearDown(container.dispose);
-      expect(
-        container.read(asrCapabilityProvider),
-        isA<UnimplementedAsrCapability>(),
-      );
-    });
-
     test(
       'byok with null speechByok returns ByokNotConfiguredAsrCapability',
       () {
@@ -272,17 +259,6 @@ void main() {
       addTearDown(container.dispose);
       expect(container.read(llmCapabilityProvider), isA<ByokLlmCapability>());
     });
-
-    test('local returns UnimplementedLlmCapability', () {
-      final container = _capabilityContainer(
-        _configsWith(llm: const AIServiceConfig(provider: AIProvider.local)),
-      );
-      addTearDown(container.dispose);
-      expect(
-        container.read(llmCapabilityProvider),
-        isA<UnimplementedLlmCapability>(),
-      );
-    });
   });
 
   group('resolveTranslationCapability', () {
@@ -334,19 +310,6 @@ void main() {
         isA<ByokTranslationCapability>(),
       );
     });
-
-    test('local returns UnimplementedTranslationCapability', () {
-      final container = _capabilityContainer(
-        _configsWith(
-          translation: const AIServiceConfig(provider: AIProvider.local),
-        ),
-      );
-      addTearDown(container.dispose);
-      expect(
-        container.read(translationCapabilityProvider),
-        isA<UnimplementedTranslationCapability>(),
-      );
-    });
   });
 
   group('resolveDictionaryCapability', () {
@@ -380,19 +343,6 @@ void main() {
       expect(
         container.read(dictionaryCapabilityProvider),
         isA<ByokDictionaryCapability>(),
-      );
-    });
-
-    test('local returns UnimplementedDictionaryCapability', () {
-      final container = _capabilityContainer(
-        _configsWith(
-          dictionary: const AIServiceConfig(provider: AIProvider.local),
-        ),
-      );
-      addTearDown(container.dispose);
-      expect(
-        container.read(dictionaryCapabilityProvider),
-        isA<UnimplementedDictionaryCapability>(),
       );
     });
   });
@@ -431,17 +381,6 @@ void main() {
         );
       },
     );
-
-    test('local returns UnimplementedContextualTranslationCapability', () {
-      final container = _capabilityContainer(
-        _configsWith(llm: const AIServiceConfig(provider: AIProvider.local)),
-      );
-      addTearDown(container.dispose);
-      expect(
-        container.read(contextualTranslationCapabilityProvider),
-        isA<UnimplementedContextualTranslationCapability>(),
-      );
-    });
   });
 
   group('resolveTtsCapability', () {
@@ -505,17 +444,6 @@ void main() {
         isA<ByokTtsAzureCapability>(),
       );
     });
-
-    test('local returns UnimplementedTtsCapability', () {
-      final container = _capabilityContainer(
-        _configsWith(tts: const AIServiceConfig(provider: AIProvider.local)),
-      );
-      addTearDown(container.dispose);
-      expect(
-        container.read(ttsCapabilityProvider),
-        isA<UnimplementedTtsCapability>(),
-      );
-    });
   });
 
   group('resolveAssessmentCapability', () {
@@ -567,28 +495,15 @@ void main() {
         );
       },
     );
-
-    test('local returns UnimplementedAssessmentCapability', () {
-      final container = _capabilityContainer(
-        _configsWith(
-          assessment: const AIServiceConfig(provider: AIProvider.local),
-        ),
-      );
-      addTearDown(container.dispose);
-      expect(
-        container.read(assessmentCapabilityProvider),
-        isA<UnimplementedAssessmentCapability>(),
-      );
-    });
   });
 
   group('aiModalityConfigsProvider', () {
     test('reflects overridden configs', () {
-      const custom = AIServiceConfig(provider: AIProvider.local);
+      const custom = AIServiceConfig(provider: AIProvider.byok);
       final container = _capabilityContainer(_configsWith(asr: custom));
       addTearDown(container.dispose);
       final configs = container.read(aiModalityConfigsProvider);
-      expect(configs.asr.provider, AIProvider.local);
+      expect(configs.asr.provider, AIProvider.byok);
       expect(configs.llm.provider, AIProvider.enjoy);
     });
   });
@@ -596,108 +511,6 @@ void main() {
   // =========================================================================
   // ai_result_cache.dart — Riverpod provider coverage
   // =========================================================================
-
-  group('aiResultCacheProvider', () {
-    late AppDatabase db;
-
-    setUp(() {
-      db = AppDatabase(executor: NativeDatabase.memory());
-    });
-
-    tearDown(() async {
-      await db.close();
-    });
-
-    test('creates a working AiMapCache', () async {
-      final container = ProviderContainer(
-        overrides: [
-          appDatabaseProvider.overrideWithValue(db),
-          authCtrlProvider.overrideWith(() => _SignedInAuthCtrl('test-user')),
-        ],
-      );
-      addTearDown(container.dispose);
-
-      final cache = container.read(aiResultCacheProvider);
-      expect(cache, isA<AiMapCache>());
-
-      // Verify it works end-to-end.
-      final result = await cache.lookup(
-        kind: AiKind.translation,
-        key: 'test-key',
-        loader: () async => {'translatedText': 'hola'},
-      );
-      expect(result['translatedText'], 'hola');
-      expect(cache.peek(kind: AiKind.translation, key: 'test-key'), isNotNull);
-    });
-
-    test('clears cache on sign-out', () async {
-      final container = ProviderContainer(
-        overrides: [
-          appDatabaseProvider.overrideWithValue(db),
-          authCtrlProvider.overrideWith(() => _SignedInAuthCtrl('test-user')),
-        ],
-      );
-      addTearDown(container.dispose);
-
-      final cache = container.read(aiResultCacheProvider);
-      await cache.remember(
-        kind: AiKind.translation,
-        key: 'k1',
-        value: {'v': 'cached'},
-      );
-      expect(cache.peek(kind: AiKind.translation, key: 'k1'), isNotNull);
-
-      // Simulate sign-out by invalidating authCtrl and replacing with
-      // signed-out state.
-      container.invalidate(authCtrlProvider);
-      // Re-read to trigger the provider rebuild with new auth state.
-      // We need a new container to simulate the state transition.
-      final container2 = ProviderContainer(
-        overrides: [
-          appDatabaseProvider.overrideWithValue(db),
-          authCtrlProvider.overrideWith(_SignedOutAuthCtrl.new),
-        ],
-      );
-      addTearDown(container2.dispose);
-
-      // The new container creates a fresh cache; the old one's listener
-      // would have fired clear() on sign-out. Verify the new cache is empty.
-      final cache2 = container2.read(aiResultCacheProvider);
-      expect(cache2.peek(kind: AiKind.translation, key: 'k1'), isNull);
-    });
-
-    test('clears cache on user-id change', () async {
-      // Seed data with user-A.
-      final containerA = ProviderContainer(
-        overrides: [
-          appDatabaseProvider.overrideWithValue(db),
-          authCtrlProvider.overrideWith(() => _SignedInAuthCtrl('user-A')),
-        ],
-      );
-      addTearDown(containerA.dispose);
-
-      final cacheA = containerA.read(aiResultCacheProvider);
-      await cacheA.remember(
-        kind: AiKind.translation,
-        key: 'k1',
-        value: {'v': 'user-A-data'},
-      );
-
-      // Simulate user change: new container with user-B.
-      final containerB = ProviderContainer(
-        overrides: [
-          appDatabaseProvider.overrideWithValue(db),
-          authCtrlProvider.overrideWith(() => _SignedInAuthCtrl('user-B')),
-        ],
-      );
-      addTearDown(containerB.dispose);
-
-      final cacheB = containerB.read(aiResultCacheProvider);
-      // Fresh L1 for the new container; L2 may still have old data but
-      // the provider's prune/clear logic handles isolation.
-      expect(cacheB.peek(kind: AiKind.translation, key: 'k1'), isNull);
-    });
-  });
 
   group('aiTranslationCacheProvider', () {
     late AppDatabase db;
@@ -710,7 +523,7 @@ void main() {
       await db.close();
     });
 
-    test('creates a working AiTranslationCache', () async {
+    test('creates a working translation cache', () async {
       final container = ProviderContainer(
         overrides: [
           appDatabaseProvider.overrideWithValue(db),
@@ -720,7 +533,7 @@ void main() {
       addTearDown(container.dispose);
 
       final cache = container.read(aiTranslationCacheProvider);
-      expect(cache, isA<AiTranslationCache>());
+      expect(cache, isA<AiResultCache<TranslationResult>>());
     });
   });
 
@@ -735,7 +548,7 @@ void main() {
       await db.close();
     });
 
-    test('creates a working AiDictionaryCache', () async {
+    test('creates a working dictionary cache', () async {
       final container = ProviderContainer(
         overrides: [
           appDatabaseProvider.overrideWithValue(db),
@@ -745,7 +558,7 @@ void main() {
       addTearDown(container.dispose);
 
       final cache = container.read(aiDictionaryCacheProvider);
-      expect(cache, isA<AiDictionaryCache>());
+      expect(cache, isA<AiResultCache<DictionaryResult>>());
     });
   });
 
@@ -760,7 +573,7 @@ void main() {
       await db.close();
     });
 
-    test('creates a working AiContextualTranslationCache', () async {
+    test('creates a working contextual translation cache', () async {
       final container = ProviderContainer(
         overrides: [
           appDatabaseProvider.overrideWithValue(db),
@@ -770,7 +583,7 @@ void main() {
       addTearDown(container.dispose);
 
       final cache = container.read(aiContextualTranslationCacheProvider);
-      expect(cache, isA<AiContextualTranslationCache>());
+      expect(cache, isA<AiResultCache<ContextualTranslationResult>>());
     });
   });
 
@@ -784,13 +597,15 @@ void main() {
       addTearDown(() => db.close());
 
       // Close the DB to force L2 writes to fail.
-      final cache = AiMapCache(
+      final cache = AiResultCache<Map<String, dynamic>>(
         dao: db.aiCacheDao,
         l1: L1Store<String, Map<String, dynamic>>(
           capacity: 8,
           ttl: const Duration(minutes: 5),
         ),
         policies: defaultAiKindPolicies,
+        fromJson: (json) => json,
+        toJson: (value) => value,
       );
 
       // First verify it works normally.
@@ -819,13 +634,15 @@ void main() {
     test('closed DB on L2 read falls through to loader', () async {
       final db = AppDatabase(executor: NativeDatabase.memory());
 
-      final cache = AiMapCache(
+      final cache = AiResultCache<Map<String, dynamic>>(
         dao: db.aiCacheDao,
         l1: L1Store<String, Map<String, dynamic>>(
           capacity: 8,
           ttl: const Duration(minutes: 5),
         ),
         policies: defaultAiKindPolicies,
+        fromJson: (json) => json,
+        toJson: (value) => value,
       );
 
       // Seed L1 only (no L2).
@@ -849,118 +666,6 @@ void main() {
         // If the DAO read throws (closed DB), the error propagates.
         // This is acceptable — the test documents the behavior.
       }
-    });
-  });
-
-  group('AiCacheStats toString edge cases', () {
-    test('empty l2RowCounts map', () {
-      const stats = AiCacheStats(l1Size: 0, l1Capacity: 256, l2RowCounts: {});
-      final str = stats.toString();
-      expect(str, contains('l1=0/256'));
-      expect(str, contains('l2={}'));
-    });
-
-    test('multiple kinds in l2RowCounts', () {
-      const stats = AiCacheStats(
-        l1Size: 5,
-        l1Capacity: 128,
-        l2RowCounts: {
-          AiKind.translation: 100,
-          AiKind.dictionary: 50,
-          AiKind.contextualTranslation: 25,
-          AiKind.autoTranslateLine: 200,
-        },
-      );
-      final str = stats.toString();
-      expect(str, contains('l1=5/128'));
-      expect(str, contains('AiKind.translation'));
-    });
-  });
-
-  group('AiResultCache evictForPair with special characters', () {
-    late AppDatabase db;
-    late AiMapCache cache;
-
-    setUp(() {
-      db = AppDatabase(executor: NativeDatabase.memory());
-      cache = AiMapCache(
-        dao: db.aiCacheDao,
-        l1: L1Store<String, Map<String, dynamic>>(
-          capacity: 8,
-          ttl: const Duration(minutes: 5),
-        ),
-        policies: defaultAiKindPolicies,
-      );
-    });
-
-    tearDown(() async {
-      await db.close();
-    });
-
-    test('handles language tags with hyphens', () async {
-      await db.aiCacheDao.upsert(
-        'translation',
-        'k1',
-        '{"v":"x","sourceLanguage":"zh-Hans","targetLanguage":"pt-BR"}',
-        DateTime.now(),
-      );
-      await db.aiCacheDao.upsert(
-        'translation',
-        'k2',
-        '{"v":"y","sourceLanguage":"en","targetLanguage":"pt-BR"}',
-        DateTime.now(),
-      );
-
-      await cache.evictForPair(
-        sourceLanguage: 'zh-Hans',
-        targetLanguage: 'pt-BR',
-      );
-
-      expect(await db.aiCacheDao.read('translation', 'k1'), isNull);
-      expect(await db.aiCacheDao.read('translation', 'k2'), isNotNull);
-    });
-  });
-
-  group('AiResultCache prune with autoTranslateLine kind', () {
-    late AppDatabase db;
-
-    setUp(() {
-      db = AppDatabase(executor: NativeDatabase.memory());
-    });
-
-    tearDown(() async {
-      await db.close();
-    });
-
-    test('prunes autoTranslateLine kind per its policy', () async {
-      final cache = AiMapCache(
-        dao: db.aiCacheDao,
-        l1: L1Store<String, Map<String, dynamic>>(
-          capacity: 8,
-          ttl: const Duration(minutes: 5),
-        ),
-        policies: {
-          AiKind.autoTranslateLine: const AiKindPolicy(
-            ttl: Duration(minutes: 30),
-            l2RowCap: 3,
-            l2AgeCutoff: Duration(days: 1),
-          ),
-        },
-      );
-
-      for (var i = 0; i < 10; i++) {
-        await db.aiCacheDao.upsert(
-          'auto_translate_line',
-          'line$i',
-          '{"v":"$i"}',
-          DateTime.now().subtract(Duration(seconds: i)),
-        );
-      }
-
-      await cache.prune();
-
-      final count = await db.aiCacheDao.countForKind('auto_translate_line');
-      expect(count, 3);
     });
   });
 }

@@ -225,6 +225,22 @@ class _CreditsUsageBody extends ConsumerWidget {
                               context,
                             ).colorScheme.onSurfaceVariant,
                           );
+                      Widget pagerButton(
+                        String label,
+                        VoidCallback? onPressed,
+                      ) => EnjoyButton.secondary(
+                        onPressed: onPressed,
+                        child: Text(label),
+                      );
+
+                      final prev = pagerButton(
+                        l10n.creditsUsagePrevious,
+                        filters.offset == 0 ? null : ctrl.goToPreviousPage,
+                      );
+                      final next = pagerButton(
+                        l10n.creditsUsageNext,
+                        !page.hasMore ? null : ctrl.goToNextPage,
+                      );
                       final narrow = pagerConstraints.maxWidth < 720;
                       if (narrow) {
                         return Column(
@@ -234,23 +250,9 @@ class _CreditsUsageBody extends ConsumerWidget {
                             SizedBox(height: t.space8),
                             Row(
                               children: [
-                                Expanded(
-                                  child: EnjoyButton.secondary(
-                                    onPressed: filters.offset == 0
-                                        ? null
-                                        : ctrl.goToPreviousPage,
-                                    child: Text(l10n.creditsUsagePrevious),
-                                  ),
-                                ),
+                                Expanded(child: prev),
                                 SizedBox(width: t.space8),
-                                Expanded(
-                                  child: EnjoyButton.secondary(
-                                    onPressed: !page.hasMore
-                                        ? null
-                                        : ctrl.goToNextPage,
-                                    child: Text(l10n.creditsUsageNext),
-                                  ),
-                                ),
+                                Expanded(child: next),
                               ],
                             ),
                           ],
@@ -259,17 +261,9 @@ class _CreditsUsageBody extends ConsumerWidget {
                       return Row(
                         children: [
                           Expanded(child: Text(pageInfo, style: pageInfoStyle)),
-                          EnjoyButton.secondary(
-                            onPressed: filters.offset == 0
-                                ? null
-                                : ctrl.goToPreviousPage,
-                            child: Text(l10n.creditsUsagePrevious),
-                          ),
+                          prev,
                           SizedBox(width: t.space8),
-                          EnjoyButton.secondary(
-                            onPressed: !page.hasMore ? null : ctrl.goToNextPage,
-                            child: Text(l10n.creditsUsageNext),
-                          ),
+                          next,
                         ],
                       );
                     },
@@ -675,51 +669,26 @@ class _UsageLogCard extends StatelessWidget {
           SizedBox(height: t.space12),
           Row(
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.creditsUsageTableRequired,
-                      style: tt.labelSmall?.copyWith(
-                        color: cs.onSurfaceVariant,
+              for (final (label, value) in [
+                (l10n.creditsUsageTableRequired, '${log.creditsRequired}'),
+                (l10n.creditsUsageTableUsedBefore, '${log.usedBefore}'),
+                (l10n.creditsUsageTableUsedAfter, '${log.usedAfter}'),
+              ])
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: tt.labelSmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: t.space4),
-                    Text('${log.creditsRequired}', style: numberStyle),
-                  ],
+                      SizedBox(height: t.space4),
+                      Text(value, style: numberStyle),
+                    ],
+                  ),
                 ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.creditsUsageTableUsedBefore,
-                      style: tt.labelSmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ),
-                    SizedBox(height: t.space4),
-                    Text('${log.usedBefore}', style: numberStyle),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.creditsUsageTableUsedAfter,
-                      style: tt.labelSmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ),
-                    SizedBox(height: t.space4),
-                    Text('${log.usedAfter}', style: numberStyle),
-                  ],
-                ),
-              ),
             ],
           ),
         ],

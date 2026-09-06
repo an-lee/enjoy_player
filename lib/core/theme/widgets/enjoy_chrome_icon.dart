@@ -36,64 +36,37 @@ enum EnjoyChromeGlyph {
 }
 
 extension EnjoyChromeGlyphAsset on EnjoyChromeGlyph {
-  String get assetPath {
-    switch (this) {
-      case EnjoyChromeGlyph.home:
-        return 'assets/icons/home.svg';
-      case EnjoyChromeGlyph.compass:
-        return 'assets/icons/compass.svg';
-      case EnjoyChromeGlyph.library:
-        return 'assets/icons/library.svg';
-      case EnjoyChromeGlyph.user:
-        return 'assets/icons/user.svg';
-      case EnjoyChromeGlyph.play:
-        return 'assets/icons/play.svg';
-      case EnjoyChromeGlyph.pause:
-        return 'assets/icons/pause.svg';
-      case EnjoyChromeGlyph.skipBack:
-        return 'assets/icons/skip-back.svg';
-      case EnjoyChromeGlyph.skipForward:
-        return 'assets/icons/skip-forward.svg';
-      case EnjoyChromeGlyph.replay:
-        return 'assets/icons/replay.svg';
-      case EnjoyChromeGlyph.mic:
-        return 'assets/icons/mic.svg';
-      case EnjoyChromeGlyph.wave:
-        return 'assets/icons/wave.svg';
-      case EnjoyChromeGlyph.cc:
-        return 'assets/icons/cc.svg';
-      case EnjoyChromeGlyph.speed:
-        return 'assets/icons/speed.svg';
-      case EnjoyChromeGlyph.volume:
-        return 'assets/icons/volume.svg';
-      case EnjoyChromeGlyph.volumeOff:
-        return 'assets/icons/volume-off.svg';
-      case EnjoyChromeGlyph.plus:
-        return 'assets/icons/plus.svg';
-      case EnjoyChromeGlyph.search:
-        return 'assets/icons/search.svg';
-      case EnjoyChromeGlyph.close:
-        return 'assets/icons/x.svg';
-      case EnjoyChromeGlyph.sun:
-        return 'assets/icons/sun.svg';
-      case EnjoyChromeGlyph.moon:
-        return 'assets/icons/moon.svg';
-      case EnjoyChromeGlyph.monitor:
-        return 'assets/icons/monitor.svg';
-      case EnjoyChromeGlyph.gear:
-        return 'assets/icons/gear.svg';
-      case EnjoyChromeGlyph.chevronDown:
-        return 'assets/icons/chevron-down.svg';
-      case EnjoyChromeGlyph.chevronRight:
-        return 'assets/icons/chevron-right.svg';
-      case EnjoyChromeGlyph.chevronLeft:
-        return 'assets/icons/chevron-left.svg';
-      case EnjoyChromeGlyph.dots:
-        return 'assets/icons/dots.svg';
-      case EnjoyChromeGlyph.check:
-        return 'assets/icons/check.svg';
-    }
-  }
+  static const _paths = <EnjoyChromeGlyph, String>{
+    EnjoyChromeGlyph.home: 'assets/icons/home.svg',
+    EnjoyChromeGlyph.compass: 'assets/icons/compass.svg',
+    EnjoyChromeGlyph.library: 'assets/icons/library.svg',
+    EnjoyChromeGlyph.user: 'assets/icons/user.svg',
+    EnjoyChromeGlyph.play: 'assets/icons/play.svg',
+    EnjoyChromeGlyph.pause: 'assets/icons/pause.svg',
+    EnjoyChromeGlyph.skipBack: 'assets/icons/skip-back.svg',
+    EnjoyChromeGlyph.skipForward: 'assets/icons/skip-forward.svg',
+    EnjoyChromeGlyph.replay: 'assets/icons/replay.svg',
+    EnjoyChromeGlyph.mic: 'assets/icons/mic.svg',
+    EnjoyChromeGlyph.wave: 'assets/icons/wave.svg',
+    EnjoyChromeGlyph.cc: 'assets/icons/cc.svg',
+    EnjoyChromeGlyph.speed: 'assets/icons/speed.svg',
+    EnjoyChromeGlyph.volume: 'assets/icons/volume.svg',
+    EnjoyChromeGlyph.volumeOff: 'assets/icons/volume-off.svg',
+    EnjoyChromeGlyph.plus: 'assets/icons/plus.svg',
+    EnjoyChromeGlyph.search: 'assets/icons/search.svg',
+    EnjoyChromeGlyph.close: 'assets/icons/x.svg',
+    EnjoyChromeGlyph.sun: 'assets/icons/sun.svg',
+    EnjoyChromeGlyph.moon: 'assets/icons/moon.svg',
+    EnjoyChromeGlyph.monitor: 'assets/icons/monitor.svg',
+    EnjoyChromeGlyph.gear: 'assets/icons/gear.svg',
+    EnjoyChromeGlyph.chevronDown: 'assets/icons/chevron-down.svg',
+    EnjoyChromeGlyph.chevronRight: 'assets/icons/chevron-right.svg',
+    EnjoyChromeGlyph.chevronLeft: 'assets/icons/chevron-left.svg',
+    EnjoyChromeGlyph.dots: 'assets/icons/dots.svg',
+    EnjoyChromeGlyph.check: 'assets/icons/check.svg',
+  };
+
+  String get assetPath => _paths[this]!;
 }
 
 /// Tinted SVG chrome icon. Color follows [IconTheme] when [color] is omitted.

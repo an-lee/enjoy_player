@@ -22,7 +22,6 @@ typedef AlignSegmentsHook =
       required Float32List sourcePcm16k,
       required String language,
       required List<AlignmentSegment> segments,
-      required AlignmentGranularity granularity,
       AlignmentCancelToken? cancel,
     });
 
@@ -89,7 +88,6 @@ class FakeEnrichmentBackend implements EnrichmentBackend {
     required Float32List sourcePcm16k,
     required String language,
     required List<AlignmentSegment> segments,
-    required AlignmentGranularity granularity,
     AlignmentCancelToken? cancel,
   }) {
     alignSegmentsCalls++;
@@ -101,7 +99,6 @@ class FakeEnrichmentBackend implements EnrichmentBackend {
       sourcePcm16k: sourcePcm16k,
       language: language,
       segments: segments,
-      granularity: granularity,
       cancel: cancel,
     );
   }

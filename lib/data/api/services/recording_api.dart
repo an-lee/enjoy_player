@@ -3,12 +3,13 @@ library;
 
 import 'package:enjoy_player/data/api/api_client.dart';
 import 'package:enjoy_player/data/api/query_params.dart';
-import 'package:enjoy_player/data/api/recording_client_platform.dart';
+import 'dart:io' show Platform;
+
 import 'package:enjoy_player/data/api/rest_api.dart';
 
 class RecordingApi extends RestApi {
   RecordingApi(super.client, {String? clientPlatform})
-    : clientPlatform = clientPlatform ?? recordingClientPlatformValue();
+    : clientPlatform = clientPlatform ?? Platform.operatingSystem;
 
   /// Sent as `client_platform` (snake) on upload metadata (`windows`, `macos`,
   /// `android`, `ios`, … — never a generic client name like `flutter`).
@@ -60,10 +61,4 @@ class RecordingApi extends RestApi {
   }
 
   Future<JsonMap> deleteRecording(String id) => client.deleteJson('$_path/$id');
-
-  Future<JsonMap> updateRecording(
-    String id,
-    JsonMap data, {
-    bool skipTransform = false,
-  }) => client.putJson('$_path/$id', body: data, transformBody: !skipTransform);
 }

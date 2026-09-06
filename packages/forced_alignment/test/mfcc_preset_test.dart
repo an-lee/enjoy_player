@@ -8,15 +8,4 @@ void main() {
     expect(kMfccPresetMedium.fftSize, 512);
     expect(kMfccPresetMedium.windowStride, 160);
   });
-
-  test('low window is 40 ms; high hop is finer than medium', () {
-    expect(kMfccPresetLow.windowSeconds, 0.040);
-    expect(kMfccPresetLow.windowLength, 640);
-    expect(kMfccPresetLow.fftSize, 1024);
-    expect(kMfccPresetHigh.windowLength, kMfccPresetMedium.windowLength);
-    expect(
-      kMfccPresetHigh.windowStride,
-      lessThan(kMfccPresetMedium.windowStride),
-    );
-  });
 }

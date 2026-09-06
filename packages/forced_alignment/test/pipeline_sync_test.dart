@@ -15,7 +15,6 @@ void main() {
       sourcePcm: ref.pcm,
       transcript: text,
       language: 'en-US',
-      granularity: AlignmentGranularity.medium,
       reference: ref,
     );
     expect(result, isA<AlignmentResult>());
@@ -32,7 +31,6 @@ void main() {
       sourcePcm: source,
       transcript: text,
       language: 'en-US',
-      granularity: AlignmentGranularity.medium,
       reference: ref,
     );
     final result = raw as AlignmentResult;
@@ -51,7 +49,6 @@ void main() {
       sourcePcm: source,
       transcript: 'hello world',
       language: 'en-US',
-      granularity: AlignmentGranularity.medium,
     );
     expect(raw, isA<AlignmentFailure>());
     expect(

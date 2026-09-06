@@ -12,7 +12,6 @@ String formatPlaygroundProviderLabel(
   return switch (config.provider) {
     AIProvider.enjoy => l10n.settingsAiProvidersEnjoyAi,
     AIProvider.byok => _byokLabel(l10n, config),
-    AIProvider.local => l10n.aiPlaygroundProviderLocal,
   };
 }
 

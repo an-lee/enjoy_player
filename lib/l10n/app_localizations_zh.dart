@@ -2154,9 +2154,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get aiPlaygroundProviderLocal => '本地（不可用）';
-
-  @override
   String get aiPlaygroundPickAudio => '选择音频文件';
 
   @override

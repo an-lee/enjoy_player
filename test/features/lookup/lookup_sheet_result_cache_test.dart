@@ -6,25 +6,25 @@ import 'package:enjoy_player/features/ai/application/ai_result_cache.dart';
 import 'package:enjoy_player/features/ai/domain/ai_kind.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-class _StringCache extends AiResultCache<String> {
-  _StringCache({
-    required super.dao,
-    required super.l1,
-    required super.policies,
-  });
-
-  @override
-  String fromJson(Map<String, dynamic> json) => json['v'] as String;
-
-  @override
-  Map<String, dynamic> toJson(String value) => {'v': value};
+AiResultCache<String> _stringCache(
+  AppDatabase db,
+  L1Store<String, String> l1,
+  Map<AiKind, AiKindPolicy> policies,
+) {
+  return AiResultCache<String>(
+    dao: db.aiCacheDao,
+    l1: l1,
+    policies: policies,
+    fromJson: (json) => json['v'] as String,
+    toJson: (value) => {'v': value},
+  );
 }
 
 void main() {
   group('AiResultCache evictForPair', () {
     late AppDatabase db;
-    late _StringCache translationCache;
-    late _StringCache dictCache;
+    late AiResultCache<String> translationCache;
+    late AiResultCache<String> dictCache;
 
     setUp(() {
       db = AppDatabase(executor: NativeDatabase.memory());
@@ -35,13 +35,10 @@ void main() {
       // the encoded JSON to contain sourceLanguage/targetLanguage. We do
       // writes through DAO directly for the scan case, and via the cache for
       // the normal case.
-      translationCache = _StringCache(
-        dao: db.aiCacheDao,
-        l1: L1Store<String, String>(
-          capacity: 8,
-          ttl: const Duration(seconds: 1),
-        ),
-        policies: {
+      translationCache = _stringCache(
+        db,
+        L1Store<String, String>(capacity: 8, ttl: const Duration(seconds: 1)),
+        {
           AiKind.translation: const AiKindPolicy(
             ttl: Duration(minutes: 30),
             l2RowCap: 4096,
@@ -49,13 +46,10 @@ void main() {
           ),
         },
       );
-      dictCache = _StringCache(
-        dao: db.aiCacheDao,
-        l1: L1Store<String, String>(
-          capacity: 8,
-          ttl: const Duration(seconds: 1),
-        ),
-        policies: {
+      dictCache = _stringCache(
+        db,
+        L1Store<String, String>(capacity: 8, ttl: const Duration(seconds: 1)),
+        {
           AiKind.dictionary: const AiKindPolicy(
             ttl: Duration(minutes: 30),
             l2RowCap: 4096,

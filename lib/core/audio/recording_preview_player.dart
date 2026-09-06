@@ -8,12 +8,10 @@ library;
 
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:media_kit/media_kit.dart' as mk;
 
 import 'package:enjoy_player/core/logging/log.dart';
-import 'package:enjoy_player/data/files/security_scoped_bookmark.dart';
 
 final _log = logNamed('recordingPreview');
 
@@ -66,18 +64,6 @@ class RecordingPreviewPlayer implements RecordingPreviewPlayback {
   /// Absolute path of the file last opened for preview, or null after [stop].
   String? _loadedPath;
 
-  /// Active macOS security-scoped grant for the currently loaded path, if
-  /// any. Released on `stop()`, the next `play*` call, and on `dispose()`.
-  /// See ADR-0060.
-  int? _scopeToken;
-
-  Future<void> _releaseScope() async {
-    final token = _scopeToken;
-    if (token == null) return;
-    _scopeToken = null;
-    await SecurityScopedBookmarkChannel.releaseBookmark(token);
-  }
-
   StreamSubscription<Duration>? _clipEndSub;
   int _clipGeneration = 0;
 
@@ -105,19 +91,13 @@ class RecordingPreviewPlayer implements RecordingPreviewPlayback {
       throw StateError('Recording file missing: $path');
     }
     final abs = file.absolute.path;
-    final resolved = await _resolveForPlayback(abs);
-    final uri = Uri.file(resolved.path).toString();
+    final uri = Uri.file(abs).toString();
     try {
       await stop();
       await _player.open(mk.Media(uri));
       await _player.play();
       _loadedPath = abs;
-      _scopeToken = resolved.scopeToken;
     } catch (e, st) {
-      final token = resolved.scopeToken;
-      if (token != null) {
-        await SecurityScopedBookmarkChannel.releaseBookmark(token);
-      }
       _log.warning('preview playback failed', e, st);
       rethrow;
     }
@@ -149,8 +129,7 @@ class RecordingPreviewPlayer implements RecordingPreviewPlayback {
       throw StateError('Recording file missing: $path');
     }
     final abs = file.absolute.path;
-    final resolved = await _resolveForPlayback(abs);
-    final uri = Uri.file(resolved.path).toString();
+    final uri = Uri.file(abs).toString();
     final gen = ++_clipGeneration;
     try {
       await _cancelClipWatcher();
@@ -159,7 +138,6 @@ class RecordingPreviewPlayer implements RecordingPreviewPlayback {
       // Prefer Media start/end over post-open seek (seek-before-ready is a no-op).
       await _player.open(mk.Media(uri, start: start, end: end));
       _loadedPath = abs;
-      _scopeToken = resolved.scopeToken;
       await _player.play();
       // Safety net if the backend ignores Media.end on some platforms.
       _clipEndSub = armClipEndWatcher(
@@ -171,10 +149,6 @@ class RecordingPreviewPlayer implements RecordingPreviewPlayback {
         },
       );
     } catch (e, st) {
-      final token = resolved.scopeToken;
-      if (token != null) {
-        await SecurityScopedBookmarkChannel.releaseBookmark(token);
-      }
       _log.warning('preview clip playback failed', e, st);
       rethrow;
     }
@@ -202,7 +176,6 @@ class RecordingPreviewPlayer implements RecordingPreviewPlayback {
     await _cancelClipWatcher();
     await _player.stop();
     _loadedPath = null;
-    await _releaseScope();
   }
 
   @override
@@ -212,7 +185,6 @@ class RecordingPreviewPlayer implements RecordingPreviewPlayback {
     _clipGeneration++;
     await _cancelClipWatcher();
     _loadedPath = null;
-    await _releaseScope();
     await _player.dispose();
   }
 
@@ -220,37 +192,4 @@ class RecordingPreviewPlayer implements RecordingPreviewPlayback {
     await _clipEndSub?.cancel();
     _clipEndSub = null;
   }
-
-  /// Resolves [absolutePath] for playback: returns the path itself plus an
-  /// optional security-scoped access token (the macOS sandbox grants
-  /// disappear between launches; ADR-0060). Returns a token of `null` on
-  /// any non-macOS platform or when no native shim is registered.
-  Future<_ResolvedPath> _resolveForPlayback(String absolutePath) async {
-    final bookmark = await _loadBookmarkFor(absolutePath);
-    if (bookmark != null) {
-      final resolved = await SecurityScopedBookmarkChannel.resolveBookmark(
-        bookmark,
-      );
-      if (resolved != null) {
-        return _ResolvedPath(resolved.path, resolved.token);
-      }
-      // Bookmark resolution failed (file gone, scope denied) — fall
-      // through to the legacy path so the open still has a chance.
-    }
-    return _ResolvedPath(absolutePath, null);
-  }
-
-  Future<Uint8List?> _loadBookmarkFor(String absolutePath) async {
-    // Preview recordings are app-managed (Craft from text writes into the
-    // app sandbox's `media/` folder) — they never have a bookmark. We keep
-    // the hook for future shadow-reading-of-imported-media features that
-    // may need to look up a row's bookmark blob.
-    return null;
-  }
-}
-
-class _ResolvedPath {
-  const _ResolvedPath(this.path, this.scopeToken);
-  final String path;
-  final int? scopeToken;
 }
