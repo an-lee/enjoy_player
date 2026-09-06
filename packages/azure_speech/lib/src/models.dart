@@ -24,6 +24,13 @@ const _azureEmptyPhonemePronunciation = AzurePhonemePronunciationAssessment(
   nBestPhonemes: null,
 );
 
+/// Normalizes a decoded JSON value to a `Map<String, dynamic>` — jsonDecode
+/// yields `Map<dynamic, dynamic>` at runtime, so raw `is Map` results need
+/// re-keying before `fromJson`.
+Map<String, dynamic>? _asMap(Object? json) => json is Map<String, dynamic>
+    ? json
+    : (json is Map ? Map<String, dynamic>.from(json) : null);
+
 /// Azure may omit tick fields for some word / error types (e.g. omission).
 int _azureJsonIntTick(Object? json) {
   if (json == null) return 0;
@@ -72,85 +79,55 @@ String _azureJsonErrorType(Object? json) {
 }
 
 List<AzureNBestResult> _azureJsonNBestList(Object? json) {
-  if (json is! List<dynamic>) return const [];
-  final out = <AzureNBestResult>[];
-  for (final e in json) {
-    if (e is Map<String, dynamic>) {
-      out.add(AzureNBestResult.fromJson(e));
-    } else if (e is Map) {
-      out.add(AzureNBestResult.fromJson(Map<String, dynamic>.from(e)));
-    }
-  }
-  return out;
+  if (json is! List) return const [];
+  return [
+    for (final e in json)
+      if (_asMap(e) case final m?) AzureNBestResult.fromJson(m),
+  ];
 }
 
 List<AzureWordAssessment> _azureJsonWordsList(Object? json) {
-  if (json is! List<dynamic>) return const [];
-  final out = <AzureWordAssessment>[];
-  for (final e in json) {
-    if (e is Map<String, dynamic>) {
-      out.add(AzureWordAssessment.fromJson(e));
-    } else if (e is Map) {
-      out.add(AzureWordAssessment.fromJson(Map<String, dynamic>.from(e)));
-    }
-  }
-  return out;
+  if (json is! List) return const [];
+  return [
+    for (final e in json)
+      if (_asMap(e) case final m?) AzureWordAssessment.fromJson(m),
+  ];
 }
 
 AzurePronunciationAssessmentScores _azureJsonPronunciationScores(Object? json) {
-  if (json is Map<String, dynamic>) {
-    return AzurePronunciationAssessmentScores.fromJson(json);
-  }
-  if (json is Map) {
-    return AzurePronunciationAssessmentScores.fromJson(
-      Map<String, dynamic>.from(json),
-    );
-  }
-  return _azureEmptyPronunciationScores;
+  final m = _asMap(json);
+  return m == null
+      ? _azureEmptyPronunciationScores
+      : AzurePronunciationAssessmentScores.fromJson(m);
 }
 
 AzureWordPronunciationAssessment _azureJsonWordPronunciation(Object? json) {
-  if (json is Map<String, dynamic>) {
-    return AzureWordPronunciationAssessment.fromJson(json);
-  }
-  if (json is Map) {
-    return AzureWordPronunciationAssessment.fromJson(
-      Map<String, dynamic>.from(json),
-    );
-  }
-  return _azureEmptyWordPronunciation;
+  final m = _asMap(json);
+  return m == null
+      ? _azureEmptyWordPronunciation
+      : AzureWordPronunciationAssessment.fromJson(m);
 }
 
 AzureSyllablePronunciationAssessment _azureJsonSyllablePronunciation(
   Object? json,
 ) {
-  if (json is Map<String, dynamic>) {
-    return AzureSyllablePronunciationAssessment.fromJson(json);
-  }
-  if (json is Map) {
-    return AzureSyllablePronunciationAssessment.fromJson(
-      Map<String, dynamic>.from(json),
-    );
-  }
-  return _azureEmptySyllablePronunciation;
+  final m = _asMap(json);
+  return m == null
+      ? _azureEmptySyllablePronunciation
+      : AzureSyllablePronunciationAssessment.fromJson(m);
 }
 
 AzurePhonemePronunciationAssessment _azureJsonPhonemePronunciation(
   Object? json,
 ) {
-  if (json is Map<String, dynamic>) {
-    return AzurePhonemePronunciationAssessment.fromJson(json);
-  }
-  if (json is Map) {
-    return AzurePhonemePronunciationAssessment.fromJson(
-      Map<String, dynamic>.from(json),
-    );
-  }
-  return _azureEmptyPhonemePronunciation;
+  final m = _asMap(json);
+  return m == null
+      ? _azureEmptyPhonemePronunciation
+      : AzurePhonemePronunciationAssessment.fromJson(m);
 }
 
 /// Root JSON from [SpeechServiceResponse_JsonResult] (Azure Speech SDK).
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 final class AzurePronunciationAssessmentResult {
   const AzurePronunciationAssessmentResult({
     required this.recognitionStatus,
@@ -179,15 +156,12 @@ final class AzurePronunciationAssessmentResult {
     Map<String, dynamic> json,
   ) => _$AzurePronunciationAssessmentResultFromJson(json);
 
-  Map<String, dynamic> toJson() =>
-      _$AzurePronunciationAssessmentResultToJson(this);
-
   /// Convenience: first hypothesis scores (null if [nBest] empty).
   AzurePronunciationAssessmentScores? get primaryScores =>
       nBest.isEmpty ? null : nBest.first.pronunciationAssessment;
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 final class AzureNBestResult {
   const AzureNBestResult({
     required this.confidence,
@@ -225,11 +199,9 @@ final class AzureNBestResult {
 
   factory AzureNBestResult.fromJson(Map<String, dynamic> json) =>
       _$AzureNBestResultFromJson(json);
-
-  Map<String, dynamic> toJson() => _$AzureNBestResultToJson(this);
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 final class AzurePronunciationAssessmentScores {
   const AzurePronunciationAssessmentScores({
     required this.accuracyScore,
@@ -257,12 +229,9 @@ final class AzurePronunciationAssessmentScores {
   factory AzurePronunciationAssessmentScores.fromJson(
     Map<String, dynamic> json,
   ) => _$AzurePronunciationAssessmentScoresFromJson(json);
-
-  Map<String, dynamic> toJson() =>
-      _$AzurePronunciationAssessmentScoresToJson(this);
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 final class AzureWordAssessment {
   const AzureWordAssessment({
     required this.word,
@@ -296,11 +265,9 @@ final class AzureWordAssessment {
 
   factory AzureWordAssessment.fromJson(Map<String, dynamic> json) =>
       _$AzureWordAssessmentFromJson(json);
-
-  Map<String, dynamic> toJson() => _$AzureWordAssessmentToJson(this);
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 final class AzureWordPronunciationAssessment {
   const AzureWordPronunciationAssessment({
     required this.accuracyScore,
@@ -316,12 +283,9 @@ final class AzureWordPronunciationAssessment {
   factory AzureWordPronunciationAssessment.fromJson(
     Map<String, dynamic> json,
   ) => _$AzureWordPronunciationAssessmentFromJson(json);
-
-  Map<String, dynamic> toJson() =>
-      _$AzureWordPronunciationAssessmentToJson(this);
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 final class AzureSyllableAssessment {
   const AzureSyllableAssessment({
     required this.syllable,
@@ -351,11 +315,9 @@ final class AzureSyllableAssessment {
 
   factory AzureSyllableAssessment.fromJson(Map<String, dynamic> json) =>
       _$AzureSyllableAssessmentFromJson(json);
-
-  Map<String, dynamic> toJson() => _$AzureSyllableAssessmentToJson(this);
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 final class AzureSyllablePronunciationAssessment {
   const AzureSyllablePronunciationAssessment({required this.accuracyScore});
 
@@ -365,12 +327,9 @@ final class AzureSyllablePronunciationAssessment {
   factory AzureSyllablePronunciationAssessment.fromJson(
     Map<String, dynamic> json,
   ) => _$AzureSyllablePronunciationAssessmentFromJson(json);
-
-  Map<String, dynamic> toJson() =>
-      _$AzureSyllablePronunciationAssessmentToJson(this);
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 final class AzurePhonemeAssessment {
   const AzurePhonemeAssessment({
     required this.phoneme,
@@ -396,11 +355,9 @@ final class AzurePhonemeAssessment {
 
   factory AzurePhonemeAssessment.fromJson(Map<String, dynamic> json) =>
       _$AzurePhonemeAssessmentFromJson(json);
-
-  Map<String, dynamic> toJson() => _$AzurePhonemeAssessmentToJson(this);
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 final class AzurePhonemePronunciationAssessment {
   const AzurePhonemePronunciationAssessment({
     required this.accuracyScore,
@@ -416,12 +373,9 @@ final class AzurePhonemePronunciationAssessment {
   factory AzurePhonemePronunciationAssessment.fromJson(
     Map<String, dynamic> json,
   ) => _$AzurePhonemePronunciationAssessmentFromJson(json);
-
-  Map<String, dynamic> toJson() =>
-      _$AzurePhonemePronunciationAssessmentToJson(this);
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 final class AzureNBestPhoneme {
   const AzureNBestPhoneme({required this.phoneme, required this.score});
 
@@ -433,6 +387,4 @@ final class AzureNBestPhoneme {
 
   factory AzureNBestPhoneme.fromJson(Map<String, dynamic> json) =>
       _$AzureNBestPhonemeFromJson(json);
-
-  Map<String, dynamic> toJson() => _$AzureNBestPhonemeToJson(this);
 }

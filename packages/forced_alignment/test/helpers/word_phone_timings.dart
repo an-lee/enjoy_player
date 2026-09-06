@@ -1,7 +1,46 @@
-import 'types.dart';
-import 'web_timings.dart';
+/// Test-side port of the deleted `lib/src/flatten.dart`: flattens a
+/// recursive engine result to enjoy-web-shaped word/phone timings for
+/// golden / regression assertions.
+library;
 
-/// Flatten a recursive engine result to enjoy-web word/phone timings.
+import 'package:forced_alignment/forced_alignment.dart';
+import 'package:forced_alignment/src/types.dart';
+
+final class WordTiming {
+  const WordTiming({
+    required this.text,
+    required this.startTime,
+    required this.endTime,
+  });
+
+  final String text;
+  final double startTime;
+  final double endTime;
+}
+
+final class PhoneTiming {
+  const PhoneTiming({
+    required this.phone,
+    required this.text,
+    required this.startTime,
+    required this.endTime,
+    this.wordIndex,
+  });
+
+  final String phone;
+  final String text;
+  final double startTime;
+  final double endTime;
+  final int? wordIndex;
+}
+
+final class WordPhoneTimings {
+  const WordPhoneTimings({required this.words, required this.phones});
+
+  final List<WordTiming> words;
+  final List<PhoneTiming> phones;
+}
+
 WordPhoneTimings flattenToWordPhoneTimings(AlignmentResult result) {
   final words = <WordTiming>[];
   final phones = <PhoneTiming>[];

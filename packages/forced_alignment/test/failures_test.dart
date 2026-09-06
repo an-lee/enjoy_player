@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forced_alignment/forced_alignment.dart';
 
-import 'helpers/duration_model_synthesizer.dart';
 import 'helpers/fake_spoken_synthesizer.dart';
 
 void main() {
@@ -61,14 +60,5 @@ void main() {
     );
     expect(outcome, isA<AlignmentSuccess>());
     expect((outcome as AlignmentSuccess).result.wordTimeline, isEmpty);
-  });
-
-  test('production factory is eSpeak-NG, not DurationModelSynthesizer', () {
-    expect(productionSynthesizerIsEspeakNg(), isTrue);
-    expect(createProductionSynthesizer(), isA<EspeakNgSynthesizer>());
-    expect(
-      createProductionSynthesizer(),
-      isNot(isA<DurationModelSynthesizer>()),
-    );
   });
 }

@@ -1,7 +1,6 @@
 import 'package:mcfcc_nsn/mcfcc_nsn.dart';
 
 import '../constants.dart';
-import '../types.dart';
 
 int _nextPowerOfTwo(int n) {
   var p = 1;
@@ -16,17 +15,10 @@ int _nextPowerOfTwo(int n) {
 /// [windowLength] comes from [windowSeconds]. [fftSize] is the next power of
 /// two so `mcfcc_nsn` / FFT can run; frames are zero-padded to that length.
 final class MfccPreset {
-  const MfccPreset({
-    required this.windowSeconds,
-    required this.hopSeconds,
-    this.numFilters = 26,
-    this.numCoefs = 13,
-  });
+  const MfccPreset({required this.windowSeconds, required this.hopSeconds});
 
   final double windowSeconds;
   final double hopSeconds;
-  final int numFilters;
-  final int numCoefs;
 
   int get windowLength =>
       (windowSeconds * kAlignmentSampleRate).round().clamp(32, 8192);
@@ -37,31 +29,12 @@ final class MfccPreset {
       (hopSeconds * kAlignmentSampleRate).round().clamp(16, windowLength);
 }
 
-const MfccPreset kMfccPresetLow = MfccPreset(
-  windowSeconds: 0.040,
-  hopSeconds: 0.020,
-);
-
+/// The one preset: the app hardcodes medium-granularity alignment, so the
+/// low/high presets and the `mfccPresetFor` knob were deleted (audit #695).
 const MfccPreset kMfccPresetMedium = MfccPreset(
   windowSeconds: 0.025,
   hopSeconds: 0.010,
 );
-
-const MfccPreset kMfccPresetHigh = MfccPreset(
-  windowSeconds: 0.025,
-  hopSeconds: 0.005,
-);
-
-MfccPreset mfccPresetFor(AlignmentGranularity granularity) {
-  switch (granularity) {
-    case AlignmentGranularity.low:
-      return kMfccPresetLow;
-    case AlignmentGranularity.medium:
-      return kMfccPresetMedium;
-    case AlignmentGranularity.high:
-      return kMfccPresetHigh;
-  }
-}
 
 /// MFCC frames for 16 kHz mono PCM. Pads short signals to one window.
 List<List<double>> extractMfccFrames(List<double> signal, MfccPreset preset) {
@@ -87,8 +60,10 @@ List<List<double>> extractMfccFrames(List<double> signal, MfccPreset preset) {
   final processor = MFCC(
     sampleRate: kAlignmentSampleRate,
     fftSize: fftSize,
-    numFilters: preset.numFilters,
-    numCoefs: preset.numCoefs,
+    // mcfcc_nsn defaults (26 filters / 13 coefficients); no caller ever
+    // overrode them, so the preset fields were folded away (audit #695).
+    numFilters: 26,
+    numCoefs: 13,
   );
   return processor.processFrames(frames);
 }

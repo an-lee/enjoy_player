@@ -15,7 +15,6 @@ Object runAlignPipeline({
   required Float32List sourcePcm,
   required String transcript,
   required String language,
-  required AlignmentGranularity granularity,
   double timeOffset = 0,
   ReferenceAudio? reference,
 }) {
@@ -46,8 +45,8 @@ Object runAlignPipeline({
     );
   }
 
-  final includePhones = granularity != AlignmentGranularity.low;
-  final preset = mfccPresetFor(granularity);
+  const includePhones = true;
+  const preset = kMfccPresetMedium;
   final hop = preset.windowStride / kAlignmentSampleRate;
   final refFrames = extractMfccFrames(spoken.pcm, preset);
   final srcFrames = extractMfccFrames(sourcePcm, preset);

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forced_alignment/forced_alignment.dart';
+import 'helpers/word_phone_timings.dart';
 import 'package:forced_alignment/src/synth/espeak_synth_host.dart';
 
 void main() {
