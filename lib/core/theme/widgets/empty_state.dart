@@ -18,7 +18,6 @@ abstract final class EnjoyIllustrations {
   static const emptyTranscript = 'assets/illustrations/empty_transcript.svg';
   static const emptyRecordings = 'assets/illustrations/empty_recordings.svg';
   static const offline = 'assets/illustrations/offline.svg';
-  static const errorGeneric = 'assets/illustrations/error_generic.svg';
 }
 
 class EmptyState extends StatelessWidget {
@@ -31,11 +30,10 @@ class EmptyState extends StatelessWidget {
     this.actionLabel,
     this.secondaryAction,
     this.secondaryActionLabel,
-    this.illustration,
     this.illustrationAsset,
   });
 
-  /// Used when [illustration] and [illustrationAsset] are null.
+  /// Used when [illustrationAsset] is null.
   final IconData icon;
 
   final String title;
@@ -45,10 +43,7 @@ class EmptyState extends StatelessWidget {
   final VoidCallback? secondaryAction;
   final String? secondaryActionLabel;
 
-  /// When non-null, replaces [icon] / asset art.
-  final Widget? illustration;
-
-  /// When non-null (and [illustration] is null), shows branded SVG.
+  /// When non-null, shows branded SVG instead of [icon].
   final String? illustrationAsset;
 
   @override
@@ -58,9 +53,7 @@ class EmptyState extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
 
     final Widget art;
-    if (illustration != null) {
-      art = illustration!;
-    } else if (illustrationAsset != null && illustrationAsset!.isNotEmpty) {
+    if (illustrationAsset != null && illustrationAsset!.isNotEmpty) {
       art = SvgPicture.asset(
         illustrationAsset!,
         height: 112,
