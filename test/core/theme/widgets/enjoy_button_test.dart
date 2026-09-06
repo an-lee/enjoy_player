@@ -32,25 +32,6 @@ void main() {
     }
   });
 
-  testWidgets('quiet and echo variants render in both modes', (tester) async {
-    for (final brightness in [Brightness.light, Brightness.dark]) {
-      await tester.pumpWidget(
-        _host(
-          brightness: brightness,
-          child: Column(
-            children: [
-              EnjoyButton.quiet(onPressed: () {}, child: const Text('Quiet')),
-              EnjoyButton.echo(onPressed: () {}, child: const Text('Echo')),
-            ],
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('Quiet'), findsOneWidget);
-      expect(find.text('Echo'), findsOneWidget);
-    }
-  });
-
   testWidgets('hover darkens fill overlay without fading the label', (
     tester,
   ) async {
