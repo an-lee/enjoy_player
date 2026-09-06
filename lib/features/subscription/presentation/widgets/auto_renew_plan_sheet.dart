@@ -20,7 +20,6 @@ import 'package:intl/intl.dart';
 
 import 'package:enjoy_player/core/errors/app_failure.dart';
 import 'package:enjoy_player/core/notices/app_notice.dart';
-import 'package:enjoy_player/core/platform/subscription_purchase_capability.dart';
 import 'package:enjoy_player/core/riverpod/async_value_x.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_button.dart';
@@ -65,11 +64,7 @@ Future<void> showUnifiedPurchaseSheet(
   required SubscriptionTier tier,
   required CatalogInterval interval,
 }) async {
-  if (showsMobilePurchaseUnavailable()) {
-    await showMobilePurchaseUnavailableDialog(context);
-    return;
-  }
-  if (!supportsExternalSubscriptionPurchase()) return;
+  if (await guardMobilePurchase(context)) return;
   if (!context.mounted) return;
   await showEnjoyAdaptiveSheet<void>(
     context: context,

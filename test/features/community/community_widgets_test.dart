@@ -1,8 +1,7 @@
-// Community coverage: avatars, stats, metrics, JSON parsing.
+// Community coverage: avatars, summary metrics, JSON parsing.
 import 'package:enjoy_player/features/community/domain/active_user.dart';
 import 'package:enjoy_player/features/community/presentation/community_activity_avatars.dart';
 import 'package:enjoy_player/features/community/presentation/community_activity_metrics.dart';
-import 'package:enjoy_player/features/community/presentation/community_activity_stats.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -185,93 +184,22 @@ void main() {
       },
     );
 
-    testWidgets('InlineMetric and StatBlock render their text', (tester) async {
+    testWidgets('InlineMetric renders its value and label', (tester) async {
       await tester.pumpWidget(
         localized(
           (ctx) => Scaffold(
-            body: Column(
-              children: [
-                InlineMetric(
-                  icon: Icons.mic,
-                  value: '5',
-                  label: 'rec',
-                  cs: Theme.of(ctx).colorScheme,
-                  tabular: const [],
-                ),
-                const StatBlock(icon: Icons.mic, valueText: '5', label: 'rec'),
-              ],
+            body: InlineMetric(
+              icon: Icons.mic,
+              value: '5',
+              label: 'rec',
+              cs: Theme.of(ctx).colorScheme,
+              tabular: const [],
             ),
           ),
         ),
       );
-      expect(find.text('5'), findsNWidgets(2));
-      expect(find.text('rec'), findsNWidgets(2));
-    });
-
-    testWidgets('TodayStatsBody shows count + duration today branches', (
-      tester,
-    ) async {
-      final data = const ActiveUsersResponse(
-        users: [ActiveUser(id: '1', name: 'Alice')],
-        count: 1,
-        recordingsCountToday: 2,
-        recordingsDurationToday: 1800000,
-      );
-      await tester.pumpWidget(
-        localized(
-          (ctx) =>
-              Scaffold(body: TodayStatsBody(data: data, denseAvatars: true)),
-        ),
-      );
-      expect(find.text('2'), findsOneWidget);
-      expect(find.text('30m 0s'), findsOneWidget);
-    });
-
-    testWidgets('SimpleCountBody empty branch renders zero + label', (
-      tester,
-    ) async {
-      const data = ActiveUsersResponse(users: [], count: 0);
-      await tester.pumpWidget(
-        localized(
-          (ctx) => const Scaffold(
-            body: SimpleCountBody(data: data, denseAvatars: true),
-          ),
-        ),
-      );
-      expect(find.text('0'), findsOneWidget);
-    });
-
-    testWidgets('SimpleCountBody non-empty shows count + avatar initials', (
-      tester,
-    ) async {
-      final data = const ActiveUsersResponse(
-        users: [ActiveUser(id: '1', name: 'Alice')],
-        count: 7,
-      );
-      await tester.pumpWidget(
-        localized(
-          (ctx) =>
-              Scaffold(body: SimpleCountBody(data: data, denseAvatars: true)),
-        ),
-      );
-      expect(find.text('7'), findsOneWidget);
-      expect(find.text('A'), findsOneWidget); // initials avatar text
-    });
-
-    testWidgets('ActiveLearnersRow renders count + avatars', (tester) async {
-      final data = const ActiveUsersResponse(
-        users: [
-          ActiveUser(id: '1', name: 'Alice'),
-          ActiveUser(id: '2', name: 'Bob'),
-        ],
-        count: 2,
-      );
-      await tester.pumpWidget(
-        localized(
-          (ctx) => Scaffold(body: ActiveLearnersRow(data: data, dense: true)),
-        ),
-      );
-      expect(find.text('2'), findsOneWidget);
+      expect(find.text('5'), findsOneWidget);
+      expect(find.text('rec'), findsOneWidget);
     });
   });
 }

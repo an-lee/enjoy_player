@@ -20,7 +20,6 @@ import 'package:enjoy_player/features/subscription/domain/subscription_status.da
 import 'package:enjoy_player/features/subscription/presentation/widgets/auto_renew_plan_sheet.dart';
 import 'package:enjoy_player/features/subscription/presentation/widgets/mobile_purchase_unavailable.dart';
 import 'package:enjoy_player/features/subscription/presentation/widgets/tier_catalog.dart';
-import 'package:enjoy_player/core/platform/subscription_purchase_capability.dart';
 import 'package:enjoy_player/features/subscription/presentation/credits_failure_actions.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 
@@ -89,11 +88,7 @@ class SubscriptionStatusCard extends ConsumerWidget {
   }
 
   Future<void> _extendToPro(BuildContext context) async {
-    if (showsMobilePurchaseUnavailable()) {
-      await showMobilePurchaseUnavailableDialog(context);
-      return;
-    }
-    if (!supportsExternalSubscriptionPurchase()) return;
+    if (await guardMobilePurchase(context)) return;
     if (!context.mounted) return;
     await showUnifiedPurchaseSheet(
       context,
