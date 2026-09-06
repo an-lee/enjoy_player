@@ -1,5 +1,5 @@
 import 'package:enjoy_player/data/db/app_database.dart';
-import 'package:enjoy_player/features/library/application/home_continue_practice_provider.dart';
+import 'package:enjoy_player/features/library/application/continue_practice_provider.dart';
 import 'package:enjoy_player/features/library/domain/media.dart';
 import 'package:enjoy_player/features/library/domain/practice_resume.dart';
 import 'package:flutter_test/flutter_test.dart';

@@ -6,6 +6,11 @@ import 'package:drift/native.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
 import 'package:enjoy_player/data/db/app_database_provider.dart';
+import 'package:enjoy_player/features/auth/presentation/widgets/sidebar_account_chip.dart';
+import 'package:enjoy_player/features/library/application/continue_practice_provider.dart';
+import 'package:enjoy_player/features/library/domain/media.dart';
+import 'package:enjoy_player/features/library/domain/practice_resume.dart';
+import 'package:enjoy_player/features/library/presentation/widgets/sidebar_continue_practice_card.dart';
 import 'package:enjoy_player/features/player/presentation/widgets/app_sidebar.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -138,4 +143,69 @@ void main() {
     final textField = tester.widget<TextField>(find.byType(TextField).first);
     expect(textField.controller?.text, 'foo');
   });
+
+  testWidgets('AppSidebar omits the continue card when there is no resume', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(400, 900));
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    await tester.pumpWidget(buildHost(container, router));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // The widget mounts but renders shrink — no card content appears.
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    expect(find.text(l10n.homeContinuePracticing), findsNothing);
+  });
+
+  testWidgets('AppSidebar shows the continue card above the account chip', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(400, 900));
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    final resumeContainer = ProviderContainer(
+      overrides: [
+        appDatabaseProvider.overrideWithValue(db),
+        deviceGlobalAppDatabaseProvider.overrideWithValue(db),
+        continuePracticeResumeProvider.overrideWith((ref) => _resume()),
+      ],
+    );
+    addTearDown(resumeContainer.dispose);
+
+    await tester.pumpWidget(buildHost(resumeContainer, router));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.byType(SidebarContinuePracticeCard), findsOneWidget);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    expect(find.text(l10n.homeContinuePracticing), findsOneWidget);
+
+    final cardTop = tester.getTopLeft(find.byType(SidebarContinuePracticeCard));
+    final chipTop = tester.getTopLeft(find.byType(SidebarAccountChip));
+    expect(cardTop.dy, lessThan(chipTop.dy));
+  });
+}
+
+PracticeResume _resume() {
+  final ts = DateTime.utc(2026, 1, 1);
+  return PracticeResume(
+    media: Media(
+      id: 'practiced-1',
+      kind: MediaKind.video,
+      title: 'Practiced talk',
+      sourceUri: 'file:///practiced-1',
+      durationMs: 60000,
+      language: 'en-US',
+      contentHash: 'practiced-1',
+      fileSize: 1,
+      createdAt: ts,
+      updatedAt: ts,
+    ),
+    positionMs: 15000,
+    echoActive: false,
+    lastActiveAt: ts,
+    sessionId: 's1',
+  );
 }
