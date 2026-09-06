@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:enjoy_player/core/utils/text_normalization.dart';
 import 'package:enjoy_player/features/community/domain/active_user.dart';
 
-const int kMaxAvatarsCard = 8;
 const int kMaxAvatarsSummary = 4;
 const double kSummaryAvatarSize = 28;
 const double kSummaryAvatarOverlap = 8;

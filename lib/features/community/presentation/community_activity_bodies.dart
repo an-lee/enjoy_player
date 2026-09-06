@@ -1,4 +1,4 @@
-/// Card and summary body variants for the community activity card.
+/// Summary body for the `CommunityActivityCard`.
 library;
 
 import 'package:flutter/material.dart';
@@ -8,60 +8,7 @@ import 'package:enjoy_player/core/utils/time_format.dart';
 import 'package:enjoy_player/features/community/domain/active_user.dart';
 import 'package:enjoy_player/features/community/presentation/community_activity_avatars.dart';
 import 'package:enjoy_player/features/community/presentation/community_activity_metrics.dart';
-import 'package:enjoy_player/features/community/presentation/community_activity_stats.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
-
-/// Internal building block for `CommunityActivityCard`; not public API.
-class CardBody extends StatelessWidget {
-  const CardBody({
-    super.key,
-    required this.data,
-    required this.t,
-    required this.cs,
-  });
-
-  final ActiveUsersResponse data;
-  final EnjoyThemeTokens t;
-  final ColorScheme cs;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final hasTodayStats =
-        data.recordingsCountToday != null ||
-        data.recordingsDurationToday != null;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.group_outlined, size: 20, color: cs.primary),
-            SizedBox(width: t.space8),
-            Expanded(
-              child: Text(
-                l10n.communityActivity,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: t.space12),
-        if (hasTodayStats)
-          TodayStatsBody(data: data, denseAvatars: true, compactValues: true)
-        else
-          SimpleCountBody(
-            data: data,
-            denseAvatars: false,
-            compactHeadline: true,
-            maxAvatars: kMaxAvatarsCard,
-          ),
-      ],
-    );
-  }
-}
 
 /// Internal building block for `CommunityActivityCard`; not public API.
 class SummaryBody extends StatelessWidget {

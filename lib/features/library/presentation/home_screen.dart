@@ -457,7 +457,6 @@ class _HomeInsightCards extends ConsumerWidget {
                         flex: 4,
                         child: CommunityActivityCard(
                           outerPadding: EdgeInsets.zero,
-                          variant: CommunityActivityCardVariant.summary,
                           containedInParentCard: true,
                         ),
                       ),
@@ -479,7 +478,6 @@ class _HomeInsightCards extends ConsumerWidget {
                     ),
                     const CommunityActivityCard(
                       outerPadding: EdgeInsets.zero,
-                      variant: CommunityActivityCardVariant.summary,
                       containedInParentCard: true,
                     ),
                   ],

@@ -14,7 +14,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:enjoy_player/core/layout/enjoy_page_kind.dart';
-import 'package:enjoy_player/core/platform/subscription_purchase_capability.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_button.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_page.dart';
@@ -149,11 +148,7 @@ Future<void> _openUnifiedPurchase(
   SubscriptionTier tier,
   CatalogInterval interval,
 ) async {
-  if (showsMobilePurchaseUnavailable()) {
-    await showMobilePurchaseUnavailableDialog(context);
-    return;
-  }
-  if (!supportsExternalSubscriptionPurchase()) return;
+  if (await guardMobilePurchase(context)) return;
   if (!context.mounted) return;
   await showUnifiedPurchaseSheet(context, tier: tier, interval: interval);
 }
