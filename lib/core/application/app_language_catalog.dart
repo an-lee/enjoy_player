@@ -240,10 +240,6 @@ String? canonicalLookupTag(String? tag) {
   return null;
 }
 
-/// Fallback when transcript language is missing or unsupported (learning language).
-String coerceLookupSource(String? transcriptLanguage) =>
-    canonicalLookupTag(transcriptLanguage) ?? kDefaultLearningLanguageTag;
-
 /// Maps [tag] to a supported focus learning tag, or [kDefaultLearningLanguageTag].
 String canonicalFocusLanguageTag(String? tag) {
   if (tag == null || tag.trim().isEmpty) return kDefaultLearningLanguageTag;
@@ -318,9 +314,6 @@ String? resolveAzureAssessmentLocale(String? tag) {
 
   return null;
 }
-
-bool isAzurePronunciationAssessmentSupported(String? tag) =>
-    resolveAzureAssessmentLocale(tag) != null;
 
 /// True for empty / denylisted media tags (`und`, `mul`, …) — not a real
 /// spoken language choice, just "unknown content language".

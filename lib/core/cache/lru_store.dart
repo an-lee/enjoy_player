@@ -66,21 +66,6 @@ class L1Store<K, V> {
 
   /// Current number of entries (including expired-but-not-yet-evicted).
   int get size => _map.length;
-
-  /// Visits every (key, value) pair in MRU → LRU order.
-  ///
-  /// Expired entries are visited but not auto-evicted; callers that want
-  /// lazy eviction should call [peek] instead.
-  void forEach(void Function(K key, V value) visit) {
-    // LinkedHashMap iterates in insertion order (oldest first). Reverse to
-    // get MRU → LRU.
-    final keys = _map.keys.toList(growable: false);
-    for (var i = keys.length - 1; i >= 0; i--) {
-      final key = keys[i];
-      final entry = _map[key]!;
-      visit(key, entry.value);
-    }
-  }
 }
 
 class _Entry<V> {

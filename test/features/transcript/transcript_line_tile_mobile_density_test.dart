@@ -119,7 +119,7 @@ void main() {
         transcriptTileHarness(
           child: Builder(
             builder: (context) {
-              mobile = TranscriptDensity.of(context);
+              mobile = transcriptDensityOf(context);
               return const SizedBox.shrink();
             },
           ),
@@ -135,7 +135,7 @@ void main() {
         transcriptTileHarness(
           child: Builder(
             builder: (context) {
-              desktop = TranscriptDensity.of(context);
+              desktop = transcriptDensityOf(context);
               return const SizedBox.shrink();
             },
           ),

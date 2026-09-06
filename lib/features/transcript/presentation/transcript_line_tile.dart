@@ -142,7 +142,7 @@ class _TranscriptLineTileState extends ConsumerState<TranscriptLineTile> {
     final scheme = Theme.of(context).colorScheme;
     final tok = EnjoyThemeTokens.of(context);
     final typography = TranscriptTypographyTokens.of(context);
-    final density = TranscriptDensity.of(context);
+    final density = transcriptDensityOf(context);
     final l10n = AppLocalizations.of(context);
     final baseBody = typography.bodyStyle.copyWith(height: density.bodyHeight);
     final secondaryTypographyStyle = typography.secondaryStyle.copyWith(
