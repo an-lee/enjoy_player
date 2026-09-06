@@ -114,11 +114,7 @@ class EmbeddedSubtitleService {
         continue;
       }
 
-      final cleaned = SubtitleParserFacade.stripAssTags(srtText);
-      final lines = const SubtitleParserFacade().parseWithHint(
-        cleaned,
-        fileName: 'track.srt',
-      );
+      final lines = _parseExtractedSrt(srtText);
       if (lines.isEmpty) {
         ffmpegSubtitleOrdinal++;
         continue;
@@ -190,10 +186,7 @@ class EmbeddedSubtitleService {
       }
 
       final cleaned = SubtitleParserFacade.stripAssTags(srtText);
-      final lines = const SubtitleParserFacade().parseWithHint(
-        cleaned,
-        fileName: 'track.srt',
-      );
+      final lines = _parseExtractedSrt(srtText);
       if (lines.isEmpty) {
         final preview = cleaned.length > 500
             ? cleaned.substring(0, 500)
@@ -224,6 +217,15 @@ class EmbeddedSubtitleService {
       );
     }
     return results;
+  }
+
+  /// Shared extract tail: strip ASS/SSA override tags and parse the SRT text.
+  List<TranscriptLine> _parseExtractedSrt(String srtText) {
+    final cleaned = SubtitleParserFacade.stripAssTags(srtText);
+    return const SubtitleParserFacade().parseWithHint(
+      cleaned,
+      fileName: 'track.srt',
+    );
   }
 
   Future<List<({String? language})>> _probeSubtitleStreams(

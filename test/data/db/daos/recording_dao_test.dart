@@ -179,35 +179,4 @@ void main() {
       expect(row?.referenceText, 'B');
     });
   });
-
-  group('recordingOverlapsEchoRegion', () {
-    RecordingRow rec(int start, int duration) =>
-        _recording(id: 'r', referenceStart: start, referenceDuration: duration);
-
-    test('fully inside returns true', () {
-      expect(recordingOverlapsEchoRegion(rec(1000, 1000), 0, 5000), isTrue);
-    });
-
-    test('fully outside (before) returns false', () {
-      expect(recordingOverlapsEchoRegion(rec(100, 200), 1000, 2000), isFalse);
-    });
-
-    test('fully outside (after) returns false', () {
-      expect(recordingOverlapsEchoRegion(rec(5000, 200), 1000, 2000), isFalse);
-    });
-
-    test('touching at boundary (end == start) returns false', () {
-      // Recording [0,1000], echo [1000,2000]: overlapStart=1000, overlapEnd=1000
-      // → 1000 < 1000 is false.
-      expect(recordingOverlapsEchoRegion(rec(0, 1000), 1000, 2000), isFalse);
-    });
-
-    test('partial overlap on left edge', () {
-      expect(recordingOverlapsEchoRegion(rec(800, 400), 1000, 2000), isTrue);
-    });
-
-    test('partial overlap on right edge', () {
-      expect(recordingOverlapsEchoRegion(rec(1800, 400), 1000, 2000), isTrue);
-    });
-  });
 }

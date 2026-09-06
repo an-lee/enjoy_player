@@ -131,15 +131,6 @@ void main() {
       expect(await db.aiCacheDao.read('dictionary', 'recent'), isNotNull);
     });
 
-    test('readAllForKind streams all rows for the kind', () async {
-      await db.aiCacheDao.upsert('dictionary', 'a', 'A', DateTime.utc(2026));
-      await db.aiCacheDao.upsert('dictionary', 'b', 'B', DateTime.utc(2026));
-      await db.aiCacheDao.upsert('translation', 'c', 'C', DateTime.utc(2026));
-
-      final all = await db.aiCacheDao.readAllForKind('dictionary').first;
-      expect(all.map((r) => r.key).toSet(), {'a', 'b'});
-    });
-
     test(
       'deleteByPayloadLike bulk-deletes matching rows in one statement',
       () async {

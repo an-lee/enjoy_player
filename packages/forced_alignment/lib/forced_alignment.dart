@@ -29,6 +29,7 @@ export 'src/synth/native_paths.dart'
         resolveEspeakLibraryPath,
         missingEspeakRequiredDataFiles,
         setEspeakNativePathOverrides;
+export 'src/synth/resample.dart';
 export 'src/synth/spoken_reference.dart';
 export 'src/types.dart';
 export 'src/web_timings.dart';
