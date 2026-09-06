@@ -729,20 +729,6 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // persistAccessToken
-  // ---------------------------------------------------------------------------
-  group('AuthRepository.persistAccessToken', () {
-    test('writes token to store', () async {
-      final client = MockClient((_) async => http.Response('{}', 200));
-      final repo = buildRepo(client);
-
-      await repo.persistAccessToken('new-token');
-
-      expect(await tokenStore.readAccessToken(), 'new-token');
-    });
-  });
-
-  // ---------------------------------------------------------------------------
   // clearSession
   // ---------------------------------------------------------------------------
   group('AuthRepository.clearSession', () {

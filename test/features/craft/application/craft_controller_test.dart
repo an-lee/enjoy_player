@@ -1369,7 +1369,7 @@ void main() {
     });
   });
 
-  group('saveAndPractice', () {
+  group('saveToLibrary', () {
     test('returns media ID for navigation', () async {
       translator = _FakeTranslator(result: 'Hola mundo hoy.');
       final c = container();
@@ -1384,7 +1384,7 @@ void main() {
       await n.generateAudio();
       await Future<void>.delayed(Duration.zero);
 
-      final result = await n.saveAndPractice();
+      final result = await n.saveToLibrary();
       expect(result?.mediaId, 'media-new');
       expect(repo.lastImportSourceFlag, 'craft-express');
     });

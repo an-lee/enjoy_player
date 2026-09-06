@@ -199,20 +199,30 @@ class DiscoverRepository {
     // COMMIT replaces N per-entry INSERTs; `watchTimeline` re-emits once
     // instead of N times, and the underlying `feedResult.entries` is small
     // enough to allocate in one go.
-    if (feedResult.entries.isNotEmpty) {
-      await _db.youtubeFeedEntryDao.upsertEntries([
-        for (final entry in feedResult.entries)
-          YoutubeFeedEntryRow(
-            videoId: entry.videoId,
-            channelId: canonicalId,
-            title: entry.title,
-            thumbnailUrl: entry.thumbnailUrl,
-            durationSeconds: entry.durationSeconds,
-            publishedAt: entry.publishedAt,
-            fetchedAt: now,
-          ),
-      ]);
-    }
+    await _upsertFeedEntries(canonicalId, feedResult.entries, now);
+  }
+
+  /// Batch-upserts [entries] as feed rows for [channelId]. One SQLite
+  /// COMMIT replaces N per-entry INSERTs; `watchTimeline` re-emits once
+  /// instead of N times.
+  Future<void> _upsertFeedEntries(
+    String channelId,
+    Iterable<FeedEntry> entries,
+    DateTime fetchedAt,
+  ) async {
+    if (entries.isEmpty) return;
+    await _db.youtubeFeedEntryDao.upsertEntries([
+      for (final entry in entries)
+        YoutubeFeedEntryRow(
+          videoId: entry.videoId,
+          channelId: channelId,
+          title: entry.title,
+          thumbnailUrl: entry.thumbnailUrl,
+          durationSeconds: entry.durationSeconds,
+          publishedAt: entry.publishedAt,
+          fetchedAt: fetchedAt,
+        ),
+    ]);
   }
 
   Future<void> subscribeChannel({
@@ -321,7 +331,7 @@ class DiscoverRepository {
     }
 
     // Run up to [_kRefreshChannelConcurrency] channel refreshes in parallel.
-    final results = <_ChannelRefreshOutcome>[];
+    final results = <(String, bool)>[];
     for (var i = 0; i < work.length; i += _kRefreshChannelConcurrency) {
       final batch = work.sublist(
         i,
@@ -338,11 +348,11 @@ class DiscoverRepository {
 
     var refreshed = 0;
     final failed = <String>[];
-    for (final outcome in results) {
-      if (outcome.success) {
+    for (final (channelId, success) in results) {
+      if (success) {
         refreshed++;
       } else {
-        failed.add(outcome.channelId);
+        failed.add(channelId);
       }
     }
 
@@ -353,7 +363,7 @@ class DiscoverRepository {
   }
 
   /// Refreshes a single source by fetching its feed URL from the worker.
-  Future<_ChannelRefreshOutcome> _refreshSingleSource(
+  Future<(String, bool)> _refreshSingleSource(
     YoutubeChannelSubscriptionRow sub, {
     required DateTime fetchedAt,
   }) async {
@@ -370,25 +380,7 @@ class DiscoverRepository {
     try {
       final result = await _feedClient.fetchFeed(feedUrl);
 
-      // Batch upsert the parsed entries in a single Drift transaction.
-      // Replaces the previous per-entry loop, which paid N fsyncs and
-      // emitted N intermediate watchTimeline states (each suppressed by
-      // `.distinctBy(listEquals)` upstream — wasted work).
-      final entries = result.feedResult.entries;
-      if (entries.isNotEmpty) {
-        await _db.youtubeFeedEntryDao.upsertEntries([
-          for (final entry in entries)
-            YoutubeFeedEntryRow(
-              videoId: entry.videoId,
-              channelId: id,
-              title: entry.title,
-              thumbnailUrl: entry.thumbnailUrl,
-              durationSeconds: entry.durationSeconds,
-              publishedAt: entry.publishedAt,
-              fetchedAt: fetchedAt,
-            ),
-        ]);
-      }
+      await _upsertFeedEntries(id, result.feedResult.entries, fetchedAt);
 
       // Update subscription metadata (display name, avatar may change)
       await _db.youtubeChannelSubscriptionDao.upsert(
@@ -405,13 +397,13 @@ class DiscoverRepository {
         ),
       );
 
-      return _ChannelRefreshOutcome.success(id);
+      return (id, true);
     } on WorkerFeedException catch (e) {
       _log.warning('Worker refresh failed for $id: ${e.message}');
-      return _ChannelRefreshOutcome.failure(id);
+      return (id, false);
     } catch (e, st) {
       _log.warning('Refresh failed for $id', e, st);
-      return _ChannelRefreshOutcome.failure(id);
+      return (id, false);
     }
   }
 
@@ -443,16 +435,4 @@ class DiscoverRepository {
     if (url == null || url.isEmpty) return false;
     return url.contains('i.ytimg.com/vi/');
   }
-}
-
-/// Internal: outcome of a single per-channel refresh.
-class _ChannelRefreshOutcome {
-  const _ChannelRefreshOutcome._(this.channelId, this.success);
-  factory _ChannelRefreshOutcome.success(String channelId) =>
-      _ChannelRefreshOutcome._(channelId, true);
-  factory _ChannelRefreshOutcome.failure(String channelId) =>
-      _ChannelRefreshOutcome._(channelId, false);
-
-  final String channelId;
-  final bool success;
 }

@@ -243,15 +243,13 @@ class PlayerController extends _$PlayerController implements PlayerOpenHost {
     _completionLoop.bump();
     final echo = ref.read(echoModeProvider);
     final seconds = secondsFromDuration(target);
-    final routing = decideSeekRouting(echoActive: echo.active);
-    switch (routing) {
-      case SeekThroughEcho():
-        await _positionTracker.echoEnforcer.clampAndSeek(
-          seconds,
-          override: echoWindowForSeekClamp,
-        );
-      case SeekDirect():
-        await activeEngine.seek(durationFromSeconds(seconds));
+    if (decideSeekRouting(echoActive: echo.active)) {
+      await _positionTracker.echoEnforcer.clampAndSeek(
+        seconds,
+        override: echoWindowForSeekClamp,
+      );
+    } else {
+      await activeEngine.seek(durationFromSeconds(seconds));
     }
     // Re-arm the completion loop for the post-seek playback stint.
     _completionLoop.arm();

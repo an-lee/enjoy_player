@@ -224,61 +224,58 @@ class YoutubePlayerEngine implements PlayerEngine, PlayerEngineMetadata {
     final restart = decideYouTubePlayRestart(
       playbackCompleted: _session.playbackCompleted,
     );
-    switch (restart) {
-      case RestartFromBeginning():
-        await play();
-      case ResumePlayback():
-        final controller = _webView.webController;
-        if (controller == null) {
-          _logYoutube.warning(
-            'youtube playOrPause ignored without WebView '
+    if (restart) {
+      await play();
+    } else {
+      final controller = _webView.webController;
+      if (controller == null) {
+        _logYoutube.warning(
+          'youtube playOrPause ignored without WebView '
+          'vid=${_session.videoId}',
+        );
+        return;
+      }
+      _webView.onExplicitPlayAttempt();
+      _logYoutube.fine(
+        'youtube playOrPause command vid=${_session.videoId} '
+        'sessionPlaying=${_session.playing} '
+        'buffering=${_session.buffering}',
+      );
+      try {
+        final domDirection = await YoutubeWebViewBridge.playOrPause(controller);
+        // Latch from the direction the DOM actually took (D9) — never
+        // from [_session.playing], which lags DOM pauses by up to ~750 ms.
+        // Classifying from stale session state armed/consumed opposite to
+        // the command really issued in exactly the windows where it
+        // matters: a page-corrected pause (session still playing → toggle
+        // plays → budget wrongly consumed → recovery-hint instead of the
+        // silent retry), and the mirror race after the D8 retry's own
+        // play (session still not-playing → toggle pauses → budget
+        // wrongly armed → deliberate pause auto-resumed).
+        switch (_session.playRetry.classifyTransportToggle(
+          domDirection: domDirection,
+        )) {
+          case ArmRetryBudget():
+            _session.beginUserPlay();
+          case ConsumeRetryBudget():
+            _session.noteUserPauseCommand();
+          case LeaveRetryBudget():
+            break;
+        }
+        if (domDirection != null) {
+          _logYoutube.fine(
+            'youtube playOrPause direction=$domDirection '
             'vid=${_session.videoId}',
           );
-          return;
         }
-        _webView.onExplicitPlayAttempt();
-        _logYoutube.fine(
-          'youtube playOrPause command vid=${_session.videoId} '
-          'sessionPlaying=${_session.playing} '
-          'buffering=${_session.buffering}',
+      } on Object catch (error, stackTrace) {
+        _session.emitBuffering(false);
+        _logYoutube.warning(
+          'youtube playOrPause command failed vid=${_session.videoId}',
+          error,
+          stackTrace,
         );
-        try {
-          final domDirection = await YoutubeWebViewBridge.playOrPause(
-            controller,
-          );
-          // Latch from the direction the DOM actually took (D9) — never
-          // from [_session.playing], which lags DOM pauses by up to ~750 ms.
-          // Classifying from stale session state armed/consumed opposite to
-          // the command really issued in exactly the windows where it
-          // matters: a page-corrected pause (session still playing → toggle
-          // plays → budget wrongly consumed → recovery-hint instead of the
-          // silent retry), and the mirror race after the D8 retry's own
-          // play (session still not-playing → toggle pauses → budget
-          // wrongly armed → deliberate pause auto-resumed).
-          switch (_session.playRetry.classifyTransportToggle(
-            domDirection: domDirection,
-          )) {
-            case ArmRetryBudget():
-              _session.beginUserPlay();
-            case ConsumeRetryBudget():
-              _session.noteUserPauseCommand();
-            case LeaveRetryBudget():
-              break;
-          }
-          if (domDirection != null) {
-            _logYoutube.fine(
-              'youtube playOrPause direction=$domDirection '
-              'vid=${_session.videoId}',
-            );
-          }
-        } on Object catch (error, stackTrace) {
-          _session.emitBuffering(false);
-          _logYoutube.warning(
-            'youtube playOrPause command failed vid=${_session.videoId}',
-            error,
-            stackTrace,
-          );
-        }
+      }
     }
   }
 
@@ -287,45 +284,44 @@ class YoutubePlayerEngine implements PlayerEngine, PlayerEngineMetadata {
     final restart = decideYouTubePlayRestart(
       playbackCompleted: _session.playbackCompleted,
     );
-    switch (restart) {
-      case RestartFromBeginning():
-        _webView.prepareWatchReload(resetFirstPlaying: true);
-        _session.emitPlaying(false);
-        _webView.onExplicitPlayAttempt();
-        // A replay after end-of-media is a play-intent command like any
-        // other: the fresh document can be page-corrected back to paused
-        // inside the immediate window, and the D8 retry must cover it.
-        // Armed before emitBuffering(true) — beginUserPlay clears stale
-        // buffering, which here is the state we are about to arm.
-        _session.beginUserPlay();
-        _session.emitBuffering(true);
-        await _webView.loadCurrentVideoIfAttached();
-      case ResumePlayback():
-        final controller = _webView.webController;
-        if (controller == null) {
-          _logYoutube.warning(
-            'youtube play ignored without WebView vid=${_session.videoId}',
-          );
-          return;
-        }
-        _webView.onExplicitPlayAttempt();
-        // In-flight latch + stale-buffering clear live in the transition.
-        _session.beginUserPlay();
-        _logYoutube.fine(
-          'youtube play command vid=${_session.videoId} '
-          'buffering=${_session.buffering} '
-          'explicitPlay=${_session.explicitPlayAttempted}',
+    if (restart) {
+      _webView.prepareWatchReload(resetFirstPlaying: true);
+      _session.emitPlaying(false);
+      _webView.onExplicitPlayAttempt();
+      // A replay after end-of-media is a play-intent command like any
+      // other: the fresh document can be page-corrected back to paused
+      // inside the immediate window, and the D8 retry must cover it.
+      // Armed before emitBuffering(true) — beginUserPlay clears stale
+      // buffering, which here is the state we are about to arm.
+      _session.beginUserPlay();
+      _session.emitBuffering(true);
+      await _webView.loadCurrentVideoIfAttached();
+    } else {
+      final controller = _webView.webController;
+      if (controller == null) {
+        _logYoutube.warning(
+          'youtube play ignored without WebView vid=${_session.videoId}',
         );
-        try {
-          await YoutubeWebViewBridge.play(controller);
-        } on Object catch (error, stackTrace) {
-          _session.emitBuffering(false);
-          _logYoutube.warning(
-            'youtube play command failed vid=${_session.videoId}',
-            error,
-            stackTrace,
-          );
-        }
+        return;
+      }
+      _webView.onExplicitPlayAttempt();
+      // In-flight latch + stale-buffering clear live in the transition.
+      _session.beginUserPlay();
+      _logYoutube.fine(
+        'youtube play command vid=${_session.videoId} '
+        'buffering=${_session.buffering} '
+        'explicitPlay=${_session.explicitPlayAttempted}',
+      );
+      try {
+        await YoutubeWebViewBridge.play(controller);
+      } on Object catch (error, stackTrace) {
+        _session.emitBuffering(false);
+        _logYoutube.warning(
+          'youtube play command failed vid=${_session.videoId}',
+          error,
+          stackTrace,
+        );
+      }
     }
   }
 

@@ -294,9 +294,6 @@ class AuthRepository {
     }
   }
 
-  Future<void> persistAccessToken(String token) =>
-      _tokenStore.writeAccessToken(token);
-
   Future<bool> hasAccessToken() async {
     final t = await _tokenStore.readAccessToken();
     return t != null && t.isNotEmpty;
