@@ -19,6 +19,7 @@ import 'package:enjoy_player/l10n/app_localizations.dart';
 import '../../../library/application/library_search_focus.dart';
 import '../../../library/application/library_search_focus_provider.dart';
 import '../../../library/application/library_search_provider.dart';
+import '../../../library/presentation/widgets/sidebar_continue_practice_card.dart';
 
 class AppSidebar extends ConsumerStatefulWidget {
   const AppSidebar({super.key});
@@ -237,6 +238,10 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                 ),
 
                 const Spacer(),
+
+                // Continue practicing — compact card; Home suppresses its
+                // 16:9 hero at this breakpoint so only one entry point shows.
+                const SidebarContinuePracticeCard(),
 
                 // Account chip at bottom
                 const SidebarAccountChip(),

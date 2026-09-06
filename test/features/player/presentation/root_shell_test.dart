@@ -10,6 +10,7 @@ import 'package:enjoy_player/core/theme/widgets/enjoy_chrome_icon.dart';
 import 'package:enjoy_player/features/player/presentation/widgets/app_sidebar.dart';
 import 'package:enjoy_player/data/db/app_database.dart';
 import 'package:enjoy_player/data/db/app_database_provider.dart';
+import 'package:enjoy_player/features/library/application/continue_practice_provider.dart';
 import 'package:enjoy_player/features/player/application/player_controller.dart';
 import 'package:enjoy_player/features/player/application/player_engine_test_double_provider.dart';
 import 'package:enjoy_player/features/player/application/player_state_providers.dart';
@@ -160,6 +161,11 @@ List<Override> _shellOverrides(
   final overrides = <Override>[
     appDatabaseProvider.overrideWithValue(db),
     deviceGlobalAppDatabaseProvider.overrideWithValue(db),
+    // The sidebar's Continue card opens library + echo-session drift watches
+    // whose teardown timers trip the pending-timer guard. Shell layout tests
+    // never exercise resume logic, and the card is covered in
+    // app_sidebar_test — pin it off (sidebar renders shrink).
+    continuePracticeResumeProvider.overrideWith((ref) => null),
     syncCtrlProvider.overrideWithValue(0),
     discoverFeedRefreshSchedulerProvider.overrideWithValue(0),
     updateAvailableBadgeProvider.overrideWithValue(updateBadge),
