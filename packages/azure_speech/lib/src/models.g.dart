@@ -16,16 +16,6 @@ AzurePronunciationAssessmentResult _$AzurePronunciationAssessmentResultFromJson(
   nBest: _azureJsonNBestList(json['NBest']),
 );
 
-Map<String, dynamic> _$AzurePronunciationAssessmentResultToJson(
-  AzurePronunciationAssessmentResult instance,
-) => <String, dynamic>{
-  'RecognitionStatus': instance.recognitionStatus,
-  'Offset': instance.offset,
-  'Duration': instance.duration,
-  'DisplayText': instance.displayText,
-  'NBest': instance.nBest,
-};
-
 AzureNBestResult _$AzureNBestResultFromJson(Map<String, dynamic> json) =>
     AzureNBestResult(
       confidence: _azureJsonDoubleScore(json['Confidence']),
@@ -39,17 +29,6 @@ AzureNBestResult _$AzureNBestResultFromJson(Map<String, dynamic> json) =>
       words: _azureJsonWordsList(json['Words']),
     );
 
-Map<String, dynamic> _$AzureNBestResultToJson(AzureNBestResult instance) =>
-    <String, dynamic>{
-      'Confidence': instance.confidence,
-      'Lexical': instance.lexical,
-      'ITN': instance.itn,
-      'MaskedITN': instance.maskedItn,
-      'Display': instance.display,
-      'PronunciationAssessment': instance.pronunciationAssessment,
-      'Words': instance.words,
-    };
-
 AzurePronunciationAssessmentScores _$AzurePronunciationAssessmentScoresFromJson(
   Map<String, dynamic> json,
 ) => AzurePronunciationAssessmentScores(
@@ -59,16 +38,6 @@ AzurePronunciationAssessmentScores _$AzurePronunciationAssessmentScoresFromJson(
   pronScore: _azureJsonDoubleScore(json['PronScore']),
   prosodyScore: _azureJsonDoubleScoreOpt(json['ProsodyScore']),
 );
-
-Map<String, dynamic> _$AzurePronunciationAssessmentScoresToJson(
-  AzurePronunciationAssessmentScores instance,
-) => <String, dynamic>{
-  'AccuracyScore': instance.accuracyScore,
-  'FluencyScore': instance.fluencyScore,
-  'CompletenessScore': instance.completenessScore,
-  'PronScore': instance.pronScore,
-  'ProsodyScore': instance.prosodyScore,
-};
 
 AzureWordAssessment _$AzureWordAssessmentFromJson(
   Map<String, dynamic> json,
@@ -87,30 +56,12 @@ AzureWordAssessment _$AzureWordAssessmentFromJson(
       .toList(),
 );
 
-Map<String, dynamic> _$AzureWordAssessmentToJson(
-  AzureWordAssessment instance,
-) => <String, dynamic>{
-  'Word': instance.word,
-  'Offset': instance.offset,
-  'Duration': instance.duration,
-  'PronunciationAssessment': instance.pronunciationAssessment,
-  'Syllables': instance.syllables,
-  'Phonemes': instance.phonemes,
-};
-
 AzureWordPronunciationAssessment _$AzureWordPronunciationAssessmentFromJson(
   Map<String, dynamic> json,
 ) => AzureWordPronunciationAssessment(
   accuracyScore: _azureJsonDoubleScore(json['AccuracyScore']),
   errorType: _azureJsonErrorType(json['ErrorType']),
 );
-
-Map<String, dynamic> _$AzureWordPronunciationAssessmentToJson(
-  AzureWordPronunciationAssessment instance,
-) => <String, dynamic>{
-  'AccuracyScore': instance.accuracyScore,
-  'ErrorType': instance.errorType,
-};
 
 AzureSyllableAssessment _$AzureSyllableAssessmentFromJson(
   Map<String, dynamic> json,
@@ -126,25 +77,11 @@ AzureSyllableAssessment _$AzureSyllableAssessmentFromJson(
       .toList(),
 );
 
-Map<String, dynamic> _$AzureSyllableAssessmentToJson(
-  AzureSyllableAssessment instance,
-) => <String, dynamic>{
-  'Syllable': instance.syllable,
-  'Offset': instance.offset,
-  'Duration': instance.duration,
-  'PronunciationAssessment': instance.pronunciationAssessment,
-  'Phonemes': instance.phonemes,
-};
-
 AzureSyllablePronunciationAssessment
 _$AzureSyllablePronunciationAssessmentFromJson(Map<String, dynamic> json) =>
     AzureSyllablePronunciationAssessment(
       accuracyScore: _azureJsonDoubleScore(json['AccuracyScore']),
     );
-
-Map<String, dynamic> _$AzureSyllablePronunciationAssessmentToJson(
-  AzureSyllablePronunciationAssessment instance,
-) => <String, dynamic>{'AccuracyScore': instance.accuracyScore};
 
 AzurePhonemeAssessment _$AzurePhonemeAssessmentFromJson(
   Map<String, dynamic> json,
@@ -157,15 +94,6 @@ AzurePhonemeAssessment _$AzurePhonemeAssessmentFromJson(
   ),
 );
 
-Map<String, dynamic> _$AzurePhonemeAssessmentToJson(
-  AzurePhonemeAssessment instance,
-) => <String, dynamic>{
-  'Phoneme': instance.phoneme,
-  'Offset': instance.offset,
-  'Duration': instance.duration,
-  'PronunciationAssessment': instance.pronunciationAssessment,
-};
-
 AzurePhonemePronunciationAssessment
 _$AzurePhonemePronunciationAssessmentFromJson(Map<String, dynamic> json) =>
     AzurePhonemePronunciationAssessment(
@@ -175,18 +103,8 @@ _$AzurePhonemePronunciationAssessmentFromJson(Map<String, dynamic> json) =>
           .toList(),
     );
 
-Map<String, dynamic> _$AzurePhonemePronunciationAssessmentToJson(
-  AzurePhonemePronunciationAssessment instance,
-) => <String, dynamic>{
-  'AccuracyScore': instance.accuracyScore,
-  'NBestPhonemes': instance.nBestPhonemes,
-};
-
 AzureNBestPhoneme _$AzureNBestPhonemeFromJson(Map<String, dynamic> json) =>
     AzureNBestPhoneme(
       phoneme: _azureJsonString(json['Phoneme']),
       score: _azureJsonDoubleScore(json['Score']),
     );
-
-Map<String, dynamic> _$AzureNBestPhonemeToJson(AzureNBestPhoneme instance) =>
-    <String, dynamic>{'Phoneme': instance.phoneme, 'Score': instance.score};

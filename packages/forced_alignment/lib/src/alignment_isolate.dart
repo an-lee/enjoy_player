@@ -8,7 +8,6 @@ import 'alignment_pipeline.dart';
 import 'failures.dart';
 import 'request.dart';
 import 'synth/spoken_reference.dart';
-import 'types.dart';
 
 final _log = Logger('forced_alignment');
 
@@ -25,7 +24,6 @@ final class AlignIsolateJob {
     required this.sourcePcm,
     required this.transcript,
     required this.language,
-    required this.granularity,
     this.timeOffset = 0,
     this.reference,
   });
@@ -33,7 +31,6 @@ final class AlignIsolateJob {
   final Float32List sourcePcm;
   final String transcript;
   final String language;
-  final AlignmentGranularity granularity;
   final double timeOffset;
 
   /// Prebuilt spoken reference. Production synth runs on [EspeakSynthHost]
@@ -52,7 +49,6 @@ void _alignIsolateMain(_AlignIsolateBox box) {
       sourcePcm: job.sourcePcm,
       transcript: job.transcript,
       language: job.language,
-      granularity: job.granularity,
       timeOffset: job.timeOffset,
       reference: job.reference,
     );

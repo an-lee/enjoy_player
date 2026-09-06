@@ -43,14 +43,12 @@ final class ForcedAlignmentEnrichmentBackend implements EnrichmentBackend {
     required Float32List sourcePcm16k,
     required String language,
     required List<AlignmentSegment> segments,
-    required AlignmentGranularity granularity,
     AlignmentCancelToken? cancel,
   }) {
     return fa.alignSegments(
       sourcePcm16k: sourcePcm16k,
       language: language,
       segments: segments,
-      granularity: granularity,
       cancel: cancel,
     );
   }

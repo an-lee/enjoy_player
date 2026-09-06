@@ -74,7 +74,6 @@ void main() {
             required sourcePcm16k,
             required language,
             required segments,
-            required granularity,
           }) async {
             aligned = true;
             return _successFor(segments);
@@ -99,7 +98,6 @@ void main() {
             required sourcePcm16k,
             required language,
             required segments,
-            required granularity,
           }) async {
             aligned = true;
             return _successFor(segments);
@@ -115,7 +113,6 @@ void main() {
   });
 
   test('setting on attaches nested timeline and phones', () async {
-    AlignmentGranularity? seenGranularity;
     final enricher = CraftTimelineEnricher(
       enabled: true,
       decodePcm: _dummyPcm,
@@ -124,9 +121,7 @@ void main() {
             required sourcePcm16k,
             required language,
             required segments,
-            required granularity,
           }) async {
-            seenGranularity = granularity;
             expect(segments, hasLength(1));
             expect(segments.single.id, 0);
             return _successFor(segments);
@@ -137,7 +132,6 @@ void main() {
       audioBytes: audio,
       language: 'en-US',
     );
-    expect(seenGranularity, AlignmentGranularity.medium);
     final decoded = jsonDecode(out!) as List;
     expect(decoded.single['text'], 'Hello world.');
     expect(decoded.single['start'], 0);
@@ -156,7 +150,6 @@ void main() {
             required sourcePcm16k,
             required language,
             required segments,
-            required granularity,
           }) async => const AlignmentFailed(
             AlignmentFailure(
               reason: AlignmentFailureReason.spokenReferenceUnavailable,
@@ -180,7 +173,6 @@ void main() {
             required sourcePcm16k,
             required language,
             required segments,
-            required granularity,
           }) async => const AlignmentFailed(
             AlignmentFailure(
               reason: AlignmentFailureReason.unsupportedLanguage,
@@ -205,7 +197,6 @@ void main() {
             required sourcePcm16k,
             required language,
             required segments,
-            required granularity,
           }) async => _successFor(segments),
     );
     final out = await enricher.enrich(
@@ -225,7 +216,6 @@ void main() {
             required sourcePcm16k,
             required language,
             required segments,
-            required granularity,
           }) async => const AlignmentFailed(
             AlignmentFailure(reason: AlignmentFailureReason.timedOut),
           ),
@@ -250,7 +240,6 @@ void main() {
             required sourcePcm16k,
             required language,
             required segments,
-            required granularity,
           }) async => _successFor([segments.first]),
     );
     final out = await enricher.enrich(
@@ -278,7 +267,6 @@ void main() {
             required sourcePcm16k,
             required language,
             required segments,
-            required granularity,
           }) async {
             seenLanguage = language;
             return _successFor(segments);
@@ -304,7 +292,6 @@ void main() {
               required sourcePcm16k,
               required language,
               required segments,
-              required granularity,
             }) async {
               seenLanguage = language;
               return _successFor(segments);
@@ -326,7 +313,6 @@ void main() {
               required sourcePcm16k,
               required language,
               required segments,
-              required granularity,
             }) async {
               aligned = true;
               return _successFor(segments);
@@ -351,7 +337,6 @@ void main() {
             required sourcePcm16k,
             required language,
             required segments,
-            required granularity,
           }) async {
             aligned = true;
             return _successFor(segments);

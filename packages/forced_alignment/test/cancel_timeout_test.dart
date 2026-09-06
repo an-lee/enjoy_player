@@ -29,7 +29,6 @@ void main() {
       sourcePcm16k: pcm,
       transcript: 'hello world',
       language: 'en-US',
-      granularity: AlignmentGranularity.high,
       cancel: token,
       synthesizer: synth,
     );
@@ -48,7 +47,6 @@ void main() {
       sourcePcm16k: pcm,
       transcript: 'hello world',
       language: 'en-US',
-      granularity: AlignmentGranularity.high,
       timeout: const Duration(milliseconds: 1),
       synthesizer: synth,
     );

@@ -106,7 +106,6 @@ void main() {
             required sourcePcm16k,
             required language,
             required segments,
-            required granularity,
             cancel,
           }) async {
             expect(language, 'en-US');
@@ -159,7 +158,6 @@ void main() {
                 required sourcePcm16k,
                 required language,
                 required segments,
-                required granularity,
                 cancel,
               }) async {
                 return _successFor(segments);
@@ -308,7 +306,6 @@ void main() {
             required sourcePcm16k,
             required language,
             required segments,
-            required granularity,
             cancel,
           }) async {
             return _successFor(segments);
