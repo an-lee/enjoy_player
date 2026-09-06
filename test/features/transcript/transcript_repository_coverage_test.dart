@@ -28,7 +28,6 @@ ApiClient _fakeApiClient(MockClient client) {
     httpClient: client,
     getBaseUrl: () async => 'https://fake.test',
     getAccessToken: () async => 'token',
-    sendAuthHeader: false,
   );
 }
 

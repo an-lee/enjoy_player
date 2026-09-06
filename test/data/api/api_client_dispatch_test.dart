@@ -2,7 +2,7 @@
 //
 //   * HTTP method dispatcher in `_dispatch` (PATCH/PUT/DELETE paths)
 //   * 401 refresh-retry (single retry, no infinite loop)
-//   * `_camelQueryKeyToSnake` translation for query parameters
+//   * `camelToSnakeToken` translation for query parameters
 //   * `getJsonList` happy path + non-array body rejection
 //   * `deleteJson` allowEmptyBody ⇒ empty body becomes {}
 //   * `putBytesAbsolute` happy path + non-2xx rejection
@@ -45,23 +45,6 @@ void main() {
       expect(captured!.method, 'PATCH');
       expect(captured!.body, contains('"display_title":"hi"'));
       expect(captured!.body, contains('"author_name":"ann"'));
-    });
-
-    test('PUT with transformBody:false sends raw body untouched', () async {
-      http.Request? captured;
-      final mock = MockClient((request) async {
-        captured = request;
-        return http.Response(jsonEncode({'ok': true}), 200);
-      });
-
-      await _buildClient(
-        mock,
-      ).putJson('/audios/1', body: {'rawCamel': 'value'}, transformBody: false);
-
-      expect(captured, isNotNull);
-      // Because transformBody=false, the body is JSON-encoded as-is.
-      expect(captured!.body, contains('"rawCamel":"value"'));
-      expect(captured!.body.contains('raw_camel'), isFalse);
     });
 
     test('DELETE forwards to _client.delete with empty body', () async {

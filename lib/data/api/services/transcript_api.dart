@@ -31,7 +31,4 @@ class TranscriptApi extends RestApi {
 
   Future<JsonMap> uploadTranscript(JsonMap transcript) =>
       client.postJson(_path, body: {'transcript': transcript});
-
-  Future<JsonMap> syncTranscript(JsonMap data) =>
-      client.postJson(_path, body: data);
 }

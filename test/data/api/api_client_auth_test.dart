@@ -15,7 +15,6 @@ import 'package:http/testing.dart';
 ///   - cached token empty + refresh succeeds → new token attached
 ///   - cached token empty + refresh fails (or missing) → 401 `ApiException`
 ///   - `requireAuth: false` → no auth headers (regardless of cached token)
-///   - `sendAuthHeader: false` → no auth headers (regardless of `requireAuth`)
 void main() {
   group('ApiClient bearer auth', () {
     test('attaches the cached access token when present', () async {
@@ -128,26 +127,6 @@ void main() {
       );
 
       await client.getJson('/me', requireAuth: false);
-
-      expect(captured, isNotNull);
-      expect(captured!.headers.containsKey('Authorization'), isFalse);
-    });
-
-    test('skips auth when sendAuthHeader is false', () async {
-      http.Request? captured;
-      final mock = MockClient((request) async {
-        captured = request;
-        return http.Response(jsonEncode({'ok': true}), 200);
-      });
-
-      final client = ApiClient(
-        httpClient: mock,
-        getBaseUrl: () async => 'https://api.example.com',
-        getAccessToken: () async => 'should-not-be-sent',
-        sendAuthHeader: false,
-      );
-
-      await client.getJson('/me');
 
       expect(captured, isNotNull);
       expect(captured!.headers.containsKey('Authorization'), isFalse);

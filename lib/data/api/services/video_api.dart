@@ -9,7 +9,6 @@ class VideoApi extends RestApi {
   VideoApi(super.client);
 
   static const _minePath = '/api/v1/mine/videos';
-  static const _publicPath = '/api/v1/videos';
 
   Future<List<JsonMap>> videos({
     String? provider,
@@ -28,49 +27,8 @@ class VideoApi extends RestApi {
 
   Future<JsonMap> video(String id) => client.getJson('$_minePath/$id');
 
-  /// Public catalog row (`GET /api/v1/videos/:id`) — not scoped to the
-  /// signed-in user's library. Used when mine create reports a duplicate id
-  /// but `GET /mine/videos/:id` 404s (global YouTube / provider rows).
-  Future<JsonMap> publicVideo(String id) => client.getJson('$_publicPath/$id');
-
   Future<JsonMap> uploadVideo(JsonMap video) =>
       client.postJson(_minePath, body: {'video': video});
 
   Future<JsonMap> deleteVideo(String id) => client.deleteJson('$_minePath/$id');
-
-  Future<JsonMap> registerVideo(JsonMap data) =>
-      client.postJson(_publicPath, body: data);
-
-  Future<({List<JsonMap> videos, JsonMap pagy})> listVideos({
-    String? provider,
-    int? page,
-    int? limit,
-    String? updatedAfter,
-  }) async {
-    final m = await client.getJson(
-      _publicPath,
-      queryParameters: buildQuery({
-        'provider': provider,
-        'page': page,
-        'limit': limit,
-        'updatedAfter': updatedAfter,
-      }),
-    );
-    final rawVideos = m['videos'];
-    final rawPagy = m['pagy'];
-    if (rawVideos is! List) {
-      throw StateError('listVideos: expected videos list');
-    }
-    final videos = rawVideos.map<JsonMap>((e) {
-      if (e is JsonMap) return e;
-      if (e is Map) return Map<String, dynamic>.from(e);
-      throw StateError('listVideos: invalid video entry');
-    }).toList();
-    final pagy = rawPagy is JsonMap
-        ? rawPagy
-        : (rawPagy is Map
-              ? Map<String, dynamic>.from(rawPagy)
-              : <String, dynamic>{});
-    return (videos: videos, pagy: pagy);
-  }
 }
