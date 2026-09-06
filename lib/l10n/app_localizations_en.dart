@@ -2250,9 +2250,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get aiPlaygroundProviderLocal => 'Local (unavailable)';
-
-  @override
   String get aiPlaygroundPickAudio => 'Pick audio file';
 
   @override

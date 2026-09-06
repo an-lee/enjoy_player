@@ -9,6 +9,9 @@ library;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'package:enjoy_player/features/ai/application/ai_result_cache.dart';
+import 'package:enjoy_player/features/ai/domain/models/contextual_translation_result.dart';
+import 'package:enjoy_player/features/ai/domain/models/dictionary_result.dart';
+import 'package:enjoy_player/features/ai/domain/models/translation_result.dart';
 
 part 'lookup_sheet_result_cache.g.dart';
 
@@ -19,9 +22,9 @@ final class LookupSheetResultCache {
     this._contextualCache,
   );
 
-  final AiTranslationCache _translationCache;
-  final AiDictionaryCache _dictionaryCache;
-  final AiContextualTranslationCache _contextualCache;
+  final AiResultCache<TranslationResult> _translationCache;
+  final AiResultCache<DictionaryResult> _dictionaryCache;
+  final AiResultCache<ContextualTranslationResult> _contextualCache;
 
   /// Removes every cached entry whose payload matches the given pair.
   ///

@@ -33,43 +33,35 @@ import 'package:enjoy_player/features/ai/domain/models/translation_result.dart';
 
 part 'ai_result_cache.g.dart';
 
-/// Read-only diagnostic snapshot of [AiResultCache].
-class AiCacheStats {
-  const AiCacheStats({
-    required this.l1Size,
-    required this.l1Capacity,
-    required this.l2RowCounts,
-  });
-
-  final int l1Size;
-  final int l1Capacity;
-  final Map<AiKind, int> l2RowCounts;
-
-  @override
-  String toString() => 'AiCacheStats(l1=$l1Size/$l1Capacity, l2=$l2RowCounts)';
-}
-
 // ignore_for_file: prefer_initializing_formals
 
 /// Two-tier AI result cache.
 ///
-/// Constructed by [aiResultCacheProvider] in production. Tests construct
-/// it directly with an in-memory `AppDatabase`.
-abstract class AiResultCache<V extends Object> {
+/// One generic class for every payload type — the JSON adapter is injected
+/// as `fromJson` / `toJson` converters. Constructed by the per-kind
+/// providers below; tests construct it directly with an in-memory
+/// `AppDatabase`.
+class AiResultCache<V extends Object> {
   AiResultCache({
     required AiCacheDao dao,
     required L1Store<String, V> l1,
     required Map<AiKind, AiKindPolicy> policies,
     Logger? logger,
+    required V Function(Map<String, dynamic> json) fromJson,
+    required Map<String, dynamic> Function(V value) toJson,
   }) : _dao = dao,
        _l1 = l1,
        _policies = policies,
-       _log = logger ?? logNamed('ai_cache');
+       _log = logger ?? logNamed('ai_cache'),
+       _fromJson = fromJson,
+       _toJson = toJson;
 
   final AiCacheDao _dao;
   final L1Store<String, V> _l1;
   final Map<AiKind, AiKindPolicy> _policies;
   final Logger _log;
+  final V Function(Map<String, dynamic> json) _fromJson;
+  final Map<String, dynamic> Function(V value) _toJson;
 
   /// L1-only synchronous read. Returns null on miss or TTL expiry.
   V? peek({required AiKind kind, required String key}) {
@@ -137,7 +129,7 @@ abstract class AiResultCache<V extends Object> {
     final cacheKey = _cacheKey(kind, key);
     _l1.put(cacheKey, value);
     try {
-      final json = jsonEncode(_encode(value));
+      final json = jsonEncode(_toJson(value));
       await _dao.upsert(kind.wire, key, json, DateTime.now());
     } on Object catch (e, st) {
       _log.warning(
@@ -204,103 +196,12 @@ abstract class AiResultCache<V extends Object> {
     _log.info('ai_cache prune complete');
   }
 
-  /// Read-only diagnostics snapshot.
-  Future<AiCacheStats> stats() async {
-    final l2Counts = <AiKind, int>{};
-    for (final kind in _policies.keys) {
-      l2Counts[kind] = await _dao.countForKind(kind.wire);
-    }
-    return AiCacheStats(
-      l1Size: _l1.size,
-      l1Capacity: _l1.capacity,
-      l2RowCounts: l2Counts,
-    );
-  }
-
   String _cacheKey(AiKind kind, String key) => '${kind.wire}|$key';
 
   V _decode(String payloadJson) {
     final map = jsonDecode(payloadJson) as Map<String, dynamic>;
-    return fromJson(map);
+    return _fromJson(map);
   }
-
-  Map<String, dynamic> _encode(V value) => toJson(value);
-
-  /// Subclass-supplied JSON adapter.
-  V fromJson(Map<String, dynamic> json);
-
-  /// Subclass-supplied JSON adapter.
-  Map<String, dynamic> toJson(V value);
-}
-
-/// Typed convenience wrapper for caching [Map] payloads (e.g. plain
-/// translation / dictionary). Used by the lookup sheet providers.
-class AiMapCache extends AiResultCache<Map<String, dynamic>> {
-  AiMapCache({
-    required super.dao,
-    required super.l1,
-    required super.policies,
-    super.logger,
-  });
-
-  @override
-  Map<String, dynamic> fromJson(Map<String, dynamic> json) => json;
-
-  @override
-  Map<String, dynamic> toJson(Map<String, dynamic> value) => value;
-}
-
-/// Cache subclass for `TranslationResult` (freezed + json_serializable).
-class AiTranslationCache extends AiResultCache<TranslationResult> {
-  AiTranslationCache({
-    required super.dao,
-    required super.l1,
-    required super.policies,
-    super.logger,
-  });
-
-  @override
-  TranslationResult fromJson(Map<String, dynamic> json) =>
-      TranslationResult.fromJson(json);
-
-  @override
-  Map<String, dynamic> toJson(TranslationResult value) => value.toJson();
-}
-
-/// Cache subclass for `DictionaryResult` (already has fromJson).
-class AiDictionaryCache extends AiResultCache<DictionaryResult> {
-  AiDictionaryCache({
-    required super.dao,
-    required super.l1,
-    required super.policies,
-    super.logger,
-  });
-
-  @override
-  DictionaryResult fromJson(Map<String, dynamic> json) =>
-      DictionaryResult.fromJson(json);
-
-  @override
-  Map<String, dynamic> toJson(DictionaryResult value) => value.toJson();
-}
-
-/// Cache subclass for `ContextualTranslationResult` (added in this PR).
-class AiContextualTranslationCache
-    extends AiResultCache<ContextualTranslationResult> {
-  AiContextualTranslationCache({
-    required super.dao,
-    required super.l1,
-    required super.policies,
-    super.logger,
-  });
-
-  @override
-  ContextualTranslationResult fromJson(Map<String, dynamic> json) =>
-      ContextualTranslationResult.fromJson(json);
-
-  @override
-  Map<String, dynamic> toJson(ContextualTranslationResult value) =>
-      value.toJson();
 }
 
 // ---------------------------------------------------------------------------
@@ -309,11 +210,11 @@ class AiContextualTranslationCache
 
 /// Coalesces the startup prune pass for all AI cache kinds (issue #478).
 ///
-/// Previously each of the four cache providers called `unawaited(cache.prune())`
-/// at construction — 4 × len(policies) × 2 SQL ops against the same `ai_cache`
-/// table racing on the same Drift executor. This provider runs the prune once
-/// per database instance; each cache provider watches it to ensure it has
-/// fired before the cache is used.
+/// Previously each of the cache providers called `unawaited(cache.prune())`
+/// at construction — N × len(policies) × 2 SQL ops against the same
+/// `ai_cache` table racing on the same Drift executor. This provider runs
+/// the prune once per database instance; each cache provider watches it to
+/// ensure it has fired before the cache is used.
 @Riverpod(keepAlive: true)
 void aiCacheStartupPrune(Ref ref) {
   final db = ref.watch(appDatabaseProvider);
@@ -334,28 +235,25 @@ void aiCacheStartupPrune(Ref ref) {
   }());
 }
 
-/// Per-user `AiMapCache` (JSON-typed payload). Cleared on sign-out /
-/// user-id change.
-///
-/// The cache is `keepAlive` because lookup-sheet and contextual-translation
-/// flows outlive any single widget mount; closing the sheet must not
-/// invalidate the cache.
-@Riverpod(keepAlive: true)
-AiMapCache aiResultCache(Ref ref) {
+/// Shared construction for the per-kind caches: same L1 sizing (256
+/// entries / 30 min TTL), same policies, and the sign-out / user-change
+/// clear listener so we never serve a previous user's cached results (R7).
+/// L2 is naturally scoped by the active `appDatabaseProvider`; the
+/// listener ensures the in-memory L1 is also dropped.
+AiResultCache<V> _buildPerUserCache<V extends Object>(
+  Ref ref, {
+  required V Function(Map<String, dynamic> json) fromJson,
+  required Map<String, dynamic> Function(V value) toJson,
+}) {
   final db = ref.watch(appDatabaseProvider);
-  final cache = AiMapCache(
+  final cache = AiResultCache<V>(
     dao: db.aiCacheDao,
-    l1: L1Store<String, Map<String, dynamic>>(
-      capacity: 256,
-      ttl: const Duration(minutes: 30),
-    ),
+    l1: L1Store<String, V>(capacity: 256, ttl: const Duration(minutes: 30)),
     policies: defaultAiKindPolicies,
+    fromJson: fromJson,
+    toJson: toJson,
   );
 
-  // Clear L1 + L2 on sign-out or user-id change so we never serve a
-  // previous user's cached translations (R7). L2 is naturally scoped
-  // by the active `appDatabaseProvider`; this listener ensures the
-  // in-memory L1 is also dropped.
   ref.listen(authCtrlProvider, (prev, next) {
     final prevState = prev?.valueOrNull;
     final nextState = next.valueOrNull;
@@ -374,90 +272,30 @@ AiMapCache aiResultCache(Ref ref) {
   return cache;
 }
 
-/// Per-user `AiTranslationCache` (typed `TranslationResult`). Shares the
-/// L2 Drift table with `aiResultCache` (different `AiKind.wire`).
+/// Per-user typed `TranslationResult` cache.
 @Riverpod(keepAlive: true)
-AiTranslationCache aiTranslationCache(Ref ref) {
-  final db = ref.watch(appDatabaseProvider);
-  final cache = AiTranslationCache(
-    dao: db.aiCacheDao,
-    l1: L1Store<String, TranslationResult>(
-      capacity: 256,
-      ttl: const Duration(minutes: 30),
-    ),
-    policies: defaultAiKindPolicies,
-  );
-  ref.listen(authCtrlProvider, (prev, next) {
-    final prevState = prev?.valueOrNull;
-    final nextState = next.valueOrNull;
-    final wasSignedIn = prevState is AuthSignedIn;
-    final isSignedIn = nextState is AuthSignedIn;
-    final userChanged =
-        wasSignedIn &&
-        isSignedIn &&
-        prevState.profile.id != nextState.profile.id;
-    if (!isSignedIn || userChanged) {
-      unawaited(cache.clear());
-    }
-  });
-  ref.watch(aiCacheStartupPruneProvider);
-  return cache;
-}
+AiResultCache<TranslationResult> aiTranslationCache(Ref ref) =>
+    _buildPerUserCache(
+      ref,
+      fromJson: TranslationResult.fromJson,
+      toJson: (value) => value.toJson(),
+    );
 
-/// Per-user `AiDictionaryCache`.
+/// Per-user typed `DictionaryResult` cache.
 @Riverpod(keepAlive: true)
-AiDictionaryCache aiDictionaryCache(Ref ref) {
-  final db = ref.watch(appDatabaseProvider);
-  final cache = AiDictionaryCache(
-    dao: db.aiCacheDao,
-    l1: L1Store<String, DictionaryResult>(
-      capacity: 256,
-      ttl: const Duration(minutes: 30),
-    ),
-    policies: defaultAiKindPolicies,
-  );
-  ref.listen(authCtrlProvider, (prev, next) {
-    final prevState = prev?.valueOrNull;
-    final nextState = next.valueOrNull;
-    final wasSignedIn = prevState is AuthSignedIn;
-    final isSignedIn = nextState is AuthSignedIn;
-    final userChanged =
-        wasSignedIn &&
-        isSignedIn &&
-        prevState.profile.id != nextState.profile.id;
-    if (!isSignedIn || userChanged) {
-      unawaited(cache.clear());
-    }
-  });
-  ref.watch(aiCacheStartupPruneProvider);
-  return cache;
-}
+AiResultCache<DictionaryResult> aiDictionaryCache(Ref ref) =>
+    _buildPerUserCache(
+      ref,
+      fromJson: DictionaryResult.fromJson,
+      toJson: (value) => value.toJson(),
+    );
 
-/// Per-user `AiContextualTranslationCache`.
+/// Per-user typed `ContextualTranslationResult` cache.
 @Riverpod(keepAlive: true)
-AiContextualTranslationCache aiContextualTranslationCache(Ref ref) {
-  final db = ref.watch(appDatabaseProvider);
-  final cache = AiContextualTranslationCache(
-    dao: db.aiCacheDao,
-    l1: L1Store<String, ContextualTranslationResult>(
-      capacity: 256,
-      ttl: const Duration(minutes: 30),
-    ),
-    policies: defaultAiKindPolicies,
-  );
-  ref.listen(authCtrlProvider, (prev, next) {
-    final prevState = prev?.valueOrNull;
-    final nextState = next.valueOrNull;
-    final wasSignedIn = prevState is AuthSignedIn;
-    final isSignedIn = nextState is AuthSignedIn;
-    final userChanged =
-        wasSignedIn &&
-        isSignedIn &&
-        prevState.profile.id != nextState.profile.id;
-    if (!isSignedIn || userChanged) {
-      unawaited(cache.clear());
-    }
-  });
-  ref.watch(aiCacheStartupPruneProvider);
-  return cache;
-}
+AiResultCache<ContextualTranslationResult> aiContextualTranslationCache(
+  Ref ref,
+) => _buildPerUserCache(
+  ref,
+  fromJson: ContextualTranslationResult.fromJson,
+  toJson: (value) => value.toJson(),
+);
