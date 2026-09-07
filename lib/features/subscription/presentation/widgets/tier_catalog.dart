@@ -138,11 +138,14 @@ class _TierCatalogState extends ConsumerState<TierCatalog> {
           onChanged: (v) => setState(() => _interval = v),
           yearlyLabel: l10n.subscriptionAutoRenewYearly,
           monthlyLabel: l10n.subscriptionAutoRenewMonthly,
-          savingsLabel: savingsPercent == null
-              ? null
-              : l10n.subscriptionTierCatalogIntervalYearSavings(
+          // Savings only applies to yearly billing, so hide the badge on the
+          // monthly tab (null collapses the toggle to its centered solo layout).
+          savingsLabel:
+              _interval == CatalogInterval.year && savingsPercent != null
+              ? l10n.subscriptionTierCatalogIntervalYearSavings(
                   '$savingsPercent',
-                ),
+                )
+              : null,
         ),
         SizedBox(height: t.space20),
         LayoutBuilder(
