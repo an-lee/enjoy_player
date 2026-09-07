@@ -625,6 +625,32 @@ release_load_publish_env() {
   fi
 }
 
+# Forward the PostHog analytics dart-defines into a build argv array
+# (specs/046-posthog-analytics-integration). POSTHOG_API_KEY / POSTHOG_HOST
+# come from the environment — GitHub secrets in CI, publish_env.local.sh or
+# shell exports locally. Capture needs both values (postHogConfigured), so
+# when either is missing the pair is omitted and the build ships
+# analytics-inert (empty token ≡ disabled,
+# lib/core/analytics/analytics_config.dart); a half-set config warns loudly
+# instead of silently dropping one define.
+#
+# Usage:
+#   defines=(--dart-define=DISTRIBUTION_CHANNEL=direct)
+#   release_append_posthog_defines defines
+#   flutter build ... "${defines[@]}"
+release_append_posthog_defines() {
+  local out_name="$1"
+  if [[ -z "${POSTHOG_API_KEY:-}" && -z "${POSTHOG_HOST:-}" ]]; then
+    return 0
+  fi
+  if [[ -z "${POSTHOG_API_KEY:-}" || -z "${POSTHOG_HOST:-}" ]]; then
+    echo "WARNING: Analytics needs both POSTHOG_API_KEY and POSTHOG_HOST; this build ships without it." >&2
+    return 0
+  fi
+  eval "${out_name}+=(--dart-define=POSTHOG_API_KEY=\"\${POSTHOG_API_KEY}\" --dart-define=POSTHOG_HOST=\"\${POSTHOG_HOST}\")"
+  echo ">>> PostHog analytics enabled (${POSTHOG_HOST})"
+}
+
 # Parse shared release flags. Platform-specific flags remain in RELEASE_EXTRA_ARGS.
 release_parse_common_args() {
   RELEASE_SKIP_CHECKS=false

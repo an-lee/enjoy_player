@@ -45,6 +45,10 @@ jobs:
         shell: pwsh
         working-directory: ${{ env.GITHUB_WORKSPACE }}
         env:
+          # Forwarded to flutter build as --dart-define (analytics_config.dart).
+          # Unset ⇒ binary ships analytics-inert.
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
           # Tag pushes have no workflow inputs (null). Treat null/true as build;
           # only workflow_dispatch with build_installer=false skips the installer.
           INPUT_BUILD_INSTALLER: ${{ inputs.build_installer != false }}

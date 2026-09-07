@@ -21,6 +21,8 @@ flutter run \
 
 No defines ⇒ no capture at all — `flutter test`, plain `flutter run`, and CI builds are inert by construction and can never pollute production data. Debug builds only capture when someone deliberately passes a (test-project) token.
 
+Release builds get the defines automatically: the `release_*.yml` workflows inject the `POSTHOG_API_KEY` / `POSTHOG_HOST` secrets into the release scripts' env, and the scripts forward any set values as `--dart-define` (see `release_append_posthog_defines` in `.github/scripts/release_lib.sh`). Locally, export both in the shell or in `publish_env.local.sh` (see `publish_env.example.sh`) before running `release.sh`. Both values are required — a half-set config warns and ships inert.
+
 Init is manual (`AUTO_INIT=false` in each platform manifest + `Posthog().setup()` from Dart, fired off the startup critical path in `EnjoyApp`), which is also what unlocks `onFeatureFlags` and the `beforeSend` guard.
 
 ## Identity
