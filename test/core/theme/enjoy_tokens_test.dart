@@ -44,9 +44,9 @@ void main() {
 
       expect(tokens.echoActive, AppColors.echoActive);
       expect(tokens.blurActive, AppColors.blurActive);
-      expect(tokens.scoreGood, AppColors.scoreGood);
-      expect(tokens.scoreWarn, AppColors.scoreWarn);
-      expect(tokens.scoreBad, AppColors.scoreBad);
+      expect(tokens.scoreGood, AppColors.scoreGoodDark);
+      expect(tokens.scoreWarn, AppColors.scoreWarnDark);
+      expect(tokens.scoreBad, AppColors.scoreBadDark);
       expect(tokens.scoreGoodContainer, AppColors.scoreGoodContainer);
       expect(tokens.scoreWarnContainer, AppColors.scoreWarnContainer);
       expect(tokens.scoreBadContainer, AppColors.scoreBadContainer);
@@ -65,7 +65,6 @@ void main() {
       expect(tokens.sidebarBrandHeight, 56);
       expect(tokens.transportHeight, 88);
       expect(tokens.heroTitleLetterSpacing, -1.2);
-      expect(tokens.useGlassOnSidebar, isFalse);
       expect(tokens.bottomNavHeight, 68);
       expect(tokens.desktopGutter, 24);
       expect(tokens.modalMaxWidth, 400);
@@ -156,7 +155,6 @@ void main() {
       expect(copy.radiusSm, tokens.radiusSm);
       expect(copy.motionFast, tokens.motionFast);
       expect(copy.echoActive, tokens.echoActive);
-      expect(copy.useGlassOnSidebar, tokens.useGlassOnSidebar);
       expect(copy.focusRingWidth, tokens.focusRingWidth);
     });
 
@@ -167,7 +165,6 @@ void main() {
         radiusSm: 42,
         motionFast: const Duration(milliseconds: 999),
         echoActive: const Color(0xFF112233),
-        useGlassOnSidebar: true,
         bottomNavHeight: 200,
         desktopGutter: 99,
         modalMaxWidth: 500,
@@ -227,7 +224,6 @@ void main() {
       expect(copy.radiusSm, 42);
       expect(copy.motionFast, const Duration(milliseconds: 999));
       expect(copy.echoActive, const Color(0xFF112233));
-      expect(copy.useGlassOnSidebar, isTrue);
       expect(copy.bottomNavHeight, 200);
       expect(copy.desktopGutter, 99);
       expect(copy.modalMaxWidth, 500);
@@ -346,7 +342,6 @@ void main() {
         glassBorder: const Color(0xFFFFFFFF),
         gradientStart: const Color(0xFF303030),
         gradientEnd: const Color(0xFF121212),
-        useGlassOnSidebar: true,
         bottomNavHeight: 136,
         desktopGutter: 48,
         modalMaxWidth: 800,
@@ -475,17 +470,6 @@ void main() {
         result.transcriptLinePadding,
         EdgeInsets.lerp(a.transcriptLinePadding, b.transcriptLinePadding, 0.5),
       );
-    });
-
-    test('useGlassOnSidebar uses threshold at t<0.5 vs t>=0.5', () {
-      final below = a.lerp(b, 0.49) as EnjoyThemeTokens;
-      expect(below.useGlassOnSidebar, a.useGlassOnSidebar); // false
-
-      final atHalf = a.lerp(b, 0.5) as EnjoyThemeTokens;
-      expect(atHalf.useGlassOnSidebar, b.useGlassOnSidebar); // true
-
-      final above = a.lerp(b, 0.75) as EnjoyThemeTokens;
-      expect(above.useGlassOnSidebar, b.useGlassOnSidebar); // true
     });
 
     test('t=0.25 produces correct quarter-point values', () {

@@ -3,7 +3,7 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:enjoy_player/core/utils/collections.dart';
+import 'package:flutter/foundation.dart';
 import 'package:enjoy_player/core/utils/stream_distinct.dart';
 import 'package:enjoy_player/features/library/domain/media.dart';
 

@@ -1,9 +1,7 @@
 /// Balance → Credits conversion card.
 ///
-/// Replaces the legacy "use balance" path that used to live inside the
-/// prepaid purchase flow (see `purchase_sheet.dart`). The actual conversion
-/// runs server-side; this widget is a discoverable pointer to the dedicated
-/// flow on the credits page.
+/// The actual balance → credits conversion runs server-side; this widget is a
+/// discoverable pointer to the dedicated flow on the credits page.
 ///
 /// When the desktop credits transfer page is not yet wired up, tapping the CTA
 /// surfaces a "coming soon" notice so users still see the path exists. The

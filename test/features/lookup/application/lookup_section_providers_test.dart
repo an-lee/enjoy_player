@@ -73,28 +73,32 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late AppDatabase db;
-  late AiTranslationCache translationCache;
-  late AiDictionaryCache dictionaryCache;
+  late AiResultCache<TranslationResult> translationCache;
+  late AiResultCache<DictionaryResult> dictionaryCache;
   late _FakeTranslationCapability translationCap;
   late _FakeDictionaryCapability dictionaryCap;
 
   setUp(() {
     db = AppDatabase(executor: NativeDatabase.memory());
-    translationCache = AiTranslationCache(
+    translationCache = AiResultCache<TranslationResult>(
       dao: db.aiCacheDao,
       l1: L1Store<String, TranslationResult>(
         capacity: 8,
         ttl: const Duration(minutes: 30),
       ),
       policies: defaultAiKindPolicies,
+      fromJson: TranslationResult.fromJson,
+      toJson: (value) => value.toJson(),
     );
-    dictionaryCache = AiDictionaryCache(
+    dictionaryCache = AiResultCache<DictionaryResult>(
       dao: db.aiCacheDao,
       l1: L1Store<String, DictionaryResult>(
         capacity: 8,
         ttl: const Duration(minutes: 30),
       ),
       policies: defaultAiKindPolicies,
+      fromJson: DictionaryResult.fromJson,
+      toJson: (value) => value.toJson(),
     );
     translationCap = _FakeTranslationCapability(
       const TranslationResult(translatedText: 'hello', targetLanguage: 'zh'),

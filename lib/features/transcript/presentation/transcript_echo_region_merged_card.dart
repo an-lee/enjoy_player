@@ -49,7 +49,7 @@ class EchoRegionMergedCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final tok = EnjoyThemeTokens.of(context);
-    final density = TranscriptDensity.of(context);
+    final density = transcriptDensityOf(context);
     final chrome = ref.watch(playerControllerProvider.select(playbackChromeOf));
     final matcher =
         secondaryMatcher ?? TranscriptSecondaryMatcher.from(secondaryLines);

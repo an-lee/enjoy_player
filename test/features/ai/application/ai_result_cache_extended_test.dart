@@ -9,58 +9,56 @@ import 'package:enjoy_player/features/ai/domain/models/dictionary_result.dart';
 import 'package:enjoy_player/features/ai/domain/models/translation_result.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-class _StringCache extends AiResultCache<String> {
-  _StringCache({
-    required super.dao,
-    required super.l1,
-    required super.policies,
-  });
-
-  @override
-  String fromJson(Map<String, dynamic> json) => json['v'] as String;
-
-  @override
-  Map<String, dynamic> toJson(String value) => {'v': value};
+AiResultCache<String> stringCache({
+  required AiCacheDao dao,
+  required L1Store<String, String> l1,
+  required Map<AiKind, AiKindPolicy> policies,
+}) {
+  return AiResultCache<String>(
+    dao: dao,
+    l1: l1,
+    policies: policies,
+    fromJson: (json) => json['v'] as String,
+    toJson: (value) => {'v': value},
+  );
 }
 
-class _ThrowingEncodeCache extends AiResultCache<String> {
-  _ThrowingEncodeCache({
-    required super.dao,
-    required super.l1,
-    required super.policies,
-  });
-
-  @override
-  String fromJson(Map<String, dynamic> json) => json['v'] as String;
-
-  @override
-  Map<String, dynamic> toJson(String value) =>
-      throw StateError('encode failure');
+AiResultCache<String> throwingEncodeCache({
+  required AiCacheDao dao,
+  required L1Store<String, String> l1,
+  required Map<AiKind, AiKindPolicy> policies,
+}) {
+  return AiResultCache<String>(
+    dao: dao,
+    l1: l1,
+    policies: policies,
+    fromJson: (json) => json['v'] as String,
+    toJson: (value) => throw StateError('encode failure'),
+  );
 }
 
-class _ThrowingDecodeCache extends AiResultCache<String> {
-  _ThrowingDecodeCache({
-    required super.dao,
-    required super.l1,
-    required super.policies,
-  });
-
-  @override
-  String fromJson(Map<String, dynamic> json) =>
-      throw const FormatException('decode failure');
-
-  @override
-  Map<String, dynamic> toJson(String value) => {'v': value};
+AiResultCache<String> throwingDecodeCache({
+  required AiCacheDao dao,
+  required L1Store<String, String> l1,
+  required Map<AiKind, AiKindPolicy> policies,
+}) {
+  return AiResultCache<String>(
+    dao: dao,
+    l1: l1,
+    policies: policies,
+    fromJson: (json) => throw const FormatException('decode failure'),
+    toJson: (value) => {'v': value},
+  );
 }
 
 void main() {
   group('AiResultCache.peek', () {
     late AppDatabase db;
-    late _StringCache cache;
+    late AiResultCache<String> cache;
 
     setUp(() {
       db = AppDatabase(executor: NativeDatabase.memory());
-      cache = _StringCache(
+      cache = stringCache(
         dao: db.aiCacheDao,
         l1: L1Store<String, String>(
           capacity: 8,
@@ -84,7 +82,7 @@ void main() {
     });
 
     test('returns null after TTL expiry', () async {
-      final shortTtl = _StringCache(
+      final shortTtl = stringCache(
         dao: db.aiCacheDao,
         l1: L1Store<String, String>(capacity: 8, ttl: Duration.zero),
         policies: defaultAiKindPolicies,
@@ -112,7 +110,7 @@ void main() {
     });
 
     test('expired L1 entry falls through to L2', () async {
-      final shortTtl = _StringCache(
+      final shortTtl = stringCache(
         dao: db.aiCacheDao,
         l1: L1Store<String, String>(capacity: 8, ttl: Duration.zero),
         policies: defaultAiKindPolicies,
@@ -140,7 +138,7 @@ void main() {
     });
 
     test('expired L1 with no L2 calls loader', () async {
-      final shortTtl = _StringCache(
+      final shortTtl = stringCache(
         dao: db.aiCacheDao,
         l1: L1Store<String, String>(capacity: 8, ttl: Duration.zero),
         policies: defaultAiKindPolicies,
@@ -173,7 +171,7 @@ void main() {
     });
 
     test('LRU-evicted entry falls through to L2', () async {
-      final tinyCache = _StringCache(
+      final tinyCache = stringCache(
         dao: db.aiCacheDao,
         l1: L1Store<String, String>(
           capacity: 2,
@@ -218,11 +216,11 @@ void main() {
 
   group('AiResultCache.lookup L2 decode failure', () {
     late AppDatabase db;
-    late _ThrowingDecodeCache cache;
+    late AiResultCache<String> cache;
 
     setUp(() {
       db = AppDatabase(executor: NativeDatabase.memory());
-      cache = _ThrowingDecodeCache(
+      cache = throwingDecodeCache(
         dao: db.aiCacheDao,
         l1: L1Store<String, String>(
           capacity: 8,
@@ -277,7 +275,7 @@ void main() {
     });
 
     test('L2 encode failure is swallowed and L1 still written', () async {
-      final throwingCache = _ThrowingEncodeCache(
+      final throwingCache = throwingEncodeCache(
         dao: db.aiCacheDao,
         l1: L1Store<String, String>(
           capacity: 8,
@@ -298,7 +296,7 @@ void main() {
     });
 
     test('overwrites existing L1 and L2 entries', () async {
-      final cache = _StringCache(
+      final cache = stringCache(
         dao: db.aiCacheDao,
         l1: L1Store<String, String>(
           capacity: 8,
@@ -318,11 +316,11 @@ void main() {
 
   group('AiResultCache.invalidate', () {
     late AppDatabase db;
-    late _StringCache cache;
+    late AiResultCache<String> cache;
 
     setUp(() {
       db = AppDatabase(executor: NativeDatabase.memory());
-      cache = _StringCache(
+      cache = stringCache(
         dao: db.aiCacheDao,
         l1: L1Store<String, String>(
           capacity: 8,
@@ -354,11 +352,11 @@ void main() {
 
   group('AiResultCache.evictForPair', () {
     late AppDatabase db;
-    late _StringCache cache;
+    late AiResultCache<String> cache;
 
     setUp(() {
       db = AppDatabase(executor: NativeDatabase.memory());
-      cache = _StringCache(
+      cache = stringCache(
         dao: db.aiCacheDao,
         l1: L1Store<String, String>(
           capacity: 8,
@@ -437,7 +435,7 @@ void main() {
     });
 
     test('only clears kinds present in policies map', () async {
-      final limitedCache = _StringCache(
+      final limitedCache = stringCache(
         dao: db.aiCacheDao,
         l1: L1Store<String, String>(
           capacity: 8,
@@ -472,7 +470,7 @@ void main() {
     });
 
     test('clears L1 completely', () async {
-      final cache = _StringCache(
+      final cache = stringCache(
         dao: db.aiCacheDao,
         l1: L1Store<String, String>(
           capacity: 8,
@@ -509,7 +507,7 @@ void main() {
     });
 
     test('age cutoff removes old rows', () async {
-      final cache = _StringCache(
+      final cache = stringCache(
         dao: db.aiCacheDao,
         l1: L1Store<String, String>(
           capacity: 8,
@@ -541,7 +539,7 @@ void main() {
     });
 
     test('zero row cap skips eviction', () async {
-      final cache = _StringCache(
+      final cache = stringCache(
         dao: db.aiCacheDao,
         l1: L1Store<String, String>(
           capacity: 8,
@@ -571,7 +569,7 @@ void main() {
     });
 
     test('zero age cutoff skips age pruning', () async {
-      final cache = _StringCache(
+      final cache = stringCache(
         dao: db.aiCacheDao,
         l1: L1Store<String, String>(
           capacity: 8,
@@ -600,7 +598,7 @@ void main() {
     });
 
     test('prunes multiple kinds independently', () async {
-      final cache = _StringCache(
+      final cache = stringCache(
         dao: db.aiCacheDao,
         l1: L1Store<String, String>(
           capacity: 8,
@@ -642,7 +640,7 @@ void main() {
     });
 
     test('row cap and age cutoff applied together', () async {
-      final cache = _StringCache(
+      final cache = stringCache(
         dao: db.aiCacheDao,
         l1: L1Store<String, String>(
           capacity: 8,
@@ -683,75 +681,21 @@ void main() {
     });
   });
 
-  group('AiResultCache.stats', () {
+  group('Map-payload cache', () {
     late AppDatabase db;
-    late _StringCache cache;
+    late AiResultCache<Map<String, dynamic>> cache;
 
     setUp(() {
       db = AppDatabase(executor: NativeDatabase.memory());
-      cache = _StringCache(
-        dao: db.aiCacheDao,
-        l1: L1Store<String, String>(
-          capacity: 16,
-          ttl: const Duration(minutes: 5),
-        ),
-        policies: defaultAiKindPolicies,
-      );
-    });
-
-    tearDown(() async {
-      await db.close();
-    });
-
-    test('reports zero counts on empty cache', () async {
-      final stats = await cache.stats();
-      expect(stats.l1Size, 0);
-      expect(stats.l1Capacity, 16);
-      for (final count in stats.l2RowCounts.values) {
-        expect(count, 0);
-      }
-    });
-
-    test('reflects L2-only entries not in L1', () async {
-      await db.aiCacheDao.upsert(
-        'translation',
-        'l2only',
-        '{"v":"x"}',
-        DateTime.now(),
-      );
-
-      final stats = await cache.stats();
-      expect(stats.l1Size, 0);
-      expect(stats.l2RowCounts[AiKind.translation], 1);
-    });
-  });
-
-  group('AiCacheStats.toString', () {
-    test('formats correctly', () {
-      const stats = AiCacheStats(
-        l1Size: 3,
-        l1Capacity: 256,
-        l2RowCounts: {AiKind.translation: 10, AiKind.dictionary: 5},
-      );
-      final str = stats.toString();
-      expect(str, contains('l1=3/256'));
-      expect(str, contains('l2='));
-    });
-  });
-
-  group('AiMapCache', () {
-    late AppDatabase db;
-    late AiMapCache cache;
-
-    setUp(() {
-      db = AppDatabase(executor: NativeDatabase.memory());
-      cache = AiMapCache(
+      cache = AiResultCache<Map<String, dynamic>>(
         dao: db.aiCacheDao,
         l1: L1Store<String, Map<String, dynamic>>(
           capacity: 8,
           ttl: const Duration(minutes: 5),
         ),
         policies: defaultAiKindPolicies,
+        fromJson: (json) => json,
+        toJson: (value) => value,
       );
     });
 
@@ -773,13 +717,15 @@ void main() {
       final l2 = await db.aiCacheDao.read('translation', 'k1');
       expect(l2, isNotNull);
 
-      final freshCache = AiMapCache(
+      final freshCache = AiResultCache<Map<String, dynamic>>(
         dao: db.aiCacheDao,
         l1: L1Store<String, Map<String, dynamic>>(
           capacity: 8,
           ttl: const Duration(minutes: 5),
         ),
         policies: defaultAiKindPolicies,
+        fromJson: (json) => json,
+        toJson: (value) => value,
       );
       final fromL2 = await freshCache.lookup(
         kind: AiKind.translation,
@@ -801,19 +747,21 @@ void main() {
     });
   });
 
-  group('AiTranslationCache', () {
+  group('Translation cache', () {
     late AppDatabase db;
-    late AiTranslationCache cache;
+    late AiResultCache<TranslationResult> cache;
 
     setUp(() {
       db = AppDatabase(executor: NativeDatabase.memory());
-      cache = AiTranslationCache(
+      cache = AiResultCache<TranslationResult>(
         dao: db.aiCacheDao,
         l1: L1Store<String, TranslationResult>(
           capacity: 8,
           ttl: const Duration(minutes: 5),
         ),
         policies: defaultAiKindPolicies,
+        fromJson: TranslationResult.fromJson,
+        toJson: (value) => value.toJson(),
       );
     });
 
@@ -834,13 +782,15 @@ void main() {
         value: original,
       );
 
-      final freshCache = AiTranslationCache(
+      final freshCache = AiResultCache<TranslationResult>(
         dao: db.aiCacheDao,
         l1: L1Store<String, TranslationResult>(
           capacity: 8,
           ttl: const Duration(minutes: 5),
         ),
         policies: defaultAiKindPolicies,
+        fromJson: TranslationResult.fromJson,
+        toJson: (value) => value.toJson(),
       );
 
       final fromL2 = await freshCache.lookup(
@@ -867,19 +817,21 @@ void main() {
     });
   });
 
-  group('AiDictionaryCache', () {
+  group('Dictionary cache', () {
     late AppDatabase db;
-    late AiDictionaryCache cache;
+    late AiResultCache<DictionaryResult> cache;
 
     setUp(() {
       db = AppDatabase(executor: NativeDatabase.memory());
-      cache = AiDictionaryCache(
+      cache = AiResultCache<DictionaryResult>(
         dao: db.aiCacheDao,
         l1: L1Store<String, DictionaryResult>(
           capacity: 8,
           ttl: const Duration(minutes: 5),
         ),
         policies: defaultAiKindPolicies,
+        fromJson: DictionaryResult.fromJson,
+        toJson: (value) => value.toJson(),
       );
     });
 
@@ -910,13 +862,15 @@ void main() {
         value: original,
       );
 
-      final freshCache = AiDictionaryCache(
+      final freshCache = AiResultCache<DictionaryResult>(
         dao: db.aiCacheDao,
         l1: L1Store<String, DictionaryResult>(
           capacity: 8,
           ttl: const Duration(minutes: 5),
         ),
         policies: defaultAiKindPolicies,
+        fromJson: DictionaryResult.fromJson,
+        toJson: (value) => value.toJson(),
       );
 
       final fromL2 = await freshCache.lookup(
@@ -965,19 +919,21 @@ void main() {
     });
   });
 
-  group('AiContextualTranslationCache', () {
+  group('Contextual translation cache', () {
     late AppDatabase db;
-    late AiContextualTranslationCache cache;
+    late AiResultCache<ContextualTranslationResult> cache;
 
     setUp(() {
       db = AppDatabase(executor: NativeDatabase.memory());
-      cache = AiContextualTranslationCache(
+      cache = AiResultCache<ContextualTranslationResult>(
         dao: db.aiCacheDao,
         l1: L1Store<String, ContextualTranslationResult>(
           capacity: 8,
           ttl: const Duration(minutes: 5),
         ),
         policies: defaultAiKindPolicies,
+        fromJson: ContextualTranslationResult.fromJson,
+        toJson: (value) => value.toJson(),
       );
     });
 
@@ -996,13 +952,15 @@ void main() {
         value: original,
       );
 
-      final freshCache = AiContextualTranslationCache(
+      final freshCache = AiResultCache<ContextualTranslationResult>(
         dao: db.aiCacheDao,
         l1: L1Store<String, ContextualTranslationResult>(
           capacity: 8,
           ttl: const Duration(minutes: 5),
         ),
         policies: defaultAiKindPolicies,
+        fromJson: ContextualTranslationResult.fromJson,
+        toJson: (value) => value.toJson(),
       );
 
       final fromL2 = await freshCache.lookup(
@@ -1043,11 +1001,11 @@ void main() {
 
   group('AiResultCache.lookup forceRefresh edge cases', () {
     late AppDatabase db;
-    late _StringCache cache;
+    late AiResultCache<String> cache;
 
     setUp(() {
       db = AppDatabase(executor: NativeDatabase.memory());
-      cache = _StringCache(
+      cache = stringCache(
         dao: db.aiCacheDao,
         l1: L1Store<String, String>(
           capacity: 8,
@@ -1100,11 +1058,11 @@ void main() {
 
   group('AiResultCache cross-kind isolation', () {
     late AppDatabase db;
-    late _StringCache cache;
+    late AiResultCache<String> cache;
 
     setUp(() {
       db = AppDatabase(executor: NativeDatabase.memory());
-      cache = _StringCache(
+      cache = stringCache(
         dao: db.aiCacheDao,
         l1: L1Store<String, String>(
           capacity: 8,

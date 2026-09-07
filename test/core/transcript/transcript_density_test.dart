@@ -27,7 +27,7 @@ void main() {
           host(
             Builder(
               builder: (context) {
-                density = TranscriptDensity.of(context);
+                density = transcriptDensityOf(context);
                 return const SizedBox.shrink();
               },
             ),
@@ -82,7 +82,7 @@ void main() {
     });
 
     test('equality is value-based', () {
-      const a = TranscriptDensity(
+      TranscriptDensity build() => (
         listHorizontalPadding: 8,
         listVerticalPadding: 4,
         lineVerticalPadding: 4,
@@ -98,22 +98,8 @@ void main() {
         echoDividerThickness: 0.5,
         echoControlIconSize: 16,
       );
-      const b = TranscriptDensity(
-        listHorizontalPadding: 8,
-        listVerticalPadding: 4,
-        lineVerticalPadding: 4,
-        lineInterGap: 2,
-        headerBodyGap: 2,
-        primarySecondaryGap: 2,
-        secondaryLeftPadding: 8,
-        bodyHeight: 1.35,
-        secondaryHeight: 1.3,
-        echoControlsPadding: 2,
-        echoCardGap: 4,
-        echoBottomPanelGap: 4,
-        echoDividerThickness: 0.5,
-        echoControlIconSize: 16,
-      );
+      final a = build();
+      final b = build();
       expect(a, equals(b));
       expect(a.hashCode, equals(b.hashCode));
     });

@@ -283,18 +283,15 @@ class PlayerInteractions {
   Future<void> seekToProgressFraction(double fraction) async {
     final session = ref.read(playerControllerProvider);
     if (session == null) return;
-    final decision = decideProgressSeekTime(
+    final timeSeconds = decideProgressSeekTime(
       fraction: fraction,
       durationSeconds: session.durationSeconds,
     );
-    switch (decision) {
-      case ProgressSeekValid(:final timeSeconds):
-        _clearWordLoop();
-        await ref
-            .read(playerControllerProvider.notifier)
-            .seekToSeconds(timeSeconds);
-      case ProgressSeekInvalid():
-    }
+    if (timeSeconds == null) return;
+    _clearWordLoop();
+    await ref
+        .read(playerControllerProvider.notifier)
+        .seekToSeconds(timeSeconds);
   }
 
   Future<void> seekToLine(TranscriptLine line, int index) async {

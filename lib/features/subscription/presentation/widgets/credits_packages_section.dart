@@ -7,7 +7,6 @@ import 'package:intl/intl.dart';
 
 import 'package:enjoy_player/core/errors/app_failure.dart';
 import 'package:enjoy_player/core/notices/app_notice.dart';
-import 'package:enjoy_player/core/platform/subscription_purchase_capability.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_button.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_card.dart';
@@ -27,11 +26,8 @@ class CreditsPackagesSection extends ConsumerWidget {
     CreditsPackage pkg,
   ) async {
     final l10n = AppLocalizations.of(context)!;
-    if (showsMobilePurchaseUnavailable()) {
-      await showMobilePurchaseUnavailableDialog(context);
-      return;
-    }
-    if (!supportsExternalSubscriptionPurchase()) return;
+    if (await guardMobilePurchase(context)) return;
+    if (!context.mounted) return;
 
     final creditsLabel = NumberFormat.decimalPattern().format(pkg.credits);
     final confirmed = await showDialog<bool>(

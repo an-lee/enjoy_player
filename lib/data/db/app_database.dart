@@ -5,7 +5,7 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../core/utils/collections.dart';
+import 'package:flutter/foundation.dart';
 import '../../core/utils/stream_distinct.dart';
 import 'package:enjoy_player/core/logging/log.dart';
 import 'migration_backup.dart';

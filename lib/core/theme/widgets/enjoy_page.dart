@@ -4,7 +4,6 @@ library;
 import 'package:flutter/material.dart';
 
 import 'package:enjoy_player/core/layout/enjoy_page_kind.dart';
-import 'package:enjoy_player/core/theme/widgets/editorial_header.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_subpage_app_bar.dart';
 
 typedef EnjoyPageBodyBuilder =
@@ -12,7 +11,6 @@ typedef EnjoyPageBodyBuilder =
 
 /// Scaffold that applies [EnjoyPageKind] width rules and optional page chrome.
 ///
-/// - Primary / hub with [editorialHeader]: large [EditorialHeader].
 /// - Push routes with [title] + [showBack]: [EnjoySubpageAppBar].
 /// - Body receives [EnjoyPageMetrics] for gutters / centering insets.
 class EnjoyPage extends StatelessWidget {
@@ -21,27 +19,17 @@ class EnjoyPage extends StatelessWidget {
     required this.kind,
     required this.body,
     this.title,
-    this.subtitle,
-    this.titleAccessory,
-    this.trailing,
     this.actions,
     this.showBack = false,
     this.onBack,
-    this.editorialHeader = false,
-    this.editorialCompact = false,
     this.backgroundColor,
-    this.floatingActionButton,
-    this.extendBody = false,
   });
 
   final EnjoyPageKind kind;
   final EnjoyPageBodyBuilder body;
 
-  /// Subpage / app-bar title (also used when [editorialHeader] is true).
+  /// Subpage / app-bar title.
   final String? title;
-  final String? subtitle;
-  final Widget? titleAccessory;
-  final Widget? trailing;
   final List<Widget>? actions;
 
   /// When true, shows [EnjoySubpageAppBar] with a back affordance.
@@ -50,13 +38,7 @@ class EnjoyPage extends StatelessWidget {
   /// Optional custom back handler for [EnjoySubpageAppBar].
   final VoidCallback? onBack;
 
-  /// When true, shows [EditorialHeader] above the body (primary tabs / Settings).
-  final bool editorialHeader;
-
-  final bool editorialCompact;
   final Color? backgroundColor;
-  final Widget? floatingActionButton;
-  final bool extendBody;
 
   @override
   Widget build(BuildContext context) {
@@ -67,8 +49,6 @@ class EnjoyPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: appBar,
-      extendBody: extendBody,
-      floatingActionButton: floatingActionButton,
       body: LayoutBuilder(
         builder: (context, constraints) {
           final metrics = EnjoyPageMetrics.of(
@@ -77,39 +57,9 @@ class EnjoyPage extends StatelessWidget {
             paneWidth: constraints.maxWidth,
           );
 
-          final built = body(context, metrics);
-
-          // Embed header above body for simple (non-sliver) hub pages.
-          // Browse screens keep [EditorialHeader] inside their scroll views.
-          if (!editorialHeader || title == null) {
-            return built;
-          }
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              EditorialHeader(
-                title: title!,
-                subtitle: subtitle,
-                titleAccessory: titleAccessory,
-                trailing: trailing ?? _actionsAsTrailing(actions),
-                compact: editorialCompact,
-                widthMode: kind == EnjoyPageKind.browse
-                    ? EditorialHeaderWidthMode.gutter
-                    : EditorialHeaderWidthMode.column,
-                columnMaxWidth: metrics.maxWidth,
-              ),
-              Expanded(child: built),
-            ],
-          );
+          return body(context, metrics);
         },
       ),
     );
-  }
-
-  static Widget? _actionsAsTrailing(List<Widget>? actions) {
-    if (actions == null || actions.isEmpty) return null;
-    if (actions.length == 1) return actions.first;
-    return Row(mainAxisSize: MainAxisSize.min, children: actions);
   }
 }

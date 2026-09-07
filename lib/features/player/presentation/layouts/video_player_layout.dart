@@ -8,7 +8,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:enjoy_player/core/interaction/haptics.dart';
 import 'package:enjoy_player/core/interaction/mouse_tracker_safe.dart';
-import 'package:enjoy_player/core/platform/player_content_layout.dart';
 import 'package:enjoy_player/features/player/application/player_controller.dart';
 import 'package:enjoy_player/features/player/application/player_engine.dart';
 import 'package:enjoy_player/features/player/application/player_state_providers.dart';
@@ -110,12 +109,11 @@ class _VideoPlayerLayoutState extends State<VideoPlayerLayout> {
     return LayoutBuilder(
       builder: (context, constraints) {
         // Aspect of the layout constraints (not width breakpoint): landscape
-        // → side-by-side; portrait/square → stacked. Transport packing still
-        // uses breakpointTranscriptSideBySide elsewhere.
-        final useSideBySide = usePlayerSideBySideLayout(
-          width: constraints.maxWidth,
-          height: constraints.maxHeight,
-        );
+        // (width > height) → side-by-side; portrait/square → stacked.
+        // Transport packing still uses breakpointTranscriptSideBySide
+        // elsewhere. Spec: specs/026-orientation-layout-polish
+        // contracts/player-content-layout.md.
+        final useSideBySide = constraints.maxWidth > constraints.maxHeight;
 
         if (useSideBySide) {
           final total = constraints.maxWidth;

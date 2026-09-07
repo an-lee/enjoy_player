@@ -20,12 +20,8 @@ final RegExp _kVttArrow = RegExp(
   r'(\d{1,2}:)?(\d{2}):(\d{2})\.(\d{3})',
 );
 
-abstract class SubtitleParser {
-  List<TranscriptLine> parse(String content);
-}
-
 /// Routes by filename extension or content sniffing.
-class SubtitleParserFacade implements SubtitleParser {
+class SubtitleParserFacade {
   const SubtitleParserFacade();
 
   static const SrtParser srt = SrtParser();
@@ -43,16 +39,14 @@ class SubtitleParserFacade implements SubtitleParser {
     return srt.parse(content);
   }
 
-  @override
   List<TranscriptLine> parse(String content) =>
       parseWithHint(content, fileName: null);
 }
 
 /// Minimal SRT parser (supports multi-line cues and CRLF).
-class SrtParser implements SubtitleParser {
+class SrtParser {
   const SrtParser();
 
-  @override
   List<TranscriptLine> parse(String content) {
     final lines = content
         .replaceAll('\r\n', '\n')
@@ -102,10 +96,9 @@ class SrtParser implements SubtitleParser {
 }
 
 /// Minimal WebVTT cue parser (skips headers and NOTE regions).
-class VttParser implements SubtitleParser {
+class VttParser {
   const VttParser();
 
-  @override
   List<TranscriptLine> parse(String content) {
     var text = content.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
     if (text.startsWith('\uFEFF')) text = text.substring(1);

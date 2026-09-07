@@ -16,7 +16,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test(
-    'importPickedFile links durable path without copying into media/',
+    'importOrLinkPickedFile links durable path without copying into media/',
     () async {
       final original = PathProviderPlatform.instance;
       final root = Directory.systemTemp.createTempSync(
@@ -41,7 +41,7 @@ void main() {
       final expectedHash = chunkedContentSha256HexFromFileSync(srcPath);
 
       final storage = FileStorage();
-      final result = await storage.importPickedFile(
+      final result = await storage.importOrLinkPickedFile(
         XFile(srcPath, name: 'big.bin'),
       );
 
@@ -62,37 +62,42 @@ void main() {
     },
   );
 
-  test('importPickedFile copies ephemeral temp path into media/', () async {
-    final original = PathProviderPlatform.instance;
-    final root = Directory.systemTemp.createTempSync('enjoy_file_storage_test');
-    PathProviderPlatform.instance = TestPathProvider(root.path);
+  test(
+    'importOrLinkPickedFile copies ephemeral temp path into media/',
+    () async {
+      final original = PathProviderPlatform.instance;
+      final root = Directory.systemTemp.createTempSync(
+        'enjoy_file_storage_test',
+      );
+      PathProviderPlatform.instance = TestPathProvider(root.path);
 
-    addTearDown(() {
-      PathProviderPlatform.instance = original;
-      if (root.existsSync()) {
-        root.deleteSync(recursive: true);
-      }
-    });
+      addTearDown(() {
+        PathProviderPlatform.instance = original;
+        if (root.existsSync()) {
+          root.deleteSync(recursive: true);
+        }
+      });
 
-    final tmpDir = Directory(p.join(root.path, '.os_tmp'))
-      ..createSync(recursive: true);
-    final data = Uint8List.fromList([7, 7, 7, 7]);
-    final srcPath = p.join(tmpDir.path, 'ephemeral.bin');
-    await File(srcPath).writeAsBytes(data, flush: true);
-    final expectedHash = chunkedContentSha256HexFromFileSync(srcPath);
+      final tmpDir = Directory(p.join(root.path, '.os_tmp'))
+        ..createSync(recursive: true);
+      final data = Uint8List.fromList([7, 7, 7, 7]);
+      final srcPath = p.join(tmpDir.path, 'ephemeral.bin');
+      await File(srcPath).writeAsBytes(data, flush: true);
+      final expectedHash = chunkedContentSha256HexFromFileSync(srcPath);
 
-    final storage = FileStorage();
-    final result = await storage.importPickedFile(
-      XFile(srcPath, name: 'ephemeral.bin'),
-    );
+      final storage = FileStorage();
+      final result = await storage.importOrLinkPickedFile(
+        XFile(srcPath, name: 'ephemeral.bin'),
+      );
 
-    expect(result.contentHashHex, expectedHash);
-    expect(result.localPath, isNot(srcPath));
-    expect(result.localPath, contains(p.join('media', expectedHash)));
-    expect(File(result.localPath).existsSync(), isTrue);
-  });
+      expect(result.contentHashHex, expectedHash);
+      expect(result.localPath, isNot(srcPath));
+      expect(result.localPath, contains(p.join('media', expectedHash)));
+      expect(File(result.localPath).existsSync(), isTrue);
+    },
+  );
 
-  test('importPickedFileExpectingHash succeeds when hash matches', () async {
+  test('importOrLinkPickedFile succeeds when hash matches', () async {
     final original = PathProviderPlatform.instance;
     final root = Directory.systemTemp.createTempSync('enjoy_file_storage_test');
     PathProviderPlatform.instance = TestPathProvider(root.path);
@@ -110,7 +115,7 @@ void main() {
     await File(srcPath).writeAsBytes(data, flush: true);
 
     final storage = FileStorage();
-    final result = await storage.importPickedFileExpectingHash(
+    final result = await storage.importOrLinkPickedFile(
       XFile(srcPath, name: 'match.bin'),
       expectedHashHex: expectedHash,
     );
@@ -121,7 +126,7 @@ void main() {
   });
 
   test(
-    'importPickedFileExpectingHash throws FileFailure when hash mismatches',
+    'importOrLinkPickedFile throws FileFailure when hash mismatches',
     () async {
       final original = PathProviderPlatform.instance;
       final root = Directory.systemTemp.createTempSync(
@@ -143,7 +148,7 @@ void main() {
 
       final storage = FileStorage();
       expect(
-        () => storage.importPickedFileExpectingHash(
+        () => storage.importOrLinkPickedFile(
           XFile(srcPath, name: 'bad.bin'),
           expectedHashHex: wrongExpected,
         ),

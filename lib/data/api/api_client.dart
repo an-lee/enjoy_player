@@ -34,25 +34,22 @@ class ApiClient {
     required http.Client httpClient,
     required this.getBaseUrl,
     required this.getAccessToken,
-    this.sendAuthHeader = true,
     this.refreshAccessToken,
   }) : _client = httpClient;
 
   final http.Client _client;
   final GetBaseUrl getBaseUrl;
   final GetAccessToken getAccessToken;
-  final bool sendAuthHeader;
   final RefreshAccessToken? refreshAccessToken;
 
   Future<Map<String, dynamic>> getJson(
     String path, {
     Map<String, String>? queryParameters,
     bool requireAuth = true,
-  }) => _sendMap(
+  }) => _sendMapWithOptionalRefresh(
     method: 'GET',
     path: path,
     queryParameters: queryParameters,
-    body: null,
     requireAuth: requireAuth,
   );
 
@@ -65,7 +62,6 @@ class ApiClient {
     method: 'GET',
     path: path,
     queryParameters: queryParameters,
-    body: null,
     requireAuth: requireAuth,
   );
 
@@ -73,10 +69,9 @@ class ApiClient {
     String path, {
     Map<String, dynamic>? body,
     bool requireAuth = true,
-  }) => _sendMap(
+  }) => _sendMapWithOptionalRefresh(
     method: 'POST',
     path: path,
-    queryParameters: null,
     body: body,
     requireAuth: requireAuth,
   );
@@ -85,38 +80,30 @@ class ApiClient {
     String path, {
     Map<String, dynamic>? body,
     bool requireAuth = true,
-    bool transformBody = true,
-  }) => _sendMap(
+  }) => _sendMapWithOptionalRefresh(
     method: 'PATCH',
     path: path,
-    queryParameters: null,
     body: body,
     requireAuth: requireAuth,
-    transformBody: transformBody,
   );
 
   Future<Map<String, dynamic>> putJson(
     String path, {
     Map<String, dynamic>? body,
     bool requireAuth = true,
-    bool transformBody = true,
-  }) => _sendMap(
+  }) => _sendMapWithOptionalRefresh(
     method: 'PUT',
     path: path,
-    queryParameters: null,
     body: body,
     requireAuth: requireAuth,
-    transformBody: transformBody,
   );
 
   Future<Map<String, dynamic>> deleteJson(
     String path, {
     bool requireAuth = true,
-  }) => _sendMap(
+  }) => _sendMapWithOptionalRefresh(
     method: 'DELETE',
     path: path,
-    queryParameters: null,
-    body: null,
     requireAuth: requireAuth,
     allowEmptyBody: true,
   );
@@ -145,46 +132,25 @@ class ApiClient {
       request.headers['Authorization'] = 'Bearer $bearer';
     }
 
-    final sw = Stopwatch()..start();
-    _apiHttpTrace('HTTP → PUT $merged (bytes len=${bytes.length})');
-    try {
-      final streamed = await _client.send(request);
-      final bodyBytes = await streamed.stream.toBytes();
-      sw.stop();
-      final response = http.Response.bytes(
-        bodyBytes,
-        streamed.statusCode,
-        headers: streamed.headers,
-        request: request,
-      );
-      _apiHttpTrace(
-        'HTTP ← PUT $merged ${response.statusCode} '
-        '${sw.elapsedMilliseconds}ms len=${bodyBytes.length}',
-      );
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final decoded = await _decodeResponseBody(response);
-        final map = castJsonObjectOrNull(decoded);
-        if (map == null) {
-          throw ApiException(
-            message: 'Expected JSON object',
-            statusCode: response.statusCode,
-            body: decoded,
-          );
-        }
-        return map;
+    final response = await _sendUnbuffered(
+      request,
+      merged,
+      logLabel: ' (bytes len=${bytes.length})',
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final decoded = await _decodeResponseBody(response);
+      final map = castJsonObjectOrNull(decoded);
+      if (map == null) {
+        throw ApiException(
+          message: 'Expected JSON object',
+          statusCode: response.statusCode,
+          body: decoded,
+        );
       }
-      await _throwApiError(response);
-      throw AssertionError('unreachable');
-    } catch (e, st) {
-      sw.stop();
-      _log.warning(
-        'HTTP ✗ PUT $merged after ${sw.elapsedMilliseconds}ms: $e',
-        e,
-        st,
-      );
-      rethrow;
+      return map;
     }
+    await _throwApiError(response);
+    throw AssertionError('unreachable');
   }
 
   /// PUT raw bytes to an absolute URL (e.g. Active Storage direct-upload target).
@@ -199,31 +165,17 @@ class ApiClient {
     final request = http.Request('PUT', url)..bodyBytes = bytes;
     request.headers.addAll(headers);
 
-    final sw = Stopwatch()..start();
-    _apiHttpTrace('HTTP → PUT $url (bytes len=${bytes.length})');
-    try {
-      final streamed = await _client.send(request);
-      final bodyBytes = await streamed.stream.toBytes();
-      sw.stop();
-      _apiHttpTrace(
-        'HTTP ← PUT $url ${streamed.statusCode} '
-        '${sw.elapsedMilliseconds}ms len=${bodyBytes.length}',
+    final response = await _sendUnbuffered(
+      request,
+      url,
+      logLabel: ' (bytes len=${bytes.length})',
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(
+        message: 'Direct upload failed (${response.statusCode})',
+        statusCode: response.statusCode,
+        body: utf8.decode(response.bodyBytes, allowMalformed: true),
       );
-      if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
-        throw ApiException(
-          message: 'Direct upload failed (${streamed.statusCode})',
-          statusCode: streamed.statusCode,
-          body: utf8.decode(bodyBytes, allowMalformed: true),
-        );
-      }
-    } catch (e, st) {
-      sw.stop();
-      _log.warning(
-        'HTTP ✗ PUT $url after ${sw.elapsedMilliseconds}ms: $e',
-        e,
-        st,
-      );
-      rethrow;
     }
   }
 
@@ -259,8 +211,39 @@ class ApiClient {
       request.fields[e.key] = e.value;
     }
 
+    final response = await _sendUnbuffered(
+      request,
+      merged,
+      method: 'POST',
+      logLabel: ' (multipart)',
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final decoded = await _decodeResponseBody(response);
+      final map = castJsonObjectOrNull(decoded);
+      if (map == null) {
+        throw ApiException(
+          message: 'Expected JSON object',
+          statusCode: response.statusCode,
+          body: decoded,
+        );
+      }
+      return map;
+    }
+    await _throwApiError(response);
+    throw AssertionError('unreachable');
+  }
+
+  /// Sends an unbuffered [request] (bytes / multipart) with the shared
+  /// trace + stopwatch + error logging scaffolding, buffering the streamed
+  /// reply into an [http.Response].
+  Future<http.Response> _sendUnbuffered(
+    http.BaseRequest request,
+    Uri url, {
+    String method = 'PUT',
+    String logLabel = '',
+  }) async {
     final sw = Stopwatch()..start();
-    _apiHttpTrace('HTTP → POST $merged (multipart)');
+    _apiHttpTrace('HTTP → $method $url$logLabel');
     try {
       final streamed = await _client.send(request);
       final bodyBytes = await streamed.stream.toBytes();
@@ -272,28 +255,14 @@ class ApiClient {
         request: request,
       );
       _apiHttpTrace(
-        'HTTP ← POST $merged ${response.statusCode} '
+        'HTTP ← $method $url ${response.statusCode} '
         '${sw.elapsedMilliseconds}ms len=${bodyBytes.length}',
       );
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final decoded = await _decodeResponseBody(response);
-        final map = castJsonObjectOrNull(decoded);
-        if (map == null) {
-          throw ApiException(
-            message: 'Expected JSON object',
-            statusCode: response.statusCode,
-            body: decoded,
-          );
-        }
-        return map;
-      }
-      await _throwApiError(response);
-      throw AssertionError('unreachable');
+      return response;
     } catch (e, st) {
       sw.stop();
       _log.warning(
-        'HTTP ✗ POST $merged (multipart) after ${sw.elapsedMilliseconds}ms: $e',
+        'HTTP ✗ $method $url$logLabel after ${sw.elapsedMilliseconds}ms: $e',
         e,
         st,
       );
@@ -319,7 +288,7 @@ class ApiClient {
   /// the auth posture callers relied on before the three call sites were
   /// deduplicated.
   Future<String?> _ensureAuthenticated(bool requireAuth) async {
-    if (!sendAuthHeader || !requireAuth) return null;
+    if (!requireAuth) return null;
 
     final token = await getAccessToken();
     if (token != null && token.isNotEmpty) return token;
@@ -335,27 +304,6 @@ class ApiClient {
     throw const ApiException(message: 'Not authenticated', statusCode: 401);
   }
 
-  Future<Map<String, dynamic>> _sendMap({
-    required String method,
-    required String path,
-    Map<String, String>? queryParameters,
-    Map<String, dynamic>? body,
-    required bool requireAuth,
-    bool allowEmptyBody = false,
-    bool transformBody = true,
-  }) async {
-    return _sendMapWithOptionalRefresh(
-      method: method,
-      path: path,
-      queryParameters: queryParameters,
-      body: body,
-      requireAuth: requireAuth,
-      allowEmptyBody: allowEmptyBody,
-      transformBody: transformBody,
-      allowRefreshRetry: true,
-    );
-  }
-
   Future<Map<String, dynamic>> _sendMapWithOptionalRefresh({
     required String method,
     required String path,
@@ -363,8 +311,7 @@ class ApiClient {
     Map<String, dynamic>? body,
     required bool requireAuth,
     bool allowEmptyBody = false,
-    bool transformBody = true,
-    required bool allowRefreshRetry,
+    bool allowRefreshRetry = true,
   }) async {
     final response = await _dispatch(
       method: method,
@@ -372,7 +319,6 @@ class ApiClient {
       queryParameters: queryParameters,
       body: body,
       requireAuth: requireAuth,
-      transformBody: transformBody,
     );
 
     if (response.statusCode == 401 &&
@@ -388,7 +334,6 @@ class ApiClient {
           body: body,
           requireAuth: requireAuth,
           allowEmptyBody: allowEmptyBody,
-          transformBody: transformBody,
           allowRefreshRetry: false,
         );
       }
@@ -427,7 +372,6 @@ class ApiClient {
       queryParameters: queryParameters,
       body: body,
       requireAuth: requireAuth,
-      transformBody: true,
     );
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -462,7 +406,6 @@ class ApiClient {
     Map<String, String>? queryParameters,
     Map<String, dynamic>? body,
     required bool requireAuth,
-    bool transformBody = true,
   }) async {
     final base = _trimTrailingSlash(await getBaseUrl());
     final uriBase = Uri.parse(base);
@@ -484,9 +427,7 @@ class ApiClient {
 
     final bodyBytes = body == null
         ? null
-        : utf8.encode(
-            jsonEncode(transformBody ? convertKeysToSnake(body) : body),
-          );
+        : utf8.encode(jsonEncode(convertKeysToSnake(body)));
 
     final sw = Stopwatch()..start();
     _apiHttpTrace('HTTP → $method $uri');
@@ -550,23 +491,9 @@ class ApiClient {
   Map<String, String> _snakeCaseQuery(Map<String, String> query) {
     final out = <String, String>{};
     query.forEach((k, v) {
-      out[_camelQueryKeyToSnake(k)] = v;
+      out[camelToSnakeToken(k)] = v;
     });
     return out;
-  }
-
-  static String _camelQueryKeyToSnake(String key) {
-    final b = StringBuffer();
-    for (var i = 0; i < key.length; i++) {
-      final c = key[i];
-      final code = c.codeUnitAt(0);
-      final isUpper = code >= 65 && code <= 90;
-      if (isUpper && i > 0) {
-        b.write('_');
-      }
-      b.write(c.toLowerCase());
-    }
-    return b.toString();
   }
 
   static String _trimTrailingSlash(String url) {

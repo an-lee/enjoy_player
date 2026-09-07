@@ -112,7 +112,7 @@ Future<Float32List> decodeFileWindowToPcm16kMono({
 Float32List? decodePcmWavTo16kMono(Uint8List bytes) {
   final parsed = _parseWav(bytes);
   if (parsed == null || parsed.samples.isEmpty) return null;
-  return _resampleMono(parsed.samples, parsed.sampleRate, kAlignmentSampleRate);
+  return resampleToAlignmentRate(parsed.samples, parsed.sampleRate);
 }
 
 Future<Float32List> _ffmpegFallback(Uint8List bytes) async {
@@ -352,20 +352,4 @@ _ParsedWav? _parseWav(Uint8List bytes) {
     default:
       return null;
   }
-}
-
-Float32List _resampleMono(Float32List input, int fromRate, int toRate) {
-  if (fromRate == toRate) return input;
-  final outLen = (input.length * toRate / fromRate).round();
-  if (outLen <= 0 || input.isEmpty) return Float32List(0);
-  final out = Float32List(outLen);
-  final last = input.length - 1;
-  for (var i = 0; i < outLen; i++) {
-    final srcPos = i * fromRate / toRate;
-    final i0 = srcPos.floor().clamp(0, last);
-    final i1 = math.min(i0 + 1, last);
-    final t = srcPos - i0;
-    out[i] = input[i0] * (1 - t) + input[i1] * t;
-  }
-  return out;
 }

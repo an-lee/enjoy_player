@@ -4173,12 +4173,6 @@ abstract class AppLocalizations {
   /// **'BYOK · {detail}'**
   String aiPlaygroundProviderByokDetail(String detail);
 
-  /// Label when AIProvider.local is selected
-  ///
-  /// In en, this message translates to:
-  /// **'Local (unavailable)'**
-  String get aiPlaygroundProviderLocal;
-
   /// No description provided for @aiPlaygroundPickAudio.
   ///
   /// In en, this message translates to:

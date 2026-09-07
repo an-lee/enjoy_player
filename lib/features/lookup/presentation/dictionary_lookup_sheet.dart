@@ -15,6 +15,7 @@ import 'package:enjoy_player/core/notices/app_notice.dart';
 import 'package:enjoy_player/core/riverpod/async_value_x.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/widgets/sheet_drag_handle.dart';
+import 'package:enjoy_player/features/ai/application/ai_result_cache.dart';
 import 'package:enjoy_player/features/lookup/application/lookup_sheet_result_cache.dart';
 import 'package:enjoy_player/features/lookup/application/lookup_target_languages.dart';
 import 'package:enjoy_player/features/lookup/domain/lookup_request.dart';
@@ -118,9 +119,13 @@ class _DictionaryLookupSheetState extends ConsumerState<DictionaryLookupSheet> {
     if (source.isEmpty || target.isEmpty) return;
     if (tagsEqual(source, target)) return;
     unawaited(
-      ref
-          .read(lookupSheetResultCacheProvider)
-          .evictForPair(sourceLanguage: source, targetLanguage: target),
+      evictLookupCaches(
+        translation: ref.read(aiTranslationCacheProvider),
+        dictionary: ref.read(aiDictionaryCacheProvider),
+        contextual: ref.read(aiContextualTranslationCacheProvider),
+        sourceLanguage: source,
+        targetLanguage: target,
+      ),
     );
   }
 

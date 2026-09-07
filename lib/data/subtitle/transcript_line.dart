@@ -7,7 +7,7 @@
 library;
 
 import 'package:enjoy_player/core/json/json_cast.dart';
-import 'package:meta/meta.dart';
+import 'package:flutter/foundation.dart';
 
 /// Per-phone timing aligned with `@enjoy/alignment` `PhoneTiming`.
 ///
@@ -106,7 +106,7 @@ class TranscriptWord {
         other.text == text &&
         other.startMs == startMs &&
         other.durationMs == durationMs &&
-        _sameList(other.phones, phones);
+        _sameNullableList(other.phones, phones);
   }
 
   @override
@@ -185,7 +185,7 @@ class TranscriptLine {
         other.durationMs == durationMs &&
         other.sourceKey == sourceKey &&
         other.confidence == confidence &&
-        _sameList(other.timeline, timeline);
+        _sameNullableList(other.timeline, timeline);
   }
 
   @override
@@ -250,6 +250,15 @@ List<TranscriptWord>? _wordsFromJson(Object? raw) {
   return out.isEmpty ? null : out;
 }
 
+/// Null-aware element equality where `null` and empty are equivalent
+/// (foundation's [listEquals] requires non-null arguments).
+bool _sameNullableList<T>(List<T>? a, List<T>? b) {
+  final aEmpty = a == null || a.isEmpty;
+  final bEmpty = b == null || b.isEmpty;
+  if (aEmpty || bEmpty) return aEmpty && bEmpty;
+  return listEquals(a, b);
+}
+
 List<TranscriptPhone>? _phonesFromJson(Object? raw) {
   if (raw is! List) return null;
   final out = <TranscriptPhone>[];
@@ -261,16 +270,4 @@ List<TranscriptPhone>? _phonesFromJson(Object? raw) {
     out.add(phone);
   }
   return out.isEmpty ? null : out;
-}
-
-bool _sameList<T>(List<T>? a, List<T>? b) {
-  if (identical(a, b)) return true;
-  final aEmpty = a == null || a.isEmpty;
-  final bEmpty = b == null || b.isEmpty;
-  if (aEmpty || bEmpty) return aEmpty && bEmpty;
-  if (a.length != b.length) return false;
-  for (var i = 0; i < a.length; i++) {
-    if (a[i] != b[i]) return false;
-  }
-  return true;
 }

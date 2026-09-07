@@ -944,7 +944,6 @@
   "aiPlaygroundIntro": "通过 Enjoy 云端或「设置 → AI 提供商」中的 BYOK 凭据测试各 AI 能力。翻译与词典跟随 LLM 提供商。",
   "aiPlaygroundActiveProviders": "当前提供商",
   "aiPlaygroundProviderByokDetail": "BYOK · {detail}",
-  "aiPlaygroundProviderLocal": "本地（不可用）",
   "aiPlaygroundPickAudio": "选择音频文件",
   "aiPlaygroundTranscribe": "转写",
   "aiPlaygroundChatSystem": "系统（可选）",

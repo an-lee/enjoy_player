@@ -101,20 +101,6 @@ void main() {
       expect(store.size, 0);
     });
 
-    test('forEach visits entries in mru to lru order', () {
-      final store = L1Store<String, int>(capacity: 4, ttl: ttl);
-      store.put('a', 1);
-      store.put('b', 2);
-      store.put('c', 3);
-      // Touch 'a' so it becomes MRU.
-      store.peek('a');
-      final visited = <String>[];
-      store.forEach((k, v) {
-        visited.add('$k=$v');
-      });
-      expect(visited, ['a=1', 'c=3', 'b=2']);
-    });
-
     test('size returns current entry count', () {
       final store = L1Store<String, int>(capacity: 4, ttl: ttl);
       expect(store.size, 0);

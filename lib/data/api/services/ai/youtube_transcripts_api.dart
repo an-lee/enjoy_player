@@ -21,16 +21,6 @@ import 'package:enjoy_player/data/api/rest_api.dart';
 /// failure shows up in `debugPrint` / logcat / the rotating log file.
 final Logger _log = logNamed('YouTubeTranscripts');
 
-/// Worker-side caption-fetch strategy. Mirrors
-/// `apps/worker/src/routes/youtube/_validation.ts` (`caption_fetch`).
-enum WorkerCaptionFetch { auto, official }
-
-WorkerCaptionFetch _captionFetchForSource(String source) {
-  return source == 'official'
-      ? WorkerCaptionFetch.official
-      : WorkerCaptionFetch.auto;
-}
-
 /// Contract for the Enjoy Worker transcript cache & profile endpoints
 /// (cache-only; the legacy poll-based POST `/youtube/transcripts` was removed
 /// upstream — see issue #320).
@@ -116,16 +106,13 @@ class YoutubeTranscriptsApi extends RestApi
     'worker upload failed for $videoId/$language '
     '(source=$source, ${timeline.length} lines)',
     () async {
-      final captionFetch = _captionFetchForSource(source);
       await client.postJson(
         _transcriptsPath,
         body: {
           'format': 'enjoy',
           'videoId': videoId,
           'language': language,
-          'captionFetch': captionFetch == WorkerCaptionFetch.official
-              ? 'official'
-              : 'auto',
+          'captionFetch': source == 'official' ? 'official' : 'auto',
           'source': source,
           'timeline': timeline,
           'metadata': ?metadata,

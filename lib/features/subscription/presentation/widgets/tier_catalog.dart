@@ -60,12 +60,7 @@ int? _savingsPercentForTier(List<SubscriptionPlan> plans, String tier) {
 }
 
 class TierCatalog extends ConsumerStatefulWidget {
-  const TierCatalog({
-    required this.status,
-    this.onChoosePaid,
-    @Deprecated('Use onChoosePaid.') this.onChoosePro,
-    super.key,
-  });
+  const TierCatalog({required this.status, this.onChoosePaid, super.key});
 
   final SubscriptionStatus status;
 
@@ -73,10 +68,6 @@ class TierCatalog extends ConsumerStatefulWidget {
   /// this to the unified purchase modal (auto-renew primary, prepaid secondary).
   final void Function(SubscriptionTier tier, CatalogInterval interval)?
   onChoosePaid;
-
-  /// Backwards-compatible alias for Pro-only callers. Prefer [onChoosePaid].
-  @Deprecated('Use onChoosePaid. Pass SubscriptionTier.pro explicitly.')
-  final void Function(CatalogInterval interval)? onChoosePro;
 
   @override
   ConsumerState<TierCatalog> createState() => _TierCatalogState();
@@ -147,11 +138,14 @@ class _TierCatalogState extends ConsumerState<TierCatalog> {
           onChanged: (v) => setState(() => _interval = v),
           yearlyLabel: l10n.subscriptionAutoRenewYearly,
           monthlyLabel: l10n.subscriptionAutoRenewMonthly,
-          savingsLabel: savingsPercent == null
-              ? null
-              : l10n.subscriptionTierCatalogIntervalYearSavings(
+          // Savings only applies to yearly billing, so hide the badge on the
+          // monthly tab (null collapses the toggle to its centered solo layout).
+          savingsLabel:
+              _interval == CatalogInterval.year && savingsPercent != null
+              ? l10n.subscriptionTierCatalogIntervalYearSavings(
                   '$savingsPercent',
-                ),
+                )
+              : null,
         ),
         SizedBox(height: t.space20),
         LayoutBuilder(
@@ -218,13 +212,7 @@ class _TierCatalogState extends ConsumerState<TierCatalog> {
   }
 
   void _onChoosePaid(SubscriptionTier tier) {
-    // New callback first.
     widget.onChoosePaid?.call(tier, _interval);
-    // Legacy alias: only Pro had a callback historically.
-    if (tier == SubscriptionTier.pro) {
-      // ignore: deprecated_member_use_from_same_package
-      widget.onChoosePro?.call(_interval);
-    }
   }
 
   @override

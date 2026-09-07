@@ -653,14 +653,3 @@ final class EspeakNgSynthesizer implements SpokenReferenceSynthesizer {
     ];
   }
 }
-
-/// Production factory. Never [DurationModelSynthesizer].
-SpokenReferenceSynthesizer createProductionSynthesizer({
-  bool Function()? isCancelled,
-}) {
-  return EspeakNgSynthesizer(isCancelled: isCancelled);
-}
-
-/// True when [createProductionSynthesizer] is the eSpeak-NG implementation.
-bool productionSynthesizerIsEspeakNg() =>
-    createProductionSynthesizer() is EspeakNgSynthesizer;

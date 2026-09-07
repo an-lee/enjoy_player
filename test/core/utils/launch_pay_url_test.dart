@@ -2,17 +2,9 @@
 //
 // The function is consumed by both the credits and subscription purchase
 // sheets, which pattern-match on `StateError(:final message)` to surface a
-// user-facing reason. These tests pin three things:
-//
-//   1. Each branch throws a `PayUrlLaunchException` carrying the right
-//      `PayUrlLaunchFailure` enum value, so new call sites can switch on
-//      the structured value without parsing strings.
-//   2. The thrown error is still a `StateError` (and an `Exception`) with the
-//      historical `'missing_pay_url'` / `'invalid_pay_url'` / `'launch_failed'`
-//      message, so the existing `StateError(:final message) when` matches at
-//      the call sites keep firing.
-//   3. The message-key strings — the public contract consumed by the UI — are
-//      pinned verbatim so a rename would break this test on purpose.
+// user-facing reason. These tests pin the three message keys — the public
+// contract consumed by the UI — verbatim, so a rename would break this test
+// on purpose.
 import 'package:enjoy_player/core/utils/launch_pay_url.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:url_launcher_platform_interface/link.dart';
@@ -27,46 +19,40 @@ void main() {
       UrlLauncherPlatform.instance = launcher;
     });
 
-    test('null url throws missing as PayUrlLaunchException', () async {
+    test('null url throws missing_pay_url', () async {
       try {
         await launchPayUrl(null);
         fail('expected launchPayUrl(null) to throw');
-      } on PayUrlLaunchException catch (e) {
-        expect(e.failure, PayUrlLaunchFailure.missing);
+      } on StateError catch (e) {
         expect(e.message, 'missing_pay_url');
-        expect(e, isA<StateError>());
-        expect(e, isA<Exception>());
       }
     });
 
-    test('empty url throws missing', () async {
+    test('empty url throws missing_pay_url', () async {
       try {
         await launchPayUrl('');
         fail('expected launchPayUrl("") to throw');
-      } on PayUrlLaunchException catch (e) {
-        expect(e.failure, PayUrlLaunchFailure.missing);
+      } on StateError catch (e) {
         expect(e.message, 'missing_pay_url');
       }
     });
 
-    test('unparseable url throws invalid', () async {
+    test('unparseable url throws invalid_pay_url', () async {
       // `Uri.tryParse` returns null for malformed authority / IPv6 forms.
       try {
         await launchPayUrl('http://[');
         fail('expected launchPayUrl to throw on unparseable input');
-      } on PayUrlLaunchException catch (e) {
-        expect(e.failure, PayUrlLaunchFailure.invalid);
+      } on StateError catch (e) {
         expect(e.message, 'invalid_pay_url');
       }
     });
 
-    test('platform refusal throws launchFailed', () async {
+    test('platform refusal throws launch_failed', () async {
       launcher.nextResult = false;
       try {
         await launchPayUrl('https://example.com/checkout');
         fail('expected launchPayUrl to throw when platform refuses');
-      } on PayUrlLaunchException catch (e) {
-        expect(e.failure, PayUrlLaunchFailure.launchFailed);
+      } on StateError catch (e) {
         expect(e.message, 'launch_failed');
       }
     });
@@ -81,24 +67,6 @@ void main() {
         expect(launcher.lastUrl, target);
       },
     );
-
-    test(
-      'message keys are pinned for backwards-compatible StateError catch',
-      () {
-        // The credits + subscription sheets match on these exact strings
-        // (`StateError(:final message) when message == 'missing_pay_url'`).
-        // Renaming any of them is a breaking change for those call sites.
-        expect(PayUrlLaunchFailure.missing.message, 'missing_pay_url');
-        expect(PayUrlLaunchFailure.invalid.message, 'invalid_pay_url');
-        expect(PayUrlLaunchFailure.launchFailed.message, 'launch_failed');
-      },
-    );
-
-    test('every failure variant produces a non-blank message', () {
-      for (final f in PayUrlLaunchFailure.values) {
-        expect(f.message, isNotEmpty, reason: '${f.name} has blank message');
-      }
-    });
   });
 }
 

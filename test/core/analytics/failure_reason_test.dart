@@ -64,8 +64,6 @@ void main() {
       const local = <AppFailure>[
         FileFailure('io'),
         UnsupportedImportFileFailure(),
-        DatabaseFailure('db'),
-        PlaybackFailure('playback'),
       ];
       for (final failure in local) {
         expect(

@@ -1,15 +1,14 @@
-// Widget tests for the community activity card body builders.
+// Widget tests for the community activity card summary body.
 //
-// These widgets are pure presentation built on top of an `ActiveUsersResponse`
-// payload — covering them gives cheap branch coverage on the long if/else
-// chains (`hasTodayStats`, empty-users fallback, etc.) that aren't otherwise
+// This widget is pure presentation built on top of an `ActiveUsersResponse`
+// payload — covering it gives cheap branch coverage on the long if/else
+// chains (`hasToday`, empty-users fallback, etc.) that aren't otherwise
 // easy to drive from the parent `CommunityActivityCard`.
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/features/community/domain/active_user.dart';
 import 'package:enjoy_player/features/community/presentation/community_activity_avatars.dart';
 import 'package:enjoy_player/features/community/presentation/community_activity_bodies.dart';
 import 'package:enjoy_player/features/community/presentation/community_activity_metrics.dart';
-import 'package:enjoy_player/features/community/presentation/community_activity_stats.dart';
 import 'package:enjoy_player/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -44,45 +43,6 @@ ActiveUsersResponse _users({
 }
 
 void main() {
-  group('CardBody', () {
-    testWidgets('renders TodayStatsBody when recordingsCountToday is set', (
-      tester,
-    ) async {
-      final data = _users(count: 5, recordingsCountToday: 12, userCount: 3);
-      await tester.pumpWidget(
-        _harness(CardBody(data: data, t: _tokens(), cs: _cs())),
-      );
-      expect(find.byType(TodayStatsBody), findsOneWidget);
-      expect(find.byType(SimpleCountBody), findsNothing);
-    });
-
-    testWidgets('renders SimpleCountBody when no today stats are present', (
-      tester,
-    ) async {
-      final data = _users(count: 5, userCount: 3);
-      await tester.pumpWidget(
-        _harness(CardBody(data: data, t: _tokens(), cs: _cs())),
-      );
-      expect(find.byType(SimpleCountBody), findsOneWidget);
-      expect(find.byType(TodayStatsBody), findsNothing);
-    });
-
-    testWidgets('renders TodayStatsBody when only duration is set', (
-      tester,
-    ) async {
-      final data = _users(
-        count: 5,
-        recordingsDurationToday: 30000,
-        userCount: 2,
-      );
-      await tester.pumpWidget(
-        _harness(CardBody(data: data, t: _tokens(), cs: _cs())),
-      );
-      expect(find.byType(TodayStatsBody), findsOneWidget);
-      expect(find.byType(SimpleCountBody), findsNothing);
-    });
-  });
-
   group('SummaryBody', () {
     testWidgets('renders the empty-users SummaryBody without an avatar stack', (
       tester,
@@ -156,32 +116,6 @@ void main() {
 
     test('falls back to "U" when no alnum letters are present', () {
       expect(initials('🎉🎉'), 'U');
-    });
-  });
-
-  group('StatBlock', () {
-    testWidgets('renders the value and label', (tester) async {
-      await tester.pumpWidget(
-        _harness(
-          const StatBlock(icon: Icons.mic, valueText: '42', label: 'Today'),
-        ),
-      );
-      expect(find.text('42'), findsOneWidget);
-      expect(find.text('Today'), findsOneWidget);
-    });
-
-    testWidgets('uses compact value style when requested', (tester) async {
-      await tester.pumpWidget(
-        _harness(
-          const StatBlock(
-            icon: Icons.mic,
-            valueText: '42',
-            label: 'Today',
-            compactValue: true,
-          ),
-        ),
-      );
-      expect(find.text('42'), findsOneWidget);
     });
   });
 
@@ -265,87 +199,6 @@ void main() {
       );
       // No "+N" overflow text expected.
       expect(find.textContaining(RegExp(r'^\+\d+$')), findsNothing);
-    });
-  });
-
-  group('SimpleCountBody', () {
-    testWidgets('shows the empty-state copy when users list is empty', (
-      tester,
-    ) async {
-      final data = _users();
-      await tester.pumpWidget(
-        _harness(SimpleCountBody(data: data, denseAvatars: false)),
-      );
-      expect(find.byType(SimpleCountBody), findsOneWidget);
-      expect(find.text('0'), findsOneWidget);
-    });
-
-    testWidgets('renders the avatar wrap when users are present', (
-      tester,
-    ) async {
-      final data = _users(count: 2, userCount: 2);
-      await tester.pumpWidget(
-        _harness(SimpleCountBody(data: data, denseAvatars: true)),
-      );
-      expect(find.byType(AvatarWrap), findsOneWidget);
-    });
-  });
-
-  group('TodayStatsBody', () {
-    testWidgets('renders both metric blocks when both stats are set', (
-      tester,
-    ) async {
-      final data = _users(
-        count: 4,
-        recordingsCountToday: 12,
-        recordingsDurationToday: 60000,
-        userCount: 2,
-      );
-      await tester.pumpWidget(
-        _harness(TodayStatsBody(data: data, denseAvatars: true)),
-      );
-      expect(find.byType(StatBlock), findsNWidgets(2));
-      expect(find.byType(ActiveLearnersRow), findsOneWidget);
-    });
-
-    testWidgets('renders only the count block when only count is set', (
-      tester,
-    ) async {
-      final data = _users(count: 1, recordingsCountToday: 5);
-      await tester.pumpWidget(
-        _harness(TodayStatsBody(data: data, denseAvatars: false)),
-      );
-      expect(find.byType(StatBlock), findsOneWidget);
-      expect(find.byType(ActiveLearnersRow), findsNothing);
-    });
-
-    testWidgets('renders only the duration block when only duration is set', (
-      tester,
-    ) async {
-      final data = _users(count: 1, recordingsDurationToday: 30000);
-      await tester.pumpWidget(
-        _harness(TodayStatsBody(data: data, denseAvatars: false)),
-      );
-      expect(find.byType(StatBlock), findsOneWidget);
-    });
-  });
-
-  group('ActiveLearnersRow', () {
-    testWidgets('shows the active-learner count when > 0', (tester) async {
-      final data = _users(count: 7, userCount: 2);
-      await tester.pumpWidget(
-        _harness(ActiveLearnersRow(data: data, dense: true)),
-      );
-      expect(find.byType(AvatarWrap), findsOneWidget);
-      expect(find.text('7'), findsOneWidget);
-    });
-
-    testWidgets('hides the count when it is 0', (tester) async {
-      final data = _users(count: 0, userCount: 1);
-      await tester.pumpWidget(
-        _harness(ActiveLearnersRow(data: data, dense: true)),
-      );
-      expect(find.byType(AvatarWrap), findsOneWidget);
     });
   });
 }

@@ -1,7 +1,10 @@
 /// Recursive camelCase ↔ snake_case for JSON-like structures.
 library;
 
-String _camelToSnakeToken(String input) {
+/// CamelCase → snake_case for a single token. Exported so query-parameter
+/// translation shares the exact body-key semantics (non-ASCII tokens are
+/// returned unchanged).
+String camelToSnakeToken(String input) {
   // Walk the code units directly. Going via `input[i]` + `c.toLowerCase()`
   // allocates a fresh single-char String per iteration; for an API request
   // body with hundreds of keys this dominates the JSON-encode hot path.
@@ -58,7 +61,7 @@ dynamic _convertKeysRecursive(
 }
 
 dynamic convertKeysToSnake(dynamic value) =>
-    _convertKeysRecursive(value, _camelToSnakeToken);
+    _convertKeysRecursive(value, camelToSnakeToken);
 
 dynamic convertKeysToCamel(dynamic value) =>
     _convertKeysRecursive(value, _snakeToCamelToken);

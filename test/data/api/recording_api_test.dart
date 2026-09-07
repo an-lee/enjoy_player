@@ -162,24 +162,5 @@ void main() {
       expect(captured.first.method, 'DELETE');
       expect(captured.first.url.path, '/api/v1/mine/recordings/rec-1');
     });
-
-    test('updateRecording sends PUT with transform', () async {
-      await api.updateRecording('rec-1', {
-        'recording': {'pronunciationScore': 85},
-      });
-
-      expect(captured, hasLength(1));
-      expect(captured.first.method, 'PUT');
-      expect(captured.first.url.path, '/api/v1/mine/recordings/rec-1');
-    });
-
-    test('updateRecording with skipTransform', () async {
-      await api.updateRecording('rec-1', {
-        'recording': {'pronunciationScore': 90},
-      }, skipTransform: true);
-
-      expect(captured, hasLength(1));
-      expect(captured.first.method, 'PUT');
-    });
   });
 }

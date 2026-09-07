@@ -26,7 +26,6 @@ abstract interface class EnrichmentBackend {
     required Float32List sourcePcm16k,
     required String language,
     required List<AlignmentSegment> segments,
-    required AlignmentGranularity granularity,
     AlignmentCancelToken? cancel,
   });
 

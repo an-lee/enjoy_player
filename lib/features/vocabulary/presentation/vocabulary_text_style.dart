@@ -56,43 +56,6 @@ String stripRedundantContextualHeading(String markdown) {
   return lines.skip(1).join('\n').trimLeft();
 }
 
-/// Removes ATX heading sections whose body is empty/whitespace-only.
-String pruneEmptyMarkdownSections(String markdown) {
-  final trimmed = markdown.trim();
-  if (trimmed.isEmpty) return markdown;
-
-  final lines = trimmed.split('\n');
-  final out = <String>[];
-  var i = 0;
-
-  while (i < lines.length && !_atxHeading.hasMatch(lines[i].trim())) {
-    out.add(lines[i]);
-    i++;
-  }
-
-  while (i < lines.length) {
-    final headingLine = lines[i];
-    i++;
-    final body = <String>[];
-    while (i < lines.length && !_atxHeading.hasMatch(lines[i].trim())) {
-      body.add(lines[i]);
-      i++;
-    }
-    if (body.join('\n').trim().isEmpty) {
-      continue;
-    }
-    out.add(headingLine);
-    out.addAll(body);
-  }
-
-  return out.join('\n').trim();
-}
-
-/// Contextual markdown ready for flashcard display.
-String prepareContextualMarkdown(String markdown) {
-  return pruneEmptyMarkdownSections(stripRedundantContextualHeading(markdown));
-}
-
 /// One titled body section from contextual AI markdown.
 final class ContextualMarkdownSection {
   const ContextualMarkdownSection({required this.title, required this.body});
@@ -116,8 +79,10 @@ final class ContextualMarkdownDocument {
 
 /// Splits prepared markdown into a preamble and titled sections.
 ContextualMarkdownDocument parseContextualMarkdownDocument(String markdown) {
-  final prepared = prepareContextualMarkdown(markdown);
-  if (prepared.isEmpty) {
+  // Drop a leading redundant heading; empty sections are skipped inline
+  // below (`bodyText.isEmpty`), so no separate pruning pass is needed.
+  final prepared = stripRedundantContextualHeading(markdown);
+  if (prepared.trim().isEmpty) {
     return const ContextualMarkdownDocument(preamble: '', sections: []);
   }
 

@@ -1371,23 +1371,4 @@ void main() {
   // =========================================================================
   // playClip (legacy alias)
   // =========================================================================
-
-  group('playClip legacy alias', () {
-    test(
-      'delegates to openPracticeClip (no-op without valid context)',
-      () async {
-        final session = container.read(
-          vocabularyReviewSessionProvider.notifier,
-        );
-        session.startWithQueue([_makeItem()]);
-        await session.playClip();
-        // No context, so preparePracticeClip is no-op, then
-        // startPracticeClipPlayback is no-op (phase != clipOpening).
-        expect(
-          container.read(vocabularyReviewSessionProvider).practicePhase,
-          ReviewPracticePhase.none,
-        );
-      },
-    );
-  });
 }

@@ -53,8 +53,6 @@ AsrCapability resolveAsrCapability(Ref ref, AIServiceConfig config) {
           secrets: ref.read(byokSecretStoreProvider),
         ),
       };
-    case AIProvider.local:
-      return const UnimplementedAsrCapability();
   }
 }
 
@@ -66,8 +64,6 @@ LlmCapability resolveLlmCapability(Ref ref, AIServiceConfig config) {
       final llmByok = config.llmByok;
       if (llmByok == null) return const ByokNotConfiguredLlmCapability();
       return ByokLlmCapability(llmByok, ref.read(byokSecretStoreProvider));
-    case AIProvider.local:
-      return const UnimplementedLlmCapability();
   }
 }
 
@@ -80,8 +76,6 @@ TranslationCapability resolveTranslationCapability(
       return EnjoyTranslationCapability(ref.read(translationApiProvider));
     case AIProvider.byok:
       return ByokTranslationCapability(resolveLlmCapability(ref, config));
-    case AIProvider.local:
-      return const UnimplementedTranslationCapability();
   }
 }
 
@@ -94,8 +88,6 @@ DictionaryCapability resolveDictionaryCapability(
       return EnjoyDictionaryCapability(ref.read(dictionaryApiProvider));
     case AIProvider.byok:
       return ByokDictionaryCapability(resolveLlmCapability(ref, config));
-    case AIProvider.local:
-      return const UnimplementedDictionaryCapability();
   }
 }
 
@@ -112,8 +104,6 @@ ContextualTranslationCapability resolveContextualTranslationCapability(
       return EnjoyContextualTranslationCapability(
         resolveLlmCapability(ref, config),
       );
-    case AIProvider.local:
-      return const UnimplementedContextualTranslationCapability();
   }
 }
 
@@ -134,8 +124,6 @@ TtsCapability resolveTtsCapability(Ref ref, AIServiceConfig config) {
           secrets: ref.read(byokSecretStoreProvider),
         ),
       };
-    case AIProvider.local:
-      return const UnimplementedTtsCapability();
   }
 }
 
@@ -157,8 +145,6 @@ AssessmentCapability resolveAssessmentCapability(
         config: speechByok,
         secrets: ref.read(byokSecretStoreProvider),
       );
-    case AIProvider.local:
-      return const UnimplementedAssessmentCapability();
   }
 }
 

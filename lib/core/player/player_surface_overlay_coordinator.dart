@@ -34,12 +34,6 @@ class PlayerSurfaceOverlayCoordinator extends Notifier<Set<Object>> {
     final next = {...state}..remove(token);
     state = next;
   }
-
-  /// Test helper: drop every hold.
-  void clear() {
-    if (state.isEmpty) return;
-    state = const <Object>{};
-  }
 }
 
 final playerSurfaceOverlayCoordinatorProvider =

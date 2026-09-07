@@ -11,16 +11,12 @@ void main() {
 
     test('sealed failure subclasses are recognized as AppFailure', () {
       final f = const FileFailure('x');
-      final d = const DatabaseFailure('y');
-      final p = const PlaybackFailure('z');
       final n = const NetworkFailure('q', statusCode: 503);
       final c = const CreditsFailure('r');
       final s = const SubscriptionConflictFailure('s');
       final a = const AuthFailure('t', code: AuthFailureCode.rateLimited);
 
       expect(f, isA<AppFailure>());
-      expect(d, isA<AppFailure>());
-      expect(p, isA<AppFailure>());
       expect(n, isA<AppFailure>());
       expect(c, isA<AppFailure>());
       expect(s, isA<AppFailure>());
@@ -40,20 +36,6 @@ void main() {
       expect(u.message, '');
       expect(u.toString(), '');
       expect(u, isA<AppFailure>());
-    });
-  });
-
-  group('DatabaseFailure', () {
-    test('carries message verbatim', () {
-      const d = DatabaseFailure('db down');
-      expect(d.message, 'db down');
-    });
-  });
-
-  group('PlaybackFailure', () {
-    test('carries message verbatim', () {
-      const p = PlaybackFailure('codec error');
-      expect(p.message, 'codec error');
     });
   });
 
@@ -92,7 +74,6 @@ void main() {
           AuthFailureCode.invalidCredentials,
           AuthFailureCode.sessionRevoked,
           AuthFailureCode.rateLimited,
-          AuthFailureCode.networkUnreachable,
           AuthFailureCode.serverError,
           AuthFailureCode.unknown,
         ]),

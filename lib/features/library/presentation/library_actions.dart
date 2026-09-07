@@ -86,6 +86,49 @@ void _showImportProgressDialog(
   );
 }
 
+/// Runs [import] behind the shared blocking-progress scaffold: shows the
+/// progress dialog, waits a frame, checks auth, then dismisses the dialog
+/// and either opens the player or surfaces an error notice.
+Future<void> _runBlockingImport(
+  BuildContext context,
+  WidgetRef ref, {
+  required String Function(AppLocalizations) progressLabel,
+  required Future<String> Function(String signedInUserId) import,
+  required String Function(AppLocalizations) importFailureLabel,
+  required String unsupportedFileLabel,
+}) async {
+  final l10n = AppLocalizations.of(context)!;
+  _showImportProgressDialog(context, progressLabel);
+  // Let the modal route build and paint before starting import (Duration.zero is not enough).
+  await WidgetsBinding.instance.endOfFrame;
+
+  try {
+    final auth = ref.read(authCtrlProvider).valueOrNull;
+    if (auth is! AuthSignedIn) return;
+    final id = await import(auth.profile.id);
+    if (!context.mounted) return;
+    _dismissBlockingImportDialogThen(
+      context,
+      () => openPlayerRoute(context, id),
+    );
+  } on AppFailure catch (e) {
+    if (!context.mounted) return;
+    _dismissBlockingImportDialogThen(
+      context,
+      () => AppNotice.error(
+        context,
+        e is UnsupportedImportFileFailure ? unsupportedFileLabel : e.message,
+      ),
+    );
+  } catch (_) {
+    if (!context.mounted) return;
+    _dismissBlockingImportDialogThen(
+      context,
+      () => AppNotice.error(context, importFailureLabel(l10n)),
+    );
+  }
+}
+
 Future<void> importMediaFromPicker(BuildContext context, WidgetRef ref) async {
   final pick = await FilePicker.pickFile(
     type: FileType.custom,
@@ -102,44 +145,22 @@ Future<void> importMediaFromPicker(BuildContext context, WidgetRef ref) async {
   );
   if (contentLanguage == null || !context.mounted) return;
 
-  final l10n = AppLocalizations.of(context)!;
-  _showImportProgressDialog(context, (d) => d.importingMedia);
-  // Let the modal route build and paint before starting import (Duration.zero is not enough).
-  await WidgetsBinding.instance.endOfFrame;
-
-  try {
-    final auth = ref.read(authCtrlProvider).valueOrNull;
-    if (auth is! AuthSignedIn) return;
-    final id = await ref
+  await _runBlockingImport(
+    context,
+    ref,
+    progressLabel: (d) => d.importingMedia,
+    import: (userId) => ref
         .read(mediaLibraryRepositoryProvider)
         .importMedia(
           XFile(path),
-          signedInUserId: auth.profile.id,
+          signedInUserId: userId,
           contentLanguage: contentLanguage,
-        );
-    if (!context.mounted) return;
-    _dismissBlockingImportDialogThen(
+        ),
+    importFailureLabel: (l10n) => l10n.importMediaFailed,
+    unsupportedFileLabel: AppLocalizations.of(
       context,
-      () => openPlayerRoute(context, id),
-    );
-  } on AppFailure catch (e) {
-    if (!context.mounted) return;
-    _dismissBlockingImportDialogThen(
-      context,
-      () => AppNotice.error(
-        context,
-        e is UnsupportedImportFileFailure
-            ? l10n.importUnsupportedFileType
-            : e.message,
-      ),
-    );
-  } catch (_) {
-    if (!context.mounted) return;
-    _dismissBlockingImportDialogThen(
-      context,
-      () => AppNotice.error(context, l10n.importMediaFailed),
-    );
-  }
+    )!.importUnsupportedFileType,
+  );
 }
 
 Future<void> confirmAndDeleteMedia(
@@ -289,36 +310,21 @@ Future<void> importYoutubeFromDialog(
   );
   if (contentLanguage == null || !context.mounted) return;
 
-  _showImportProgressDialog(context, (d) => d.youtubeImporting);
-  // Let the modal route build and paint before starting import.
-  await WidgetsBinding.instance.endOfFrame;
-
-  try {
-    final auth = ref.read(authCtrlProvider).valueOrNull;
-    if (auth is! AuthSignedIn) return;
-    final id = await ref
-        .read(mediaLibraryRepositoryProvider)
-        .importYoutubeVideo(submitted, contentLanguage: contentLanguage);
-    ref.invalidate(libraryMediaProvider);
-    ref.invalidate(libraryHomeRecentsProvider);
-    if (!context.mounted) return;
-    _dismissBlockingImportDialogThen(
-      context,
-      () => openPlayerRoute(context, id),
-    );
-  } on AppFailure catch (e) {
-    if (!context.mounted) return;
-    _dismissBlockingImportDialogThen(
-      context,
-      () => AppNotice.error(context, e.message),
-    );
-  } catch (_) {
-    if (!context.mounted) return;
-    _dismissBlockingImportDialogThen(
-      context,
-      () => AppNotice.error(context, l10n.youtubeImportInvalid),
-    );
-  }
+  await _runBlockingImport(
+    context,
+    ref,
+    progressLabel: (d) => d.youtubeImporting,
+    import: (userId) async {
+      final id = await ref
+          .read(mediaLibraryRepositoryProvider)
+          .importYoutubeVideo(submitted, contentLanguage: contentLanguage);
+      ref.invalidate(libraryMediaProvider);
+      ref.invalidate(libraryHomeRecentsProvider);
+      return id;
+    },
+    importFailureLabel: (l10n) => l10n.youtubeImportInvalid,
+    unsupportedFileLabel: AppLocalizations.of(context)!.youtubeImportInvalid,
+  );
 }
 
 Future<void> editMediaLanguage(

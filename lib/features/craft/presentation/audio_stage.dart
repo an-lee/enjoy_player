@@ -16,6 +16,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:enjoy_player/core/notices/app_notice.dart';
 import 'package:enjoy_player/core/routing/player_navigation.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
+import 'package:enjoy_player/core/utils/time_format.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_button.dart';
 import 'package:enjoy_player/features/craft/application/craft_controller.dart';
 import 'package:enjoy_player/features/craft/domain/azure_voice.dart';
@@ -134,7 +135,7 @@ class _AudioStageState extends ConsumerState<AudioStage> {
   Future<void> _saveAndPractice() async {
     final result = await ref
         .read(craftControllerProvider.notifier)
-        .saveAndPractice();
+        .saveToLibrary();
     if (!mounted || result == null) return;
 
     maybeShowCraftSolidTranscriptSttHint(
@@ -144,12 +145,6 @@ class _AudioStageState extends ConsumerState<AudioStage> {
     final state = ref.read(craftControllerProvider);
     final targetId = state.dedupedExistingId ?? result.mediaId;
     if (mounted) openPlayerRoute(context, targetId);
-  }
-
-  String _fmt(Duration d) {
-    final m = d.inMinutes;
-    final s = d.inSeconds.remainder(60);
-    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -240,7 +235,7 @@ class _AudioStageState extends ConsumerState<AudioStage> {
                   await _player?.seek(pos);
                   if (mounted) setState(() => _position = pos);
                 },
-                fmt: _fmt,
+                fmt: formatDurationHms,
                 theme: theme,
               ),
               SizedBox(height: t.space16),

@@ -1,22 +1,12 @@
 /// Semantic color tokens — paper (light) / graphite (dark) from the Enjoy
 /// Player prototype. Source OKLCH in comments; values are baked sRGB.
-///
-/// Logo gradient (`logoBlue` → `logoViolet`) is mark-only. UI uses fill vs
-/// ink accents derived from those endpoints.
 library;
 
 import 'package:flutter/material.dart';
 
 abstract final class AppColors {
-  // ── Logo seeds (mark only) ──────────────────────────────────────────────
-  static const logoBlue = Color(0xFF4797F5);
-  static const logoViolet = Color(0xFFA855F7);
-
   /// Deep violet fill — white labels pass WCAG AA in both themes.
   static const brand = Color(0xFF7334A9);
-
-  /// Intelligence / lookup blue fill.
-  static const brandSecondary = Color(0xFF1F68BC);
 
   /// High-legibility violet ink on dark graphite.
   static const brandOnDark = Color(0xFFBE8DF3);
@@ -46,11 +36,6 @@ abstract final class AppColors {
   static const scoreGoodDark = Color(0xFF59C886);
   static const scoreWarnDark = Color(0xFFEDB345);
   static const scoreBadDark = Color(0xFFFD736D);
-
-  /// Default (dark) score inks — prefer [EnjoyThemeTokens] at runtime.
-  static const scoreGood = scoreGoodDark;
-  static const scoreWarn = scoreWarnDark;
-  static const scoreBad = scoreBadDark;
 
   static const scoreGoodContainer = Color(0x2459C886);
   static const scoreWarnContainer = Color(0x24EDB345);
@@ -92,11 +77,6 @@ abstract final class AppColors {
 
   static const gradientStartDark = Color(0xFF1E2028);
   static const gradientEndDark = Color(0xFF0D0E14);
-
-  /// Video stage / letterbox — theme-independent.
-  static const stageBackground = Color(0xFF0C0C0E);
-
-  static const seedBrand = brand;
 
   static ColorScheme colorScheme(Brightness brightness) {
     final light = brightness == Brightness.light;

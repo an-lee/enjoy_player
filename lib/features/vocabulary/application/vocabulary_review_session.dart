@@ -755,9 +755,6 @@ class VocabularyReviewSession extends Notifier<ReviewSessionState> {
     );
   }
 
-  /// Legacy name — opens clip practice (overlay host owns chrome).
-  Future<void> playClip() => openPracticeClip();
-
   /// Test helper to simulate an open practice sheet without media APIs.
   @visibleForTesting
   void debugSetPracticeMode(ReviewPracticeMode mode) {

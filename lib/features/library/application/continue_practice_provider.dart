@@ -1,4 +1,8 @@
-/// Home Continue practicing — last `echo_sessions` row with a live library item.
+/// Continue practicing — last `echo_sessions` row with a live library item.
+///
+/// Consumed by the desktop sidebar card ([SidebarContinuePracticeCard]);
+/// Home intentionally has no Continue section (the last-practiced item is
+/// already the first row of its recents grid).
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,13 +14,13 @@ import 'package:enjoy_player/features/library/application/library_media_provider
 import 'package:enjoy_player/features/library/domain/media.dart';
 import 'package:enjoy_player/features/library/domain/practice_resume.dart';
 
-const kHomeContinueSessionLookback = 20;
+const kContinueSessionLookback = 20;
 
 final echoRecentSessionsProvider = StreamProvider<List<EchoSessionRow>>((ref) {
   return ref
       .watch(appDatabaseProvider)
       .echoSessionDao
-      .watchRecentByLastActiveAt(limit: kHomeContinueSessionLookback);
+      .watchRecentByLastActiveAt(limit: kContinueSessionLookback);
 });
 
 /// First session (by `last_active_at`) whose `target_id` still exists in the library.
@@ -38,8 +42,8 @@ PracticeResume? resolvePracticeResume({
   return null;
 }
 
-/// Last practiced item for Home, or `null` when there is nothing to resume.
-final homeContinuePracticeProvider = Provider<PracticeResume?>((ref) {
+/// Last practiced item to resume, or `null` when there is nothing to resume.
+final continuePracticeResumeProvider = Provider<PracticeResume?>((ref) {
   final sessions = ref.watch(echoRecentSessionsProvider).valueOrNull;
   final media = ref.watch(libraryMediaProvider).valueOrNull;
   if (sessions == null || media == null) return null;

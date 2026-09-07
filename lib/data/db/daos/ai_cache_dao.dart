@@ -132,10 +132,6 @@ class AiCacheDao extends DatabaseAccessor<AppDatabase> with _$AiCacheDaoMixin {
     }
   }
 
-  Stream<List<AiCacheRow>> readAllForKind(String kind) {
-    return (select(aiCache)..where((t) => t.kind.equals(kind))).watch();
-  }
-
   Future<int> countForKind(String kind) async {
     try {
       return await (selectOnly(aiCache)

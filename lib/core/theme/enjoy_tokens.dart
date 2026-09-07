@@ -57,7 +57,7 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
           : AppColors.intelligenceInkDark,
       echoInk: light ? AppColors.echoInkLight : AppColors.echoInkDark,
       ccBadge: scheme.primary,
-      // Vertical padding is applied per-line via [TranscriptDensity.lineVerticalPadding].
+      // Vertical padding is applied per-line via [transcriptDensityOf].
       transcriptLinePadding: const EdgeInsets.symmetric(horizontal: 16),
       contentMaxWidth: 720,
       formMaxWidth: 680,
@@ -77,7 +77,6 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
       gradientEnd: light
           ? AppColors.gradientEndLight
           : AppColors.gradientEndDark,
-      useGlassOnSidebar: false,
       bottomNavHeight: 68,
       desktopGutter: 24,
       modalMaxWidth: 400,
@@ -150,8 +149,6 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
     required this.glassBorder,
     required this.gradientStart,
     required this.gradientEnd,
-    // ── Glass scope flag ───────────────────────────────────────────
-    required this.useGlassOnSidebar,
     // ── Shell / modal layout ───────────────────────────────────────
     required this.bottomNavHeight,
     required this.desktopGutter,
@@ -289,10 +286,6 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
   final Color gradientStart;
   final Color gradientEnd;
 
-  /// When false, sidebar uses flat tonal panel instead of frosted glass.
-  /// Transport bar always uses glass regardless of this flag.
-  final bool useGlassOnSidebar;
-
   /// Mobile bottom nav content height (excluding system home-indicator inset).
   final double bottomNavHeight;
 
@@ -373,7 +366,6 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
     Color? glassBorder,
     Color? gradientStart,
     Color? gradientEnd,
-    bool? useGlassOnSidebar,
     double? bottomNavHeight,
     double? desktopGutter,
     double? modalMaxWidth,
@@ -440,7 +432,6 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
       glassBorder: glassBorder ?? this.glassBorder,
       gradientStart: gradientStart ?? this.gradientStart,
       gradientEnd: gradientEnd ?? this.gradientEnd,
-      useGlassOnSidebar: useGlassOnSidebar ?? this.useGlassOnSidebar,
       bottomNavHeight: bottomNavHeight ?? this.bottomNavHeight,
       desktopGutter: desktopGutter ?? this.desktopGutter,
       modalMaxWidth: modalMaxWidth ?? this.modalMaxWidth,
@@ -576,7 +567,6 @@ class EnjoyThemeTokens extends ThemeExtension<EnjoyThemeTokens> {
       glassBorder: Color.lerp(glassBorder, other.glassBorder, t)!,
       gradientStart: Color.lerp(gradientStart, other.gradientStart, t)!,
       gradientEnd: Color.lerp(gradientEnd, other.gradientEnd, t)!,
-      useGlassOnSidebar: t < 0.5 ? useGlassOnSidebar : other.useGlassOnSidebar,
       bottomNavHeight: lerpDouble(bottomNavHeight, other.bottomNavHeight, t)!,
       desktopGutter: lerpDouble(desktopGutter, other.desktopGutter, t)!,
       modalMaxWidth: lerpDouble(modalMaxWidth, other.modalMaxWidth, t)!,

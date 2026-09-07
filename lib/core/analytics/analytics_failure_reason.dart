@@ -26,9 +26,7 @@ AnalyticsFailureReason analyticsFailureReasonFromAppFailure(
   AuthFailure() => AnalyticsFailureReason.auth,
   SubscriptionConflictFailure() => AnalyticsFailureReason.server,
   FileFailure() ||
-  UnsupportedImportFileFailure() ||
-  DatabaseFailure() ||
-  PlaybackFailure() => AnalyticsFailureReason.local,
+  UnsupportedImportFileFailure() => AnalyticsFailureReason.local,
 };
 
 /// Best-effort category for exceptions outside the [AppFailure] hierarchy

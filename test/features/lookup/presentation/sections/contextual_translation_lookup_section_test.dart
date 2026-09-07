@@ -94,17 +94,19 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late AppDatabase db;
-  late AiContextualTranslationCache ctxCache;
+  late AiResultCache<ContextualTranslationResult> ctxCache;
 
   setUp(() {
     db = AppDatabase(executor: NativeDatabase.memory());
-    ctxCache = AiContextualTranslationCache(
+    ctxCache = AiResultCache<ContextualTranslationResult>(
       dao: db.aiCacheDao,
       l1: L1Store<String, ContextualTranslationResult>(
         capacity: 16,
         ttl: const Duration(minutes: 30),
       ),
       policies: defaultAiKindPolicies,
+      fromJson: ContextualTranslationResult.fromJson,
+      toJson: (value) => value.toJson(),
     );
   });
 
