@@ -6,6 +6,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:enjoy_player/core/analytics/analytics.dart';
+import 'package:enjoy_player/core/analytics/analytics_events.dart';
+import 'package:enjoy_player/core/analytics/analytics_provider.dart';
 import 'package:enjoy_player/core/errors/app_failure.dart';
 import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/features/ai/application/ai_services.dart';
@@ -181,6 +184,20 @@ final vocabularyReviewSessionProvider =
     );
 
 class VocabularyReviewSession extends Notifier<ReviewSessionState> {
+  /// Ratings for the current run, keyed by item — lets the completion event
+  /// report correct-vs-incorrect without changing [ReviewSessionState].
+  final Map<String, VocabularyRating> _ratings = {};
+
+  /// When flashcard practice (clip/echo) was opened — for practice duration.
+  DateTime? _practiceOpenedAt;
+
+  Analytics get _analytics => ref.read(analyticsProvider);
+
+  void _clearRunTallies() {
+    _ratings.clear();
+    _practiceOpenedAt = null;
+  }
+
   @override
   ReviewSessionState build() => const ReviewSessionState(queue: []);
 
@@ -202,6 +219,8 @@ class VocabularyReviewSession extends Notifier<ReviewSessionState> {
       state = const ReviewSessionState(queue: []);
       return false;
     }
+
+    _clearRunTallies();
 
     final contextsByItemId = <String, List<VocabularyContext>>{};
     final activeIndex = <String, int>{};
@@ -248,8 +267,25 @@ class VocabularyReviewSession extends Notifier<ReviewSessionState> {
     );
   }
 
+  /// Emits the catalog review-completion event from the tallies of this run.
+  void _captureReviewCompleted() {
+    final correct = _ratings.values
+        .where(
+          (r) => r == VocabularyRating.know || r == VocabularyRating.knowWell,
+        )
+        .length;
+    _analytics.capture(
+      AnalyticsEvents.vocabularyReviewCompleted,
+      properties: AnalyticsEvents.vocabularyReview(
+        reviewedCount: _ratings.length,
+        correctCount: correct,
+      ),
+    );
+  }
+
   void clear() {
     final hadPractice = state.practiceSheetOpen;
+    _clearRunTallies();
     state = const ReviewSessionState(queue: []);
     if (hadPractice) {
       ref.read(echoModeProvider.notifier).deactivate();
@@ -267,6 +303,18 @@ class VocabularyReviewSession extends Notifier<ReviewSessionState> {
   Future<void> clearPractice() async {
     if (state.practicePhase == ReviewPracticePhase.none) return;
     final wasClip = state.practicePhase.isClip;
+    if (_practiceOpenedAt != null) {
+      final duration = DateTime.now().difference(_practiceOpenedAt!);
+      _practiceOpenedAt = null;
+      _analytics.capture(
+        AnalyticsEvents.practiceSessionCompleted,
+        properties: AnalyticsEvents.practiceCompleted(
+          surface: AnalyticsEvents.surfaceFlashcard,
+          durationSeconds: duration.inSeconds,
+          itemsCompleted: 1,
+        ),
+      );
+    }
     ref.read(echoModeProvider.notifier).deactivate();
     if (wasClip) {
       final player = ref.read(playerControllerProvider.notifier);
@@ -370,6 +418,7 @@ class VocabularyReviewSession extends Notifier<ReviewSessionState> {
     try {
       final repo = ref.read(vocabularyRepositoryProvider);
       final updated = await repo.markReviewed(itemId: item.id, rating: rating);
+      _ratings[item.id] = rating;
       final queue = List<VocabularyItem>.from(state.queue);
       if (updated != null) {
         queue[state.index] = updated;
@@ -391,6 +440,7 @@ class VocabularyReviewSession extends Notifier<ReviewSessionState> {
           index: queue.length,
           practicePhase: ReviewPracticePhase.none,
         );
+        _captureReviewCompleted();
       } else {
         state = state.copyWith(
           queue: queue,
@@ -429,6 +479,7 @@ class VocabularyReviewSession extends Notifier<ReviewSessionState> {
         index: state.queue.length,
         practicePhase: ReviewPracticePhase.none,
       );
+      _captureReviewCompleted();
     } else {
       state = state.copyWith(
         index: nextIndex,
@@ -451,6 +502,7 @@ class VocabularyReviewSession extends Notifier<ReviewSessionState> {
       if (restored != null && idx >= 0) {
         queue[idx] = restored;
       }
+      _ratings.remove(itemId);
       final ratedStack = List<String>.from(state.ratedStack)..removeLast();
       final history = List<ReviewHistoryEntry>.from(state.history);
       while (history.isNotEmpty) {
@@ -665,6 +717,14 @@ class VocabularyReviewSession extends Notifier<ReviewSessionState> {
 
   /// Opens clip practice (sets opening phase then plays).
   Future<void> openPracticeClip() async {
+    _practiceOpenedAt = DateTime.now();
+    _analytics.capture(
+      AnalyticsEvents.practiceSessionStarted,
+      properties: AnalyticsEvents.practiceStarted(
+        surface: AnalyticsEvents.surfaceFlashcard,
+        itemCount: 1,
+      ),
+    );
     preparePracticeClip();
     await startPracticeClipPlayback();
   }
@@ -681,6 +741,14 @@ class VocabularyReviewSession extends Notifier<ReviewSessionState> {
       await clearPractice();
     }
     if (!ref.mounted) return;
+    _practiceOpenedAt = DateTime.now();
+    _analytics.capture(
+      AnalyticsEvents.practiceSessionStarted,
+      properties: AnalyticsEvents.practiceStarted(
+        surface: AnalyticsEvents.surfaceFlashcard,
+        itemCount: 1,
+      ),
+    );
     state = state.copyWith(
       practicePhase: ReviewPracticePhase.echo,
       clearMediaError: true,

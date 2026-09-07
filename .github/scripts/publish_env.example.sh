@@ -33,6 +33,12 @@ export CLOUDFLARE_ZONE_ID="<zone id for enjoy.bot>"
 #   AuthKey_<KEY_ID>.p8     # private key
 # Or export APP_STORE_CONNECT_API_KEY_ID / ISSUER_ID / API_PRIVATE_KEY explicitly.
 
+# PostHog product analytics (specs/046) — release scripts forward both values
+# to flutter build as --dart-define. Both are required; leaving either unset
+# ships the binary analytics-inert. Locally, point at the TEST project:
+# export POSTHOG_API_KEY="<posthog project api key>"
+# export POSTHOG_HOST="https://eu.i.posthog.com"
+
 # WinSparkle signing (required for desktop auto-update appcast).
 # sign_sparkle_enclosure.sh auto-detects a `dsa_priv.pem` at the repo root,
 # so leave SPARKLE_DSA_PRIV_PEM unset when the key lives there. Only set it

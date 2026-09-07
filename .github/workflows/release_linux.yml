@@ -37,6 +37,11 @@ jobs:
       - uses: ./.github/actions/setup-flutter
 
       - name: Build Linux release
+        env:
+          # Forwarded to flutter build as --dart-define (analytics_config.dart).
+          # Unset ⇒ binary ships analytics-inert.
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
         run: bash .github/scripts/release_linux.sh
 
       - name: Ensure publish tooling

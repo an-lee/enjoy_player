@@ -9,6 +9,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'package:enjoy_player/core/analytics/analytics.dart';
+import 'package:enjoy_player/core/analytics/analytics_provider.dart';
 import 'package:enjoy_player/core/player/player_surface_overlay_coordinator.dart';
 import 'package:enjoy_player/core/player/player_surface_overlay_navigator_observer.dart';
 import 'package:enjoy_player/core/routing/auth_redirect.dart';
@@ -100,10 +102,20 @@ GoRouter appRouter(Ref ref) {
     onLeftPlayerRoute: () =>
         scheduleMicrotask(() => unawaited(clearLivePlaybackSession(ref))),
   );
+  // Screen autocapture (spec 046, research D6): one observer per navigator —
+  // root- and shell-level navigators each report their own pushes. The
+  // instance resolves to the no-op wherever analytics is inert, and vendor
+  // setup/opt-out state is honored inside the facade.
+  final rootScreenObserver = AnalyticsScreenObserver(
+    ref.read(analyticsProvider),
+  );
+  final shellScreenObserver = AnalyticsScreenObserver(
+    ref.read(analyticsProvider),
+  );
   final router = GoRouter(
     initialLocation: '/',
     refreshListenable: authTick,
-    observers: [rootOverlayObserver],
+    observers: [rootOverlayObserver, rootScreenObserver],
     errorBuilder: (context, state) => NotFoundScreen(uri: state.uri),
     redirect: (context, state) {
       // A stray `/callback` is go_router's view of an auto-forwarded
@@ -133,10 +145,12 @@ GoRouter appRouter(Ref ref) {
     },
     routes: [
       GoRoute(
+        name: 'sign-in',
         path: '/sign-in',
         builder: (context, state) => const SignInScreen(),
         routes: [
           GoRoute(
+            name: 'sign-in-email',
             path: 'email',
             builder: (context, state) => const EmailEntryScreen(),
           ),
@@ -144,10 +158,15 @@ GoRouter appRouter(Ref ref) {
       ),
       ShellRoute(
         navigatorKey: enjoyShellNavigatorKey,
-        observers: [shellOverlayObserver, leavePlayerObserver],
+        observers: [
+          shellOverlayObserver,
+          leavePlayerObserver,
+          shellScreenObserver,
+        ],
         builder: (context, state, child) => RootShell(child: child),
         routes: [
           GoRoute(
+            name: 'home',
             path: '/',
             pageBuilder: (context, state) => _shellPage(
               key: const ValueKey<String>('shell-home'),
@@ -155,6 +174,7 @@ GoRouter appRouter(Ref ref) {
             ),
           ),
           GoRoute(
+            name: 'discover',
             path: '/discover',
             pageBuilder: (context, state) => _shellPage(
               key: const ValueKey<String>('shell-discover'),
@@ -162,6 +182,7 @@ GoRouter appRouter(Ref ref) {
             ),
             routes: [
               GoRoute(
+                name: 'discover-channel',
                 path: 'channel/:channelId',
                 builder: (context, state) {
                   final channelId = state.pathParameters['channelId']!;
@@ -171,6 +192,7 @@ GoRouter appRouter(Ref ref) {
             ],
           ),
           GoRoute(
+            name: 'library',
             path: '/library',
             pageBuilder: (context, state) => _shellPage(
               key: const ValueKey<String>('shell-library'),
@@ -212,38 +234,47 @@ GoRouter appRouter(Ref ref) {
             },
           ),
           GoRoute(
+            name: 'youtube-login',
             path: '/youtube/login',
             builder: (context, state) => const YoutubeLoginScreen(),
           ),
           GoRoute(
+            name: 'craft',
             path: '/craft',
             builder: (context, state) => const CraftScreen(),
           ),
           GoRoute(
+            name: 'craft-history',
             path: '/craft/history',
             builder: (context, state) => const CraftHistoryScreen(),
           ),
           GoRoute(
+            name: 'settings',
             path: '/settings',
             builder: (context, state) => const SettingsScreen(),
           ),
           GoRoute(
+            name: 'settings-sync',
             path: '/settings/sync',
             builder: (context, state) => const SyncStatusScreen(),
           ),
           GoRoute(
+            name: 'settings-keyboard',
             path: '/settings/keyboard',
             builder: (context, state) => const HotkeysSettingsScreen(),
           ),
           GoRoute(
+            name: 'settings-ai-providers',
             path: '/settings/ai-providers',
             builder: (context, state) => const AiProvidersScreen(),
           ),
           GoRoute(
+            name: 'settings-ai-playground',
             path: '/settings/ai-playground',
             builder: (context, state) => const AiPlaygroundScreen(),
           ),
           GoRoute(
+            name: 'profile',
             path: '/profile',
             pageBuilder: (context, state) => _shellPage(
               key: const ValueKey<String>('shell-profile'),
@@ -251,28 +282,34 @@ GoRouter appRouter(Ref ref) {
             ),
             routes: [
               GoRoute(
+                name: 'profile-edit',
                 path: 'edit',
                 builder: (context, state) => const ProfileEditScreen(),
               ),
               GoRoute(
+                name: 'profile-preferences',
                 path: 'preferences',
                 builder: (context, state) => const ProfilePreferencesScreen(),
               ),
             ],
           ),
           GoRoute(
+            name: 'credits',
             path: '/credits',
             builder: (context, state) => const CreditsUsageScreen(),
           ),
           GoRoute(
+            name: 'subscription',
             path: '/subscription',
             builder: (context, state) => const SubscriptionScreen(),
           ),
           GoRoute(
+            name: 'vocabulary',
             path: '/vocabulary',
             builder: (context, state) => const VocabularyScreen(),
           ),
           GoRoute(
+            name: 'vocabulary-review',
             path: '/vocabulary/review',
             onExit: (context, state) {
               // Clear while the route context is still mounted — not in

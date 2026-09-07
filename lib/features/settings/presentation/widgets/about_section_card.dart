@@ -16,6 +16,7 @@ import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/core/theme/widgets/enjoy_logo.dart';
 import 'package:enjoy_player/features/onboarding/application/onboarding_progress_provider.dart';
 import 'package:enjoy_player/features/settings/presentation/widgets/developer_contact_sheet.dart';
+import 'package:enjoy_player/features/settings/presentation/widgets/analytics_capture_toggle_row.dart';
 import 'package:enjoy_player/features/settings/presentation/widgets/settings_row.dart';
 import 'package:enjoy_player/features/update/application/update_controller.dart';
 import 'package:enjoy_player/features/update/presentation/update_notification_dot.dart';
@@ -368,6 +369,15 @@ class _AboutSectionCardState extends ConsumerState<AboutSectionCard> {
                       onTap: () => showDeveloperContactSheet(context),
                       responsive: false,
                     ),
+                    Divider(
+                      height: 1,
+                      indent: t.space16,
+                      endIndent: t.space16,
+                      color: cs.outlineVariant.withValues(alpha: 0.18),
+                    ),
+                    // Usage analytics opt-out (specs/046 US4) — persisted
+                    // device-globally; the provider applies it to the vendor.
+                    const AnalyticsCaptureToggleRow(),
                   ],
                 ),
               ),

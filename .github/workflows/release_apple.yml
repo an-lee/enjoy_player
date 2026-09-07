@@ -49,6 +49,10 @@ jobs:
 
       - name: Build Apple release
         env:
+          # Forwarded to flutter build as --dart-define (analytics_config.dart).
+          # Unset ⇒ binary ships analytics-inert.
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
           IOS_DISTRIBUTION_CERT_BASE64: ${{ secrets.IOS_DISTRIBUTION_CERT_BASE64 }}
           IOS_DISTRIBUTION_CERT_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERT_PASSWORD }}

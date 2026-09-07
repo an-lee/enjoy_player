@@ -1,6 +1,9 @@
 /// Ephemeral chosen-word and word-loop state for one open media.
 library;
 
+import 'package:enjoy_player/core/analytics/analytics.dart';
+import 'package:enjoy_player/core/analytics/analytics_events.dart';
+import 'package:enjoy_player/core/analytics/analytics_provider.dart';
 import 'package:meta/meta.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -56,6 +59,11 @@ class WordPracticeState {
 
 @Riverpod(keepAlive: true)
 class WordPracticeSession extends _$WordPracticeSession {
+  /// When the current loop window was opened — for practice duration.
+  DateTime? _loopStartedAt;
+
+  Analytics get _analytics => ref.read(analyticsProvider);
+
   @override
   WordPracticeState build(String mediaId) {
     ref.listen(ipaOverlaySettingsProvider, (prev, next) {
@@ -80,6 +88,14 @@ class WordPracticeSession extends _$WordPracticeSession {
     required int endMs,
   }) {
     if (endMs <= startMs) return;
+    _loopStartedAt = DateTime.now();
+    _analytics.capture(
+      AnalyticsEvents.practiceSessionStarted,
+      properties: AnalyticsEvents.practiceStarted(
+        surface: AnalyticsEvents.surfaceWordPractice,
+        itemCount: 1,
+      ),
+    );
     state = state.copyWith(
       chosenLineIndex: lineIndex,
       chosenWordIndex: wordIndex,
@@ -91,10 +107,27 @@ class WordPracticeSession extends _$WordPracticeSession {
   }
 
   void clearLoop() {
+    _captureIfLoopActive();
     state = state.copyWith(clearLoop: true);
   }
 
   void clearAll() {
+    _captureIfLoopActive();
     state = const WordPracticeState();
+  }
+
+  /// Emits the loop-practice completion when a loop window is actually open.
+  void _captureIfLoopActive() {
+    final startedAt = _loopStartedAt;
+    if (startedAt == null) return;
+    _loopStartedAt = null;
+    _analytics.capture(
+      AnalyticsEvents.practiceSessionCompleted,
+      properties: AnalyticsEvents.practiceCompleted(
+        surface: AnalyticsEvents.surfaceWordPractice,
+        durationSeconds: DateTime.now().difference(startedAt).inSeconds,
+        itemsCompleted: 1,
+      ),
+    );
   }
 }

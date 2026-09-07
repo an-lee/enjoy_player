@@ -3801,6 +3801,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsResetProductTipsDone => '已重置产品提示';
 
   @override
+  String get settingsAnalyticsCaptureTitle => '使用数据分析';
+
+  @override
+  String get settingsAnalyticsCaptureSubtitle =>
+      '分享匿名使用数据，帮助改进 Enjoy。绝不包含你的媒体、字幕或笔记。';
+
+  @override
   String get transcriptEmptyFetchYoutube => '获取字幕';
 }
 
@@ -6915,6 +6922,13 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get settingsResetProductTipsDone => '已重置产品提示';
+
+  @override
+  String get settingsAnalyticsCaptureTitle => '使用数据分析';
+
+  @override
+  String get settingsAnalyticsCaptureSubtitle =>
+      '分享匿名使用数据，帮助改进 Enjoy。绝不包含你的媒体、字幕或笔记。';
 
   @override
   String get transcriptEmptyFetchYoutube => '获取字幕';

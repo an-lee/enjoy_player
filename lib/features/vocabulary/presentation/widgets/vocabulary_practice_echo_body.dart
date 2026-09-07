@@ -8,6 +8,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:enjoy_player/core/analytics/analytics_events.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
 import 'package:enjoy_player/features/shadow_reading/presentation/shadow_reading_panel.dart';
 import 'package:enjoy_player/features/vocabulary/domain/vocabulary_models.dart';
@@ -33,6 +34,7 @@ ShadowReadingPanel buildVocabularyEchoRecorder({
     referenceText: contextItem.text,
     // Enables recorder/assessment actions; global player EchoMode remains off.
     echoActive: true,
+    analyticsSurface: AnalyticsEvents.surfaceFlashcard,
   );
 }
 

@@ -2,6 +2,9 @@
 /// start, and owns the app-initiated purchase "pending" flag for eager polling.
 library;
 
+import 'package:enjoy_player/core/analytics/analytics.dart';
+import 'package:enjoy_player/core/analytics/analytics_events.dart';
+import 'package:enjoy_player/core/analytics/analytics_provider.dart';
 import 'dart:async';
 
 import 'package:logging/logging.dart';
@@ -41,6 +44,10 @@ class TierReconcileCtrl extends _$TierReconcileCtrl {
   DateTime? _lastReconciledAt;
   bool _reconciling = false;
   PendingPurchaseKind? _pendingKind;
+
+  /// Package id of the in-flight credits purchase — for the analytics
+  /// completion event (the reconcile poller otherwise only knows credits).
+  String? _pendingPackageId;
   int? _packageBaselinePermanent;
   int? _packageExpectedCredits;
 
@@ -73,10 +80,12 @@ class TierReconcileCtrl extends _$TierReconcileCtrl {
   /// [baselinePermanent] should be the wallet permanent balance *before*
   /// checkout so resume polling can detect the grant.
   void markPackagePurchasePending({
+    required String? packageId,
     required int expectedCredits,
     int? baselinePermanent,
   }) {
     _pendingKind = PendingPurchaseKind.creditsPackage;
+    _pendingPackageId = packageId;
     _packageExpectedCredits = expectedCredits;
     _packageBaselinePermanent = baselinePermanent;
     _packageLastSamplePermanent = null;
@@ -147,10 +156,13 @@ class TierReconcileCtrl extends _$TierReconcileCtrl {
   }
 
   void _clearPackagePendingState() {
+    _pendingPackageId = null;
     _packageBaselinePermanent = null;
     _packageExpectedCredits = null;
     _packageLastSamplePermanent = null;
   }
+
+  Analytics get _analytics => ref.read(analyticsProvider);
 
   Future<void> _refreshOnce() async {
     ref.invalidate(subscriptionStatusProvider);
@@ -206,6 +218,15 @@ class TierReconcileCtrl extends _$TierReconcileCtrl {
       final status = await ref.read(subscriptionStatusProvider.future);
       if (status.isPaidTier) {
         await _safeProfileRefresh();
+        // Only reached from the eager poll, which runs exactly once per
+        // app-initiated purchase (pending flag cleared right after) — so a
+        // confirmed poll here is a completed purchase journey (spec 046).
+        _analytics.capture(
+          AnalyticsEvents.subscriptionPurchaseCompleted,
+          properties: AnalyticsEvents.purchaseCompleted(
+            tier: status.subscriptionTier.name,
+          ),
+        );
         return true;
       }
     } catch (e, st) {
@@ -229,6 +250,7 @@ class TierReconcileCtrl extends _$TierReconcileCtrl {
   }
 
   Future<bool> _pollPackageOnce() async {
+    var confirmed = false;
     try {
       final summary = await ref.read(creditsSummaryProvider.future);
       final current = summary.permanentAvailable;
@@ -237,21 +259,30 @@ class TierReconcileCtrl extends _$TierReconcileCtrl {
 
       if (baseline != null) {
         final delta = current - baseline;
-        return delta >= expected && delta > 0;
+        confirmed = delta >= expected && delta > 0;
+      } else {
+        // No pre-checkout snapshot: confirm only when permanent balance grows
+        // across successive polls. Do not adopt the first sample as baseline —
+        // if the grant already landed, that would freeze a post-purchase value
+        // and every later poll would see a zero delta.
+        final previous = _packageLastSamplePermanent;
+        _packageLastSamplePermanent = current;
+        if (previous != null) {
+          final delta = current - previous;
+          confirmed = delta >= expected && delta > 0;
+        }
       }
-
-      // No pre-checkout snapshot: confirm only when permanent balance grows
-      // across successive polls. Do not adopt the first sample as baseline —
-      // if the grant already landed, that would freeze a post-purchase value
-      // and every later poll would see a zero delta.
-      final previous = _packageLastSamplePermanent;
-      _packageLastSamplePermanent = current;
-      if (previous == null) return false;
-      final delta = current - previous;
-      return delta >= expected && delta > 0;
     } catch (e, st) {
       _log.warning('eager package reconcile: summary fetch failed', e, st);
     }
-    return false;
+    if (confirmed) {
+      _analytics.capture(
+        AnalyticsEvents.creditsPackagePurchased,
+        properties: AnalyticsEvents.creditsPurchased(
+          packageId: _pendingPackageId ?? 'unknown',
+        ),
+      );
+    }
+    return confirmed;
   }
 }

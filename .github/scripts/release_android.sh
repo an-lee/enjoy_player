@@ -46,6 +46,9 @@ if [[ "${RELEASE_SKIP_CHECKS}" != true ]]; then
 fi
 
 if [[ "${RELEASE_SKIP_BUILD}" != true ]]; then
+  # Load publish env before building so POSTHOG_* (and other build inputs)
+  # apply to the binary, not just the publish step.
+  release_load_publish_env "${root}"
   if [[ -f "${root}/.github/scripts/setup_android_signing.sh" ]]; then
     if ! bash "${root}/.github/scripts/setup_android_signing.sh"; then
       if [[ -f "${root}/android/key.properties" ]]; then
@@ -93,15 +96,18 @@ if [[ "${RELEASE_SKIP_BUILD}" != true ]]; then
 
   release_stop_gradle_daemons "${root}"
 
+  defines=()
+  release_append_posthog_defines defines
+
   if [[ "${BUILD_AAB}" == true ]]; then
     echo ">>> Build App Bundle (store / Play)"
-    flutter build appbundle --release --flavor store
+    flutter build appbundle --release --flavor store ${defines[@]+"${defines[@]}"}
   fi
 
   if [[ "${BUILD_APK}" == true ]]; then
     echo ">>> Build sideload APKs (direct / per ABI)"
     flutter build apk --release --split-per-abi --flavor direct \
-      --dart-define=DISTRIBUTION_CHANNEL=direct
+      --dart-define=DISTRIBUTION_CHANNEL=direct ${defines[@]+"${defines[@]}"}
   fi
 
   bash "${root}/.github/scripts/rename_release_artifacts.sh" android

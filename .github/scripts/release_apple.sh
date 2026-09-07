@@ -100,6 +100,9 @@ if [[ "${RELEASE_SKIP_CHECKS}" != true ]]; then
 fi
 
 if [[ "${RELEASE_SKIP_BUILD}" != true ]]; then
+  # Load publish env before building so POSTHOG_* (and other build inputs)
+  # apply to the binary, not just the publish step.
+  release_load_publish_env "${root}"
   bash "${root}/.github/scripts/setup_apple_signing.sh" || true
 
   # Bootstrap Apple Distribution before notary login so a bad notary profile
@@ -139,8 +142,11 @@ if [[ "${RELEASE_SKIP_BUILD}" != true ]]; then
 
     echo ">>> Build iOS IPA"
     build_ios_ipa() {
+      local defines=()
+      release_append_posthog_defines defines
       apple_retry_spm_command "${root}" \
-        flutter build ipa --release --export-options-plist=ios/ExportOptions.export.plist
+        flutter build ipa --release ${defines[@]+"${defines[@]}"} \
+        --export-options-plist=ios/ExportOptions.export.plist
     }
     apple_with_spm_host_lock build_ios_ipa
 

@@ -80,6 +80,16 @@ _Localized _localize(SettingsEntryDescriptor d, AppLocalizations l10n) {
           ]);
       }
     case SettingsSectionIds.about:
+      if (d.rowId == 'analyticsCapture') {
+        return _Localized(l10n.settingsAnalyticsCaptureTitle, const [
+          'analytics',
+          'usage',
+          'privacy',
+          'telemetry',
+          'posthog',
+          '数据',
+        ]);
+      }
       if (d.rowId == 'contact') {
         return _Localized(l10n.settingsAboutContactTitle, const [
           'email',

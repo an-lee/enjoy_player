@@ -8,6 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 
+import 'package:enjoy_player/core/analytics/analytics_events.dart';
+import 'package:enjoy_player/core/analytics/analytics_provider.dart';
 import 'package:enjoy_player/core/errors/app_failure.dart';
 import 'package:enjoy_player/core/logging/log.dart';
 import 'package:enjoy_player/core/theme/enjoy_tokens.dart';
@@ -165,6 +167,19 @@ class _ContextualFetchBodyState extends ConsumerState<_ContextualFetchBody> {
       'textLen=${p.text.length} ctxLen=${p.context?.length ?? 0} '
       'forceRefresh=$forceRefresh',
     );
+
+    ref
+        .read(analyticsProvider)
+        .capture(
+          AnalyticsEvents.translationRequested,
+          properties: AnalyticsEvents.translationRequestedProps(
+            kind: AnalyticsEvents.kindContextual,
+            cacheHit:
+                !forceRefresh &&
+                cache.peek(kind: AiKind.contextualTranslation, key: key) !=
+                    null,
+          ),
+        );
 
     _future = () async {
       try {

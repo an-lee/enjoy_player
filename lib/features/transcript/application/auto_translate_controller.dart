@@ -8,6 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../core/analytics/analytics_events.dart';
+import '../../../core/analytics/analytics_provider.dart';
 import '../../../core/application/app_language_catalog.dart';
 import '../../../core/application/app_preferences_provider.dart';
 import '../../../core/errors/app_failure.dart';
@@ -176,6 +178,17 @@ class AutoTranslateCtrl extends _$AutoTranslateCtrl {
           .where((i) => i >= 0 && i < primaryLines.length)
           .toSet(),
     );
+    // Enabling auto-translate is the user-visible translation request; the
+    // per-line fetches are lazy internals, not user actions (spec 046).
+    ref
+        .read(analyticsProvider)
+        .capture(
+          AnalyticsEvents.translationRequested,
+          properties: AnalyticsEvents.translationRequestedProps(
+            kind: AnalyticsEvents.kindStandard,
+            cacheHit: false,
+          ),
+        );
   }
 
   /// Requests translation for a single cue when it becomes visible.

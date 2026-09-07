@@ -155,4 +155,9 @@ const List<SettingsEntryDescriptor> kSettingsRegistry = [
     sectionId: SettingsSectionIds.about,
     rowId: 'contact',
   ),
+  SettingsEntryDescriptor(
+    sectionId: SettingsSectionIds.about,
+    rowId: 'analyticsCapture',
+    collapsedByDefault: true,
+  ),
 ];

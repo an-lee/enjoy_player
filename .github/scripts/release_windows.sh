@@ -43,9 +43,14 @@ if [[ "${RELEASE_SKIP_CHECKS}" != true ]]; then
 fi
 
 if [[ "${RELEASE_SKIP_BUILD}" != true ]]; then
+  # Load publish env before building so POSTHOG_* (and other build inputs)
+  # apply to the binary, not just the publish step.
+  release_load_publish_env "${root}"
+  defines=()
+  release_append_posthog_defines defines
   echo ">>> Build Windows release (direct channel)"
   release_pwsh "${root}/windows/scripts/fetch_ffmpeg.ps1"
-  flutter build windows --release --dart-define=DISTRIBUTION_CHANNEL=direct
+  flutter build windows --release --dart-define=DISTRIBUTION_CHANNEL=direct ${defines[@]+"${defines[@]}"}
 
   if [[ "${BUILD_INSTALLER}" == true ]]; then
     echo ">>> Build Inno Setup installer"

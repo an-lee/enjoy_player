@@ -4,6 +4,8 @@ library;
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'package:enjoy_player/core/analytics/analytics_events.dart';
+import 'package:enjoy_player/core/analytics/analytics_provider.dart';
 import 'package:enjoy_player/features/ai/application/ai_cache_fingerprint.dart';
 import 'package:enjoy_player/features/ai/application/ai_result_cache.dart';
 import 'package:enjoy_player/features/ai/application/ai_services.dart';
@@ -31,6 +33,17 @@ Future<TranslationResult> lookupSheetTranslation(
       'targetLanguage': params.targetLanguage,
     },
   );
+  final cacheHit =
+      !forceRefresh && cache.peek(kind: AiKind.translation, key: key) != null;
+  ref
+      .read(analyticsProvider)
+      .capture(
+        AnalyticsEvents.translationRequested,
+        properties: AnalyticsEvents.translationRequestedProps(
+          kind: AnalyticsEvents.kindStandard,
+          cacheHit: cacheHit,
+        ),
+      );
   return cache.lookup(
     kind: AiKind.translation,
     key: key,
@@ -60,7 +73,9 @@ Future<DictionaryResult> lookupSheetDictionary(
       'targetLanguage': params.targetLanguage,
     },
   );
-  return cache.lookup(
+  final cacheHit =
+      !forceRefresh && cache.peek(kind: AiKind.dictionary, key: key) != null;
+  final result = await cache.lookup(
     kind: AiKind.dictionary,
     key: key,
     loader: () => ref
@@ -72,4 +87,14 @@ Future<DictionaryResult> lookupSheetDictionary(
         ),
     forceRefresh: forceRefresh,
   );
+  ref
+      .read(analyticsProvider)
+      .capture(
+        AnalyticsEvents.dictionaryLookupPerformed,
+        properties: AnalyticsEvents.lookupPerformed(
+          source: AnalyticsEvents.sourceSelection,
+          cacheHit: cacheHit,
+        ),
+      );
+  return result;
 }

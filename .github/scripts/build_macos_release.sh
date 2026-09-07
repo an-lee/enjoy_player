@@ -13,11 +13,16 @@ cd "${root}"
 source "${root}/.github/scripts/apple_spm_hygiene.sh"
 apple_sanitize_git_env_for_spm
 
+lib="$(dirname "$0")/release_lib.sh"
+# shellcheck source=release_lib.sh
+source "${lib}"
+
 dart_defines=(--dart-define=DISTRIBUTION_CHANNEL=direct)
 if [[ -n "${MACOS_RELEASE_DART_DEFINES:-}" ]]; then
   # shellcheck disable=SC2206
   dart_defines+=(${MACOS_RELEASE_DART_DEFINES})
 fi
+release_append_posthog_defines dart_defines
 
 build_release() {
   echo ">>> Configure macOS release"

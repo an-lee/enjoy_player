@@ -40,8 +40,13 @@ if [[ "${RELEASE_SKIP_CHECKS}" != true ]]; then
 fi
 
 if [[ "${RELEASE_SKIP_BUILD}" != true ]]; then
+  # Load publish env before building so POSTHOG_* (and other build inputs)
+  # apply to the binary, not just the publish step.
+  release_load_publish_env "${root}"
+  defines=()
+  release_append_posthog_defines defines
   echo ">>> Build Linux release (direct channel)"
-  flutter build linux --release --dart-define=DISTRIBUTION_CHANNEL=direct
+  flutter build linux --release --dart-define=DISTRIBUTION_CHANNEL=direct ${defines[@]+"${defines[@]}"}
 
   version="$(release_version)"
   echo ">>> Package version: ${version}"

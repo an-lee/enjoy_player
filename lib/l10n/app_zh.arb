@@ -1580,5 +1580,7 @@
   "settingsResetProductTipsConfirmBody": "Craft、导入、字幕与练习相关提示会再次出现。媒体库与账号不受影响。",
   "settingsResetProductTipsConfirmAction": "重置提示",
   "settingsResetProductTipsDone": "已重置产品提示",
-  "transcriptEmptyFetchYoutube": "获取字幕"
+  "transcriptEmptyFetchYoutube": "获取字幕",
+  "settingsAnalyticsCaptureTitle": "使用数据分析",
+  "settingsAnalyticsCaptureSubtitle": "分享匿名使用数据，帮助改进 Enjoy。绝不包含你的媒体、字幕或笔记。"
 }
